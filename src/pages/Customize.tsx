@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -520,11 +521,21 @@ const Customize = () => {
     try {
       setIsLoading(true);
       
-      // 선택된 옵션들을 하나의 프롬프트로 조합
+      // 선택된 옵션들을 상세한 프롬프트로 조합
       const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
       const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name || "";
+      const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label || "";
+      const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || "";
+      const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label || "";
       
-      const prompt = `${selectedClothType} made of ${selectedMaterialName}. ${selectedDetail || ""}`.trim();
+      const prompt = `
+        Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.
+        Material: ${selectedMaterialName}
+        Style: ${selectedStyleName}
+        Color: ${selectedColorName}
+        Pockets: ${selectedPocketName}
+        Additional details: ${detailInput || "none"}
+      `.trim();
 
       const { data, error } = await supabase.functions.invoke('generate-optimized-image', {
         body: { prompt }

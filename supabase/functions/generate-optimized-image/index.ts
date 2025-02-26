@@ -2,22 +2,14 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const replicateApiKey = Deno.env.get('REPLICATE_API_KEY');
-
-const SYSTEM_PROMPT = `Assist in generating precise and optimized prompts for the FLUX AI model to create high-quality fashion image based on user input.
-
-1. Make the prompt detailed with:
-- Clothing type (e.g., jacket, dress).
-- Colors, patterns, and materials.
-- Style or theme (e.g., casual, formal).
-- Accessories or design details.
-- Target audience (e.g., men's, women's).
-2. Use vivid adjectives to guide image generation accurately.
-3. Keep the prompt concise but descriptive, and don't omit details in input.
-4. If there are not sufficient details, add details based on your knowledge about garment.
-5. Add this prompt at the end. : "Showcasing the front view on the left side and the back view on the right side. Show only cloth."
-6. Output must be in English, and only return result.`;
+const SYSTEM_PROMPT = `You are a fashion design expert. Convert the given clothing description into a clear, detailed prompt for image generation.
+Guidelines:
+1. Describe the garment type, style, and material in detail
+2. Include color information and any specific design elements
+3. Specify the view (front/back/etc)
+4. Keep the description professional and fashion-focused
+5. Add keywords that enhance image quality
+Format: "Professional fashion photograph of a [garment] in [style and material details]. [Design specifics]. [View angle]. Studio lighting, high resolution, fashion photography.`;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,14 +23,13 @@ serve(async (req) => {
 
   try {
     const { prompt } = await req.json();
-    console.log("Received prompt:", prompt);
+    console.log("Original prompt:", prompt);
 
-    // 1단계: OpenAI를 통한 프롬프트 최적화
-    console.log("Optimizing prompt with OpenAI...");
+    // Step 1: Optimize the prompt using OpenAI
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -56,12 +47,11 @@ serve(async (req) => {
     const optimizedPrompt = openaiData.choices[0].message.content;
     console.log("Optimized prompt:", optimizedPrompt);
 
-    // 2단계: Replicate를 통한 이미지 생성
-    console.log("Generating image with Replicate...");
-    const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
+    // Step 2: Generate image using the optimized prompt
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${replicateApiKey}`,
+        'Authorization': `Token ${Deno.env.get('REPLICATE_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -80,21 +70,18 @@ serve(async (req) => {
       }),
     });
 
-    let prediction = await replicateResponse.json();
+    let prediction = await response.json();
     console.log("Initial prediction:", prediction);
 
-    // Replicate는 비동기로 작업을 처리하므로, 결과가 나올 때까지 폴링
-    while (
-      prediction.status === "starting" || 
-      prediction.status === "processing"
-    ) {
+    // Step 3: Poll for results
+    while (prediction.status === "starting" || prediction.status === "processing") {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const response = await fetch(prediction.urls.get, {
+      const pollResponse = await fetch(prediction.urls.get, {
         headers: {
-          'Authorization': `Token ${replicateApiKey}`,
+          'Authorization': `Token ${Deno.env.get('REPLICATE_API_KEY')}`,
         },
       });
-      prediction = await response.json();
+      prediction = await pollResponse.json();
       console.log("Polling prediction status:", prediction.status);
     }
 
@@ -105,12 +92,9 @@ serve(async (req) => {
           optimizedPrompt,
           imageUrl: prediction.output[0],
         }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     } else {
-      console.error("Image generation failed:", prediction);
       throw new Error("Image generation failed");
     }
 
@@ -125,4 +109,3 @@ serve(async (req) => {
     );
   }
 });
-

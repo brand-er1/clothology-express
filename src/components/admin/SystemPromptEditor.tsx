@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,11 @@ export const SystemPromptEditor = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState(initialPrompt);
+
+  // initialPrompt가 변경될 때마다 systemPrompt 상태를 업데이트
+  useEffect(() => {
+    setSystemPrompt(initialPrompt);
+  }, [initialPrompt]);
 
   const handleSave = async () => {
     try {

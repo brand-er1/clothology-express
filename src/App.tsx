@@ -40,10 +40,9 @@ const App = () => {
 
     // postMessage 리스너 설정
     const handleMessage = (event: MessageEvent) => {
-      // 신뢰할 수 있는 도메인인지 확인 (실제 도메인으로 변경 필요)
-      const trustedDomains = ['http://localhost:3000', 'https://your-parent-domain.com'];
-      if (!trustedDomains.includes(event.origin)) {
-        console.warn('Untrusted domain:', event.origin);
+      // brand-er.store 도메인에서만 메시지 허용
+      if (event.origin !== 'https://brand-er.store') {
+        console.warn('Unauthorized domain:', event.origin);
         return;
       }
 
@@ -56,7 +55,7 @@ const App = () => {
     window.addEventListener('message', handleMessage);
 
     // 부모 창에 준비되었다고 알림
-    window.parent.postMessage({ type: 'IFRAME_READY' }, '*');
+    window.parent.postMessage({ type: 'IFRAME_READY' }, 'https://brand-er.store');
 
     return () => {
       window.removeEventListener('message', handleMessage);

@@ -1,107 +1,35 @@
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
-import { 
-  clothTypes, 
-  styleOptions, 
-  pocketOptions, 
-  colorOptions,
-  TOTAL_STEPS 
-} from "@/lib/customize-constants";
+import { toast } from "@/components/ui/use-toast";
+import { TOTAL_STEPS } from "@/lib/customize-constants";
+import { generateImage } from "@/services/imageGeneration";
+import { createOrder } from "@/services/orderCreation";
+import { UseCustomizeFormState, Material } from "@/types/customize";
 
 export const useCustomizeForm = () => {
   const navigate = useNavigate();
+  
+  // Initialize all state
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedType, setSelectedType] = useState("");
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [selectedDetail, setSelectedDetail] = useState("");
   const [newMaterialName, setNewMaterialName] = useState("");
-  const [materials, setMaterials] = useState([
-    { 
-      id: "cotton", 
-      name: "면", 
-      description: "부드럽고 통기성이 좋은 천연 소재" 
-    },
-    { 
-      id: "denim", 
-      name: "데님", 
-      description: "튼튼하고 클래식한 청바지 소재" 
-    },
-    { 
-      id: "poly", 
-      name: "폴리", 
-      description: "구김이 적고 관리가 쉬운 소재" 
-    },
-    { 
-      id: "linen", 
-      name: "린넨", 
-      description: "시원하고 자연스러운 질감의 소재" 
-    },
+  const [materials, setMaterials] = useState<Material[]>([
+    { id: "cotton", name: "면", description: "부드럽고 통기성이 좋은 천연 소재" },
+    { id: "denim", name: "데님", description: "튼튼하고 클래식한 청바지 소재" },
+    { id: "poly", name: "폴리", description: "구김이 적고 관리가 쉬운 소재" },
+    { id: "linen", name: "린넨", description: "시원하고 자연스러운 질감의 소재" },
   ]);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedPocket, setSelectedPocket] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
-  const [selectedFit, setSelectedFit] = useState("");  // 새로 추가된 상태
+  const [selectedFit, setSelectedFit] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
-
-  const handleCreateOrder = async () => {
-    try {
-      setIsLoading(true);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "로그인 필요",
-          description: "주문하기 전에 로그인해주세요.",
-          variant: "destructive",
-        });
-        navigate("/auth");
-        return;
-      }
-
-      const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name;
-      const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name;
-      const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
-      const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
-      const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
-
-      const { error } = await supabase.from('orders').insert({
-        user_id: user.id,
-        cloth_type: selectedClothType,
-        material: selectedMaterialName,
-        style: selectedStyleName,
-        pocket_type: selectedPocketName,
-        color: selectedColorName,
-        detail_description: selectedDetail,
-        size: selectedSize,
-        measurements: selectedSize === 'custom' ? customMeasurements : null,
-        generated_image_url: generatedImageUrl,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "주문 완료",
-        description: "주문이 성공적으로 접수되었습니다.",
-      });
-      
-      navigate("/orders");
-    } catch (err) {
-      console.error("Order creation failed:", err);
-      toast({
-        title: "주문 실패",
-        description: "주문 생성 중 오류가 발생했습니다. 다시 시도해주세요.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -165,51 +93,42 @@ export const useCustomizeForm = () => {
   const handleGenerateImage = async () => {
     try {
       setIsLoading(true);
-      
-      const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
-      const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name || "";
-      
-      // 선택된 옵션들만 프롬프트에 포함
-      const optionalDetails = [
-        selectedStyle && `Style: ${styleOptions.find(style => style.value === selectedStyle)?.label}`,
-        selectedColor && `Color: ${colorOptions.find(color => color.value === selectedColor)?.label}`,
-        selectedPocket && `Pockets: ${pocketOptions.find(pocket => pocket.value === selectedPocket)?.label}`,
-        selectedDetail && `Additional details: ${selectedDetail}`
-      ].filter(Boolean).join('\n');
-      
-      const prompt = [
-        `Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.`,
-        `Material: ${selectedMaterialName}`,
-        optionalDetails
-      ].filter(Boolean).join('\n');
-
-      console.log('Generated prompt:', prompt); // 디버깅용
-
-      const { data, error } = await supabase.functions.invoke('generate-optimized-image', {
-        body: { prompt }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data.imageUrl) {
-        setGeneratedImageUrl(data.imageUrl);
-        toast({
-          title: "이미지 생성 완료",
-          description: "AI가 생성한 이미지가 준비되었습니다.",
-        });
-      } else {
-        throw new Error("이미지 생성에 실패했습니다");
-      }
-      
+      const imageUrl = await generateImage(
+        selectedType,
+        selectedMaterial,
+        selectedStyle,
+        selectedColor,
+        selectedPocket,
+        selectedDetail,
+        materials
+      );
+      setGeneratedImageUrl(imageUrl);
     } catch (err) {
-      console.error("Image generation failed:", err);
-      toast({
-        title: "오류",
-        description: "이미지 생성에 실패했습니다. 다시 시도해주세요.",
-        variant: "destructive",
-      });
+      // Error is already handled in generateImage
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateOrder = async () => {
+    try {
+      setIsLoading(true);
+      const success = await createOrder(
+        selectedType,
+        selectedMaterial,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
+        selectedDetail,
+        selectedSize,
+        customMeasurements,
+        generatedImageUrl,
+        materials
+      );
+      
+      if (success) {
+        navigate("/orders");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -249,8 +168,8 @@ export const useCustomizeForm = () => {
     setSelectedPocket,
     selectedColor,
     setSelectedColor,
-    selectedFit,        // 새로 추가
-    setSelectedFit,     // 새로 추가
+    selectedFit,
+    setSelectedFit,
     isLoading,
     generatedImageUrl,
     selectedSize,

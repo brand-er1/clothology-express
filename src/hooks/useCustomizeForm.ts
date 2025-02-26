@@ -124,6 +124,16 @@ export const useCustomizeForm = () => {
           return false;
         }
         break;
+      case 3:
+        if (!selectedStyle || !selectedPocket || !selectedColor) {
+          toast({
+            title: "옵션 선택 필요",
+            description: "스타일, 포켓, 색상을 모두 선택해주세요.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
       case 4:
         if (!generatedImageUrl) {
           toast({

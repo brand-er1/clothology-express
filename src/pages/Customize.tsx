@@ -179,7 +179,7 @@ const Customize = () => {
     if (style) {
       setSelectedStyle(value);
       const lines = detailInput.split('\n').filter(line => !line.startsWith('스타일:'));
-      setDetailInput([`스타일: ${style.label}`, ...lines].join('\n'));
+      setDetailInput([...lines].join('\n'));
     }
   };
 
@@ -188,7 +188,7 @@ const Customize = () => {
     if (pocket) {
       setSelectedPocket(value);
       const lines = detailInput.split('\n').filter(line => !line.startsWith('포켓:'));
-      setDetailInput([`포켓: ${pocket.label}`, ...lines].join('\n'));
+      setDetailInput([...lines].join('\n'));
     }
   };
 
@@ -197,7 +197,7 @@ const Customize = () => {
     if (color) {
       setSelectedColor(value);
       const lines = detailInput.split('\n').filter(line => !line.startsWith('색상:'));
-      setDetailInput([`색상: ${color.label}`, ...lines].join('\n'));
+      setDetailInput([...lines].join('\n'));
     }
   };
 
@@ -519,7 +519,7 @@ const Customize = () => {
                       </div>
                     </div>
                   )}
-                  {selectedDetail && (
+                  {selectedDetail && selectedDetail.trim() !== "" && !selectedDetail.startsWith('스타일:') && !selectedDetail.startsWith('포켓:') && !selectedDetail.startsWith('색상:') && (
                     <div className="pt-2 border-t">
                       <span className="text-gray-600">추가 디테일:</span>
                       <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail}</p>

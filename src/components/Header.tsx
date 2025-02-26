@@ -1,15 +1,16 @@
 
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, ShoppingBag, User } from "lucide-react";
+import { Menu, X, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { useAdmin } from "@/hooks/useAdmin";
+import { User } from "@supabase/supabase-js";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
 

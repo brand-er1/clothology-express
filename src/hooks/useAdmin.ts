@@ -15,14 +15,12 @@ export const useAdmin = () => {
           return;
         }
 
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .single();
+        const { data: adminData } = await supabase
+          .rpc('is_admin', {
+            user_id: session.user.id
+          });
 
-        if (error) throw error;
-        setIsAdmin(data?.role === 'admin');
+        setIsAdmin(adminData || false);
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);

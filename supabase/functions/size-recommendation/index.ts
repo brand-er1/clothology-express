@@ -200,21 +200,13 @@ serve(async (req) => {
       gender, 
       height,
       type,
-      detail, // 사용자가 입력한 디테일 정보
-      style,
-      pocket,
-      color,
-      fit,
+      material, // 원단 정보 추가
+      detail, // 사용자가 입력한 모든 디테일 정보 (스타일, 포켓, 색상 등 포함)
       optimizedDetail // GPT가 최적화한 디테일 정보
     } = await req.json()
 
-    if (!gender || !height || !type) {
+    if (!gender || !height || !type || !material) {
       throw new Error('Missing required parameters')
-    }
-
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured')
     }
 
     const genderData = gender === 'men' ? sizeData.men : sizeData.women
@@ -227,12 +219,24 @@ serve(async (req) => {
     const heightRange = genderData.recommendedSizes.find(r => r.size.startsWith(recommendedSize))?.height;
     const sizeTable = extractSizeData(recommendedSize, genderData, type);
 
+    // 원단 정보에 따른 사이즈 조정이 필요한 경우를 위한 메모 추가
+    const materialNote = material === 'denim' ? 
+      '데님 소재의 경우 착용 후 1-2cm 늘어날 수 있습니다.' : 
+      material === 'wool' ? 
+      '울 소재의 경우 물세탁 시 수축될 수 있습니다.' : '';
+
     const response = {
       성별: gender === 'men' ? '남성' : '여성',
       키: height,
       사이즈: recommendedSize,
       옷_종류: typeToKorean[type] || type,
-      그에_맞는_사이즈_표: sizeTable
+      원단: material,
+      원단_특이사항: materialNote,
+      그에_맞는_사이즈_표: sizeTable,
+      추가_정보: {
+        detail: detail || '',
+        optimizedDetail: optimizedDetail || ''
+      }
     };
 
     return new Response(JSON.stringify(response), {

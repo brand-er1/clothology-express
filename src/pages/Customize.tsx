@@ -463,12 +463,17 @@ const Customize = () => {
                       className="max-h-full rounded-lg"
                     />
                   ) : (
-                    <Button 
-                      onClick={handleGenerateImage}
-                      className="bg-brand hover:bg-brand-dark"
-                    >
-                      이미지 생성하기
-                    </Button>
+                    <div className="flex flex-col items-center space-y-4">
+                      <Button 
+                        onClick={handleGenerateImage}
+                        className="bg-brand hover:bg-brand-dark"
+                      >
+                        이미지 생성하기
+                      </Button>
+                      <p className="text-sm text-gray-500">
+                        다음 단계로 진행하기 위해서는 이미지를 생성해야 합니다.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -505,10 +510,80 @@ const Customize = () => {
 
       case "size":
         return (
-          <div className="max-w-md mx-auto">
-            <p className="text-center text-gray-600 mb-8">
-              사이즈 커스터마이징은 다음 업데이트에서 제공됩니다
-            </p>
+          <div className="max-w-4xl mx-auto space-y-8">
+            <Card className="p-6">
+              <h3 className="text-xl font-semibold mb-6">사이즈 추천</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* 신체 치수 입력 */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-medium">신체 치수 입력</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">키 (cm)</label>
+                      <Input
+                        type="number"
+                        placeholder="170"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">몸무게 (kg)</label>
+                      <Input
+                        type="number"
+                        placeholder="65"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">어깨 너비 (cm)</label>
+                      <Input
+                        type="number"
+                        placeholder="42"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">가슴 둘레 (cm)</label>
+                      <Input
+                        type="number"
+                        placeholder="95"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 추천 사이즈 결과 */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-medium">추천 사이즈</h4>
+                  <div className="p-4 bg-brand/5 rounded-lg">
+                    <p className="text-brand font-semibold text-lg mb-2">M 사이즈 추천</p>
+                    <p className="text-sm text-gray-600">
+                      입력하신 신체 치수를 바탕으로 가장 적합한 사이즈를 추천해드립니다.
+                      해당 사이즈는 참고용이며, 개인의 선호도에 따라 다를 수 있습니다.
+                    </p>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <h5 className="text-sm font-medium mb-2">사이즈 상세</h5>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">어깨</span>
+                        <span>43cm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">가슴</span>
+                        <span>96cm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">총장</span>
+                        <span>65cm</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
         );
 
@@ -517,61 +592,23 @@ const Customize = () => {
     }
   };
 
-  const handleGenerateImage = async () => {
-    try {
-      setIsLoading(true);
-      
-      // 선택된 옵션들을 상세한 프롬프트로 조합
-      const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
-      const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name || "";
-      const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label || "";
-      const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || "";
-      const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label || "";
-      
-      const prompt = `
-        Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.
-        Material: ${selectedMaterialName}
-        Style: ${selectedStyleName}
-        Color: ${selectedColorName}
-        Pockets: ${selectedPocketName}
-        Additional details: ${detailInput || "none"}
-      `.trim();
-
-      const { data, error } = await supabase.functions.invoke('generate-optimized-image', {
-        body: { prompt }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data.imageUrl) {
-        setGeneratedImageUrl(data.imageUrl);
-        toast({
-          title: "이미지 생성 완료",
-          description: "AI가 생성한 이미지가 준비되었습니다.",
-        });
-      } else {
-        throw new Error("이미지 생성에 실패했습니다");
-      }
-      
-    } catch (err) {
-      console.error("Image generation failed:", err);
-      toast({
-        title: "오류",
-        description: "이미지 생성에 실패했습니다. 다시 시도해주세요.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleNext = () => {
     const currentIndex = steps.indexOf(currentStep);
-    if (currentStep === "detail") {
-      setSelectedDetail(detailInput); // 항상 현재 detailInput을 저장
+    
+    // 이미지 생성 단계에서 이미지가 없을 경우 진행 불가
+    if (currentStep === "image" && !generatedImageUrl) {
+      toast({
+        title: "이미지 생성 필요",
+        description: "다음 단계로 진행하기 위해서는 이미지를 생성해주세요.",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    if (currentStep === "detail") {
+      setSelectedDetail(detailInput);
+    }
+    
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
     }

@@ -166,25 +166,46 @@ export const useAuthForm = () => {
         });
         setIsSignUp(false);
       } else {
+        // 로그인 로직 수정
         let loginIdentifier = formData.email;
+        let identifierType = 'email';
+
+        // 입력값이 이메일 형식이 아닌 경우 user_id로 간주
         if (!loginIdentifier.includes('@')) {
-          const { data: userData } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('user_id', formData.email)
-            .maybeSingle();
-          
-          if (!userData) {
-            throw new Error("존재하지 않는 아이디입니다.");
+          identifierType = 'user_id';
+          // admin 계정인 경우 직접 이메일 매핑
+          if (loginIdentifier === 'admin') {
+            loginIdentifier = 'admin@example.com';
+          } else {
+            // 일반 사용자의 경우 profiles 테이블에서 이메일 조회
+            const { data: userData, error: userError } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('user_id', loginIdentifier)
+              .maybeSingle();
+            
+            if (userError || !userData) {
+              throw new Error("존재하지 않는 아이디입니다.");
+            }
+            loginIdentifier = userData.email;
           }
-          loginIdentifier = userData.email;
         }
 
         const { error } = await supabase.auth.signInWithPassword({
           email: loginIdentifier,
           password: formData.password,
         });
-        if (error) throw error;
+
+        if (error) {
+          if (error.message === 'Invalid login credentials') {
+            throw new Error(identifierType === 'email' ? 
+              "이메일 또는 비밀번호가 올바르지 않습니다." : 
+              "아이디 또는 비밀번호가 올바르지 않습니다."
+            );
+          }
+          throw error;
+        }
+
         navigate("/");
         toast({
           title: "로그인 성공!",

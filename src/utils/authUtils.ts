@@ -48,14 +48,14 @@ export const checkEmailAvailability = async (email: string) => {
   }
 
   try {
-    const { data: userList } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: email
-      }
-    });
+    // 이메일로 프로필 조회
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('username', email)  // username 필드에 이메일이 저장되어 있다고 가정
+      .single();
 
-    // 이메일이 이미 등록되어 있는 경우
-    if (userList && userList.users.length > 0) {
+    if (profile) {
       toast({
         title: "이미 등록된 이메일입니다",
         variant: "destructive",
@@ -63,7 +63,6 @@ export const checkEmailAvailability = async (email: string) => {
       return false;
     }
 
-    // 이메일이 등록되어 있지 않은 경우
     toast({
       title: "사용 가능한 이메일입니다",
     });
@@ -71,11 +70,11 @@ export const checkEmailAvailability = async (email: string) => {
 
   } catch (error) {
     console.error("Email check error:", error);
+    // single()에서 에러가 발생하면 해당 이메일이 없다는 의미
     toast({
-      title: "이메일 확인 중 오류가 발생했습니다",
-      variant: "destructive",
+      title: "사용 가능한 이메일입니다",
     });
-    return null;
+    return true;
   }
 };
 

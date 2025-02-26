@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, ArrowLeft, Shirt, Scissors, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ClothType = {
   id: string;
@@ -125,6 +132,43 @@ const defaultDetails: Detail[] = [
   },
 ];
 
+type StyleOption = {
+  value: string;
+  label: string;
+};
+
+type PocketOption = {
+  value: string;
+  label: string;
+};
+
+type ColorOption = {
+  value: string;
+  label: string;
+  hex: string;
+};
+
+const styleOptions: StyleOption[] = [
+  { value: "casual", label: "캐주얼" },
+  { value: "formal", label: "포멀" },
+  { value: "street", label: "스트릿" },
+  { value: "modern", label: "모던" },
+];
+
+const pocketOptions: PocketOption[] = [
+  { value: "none", label: "없음" },
+  { value: "one-chest", label: "가슴 포켓 1개" },
+  { value: "two-side", label: "사이드 포켓 2개" },
+  { value: "multiple", label: "멀티 포켓" },
+];
+
+const colorOptions: ColorOption[] = [
+  { value: "black", label: "검정", hex: "#000000" },
+  { value: "white", label: "흰색", hex: "#FFFFFF" },
+  { value: "navy", label: "네이비", hex: "#000080" },
+  { value: "gray", label: "회색", hex: "#808080" },
+];
+
 const Customize = () => {
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -135,7 +179,36 @@ const Customize = () => {
   const [newMaterialName, setNewMaterialName] = useState("");
   const [newDetailName, setNewDetailName] = useState("");
 
+  const [detailInput, setDetailInput] = useState("");
+
   const steps: Step[] = ["type", "material", "detail", "image", "size"];
+
+  const handleStyleSelect = (value: string) => {
+    const style = styleOptions.find(opt => opt.value === value);
+    if (style) {
+      setDetailInput((prev) => 
+        prev + (prev ? "\n" : "") + `스타일: ${style.label}`
+      );
+    }
+  };
+
+  const handlePocketSelect = (value: string) => {
+    const pocket = pocketOptions.find(opt => opt.value === value);
+    if (pocket) {
+      setDetailInput((prev) => 
+        prev + (prev ? "\n" : "") + `포켓: ${pocket.label}`
+      );
+    }
+  };
+
+  const handleColorSelect = (value: string) => {
+    const color = colorOptions.find(opt => opt.value === value);
+    if (color) {
+      setDetailInput((prev) => 
+        prev + (prev ? "\n" : "") + `색상: ${color.label}`
+      );
+    }
+  };
 
   const handleAddMaterial = () => {
     if (newMaterialName.trim()) {
@@ -152,15 +225,16 @@ const Customize = () => {
   };
 
   const handleAddDetail = () => {
-    if (newDetailName.trim()) {
+    if (detailInput.trim()) {
       const newDetail: Detail = {
         id: `custom-${Date.now()}`,
-        name: newDetailName.trim(),
-        description: "사용자 지정 디테일",
+        name: "커스텀 디테일",
+        description: detailInput.trim(),
         isCustom: true,
       };
       setDetails([...details, newDetail]);
-      setNewDetailName("");
+      setSelectedDetail(newDetail.id);
+      setDetailInput("");
     }
   };
 
@@ -302,6 +376,88 @@ const Customize = () => {
       case "detail":
         return (
           <div className="space-y-8">
+            {/* Detail Input Area */}
+            <Card className="p-6">
+              <div className="space-y-4">
+                <textarea
+                  value={detailInput}
+                  onChange={(e) => setDetailInput(e.target.value)}
+                  placeholder="디테일을 입력하거나 아래 옵션들을 선택해주세요"
+                  className="w-full h-32 p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-brand/20"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleAddDetail}
+                    disabled={!detailInput.trim()}
+                    className="bg-brand hover:bg-brand-dark"
+                  >
+                    디테일 추가
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            {/* Detail Options */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Style Selection */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">스타일</h3>
+                <Select onValueChange={handleStyleSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="스타일 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {styleOptions.map((style) => (
+                      <SelectItem key={style.value} value={style.value}>
+                        {style.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Card>
+
+              {/* Pocket Selection */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">포켓</h3>
+                <Select onValueChange={handlePocketSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="포켓 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pocketOptions.map((pocket) => (
+                      <SelectItem key={pocket.value} value={pocket.value}>
+                        {pocket.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Card>
+
+              {/* Color Selection */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">색상</h3>
+                <Select onValueChange={handleColorSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="색상 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {colorOptions.map((color) => (
+                      <SelectItem key={color.value} value={color.value}>
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-4 h-4 rounded-full border border-gray-200"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          <span>{color.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Card>
+            </div>
+
+            {/* Selected Details List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {details.map((detail) => (
                 <Card
@@ -315,30 +471,12 @@ const Customize = () => {
                 >
                   <div className="flex flex-col space-y-2">
                     <h3 className="text-lg font-semibold">{detail.name}</h3>
-                    <p className="text-sm text-gray-500">{detail.description}</p>
+                    <p className="text-sm text-gray-500 whitespace-pre-line">
+                      {detail.description}
+                    </p>
                   </div>
                 </Card>
               ))}
-
-              {/* Add Custom Detail Card */}
-              <Card className="p-6 border-dashed">
-                <div className="flex items-center space-x-4">
-                  <Input
-                    value={newDetailName}
-                    onChange={(e) => setNewDetailName(e.target.value)}
-                    placeholder="새로운 디테일 추가"
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleAddDetail}
-                    disabled={!newDetailName.trim()}
-                    size="sm"
-                    className="flex items-center justify-center"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Card>
             </div>
           </div>
         );

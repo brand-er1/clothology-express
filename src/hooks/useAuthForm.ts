@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
+import { checkUserIdAvailability, checkEmailAvailability, validateSignUpForm } from "@/utils/authUtils";
+import { handleLogin } from "@/utils/loginUtils";
 
 export const useAuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -45,90 +47,15 @@ export const useAuthForm = () => {
   };
 
   const checkUserId = async () => {
-    if (!formData.userId) {
-      toast({
-        title: "아이디를 입력해주세요",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsCheckingId(true);
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', formData.userId)
-        .single();
-
-      if (data) {
-        setIsIdAvailable(false);
-        toast({
-          title: "이미 사용 중인 아이디입니다",
-          variant: "destructive",
-        });
-      } else {
-        setIsIdAvailable(true);
-        toast({
-          title: "사용 가능한 아이디입니다",
-        });
-      }
-    } catch (error) {
-      setIsIdAvailable(true);
-      toast({
-        title: "사용 가능한 아이디입니다",
-      });
-    } finally {
-      setIsCheckingId(false);
-    }
+    const result = await checkUserIdAvailability(formData.userId);
+    setIsIdAvailable(result);
+    setIsCheckingId(false);
   };
 
   const checkEmail = async () => {
-    if (!formData.email) {
-      toast({
-        title: "이메일을 입력해주세요",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: formData.email,
-        options: {
-          shouldCreateUser: false,
-        }
-      });
-
-      setIsEmailAvailable(false);
-      toast({
-        title: "이미 등록된 이메일입니다",
-        variant: "destructive",
-      });
-    } catch (error) {
-      setIsEmailAvailable(true);
-      toast({
-        title: "사용 가능한 이메일입니다",
-      });
-    }
-  };
-
-  const validateSignUpForm = async () => {
-    if (!passwordMatch) {
-      throw new Error("비밀번호가 일치하지 않습니다.");
-    }
-
-    if (formData.password.length < 6) {
-      throw new Error("비밀번호는 최소 6자 이상이어야 합니다.");
-    }
-
-    if (!isIdAvailable) {
-      throw new Error("아이디 중복 확인이 필요합니다.");
-    }
-
-    if (!isEmailAvailable) {
-      throw new Error("이메일 중복 확인이 필요합니다.");
-    }
+    const result = await checkEmailAvailability(formData.email);
+    setIsEmailAvailable(result);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -137,7 +64,7 @@ export const useAuthForm = () => {
 
     try {
       if (isSignUp) {
-        await validateSignUpForm();
+        await validateSignUpForm(passwordMatch, formData.password, isIdAvailable, isEmailAvailable);
         
         const fullAddress = formData.addressDetail 
           ? `${formData.address} ${formData.addressDetail} (${formData.postcode})`
@@ -166,46 +93,7 @@ export const useAuthForm = () => {
         });
         setIsSignUp(false);
       } else {
-        // 로그인 로직 수정
-        let loginIdentifier = formData.email;
-        let identifierType = 'email';
-
-        // 입력값이 이메일 형식이 아닌 경우 user_id로 간주
-        if (!loginIdentifier.includes('@')) {
-          identifierType = 'user_id';
-          // admin 계정인 경우 직접 이메일 매핑
-          if (loginIdentifier === 'admin') {
-            loginIdentifier = 'admin@example.com';
-          } else {
-            // 일반 사용자의 경우 profiles 테이블에서 이메일 조회
-            const { data: userData, error: userError } = await supabase
-              .from('profiles')
-              .select('email')
-              .eq('user_id', loginIdentifier)
-              .maybeSingle();
-            
-            if (userError || !userData) {
-              throw new Error("존재하지 않는 아이디입니다.");
-            }
-            loginIdentifier = userData.email;
-          }
-        }
-
-        const { error } = await supabase.auth.signInWithPassword({
-          email: loginIdentifier,
-          password: formData.password,
-        });
-
-        if (error) {
-          if (error.message === 'Invalid login credentials') {
-            throw new Error(identifierType === 'email' ? 
-              "이메일 또는 비밀번호가 올바르지 않습니다." : 
-              "아이디 또는 비밀번호가 올바르지 않습니다."
-            );
-          }
-          throw error;
-        }
-
+        await handleLogin(formData.email || formData.userId, formData.password);
         navigate("/");
         toast({
           title: "로그인 성공!",

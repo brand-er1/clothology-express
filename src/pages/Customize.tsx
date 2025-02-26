@@ -1,830 +1,166 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, ArrowLeft, Shirt, Scissors, Plus } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-type ClothType = {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  description: string;
-  category: "tops" | "bottoms" | "custom";
+interface SizeData {
+  [key: string]: number;
+}
+
+const DEFAULT_TOP_SIZES: SizeData = {
+  totalLength: 0,
+  shoulderWidth: 0,
+  chestCircumference: 0,
+  bottomCircumference: 0,
+  sleeveLength: 0,
 };
 
-type Material = {
-  id: string;
-  name: string;
-  description: string;
-  isCustom?: boolean;
+const DEFAULT_BOTTOM_SIZES: SizeData = {
+  totalLength: 0,
+  waistCircumference: 0,
+  hipCircumference: 0,
+  thighCircumference: 0,
 };
-
-type Detail = {
-  id: string;
-  name: string;
-  description: string;
-  isCustom?: boolean;
-};
-
-type Step = "type" | "material" | "detail" | "image" | "size";
-
-const clothTypes: ClothType[] = [
-  // Tops
-  {
-    id: "tshirt-short",
-    name: "반팔 티셔츠",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "시원하고 캐주얼한 반팔 티셔츠",
-    category: "tops",
-  },
-  {
-    id: "tshirt-long",
-    name: "긴소매 티셔츠",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "편안하고 실용적인 긴소매 티셔츠",
-    category: "tops",
-  },
-  {
-    id: "sweatshirt",
-    name: "맨투맨",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "포근하고 세련된 맨투맨",
-    category: "tops",
-  },
-  {
-    id: "jacket",
-    name: "자켓",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "스타일리시한 자켓",
-    category: "tops",
-  },
-  // Bottoms
-  {
-    id: "shorts",
-    name: "반바지",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "시원하고 활동적인 반바지",
-    category: "bottoms",
-  },
-  {
-    id: "pants",
-    name: "긴바지",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "편안하고 세련된 긴바지",
-    category: "bottoms",
-  },
-  // Custom
-  {
-    id: "custom",
-    name: "커스텀",
-    icon: <Scissors className="w-8 h-8" />,
-    description: "나만의 특별한 의상을 제작해보세요 (※ 상황에 따라 주문이 반려될 수 있습니다)",
-    category: "custom",
-  },
-];
-
-const defaultMaterials: Material[] = [
-  { 
-    id: "cotton", 
-    name: "면", 
-    description: "부드럽고 통기성이 좋은 천연 소재" 
-  },
-  { 
-    id: "denim", 
-    name: "데님", 
-    description: "튼튼하고 클래식한 청바지 소재" 
-  },
-  { 
-    id: "poly", 
-    name: "폴리", 
-    description: "구김이 적고 관리가 쉬운 소재" 
-  },
-  { 
-    id: "linen", 
-    name: "린넨", 
-    description: "시원하고 자연스러운 질감의 소재" 
-  },
-];
-
-type StyleOption = {
-  value: string;
-  label: string;
-};
-
-type PocketOption = {
-  value: string;
-  label: string;
-};
-
-type ColorOption = {
-  value: string;
-  label: string;
-  hex: string;
-};
-
-const styleOptions: StyleOption[] = [
-  { value: "casual", label: "캐주얼" },
-  { value: "formal", label: "포멀" },
-  { value: "street", label: "스트릿" },
-  { value: "modern", label: "모던" },
-];
-
-const pocketOptions: PocketOption[] = [
-  { value: "none", label: "없음" },
-  { value: "one-chest", label: "가슴 포켓 1개" },
-  { value: "two-side", label: "사이드 포켓 2개" },
-  { value: "multiple", label: "멀티 포켓" },
-];
-
-const colorOptions: ColorOption[] = [
-  { value: "black", label: "검정", hex: "#000000" },
-  { value: "white", label: "흰색", hex: "#FFFFFF" },
-  { value: "navy", label: "네이비", hex: "#000080" },
-  { value: "gray", label: "회색", hex: "#808080" },
-];
-
-const steps: Step[] = ["type", "material", "detail", "image", "size"];
-
-import * as fal from '@fal-ai/serverless-client';
-
-fal.config({
-  credentials: "fal_key_..." // NOTE: fal.ai API 키가 필요합니다
-});
-
-type Size = {
-  id: string;
-  category: "tops" | "bottoms";
-  name: string;
-  measurements: {
-    label: string;
-    min: number;
-    max: number;
-    unit: string;
-  }[];
-};
-
-const topSizes: Size[] = [
-  {
-    id: "top-s",
-    category: "tops",
-    name: "S",
-    measurements: [
-      { label: "어깨너비", min: 43, max: 45, unit: "cm" },
-      { label: "가슴단면", min: 48, max: 50, unit: "cm" },
-      { label: "소매길이", min: 59, max: 61, unit: "cm" },
-      { label: "총장", min: 65, max: 67, unit: "cm" },
-    ],
-  },
-  {
-    id: "top-m",
-    category: "tops",
-    name: "M",
-    measurements: [
-      { label: "어깨너비", min: 45, max: 47, unit: "cm" },
-      { label: "가슴단면", min: 50, max: 52, unit: "cm" },
-      { label: "소매길이", min: 61, max: 63, unit: "cm" },
-      { label: "총장", min: 67, max: 69, unit: "cm" },
-    ],
-  },
-  {
-    id: "top-l",
-    category: "tops",
-    name: "L",
-    measurements: [
-      { label: "어깨너비", min: 47, max: 49, unit: "cm" },
-      { label: "가슴단면", min: 52, max: 54, unit: "cm" },
-      { label: "소매길이", min: 63, max: 65, unit: "cm" },
-      { label: "총장", min: 69, max: 71, unit: "cm" },
-    ],
-  },
-];
-
-const bottomSizes: Size[] = [
-  {
-    id: "bottom-s",
-    category: "bottoms",
-    name: "S",
-    measurements: [
-      { label: "허리단면", min: 35, max: 37, unit: "cm" },
-      { label: "엉덩이단면", min: 47, max: 49, unit: "cm" },
-      { label: "허벅지단면", min: 28, max: 30, unit: "cm" },
-      { label: "총장", min: 95, max: 97, unit: "cm" },
-    ],
-  },
-  {
-    id: "bottom-m",
-    category: "bottoms",
-    name: "M",
-    measurements: [
-      { label: "허리단면", min: 37, max: 39, unit: "cm" },
-      { label: "엉덩이단면", min: 49, max: 51, unit: "cm" },
-      { label: "허벅지단면", min: 30, max: 32, unit: "cm" },
-      { label: "총장", min: 97, max: 99, unit: "cm" },
-    ],
-  },
-  {
-    id: "bottom-l",
-    category: "bottoms",
-    name: "L",
-    measurements: [
-      { label: "허리단면", min: 39, max: 41, unit: "cm" },
-      { label: "엉덩이단면", min: 51, max: 53, unit: "cm" },
-      { label: "허벅지단면", min: 32, max: 34, unit: "cm" },
-      { label: "총장", min: 99, max: 101, unit: "cm" },
-    ],
-  },
-];
 
 const Customize = () => {
-  const [currentStep, setCurrentStep] = useState<Step>("type");
-  const [selectedType, setSelectedType] = useState<string>("");
-  const [selectedMaterial, setSelectedMaterial] = useState<string>("");
-  const [selectedDetail, setSelectedDetail] = useState<string>("");
-  const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
-  const [newMaterialName, setNewMaterialName] = useState("");
-  const [detailInput, setDetailInput] = useState("");
-  const [selectedStyle, setSelectedStyle] = useState("");
-  const [selectedPocket, setSelectedPocket] = useState("");
-  const [selectedColor, setSelectedColor] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>("");
-  const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
+  const [topSizes, setTopSizes] = useState<SizeData>(DEFAULT_TOP_SIZES);
+  const [bottomSizes, setBottomSizes] = useState<SizeData>(DEFAULT_BOTTOM_SIZES);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleStyleSelect = (value: string) => {
-    const style = styleOptions.find(opt => opt.value === value);
-    if (style) {
-      setSelectedStyle(value);
-      // 기존 스타일 관련 내용을 제거하고 새로운 내용 추가
-      const updatedDetail = detailInput
-        .split('\n')
-        .filter(line => !line.startsWith('스타일:'))
-        .join('\n');
-      setDetailInput(updatedDetail ? `스타일: ${style.label}\n${updatedDetail}` : `스타일: ${style.label}`);
+  const handleChange = (category: 'top' | 'bottom', field: string, value: string) => {
+    const numValue = value === '' ? 0 : Number(value);
+    if (category === 'top') {
+      setTopSizes(prev => ({ ...prev, [field]: numValue }));
+    } else {
+      setBottomSizes(prev => ({ ...prev, [field]: numValue }));
     }
   };
 
-  const handlePocketSelect = (value: string) => {
-    const pocket = pocketOptions.find(opt => opt.value === value);
-    if (pocket) {
-      setSelectedPocket(value);
-      // 기존 포켓 관련 내용을 제거하고 새로운 내용 추가
-      const updatedDetail = detailInput
-        .split('\n')
-        .filter(line => !line.startsWith('포켓:'))
-        .join('\n');
-      setDetailInput(updatedDetail ? `포켓: ${pocket.label}\n${updatedDetail}` : `포켓: ${pocket.label}`);
-    }
+  const handleSave = () => {
+    // TODO: 실제 저장 로직 구현
+    toast({
+      title: "저장 완료",
+      description: "사이즈가 저장되었습니다.",
+    });
+    setIsEditing(false);
   };
 
-  const handleColorSelect = (value: string) => {
-    const color = colorOptions.find(color => color.value === value);
-    if (color) {
-      setSelectedColor(value);
-      // 기존 색상 관련 내용을 제거하고 새로운 내용 추가
-      const updatedDetail = detailInput
-        .split('\n')
-        .filter(line => !line.startsWith('색상:'))
-        .join('\n');
-      setDetailInput(updatedDetail ? `색상: ${color.label}\n${updatedDetail}` : `색상: ${color.label}`);
-    }
+  const TOP_SIZE_LABELS = {
+    totalLength: "총장",
+    shoulderWidth: "어깨넓이",
+    chestCircumference: "가슴 둘레",
+    bottomCircumference: "밑단 둘레",
+    sleeveLength: "소매 길이",
   };
 
-  const handleAddMaterial = () => {
-    if (newMaterialName.trim()) {
-      const newMaterial: Material = {
-        id: `custom-${Date.now()}`,
-        name: newMaterialName.trim(),
-        description: "사용자 지정 원단",
-        isCustom: true,
-      };
-      setMaterials([...materials, newMaterial]);
-      setSelectedMaterial(newMaterial.id); // 새로 추가된 원단 자동 선택
-      setNewMaterialName("");
-    }
-  };
-
-  const handleAddDetail = () => {
-    if (detailInput.trim()) {
-      setSelectedDetail(detailInput);
-    }
-  };
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case "type":
-        return (
-          <div className="space-y-8">
-            {/* Tops Section */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">상의</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {clothTypes
-                  .filter((type) => type.category === "tops")
-                  .map((type) => (
-                    <Card
-                      key={type.id}
-                      className={`p-6 cursor-pointer transition-all ${
-                        selectedType === type.id
-                          ? "border-brand ring-2 ring-brand/20"
-                          : "hover:border-brand/20"
-                      }`}
-                      onClick={() => setSelectedType(type.id)}
-                    >
-                      <div className="flex flex-col items-center text-center space-y-4">
-                        <div className="p-4 bg-brand/5 rounded-full">
-                          {type.icon}
-                        </div>
-                        <h3 className="text-lg font-semibold">{type.name}</h3>
-                        <p className="text-sm text-gray-500">{type.description}</p>
-                      </div>
-                    </Card>
-                  ))}
-              </div>
-            </div>
-
-            {/* Bottoms Section */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">하의</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {clothTypes
-                  .filter((type) => type.category === "bottoms")
-                  .map((type) => (
-                    <Card
-                      key={type.id}
-                      className={`p-6 cursor-pointer transition-all ${
-                        selectedType === type.id
-                          ? "border-brand ring-2 ring-brand/20"
-                          : "hover:border-brand/20"
-                      }`}
-                      onClick={() => setSelectedType(type.id)}
-                    >
-                      <div className="flex flex-col items-center text-center space-y-4">
-                        <div className="p-4 bg-brand/5 rounded-full">
-                          {type.icon}
-                        </div>
-                        <h3 className="text-lg font-semibold">{type.name}</h3>
-                        <p className="text-sm text-gray-500">{type.description}</p>
-                      </div>
-                    </Card>
-                  ))}
-              </div>
-            </div>
-
-            {/* Custom Section */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">커스텀</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {clothTypes
-                  .filter((type) => type.category === "custom")
-                  .map((type) => (
-                    <Card
-                      key={type.id}
-                      className={`p-6 cursor-pointer transition-all ${
-                        selectedType === type.id
-                          ? "border-brand ring-2 ring-brand/20"
-                          : "hover:border-brand/20"
-                      }`}
-                      onClick={() => setSelectedType(type.id)}
-                    >
-                      <div className="flex flex-col items-center text-center space-y-4">
-                        <div className="p-4 bg-brand/5 rounded-full">
-                          {type.icon}
-                        </div>
-                        <h3 className="text-lg font-semibold">{type.name}</h3>
-                        <p className="text-sm text-gray-500">{type.description}</p>
-                      </div>
-                    </Card>
-                  ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case "material":
-        return (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {materials.map((material) => (
-                <Card
-                  key={material.id}
-                  className={`p-6 cursor-pointer transition-all ${
-                    selectedMaterial === material.id
-                      ? "border-brand ring-2 ring-brand/20"
-                      : "hover:border-brand/20"
-                  } ${material.isCustom ? "border-dashed" : ""}`}
-                  onClick={() => setSelectedMaterial(material.id)}
-                >
-                  <div className="flex flex-col space-y-2">
-                    <h3 className="text-lg font-semibold">{material.name}</h3>
-                    <p className="text-sm text-gray-500">{material.description}</p>
-                  </div>
-                </Card>
-              ))}
-
-              {/* Add Custom Material Card */}
-              <Card className="p-6 border-dashed">
-                <div className="flex items-center space-x-4">
-                  <Input
-                    value={newMaterialName}
-                    onChange={(e) => setNewMaterialName(e.target.value)}
-                    placeholder="새로운 원단 이름"
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleAddMaterial}
-                    disabled={!newMaterialName.trim()}
-                    size="sm"
-                    className="flex items-center justify-center"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          </div>
-        );
-
-      case "detail":
-        return (
-          <div className="space-y-8">
-            {/* Detail Input Area */}
-            <Card className="p-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-500">
-                    추가적인 디테일을 더 입력하세요. 아래 옵션들을 선택하거나 직접 입력할 수 있습니다.
-                  </p>
-                  <textarea
-                    value={detailInput}
-                    onChange={(e) => setDetailInput(e.target.value)}
-                    placeholder="추가 디테일을 자유롭게 입력해주세요"
-                    className="w-full h-32 p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-brand/20"
-                  />
-                </div>
-              </div>
-            </Card>
-
-            {/* Detail Options */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Style Selection */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">스타일</h3>
-                <Select value={selectedStyle} onValueChange={handleStyleSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="스타일 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {styleOptions.map((style) => (
-                      <SelectItem key={style.value} value={style.value}>
-                        {style.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Card>
-
-              {/* Pocket Selection */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">포켓</h3>
-                <Select value={selectedPocket} onValueChange={handlePocketSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="포켓 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pocketOptions.map((pocket) => (
-                      <SelectItem key={pocket.value} value={pocket.value}>
-                        {pocket.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Card>
-
-              {/* Color Selection */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">색상</h3>
-                <Select value={selectedColor} onValueChange={handleColorSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="색상 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {colorOptions.map((color) => (
-                      <SelectItem key={color.value} value={color.value}>
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className="w-4 h-4 rounded-full border border-gray-200"
-                            style={{ backgroundColor: color.hex }}
-                          />
-                          <span>{color.label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Card>
-            </div>
-          </div>
-        );
-
-      case "image":
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* 이미지 생성 영역 - 2/3 차지 */}
-            <Card className="p-6 md:col-span-2">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">이미지 생성</h3>
-                <p className="text-sm text-gray-500">
-                  선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다.
-                </p>
-                <div className="flex justify-center items-center h-[600px] bg-gray-100 rounded-lg">
-                  {isLoading ? (
-                    <div className="flex flex-col items-center space-y-2">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
-                      <p className="text-sm text-gray-500">이미지 생성 중...</p>
-                    </div>
-                  ) : generatedImageUrl ? (
-                    <img
-                      src={generatedImageUrl}
-                      alt="Generated clothing design"
-                      className="max-h-full max-w-full object-contain rounded-lg"
-                    />
-                  ) : (
-                    <Button 
-                      onClick={handleGenerateImage}
-                      className="bg-brand hover:bg-brand-dark"
-                    >
-                      이미지 생성하기
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            {/* 선택한 옵션 요약 - 1/3 차지 */}
-            <Card className="p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">선택한 옵션</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">의류 종류:</span>
-                    <span className="font-medium">
-                      {clothTypes.find(type => type.id === selectedType)?.name || "-"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">소재:</span>
-                    <span className="font-medium">
-                      {materials.find(material => material.id === selectedMaterial)?.name || "-"}
-                    </span>
-                  </div>
-                  {selectedDetail && selectedDetail.trim() && (
-                    <div className="pt-2 border-t">
-                      <span className="text-gray-600">추가 디테일:</span>
-                      <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          </div>
-        );
-
-      case "size":
-        const selectedType = clothTypes.find(type => type.id === selectedType);
-        const sizes = selectedType?.category === "bottoms" ? bottomSizes : topSizes;
-        
-        return (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {sizes.map((size) => (
-                <Card
-                  key={size.id}
-                  className={`p-6 cursor-pointer transition-all ${
-                    selectedSize === size.id
-                      ? "border-brand ring-2 ring-brand/20"
-                      : "hover:border-brand/20"
-                  }`}
-                  onClick={() => setSelectedSize(size.id)}
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-bold">{size.name}</h3>
-                    </div>
-                    <div className="space-y-2">
-                      {size.measurements.map((measurement) => (
-                        <div key={measurement.label} className="flex justify-between text-sm">
-                          <span className="text-gray-600">{measurement.label}</span>
-                          <span>
-                            {measurement.min}~{measurement.max}{measurement.unit}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-
-              <Card className="p-6 cursor-pointer transition-all border-dashed hover:border-brand/20">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold">맞춤 사이즈</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {(selectedType?.category === "bottoms" ? bottomSizes[0] : topSizes[0]).measurements.map((measurement) => (
-                      <div key={measurement.label} className="space-y-2">
-                        <Label htmlFor={measurement.label}>{measurement.label} ({measurement.unit})</Label>
-                        <Input
-                          id={measurement.label}
-                          type="number"
-                          min={measurement.min - 5}
-                          max={measurement.max + 5}
-                          value={customMeasurements[measurement.label] || ""}
-                          onChange={(e) => {
-                            setCustomMeasurements(prev => ({
-                              ...prev,
-                              [measurement.label]: Number(e.target.value)
-                            }));
-                            setSelectedSize("custom");
-                          }}
-                          className="w-full"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h4 className="font-medium mb-4">사이즈 안내</h4>
-              <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
-                <li>사이즈는 측정 방법과 위치에 따라 1~3cm 오차가 있을 수 있습니다.</li>
-                <li>맞춤 사이즈 선택 시 측정값의 오차 범위를 고려하여 제작됩니다.</li>
-                <li>선택하신 사이즈보다 큰 사이즈가 필요한 경우, 맞춤 사이즈를 선택해주세요.</li>
-              </ul>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const handleGenerateImage = async () => {
-    try {
-      setIsLoading(true);
-      
-      // 선택된 옵션들을 상세한 프롬프트로 조합
-      const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
-      const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name || "";
-      const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label || "";
-      const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || "";
-      const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label || "";
-      
-      const prompt = `
-        Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.
-        Material: ${selectedMaterialName}
-        Style: ${selectedStyleName}
-        Color: ${selectedColorName}
-        Pockets: ${selectedPocketName}
-        Additional details: ${detailInput || "none"}
-      `.trim();
-
-      const { data, error } = await supabase.functions.invoke('generate-optimized-image', {
-        body: { prompt }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data.imageUrl) {
-        setGeneratedImageUrl(data.imageUrl);
-        toast({
-          title: "이미지 생성 완료",
-          description: "AI가 생성한 이미지가 준비되었습니다.",
-        });
-      } else {
-        throw new Error("이미지 생성에 실패했습니다");
-      }
-      
-    } catch (err) {
-      console.error("Image generation failed:", err);
-      toast({
-        title: "오류",
-        description: "이미지 생성에 실패했습니다. 다시 시도해주세요.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNext = () => {
-    const currentIndex = steps.indexOf(currentStep);
-    
-    // image 단계에서는 이미지가 생성되어야만 다음으로 넘어갈 수 있음
-    if (currentStep === "image" && !generatedImageUrl) {
-      toast({
-        title: "이미지 필요",
-        description: "다음 단계로 진행하기 전에 이미지를 생성해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (currentStep === "detail") {
-      setSelectedDetail(detailInput);
-    }
-    
-    if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1]);
-    }
-  };
-
-  const handleBack = () => {
-    const currentIndex = steps.indexOf(currentStep);
-    if (currentIndex > 0) {
-      setCurrentStep(steps[currentIndex - 1]);
-    }
+  const BOTTOM_SIZE_LABELS = {
+    totalLength: "총장",
+    waistCircumference: "허리 둘레",
+    hipCircumference: "엉덩이 단면",
+    thighCircumference: "허벅지 단면",
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <main className="container mx-auto px-4 pt-24 pb-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Progress Steps */}
-          <div className="mb-12">
-            <div className="flex items-center justify-center space-x-8">
-              {steps.map((step, index) => (
-                <div
-                  key={step}
-                  className="flex items-center"
+        <div className="max-w-4xl mx-auto space-y-8">
+          <h1 className="text-3xl font-bold">맞춤 사이즈 설정</h1>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>상의 사이즈</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>항목</TableHead>
+                    <TableHead>치수 (cm)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(TOP_SIZE_LABELS).map(([key, label]) => (
+                    <TableRow key={key}>
+                      <TableCell>{label}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={topSizes[key] || ''}
+                          onChange={(e) => handleChange('top', key, e.target.value)}
+                          disabled={!isEditing}
+                          className="w-32"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>하의 사이즈</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>항목</TableHead>
+                    <TableHead>치수 (cm)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(BOTTOM_SIZE_LABELS).map(([key, label]) => (
+                    <TableRow key={key}>
+                      <TableCell>{label}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={bottomSizes[key] || ''}
+                          onChange={(e) => handleChange('bottom', key, e.target.value)}
+                          disabled={!isEditing}
+                          className="w-32"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end gap-4">
+            {!isEditing ? (
+              <Button onClick={() => setIsEditing(true)}>
+                수정하기
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
                 >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      currentStep === step
-                        ? "bg-brand text-white"
-                        : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    {index + 1}
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className="w-24 h-0.5 bg-gray-200 mx-2" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Step Title */}
-          <h1 className="text-3xl font-bold text-center mb-8">
-            {currentStep === "type" && "Choose Your Garment"}
-            {currentStep === "material" && "Select Material"}
-            {currentStep === "detail" && "Add Details"}
-            {currentStep === "image" && "Generate Image"}
-            {currentStep === "size" && "Specify Your Size"}
-          </h1>
-
-          {/* Step Content */}
-          <div className="mb-12">{renderStepContent()}</div>
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === "type"}
-              className="flex items-center"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-            <Button
-              onClick={handleNext}
-              disabled={
-                (currentStep === "type" && !selectedType) ||
-                (currentStep === "material" && !selectedMaterial) ||
-                (currentStep === "image" && !generatedImageUrl)
-              }
-              className="flex items-center bg-brand hover:bg-brand-dark"
-            >
-              {currentStep === "size" ? "Submit" : "Next"}{" "}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+                  취소
+                </Button>
+                <Button onClick={handleSave}>
+                  저장하기
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </main>

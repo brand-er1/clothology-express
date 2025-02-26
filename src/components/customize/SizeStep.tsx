@@ -1,9 +1,8 @@
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAvailableSizes, getMeasurements, getSizeGuide, recommendSizeByHeight } from "@/lib/size-data";
+import { getAvailableSizes, getMeasurements, getSizeGuide, recommendSizeByHeight, getBaseSizeByHeight, getDetailedSizeInfo } from "@/lib/size-data";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
@@ -25,11 +24,10 @@ export const SizeStep = ({
   selectedType,
   gender = "남성",
 }: SizeStepProps) => {
-  const sizes = getAvailableSizes(gender, selectedType);
-  const measurements = getSizeGuide(gender, selectedType);
   const [recommendedSize, setRecommendedSize] = useState<string | null>(null);
   const [userHeight, setUserHeight] = useState<number | null>(null);
   const [userGender, setUserGender] = useState<string | null>(null);
+  const [detailedSizeInfo, setDetailedSizeInfo] = useState<any>(null);
 
   // 사용자 프로필에서 키와 성별 정보 가져오기
   useEffect(() => {
@@ -52,13 +50,19 @@ export const SizeStep = ({
     loadUserProfile();
   }, []);
 
-  // 키, 성별, 옷 종류 정보가 있을 때 사이즈 추천
+  // 키, 성별 정보가 있을 때 기본 사이즈 추천
   useEffect(() => {
-    if (userHeight && userGender && selectedType) {
-      const recommended = recommendSizeByHeight(userHeight, userGender, selectedType);
-      setRecommendedSize(recommended);
+    if (userHeight && userGender) {
+      const baseSize = getBaseSizeByHeight(userGender, userHeight);
+      setRecommendedSize(baseSize);
+      
+      // 의류 종류가 선택되었다면 상세 사이즈 정보도 가져옴
+      if (selectedType) {
+        const detailed = getDetailedSizeInfo(userGender, userHeight, selectedType);
+        setDetailedSizeInfo(detailed);
+      }
     }
-  }, [userHeight, selectedType, userGender]);
+  }, [userHeight, userGender, selectedType]);
 
   // 의류 종류에 따른 한글 이름 매핑
   const getKoreanTypeName = (type: string) => {
@@ -99,7 +103,7 @@ export const SizeStep = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {sizes.map((size) => {
+        {getAvailableSizes(gender, selectedType).map((size) => {
           const sizeData = getMeasurements(gender, selectedType, size);
           
           return (
@@ -145,7 +149,7 @@ export const SizeStep = ({
               <h3 className="text-2xl font-bold">맞춤 사이즈</h3>
             </div>
             <div className="space-y-4">
-              {measurements.map(({ label, unit }) => (
+              {getSizeGuide(gender, selectedType).map(({ label, unit }) => (
                 <div key={label} className="space-y-2">
                   <Label htmlFor={label}>
                     {label} ({unit})

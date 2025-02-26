@@ -42,6 +42,7 @@ export const SizeStep = ({
   const [userGender, setUserGender] = useState<string>("남성");
   const [isLoading, setIsLoading] = useState(true);
   const [recommendation, setRecommendation] = useState<SizeRecommendation | null>(null);
+  const [rawResponse, setRawResponse] = useState<any>(null);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -85,6 +86,8 @@ export const SizeStep = ({
 
   const requestSizeRecommendation = async (height: number, gender: string, type: string) => {
     try {
+      console.log("Requesting size recommendation with:", { height, gender, type });
+      
       const response = await fetch('https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/size-recommendation', {
         method: 'POST',
         headers: {
@@ -102,8 +105,10 @@ export const SizeStep = ({
       }
 
       const data = await response.json();
+      console.log("Raw response data:", data);
+      setRawResponse(data);
       setRecommendation(data);
-      onSizeChange(data.사이즈); // 추천 사이즈를 상위 컴포넌트에 전달
+      onSizeChange(data.사이즈);
     } catch (error) {
       console.error("사이즈 추천 요청 중 오류 발생:", error);
     }
@@ -119,6 +124,19 @@ export const SizeStep = ({
         <Card className="border-2 border-gray-100 shadow-sm">
           <CardContent className="pt-6">
             <div className="space-y-6">
+              {/* Debug Info */}
+              <div className="bg-gray-100 p-4 rounded-lg mb-4">
+                <h4 className="text-sm font-semibold mb-2">디버그 정보</h4>
+                <pre className="text-xs overflow-auto">
+                  {JSON.stringify({
+                    selectedType,
+                    userHeight,
+                    userGender,
+                    rawResponse
+                  }, null, 2)}
+                </pre>
+              </div>
+
               {/* 사용자 정보 섹션 */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-lg font-semibold mb-4">기본 정보</h3>

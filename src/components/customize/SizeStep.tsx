@@ -1,9 +1,8 @@
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAvailableSizes, getMeasurements, getSizeGuide } from "@/lib/size-data";
+import { getAvailableSizes, getMeasurements, getSizeGuide, recommendSizeByHeight } from "@/lib/size-data";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
@@ -50,34 +49,13 @@ export const SizeStep = ({
     loadUserProfile();
   }, []);
 
-  // 사이즈 추천 로직
-  const recommendSize = (height: number, type: string): string => {
-    // 상의류 (아우터, 맨투맨, 티셔츠)
-    if (type.includes('아우터') || type.includes('맨투맨') || type.includes('티셔츠')) {
-      if (height < 165) return 'S';
-      if (height < 170) return 'M';
-      if (height < 175) return 'L';
-      if (height < 180) return 'XL';
-      return 'XXL';
-    }
-    // 하의류
-    else if (type.includes('하의')) {
-      if (height < 165) return 'S';
-      if (height < 170) return 'M';
-      if (height < 175) return 'L';
-      if (height < 180) return 'XL';
-      return 'XXL';
-    }
-    return 'M'; // 기본값
-  };
-
   // 키 정보가 있을 때 사이즈 추천
   useEffect(() => {
     if (userHeight) {
-      const recommended = recommendSize(userHeight, selectedType);
+      const recommended = recommendSizeByHeight(userHeight, gender);
       setRecommendedSize(recommended);
     }
-  }, [userHeight, selectedType]);
+  }, [userHeight, selectedType, gender]);
 
   return (
     <div className="space-y-8">

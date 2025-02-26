@@ -1,280 +1,51 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
 import { Header } from "@/components/Header";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
-import { AuthFormData } from "@/types/auth";
-
-declare global {
-  interface Window {
-    daum: any;
-  }
-}
+import { useAuthForm } from "@/hooks/useAuthForm";
+import { useAddressSearch } from "@/hooks/useAddressSearch";
 
 const Auth = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [passwordMatch, setPasswordMatch] = useState(true);
-  const [isCheckingId, setIsCheckingId] = useState(false);
-  const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
-  const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
-  const [formData, setFormData] = useState<AuthFormData>({
-    userId: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    username: "",
-    fullName: "",
-    phoneNumber: "",
-    address: "",
-    addressDetail: "",
-    postcode: "",
-    height: "",
-    weight: "",
-    usualSize: "",
+  const {
+    isLoading,
+    isSignUp,
+    passwordMatch,
+    isCheckingId,
+    isIdAvailable,
+    isEmailAvailable,
+    formData,
+    handleChange,
+    checkUserId,
+    checkEmail,
+    handleAuth,
+    resetForm,
+    setPasswordMatch
+  } = useAuthForm();
+
+  const handleAddressSearch = useAddressSearch((data) => {
+    handleChange({
+      target: {
+        name: 'postcode',
+        value: data.zonecode
+      }
+    } as React.ChangeEvent<HTMLInputElement>);
+    
+    handleChange({
+      target: {
+        name: 'address',
+        value: data.address
+      }
+    } as React.ChangeEvent<HTMLInputElement>);
   });
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
-    script.async = true;
-    document.head.appendChild(script);
-
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
 
   useEffect(() => {
     if (formData.password || formData.confirmPassword) {
       setPasswordMatch(formData.password === formData.confirmPassword);
     }
   }, [formData.password, formData.confirmPassword]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    if (name === 'userId') {
-      setIsIdAvailable(null);
-    }
-    if (name === 'email') {
-      setIsEmailAvailable(null);
-    }
-  };
-
-  const checkUserId = async () => {
-    if (!formData.userId) {
-      toast({
-        title: "아이디를 입력해주세요",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsCheckingId(true);
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', formData.userId)
-        .single();
-
-      if (data) {
-        setIsIdAvailable(false);
-        toast({
-          title: "이미 사용 중인 아이디입니다",
-          variant: "destructive",
-        });
-      } else {
-        setIsIdAvailable(true);
-        toast({
-          title: "사용 가능한 아이디입니다",
-        });
-      }
-    } catch (error) {
-      setIsIdAvailable(true);
-      toast({
-        title: "사용 가능한 아이디입니다",
-      });
-    } finally {
-      setIsCheckingId(false);
-    }
-  };
-
-  const checkEmail = async () => {
-    if (!formData.email) {
-      toast({
-        title: "이메일을 입력해주세요",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: formData.email,
-        options: {
-          shouldCreateUser: false,
-        }
-      });
-
-      // If we get here without an error, the email exists
-      setIsEmailAvailable(false);
-      toast({
-        title: "이미 등록된 이메일입니다",
-        variant: "destructive",
-      });
-    } catch (error) {
-      // If we get an error, the email doesn't exist (in most cases)
-      setIsEmailAvailable(true);
-      toast({
-        title: "사용 가능한 이메일입니다",
-      });
-    }
-  };
-
-  const handleAddressSearch = () => {
-    if (window.daum) {
-      new window.daum.Postcode({
-        oncomplete: (data: any) => {
-          setFormData(prev => ({
-            ...prev,
-            postcode: data.zonecode,
-            address: data.address,
-          }));
-        },
-      }).open();
-    } else {
-      toast({
-        title: "오류 발생",
-        description: "주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const validateSignUpForm = async () => {
-    if (!passwordMatch) {
-      throw new Error("비밀번호가 일치하지 않습니다.");
-    }
-
-    if (formData.password.length < 6) {
-      throw new Error("비밀번호는 최소 6자 이상이어야 합니다.");
-    }
-
-    if (!isIdAvailable) {
-      throw new Error("아이디 중복 확인이 필요합니다.");
-    }
-
-    if (!isEmailAvailable) {
-      throw new Error("이메일 중복 확인이 필요합니다.");
-    }
-  };
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isSignUp) {
-        await validateSignUpForm();
-        
-        const fullAddress = formData.addressDetail 
-          ? `${formData.address} ${formData.addressDetail} (${formData.postcode})`
-          : `${formData.address} (${formData.postcode})`;
-
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              user_id: formData.userId,
-              username: formData.username,
-              full_name: formData.fullName,
-              phone_number: formData.phoneNumber,
-              address: fullAddress,
-              height: formData.height || null,
-              weight: formData.weight || null,
-              usual_size: formData.usualSize || null,
-            },
-          },
-        });
-        if (error) throw error;
-        toast({
-          title: "회원가입 성공!",
-          description: "로그인 해주세요.",
-        });
-        setIsSignUp(false);
-      } else {
-        // 로그인: 이메일 또는 아이디로 로그인 가능
-        let loginIdentifier = formData.email;
-        if (!loginIdentifier.includes('@')) {
-          // 아이디로 로그인 시도
-          const { data: userData } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('user_id', formData.email)
-            .maybeSingle();
-          
-          if (!userData) {
-            throw new Error("존재하지 않는 아이디입니다.");
-          }
-          loginIdentifier = userData.email;
-        }
-
-        const { error } = await supabase.auth.signInWithPassword({
-          email: loginIdentifier,
-          password: formData.password,
-        });
-        if (error) throw error;
-        navigate("/");
-        toast({
-          title: "로그인 성공!",
-          description: "환영합니다.",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "오류 발생",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setIsSignUp(!isSignUp);
-    setFormData({
-      userId: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      username: "",
-      fullName: "",
-      phoneNumber: "",
-      address: "",
-      addressDetail: "",
-      postcode: "",
-      height: "",
-      weight: "",
-      usualSize: "",
-    });
-    setPasswordMatch(true);
-    setIsIdAvailable(null);
-    setIsEmailAvailable(null);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -161,6 +161,90 @@ fal.config({
   credentials: "fal_key_..." // NOTE: fal.ai API 키가 필요합니다
 });
 
+type Size = {
+  id: string;
+  category: "tops" | "bottoms";
+  name: string;
+  measurements: {
+    label: string;
+    min: number;
+    max: number;
+    unit: string;
+  }[];
+};
+
+const topSizes: Size[] = [
+  {
+    id: "top-s",
+    category: "tops",
+    name: "S",
+    measurements: [
+      { label: "어깨너비", min: 43, max: 45, unit: "cm" },
+      { label: "가슴단면", min: 48, max: 50, unit: "cm" },
+      { label: "소매길이", min: 59, max: 61, unit: "cm" },
+      { label: "총장", min: 65, max: 67, unit: "cm" },
+    ],
+  },
+  {
+    id: "top-m",
+    category: "tops",
+    name: "M",
+    measurements: [
+      { label: "어깨너비", min: 45, max: 47, unit: "cm" },
+      { label: "가슴단면", min: 50, max: 52, unit: "cm" },
+      { label: "소매길이", min: 61, max: 63, unit: "cm" },
+      { label: "총장", min: 67, max: 69, unit: "cm" },
+    ],
+  },
+  {
+    id: "top-l",
+    category: "tops",
+    name: "L",
+    measurements: [
+      { label: "어깨너비", min: 47, max: 49, unit: "cm" },
+      { label: "가슴단면", min: 52, max: 54, unit: "cm" },
+      { label: "소매길이", min: 63, max: 65, unit: "cm" },
+      { label: "총장", min: 69, max: 71, unit: "cm" },
+    ],
+  },
+];
+
+const bottomSizes: Size[] = [
+  {
+    id: "bottom-s",
+    category: "bottoms",
+    name: "S",
+    measurements: [
+      { label: "허리단면", min: 35, max: 37, unit: "cm" },
+      { label: "엉덩이단면", min: 47, max: 49, unit: "cm" },
+      { label: "허벅지단면", min: 28, max: 30, unit: "cm" },
+      { label: "총장", min: 95, max: 97, unit: "cm" },
+    ],
+  },
+  {
+    id: "bottom-m",
+    category: "bottoms",
+    name: "M",
+    measurements: [
+      { label: "허리단면", min: 37, max: 39, unit: "cm" },
+      { label: "엉덩이단면", min: 49, max: 51, unit: "cm" },
+      { label: "허벅지단면", min: 30, max: 32, unit: "cm" },
+      { label: "총장", min: 97, max: 99, unit: "cm" },
+    ],
+  },
+  {
+    id: "bottom-l",
+    category: "bottoms",
+    name: "L",
+    measurements: [
+      { label: "허리단면", min: 39, max: 41, unit: "cm" },
+      { label: "엉덩이단면", min: 51, max: 53, unit: "cm" },
+      { label: "허벅지단면", min: 32, max: 34, unit: "cm" },
+      { label: "총장", min: 99, max: 101, unit: "cm" },
+    ],
+  },
+];
+
 const Customize = () => {
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -174,6 +258,8 @@ const Customize = () => {
   const [selectedColor, setSelectedColor] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string>("");
+  const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
 
   const handleStyleSelect = (value: string) => {
     const style = styleOptions.find(opt => opt.value === value);
@@ -515,11 +601,79 @@ const Customize = () => {
         );
 
       case "size":
+        const selectedType = clothTypes.find(type => type.id === selectedType);
+        const sizes = selectedType?.category === "bottoms" ? bottomSizes : topSizes;
+        
         return (
-          <div className="max-w-md mx-auto">
-            <p className="text-center text-gray-600 mb-8">
-              사이즈 커스터마이징은 다음 업데이트에서 제공됩니다
-            </p>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {sizes.map((size) => (
+                <Card
+                  key={size.id}
+                  className={`p-6 cursor-pointer transition-all ${
+                    selectedSize === size.id
+                      ? "border-brand ring-2 ring-brand/20"
+                      : "hover:border-brand/20"
+                  }`}
+                  onClick={() => setSelectedSize(size.id)}
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-2xl font-bold">{size.name}</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {size.measurements.map((measurement) => (
+                        <div key={measurement.label} className="flex justify-between text-sm">
+                          <span className="text-gray-600">{measurement.label}</span>
+                          <span>
+                            {measurement.min}~{measurement.max}{measurement.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+
+              <Card className="p-6 cursor-pointer transition-all border-dashed hover:border-brand/20">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-bold">맞춤 사이즈</h3>
+                  </div>
+                  <div className="space-y-4">
+                    {(selectedType?.category === "bottoms" ? bottomSizes[0] : topSizes[0]).measurements.map((measurement) => (
+                      <div key={measurement.label} className="space-y-2">
+                        <Label htmlFor={measurement.label}>{measurement.label} ({measurement.unit})</Label>
+                        <Input
+                          id={measurement.label}
+                          type="number"
+                          min={measurement.min - 5}
+                          max={measurement.max + 5}
+                          value={customMeasurements[measurement.label] || ""}
+                          onChange={(e) => {
+                            setCustomMeasurements(prev => ({
+                              ...prev,
+                              [measurement.label]: Number(e.target.value)
+                            }));
+                            setSelectedSize("custom");
+                          }}
+                          className="w-full"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <h4 className="font-medium mb-4">사이즈 안내</h4>
+              <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
+                <li>사이즈는 측정 방법과 위치에 따라 1~3cm 오차가 있을 수 있습니다.</li>
+                <li>맞춤 사이즈 선택 시 측정값의 오차 범위를 고려하여 제작됩니다.</li>
+                <li>선택하신 사이즈보다 큰 사이즈가 필요한 경우, 맞춤 사이즈를 선택해주세요.</li>
+              </ul>
+            </div>
           </div>
         );
 

@@ -519,27 +519,29 @@ const Customize = () => {
     try {
       setIsLoading(true);
       
+      // 선택된 옵션들을 하나의 프롬프트로 조합
       const prompt = `${
         clothTypes.find(type => type.id === selectedType)?.name || ""
       } ${
         materials.find(material => material.id === selectedMaterial)?.name || ""
-      } ${
-        styleOptions.find(style => style.value === selectedStyle)?.label || ""
-      } ${
-        colorOptions.find(color => color.value === selectedColor)?.label || ""
-      }`;
+      } ${selectedDetail || ""}`;
 
-      const result = await fal.subscribe("110602490-sdxl", {
-        input: {
-          prompt: prompt,
-          negative_prompt: "low quality, bad quality",
-          num_inference_steps: 50,
-        }
-      }) as { images?: { url: string }[] };
+      const response = await fetch('/api/generate-optimized-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      });
 
-      if (result?.images?.[0]?.url) {
-        setGeneratedImageUrl(result.images[0].url);
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
       }
+
+      setGeneratedImageUrl(data.imageUrl);
+      
     } catch (err) {
       console.error("Image generation failed:", err);
       toast({

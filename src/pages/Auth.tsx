@@ -2,12 +2,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Header } from "@/components/Header";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { SignUpForm } from "@/components/auth/SignUpForm";
+import { AuthFormData } from "@/types/auth";
 
 declare global {
   interface Window {
@@ -21,7 +22,7 @@ const Auth = () => {
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [isCheckingId, setIsCheckingId] = useState(false);
   const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AuthFormData>({
     userId: "",
     email: "",
     password: "",
@@ -235,6 +236,27 @@ const Auth = () => {
     }
   };
 
+  const resetForm = () => {
+    setIsSignUp(!isSignUp);
+    setFormData({
+      userId: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      username: "",
+      fullName: "",
+      phoneNumber: "",
+      address: "",
+      addressDetail: "",
+      postcode: "",
+      height: "",
+      weight: "",
+      usualSize: "",
+    });
+    setPasswordMatch(true);
+    setIsIdAvailable(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -251,216 +273,28 @@ const Auth = () => {
           <CardContent>
             <form onSubmit={handleAuth} className="space-y-4">
               {isSignUp ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="userId">아이디</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="userId"
-                        name="userId"
-                        type="text"
-                        value={formData.userId}
-                        onChange={handleChange}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        onClick={checkUserId}
-                        disabled={isCheckingId}
-                        className="whitespace-nowrap"
-                      >
-                        {isCheckingId ? "확인 중..." : "중복 확인"}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">이메일</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="email">아이디 또는 이메일</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="text"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="password">비밀번호</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
+                <SignUpForm
+                  formData={formData}
+                  handleChange={handleChange}
+                  isLoading={isLoading}
+                  isIdAvailable={isIdAvailable}
+                  isCheckingId={isCheckingId}
+                  passwordMatch={passwordMatch}
+                  handleAddressSearch={handleAddressSearch}
+                  checkUserId={checkUserId}
                 />
-              </div>
-              {isSignUp && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">비밀번호 확인</Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      required
-                      className={!passwordMatch && formData.confirmPassword ? "border-red-500" : ""}
-                    />
-                    {!passwordMatch && formData.confirmPassword && (
-                      <p className="text-sm text-red-500">비밀번호가 일치하지 않습니다.</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="username">닉네임</Label>
-                    <Input
-                      id="username"
-                      name="username"
-                      type="text"
-                      value={formData.username}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">이름</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      type="text"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">전화번호</Label>
-                    <Input
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      type="tel"
-                      value={formData.phoneNumber}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">주소</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="postcode"
-                        name="postcode"
-                        type="text"
-                        value={formData.postcode}
-                        placeholder="우편번호"
-                        readOnly
-                        required
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleAddressSearch}
-                        className="whitespace-nowrap"
-                      >
-                        주소 검색
-                      </Button>
-                    </div>
-                    <Input
-                      id="address"
-                      name="address"
-                      type="text"
-                      value={formData.address}
-                      placeholder="기본주소"
-                      readOnly
-                      required
-                    />
-                    <Input
-                      id="addressDetail"
-                      name="addressDetail"
-                      type="text"
-                      value={formData.addressDetail}
-                      onChange={handleChange}
-                      placeholder="상세주소를 입력해주세요"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="height">키 (cm, 선택사항)</Label>
-                    <Input
-                      id="height"
-                      name="height"
-                      type="number"
-                      value={formData.height}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="weight">몸무게 (kg, 선택사항)</Label>
-                    <Input
-                      id="weight"
-                      name="weight"
-                      type="number"
-                      value={formData.weight}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="usualSize">평소 사이즈 (선택사항)</Label>
-                    <Input
-                      id="usualSize"
-                      name="usualSize"
-                      type="text"
-                      value={formData.usualSize}
-                      onChange={handleChange}
-                      placeholder="예: M, 95 등"
-                    />
-                  </div>
-                </>
+              ) : (
+                <LoginForm
+                  formData={formData}
+                  handleChange={handleChange}
+                  isLoading={isLoading}
+                />
               )}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading
-                  ? "처리 중..."
-                  : isSignUp
-                  ? "회원가입"
-                  : "로그인"}
-              </Button>
               <Button
                 type="button"
                 variant="link"
                 className="w-full"
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setFormData({
-                    userId: "",
-                    email: "",
-                    password: "",
-                    confirmPassword: "",
-                    username: "",
-                    fullName: "",
-                    phoneNumber: "",
-                    address: "",
-                    addressDetail: "",
-                    postcode: "",
-                    height: "",
-                    weight: "",
-                    usualSize: "",
-                  });
-                  setPasswordMatch(true);
-                  setIsIdAvailable(null);
-                }}
+                onClick={resetForm}
               >
                 {isSignUp
                   ? "이미 계정이 있으신가요? 로그인하기"

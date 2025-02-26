@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -157,8 +156,6 @@ const colorOptions: ColorOption[] = [
 const steps: Step[] = ["type", "material", "detail", "image", "size"];
 
 import * as fal from '@fal-ai/serverless-client';
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
 
 fal.config({
   credentials: "fal_key_..." // NOTE: fal.ai API 키가 필요합니다

@@ -153,6 +153,13 @@ const colorOptions: ColorOption[] = [
 
 const steps: Step[] = ["type", "material", "detail", "image", "size"];
 
+import * as fal from '@fal-ai/serverless-client';
+import { toast } from "@/components/ui/use-toast";
+
+fal.config({
+  credentials: "fal_key_..." // NOTE: fal.ai API 키가 필요합니다
+});
+
 const Customize = () => {
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -164,6 +171,8 @@ const Customize = () => {
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedPocket, setSelectedPocket] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
   const handleStyleSelect = (value: string) => {
     const style = styleOptions.find(opt => opt.value === value);
@@ -431,10 +440,94 @@ const Customize = () => {
 
       case "image":
         return (
-          <div className="max-w-md mx-auto">
-            <p className="text-center text-gray-600 mb-8">
-              이미지 생성 준비중...
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 이미지 생성 영역 */}
+            <Card className="p-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">이미지 생성</h3>
+                <p className="text-sm text-gray-500">
+                  선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다.
+                </p>
+                <div className="flex justify-center items-center h-64 bg-gray-100 rounded-lg">
+                  {isLoading ? (
+                    <div className="flex flex-col items-center space-y-2">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
+                      <p className="text-sm text-gray-500">이미지 생성 중...</p>
+                    </div>
+                  ) : generatedImageUrl ? (
+                    <img
+                      src={generatedImageUrl}
+                      alt="Generated clothing design"
+                      className="max-h-full rounded-lg"
+                    />
+                  ) : (
+                    <Button 
+                      onClick={handleGenerateImage}
+                      className="bg-brand hover:bg-brand-dark"
+                    >
+                      이미지 생성하기
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            {/* 선택한 옵션 요약 */}
+            <Card className="p-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">선택한 옵션</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">의류 종류:</span>
+                    <span className="font-medium">
+                      {clothTypes.find(type => type.id === selectedType)?.name || "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">소재:</span>
+                    <span className="font-medium">
+                      {materials.find(material => material.id === selectedMaterial)?.name || "-"}
+                    </span>
+                  </div>
+                  {selectedStyle && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">스타일:</span>
+                      <span className="font-medium">
+                        {styleOptions.find(style => style.value === selectedStyle)?.label || "-"}
+                      </span>
+                    </div>
+                  )}
+                  {selectedPocket && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">포켓:</span>
+                      <span className="font-medium">
+                        {pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || "-"}
+                      </span>
+                    </div>
+                  )}
+                  {selectedColor && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">색상:</span>
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-4 h-4 rounded-full border border-gray-200"
+                          style={{ backgroundColor: colorOptions.find(color => color.value === selectedColor)?.hex }}
+                        />
+                        <span className="font-medium">
+                          {colorOptions.find(color => color.value === selectedColor)?.label || "-"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {detailInput && (
+                    <div className="pt-2 border-t">
+                      <span className="text-gray-600">추가 디테일:</span>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">{detailInput}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
           </div>
         );
 
@@ -449,6 +542,39 @@ const Customize = () => {
 
       default:
         return null;
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    try {
+      setIsLoading(true);
+      
+      const prompt = `${
+        clothTypes.find(type => type.id === selectedType)?.name || ""
+      } ${
+        materials.find(material => material.id === selectedMaterial)?.name || ""
+      } ${
+        styleOptions.find(style => style.value === selectedStyle)?.label || ""
+      } ${
+        colorOptions.find(color => color.value === selectedColor)?.label || ""
+      }`;
+
+      const result = await fal.subscribe("110602490-sdxl", {
+        input: {
+          prompt: prompt,
+          negative_prompt: "low quality, bad quality",
+          num_inference_steps: 50,
+        }
+      });
+
+      if (result.images?.[0]?.url) {
+        setGeneratedImageUrl(result.images[0].url);
+      }
+    } catch (error) {
+      console.error("Image generation failed:", error);
+      toast.error("이미지 생성에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

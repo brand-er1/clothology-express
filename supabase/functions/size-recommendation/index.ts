@@ -149,8 +149,7 @@ function translateMeasurementsToKorean(measurements: any, type: string): any {
     length: "총장",
     hip: "엉덩이둘레",
     thigh: "허벅지둘레",
-    bottom_width: "밑단 너비",
-    inseam: "인심"
+    hem: "밑단 너비"
   };
 
   const koreanMeasurements: Record<string, number> = {};
@@ -196,16 +195,9 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      gender, 
-      height,
-      type,
-      material, // 원단 정보 추가
-      detail, // 사용자가 입력한 모든 디테일 정보 (스타일, 포켓, 색상 등 포함)
-      optimizedDetail // GPT가 최적화한 디테일 정보
-    } = await req.json()
+    const { gender, height, type } = await req.json()
 
-    if (!gender || !height || !type || !material) {
+    if (!gender || !height || !type) {
       throw new Error('Missing required parameters')
     }
 
@@ -216,27 +208,14 @@ serve(async (req) => {
       throw new Error('Could not determine appropriate size for given height')
     }
 
-    const heightRange = genderData.recommendedSizes.find(r => r.size.startsWith(recommendedSize))?.height;
     const sizeTable = extractSizeData(recommendedSize, genderData, type);
-
-    // 원단 정보에 따른 사이즈 조정이 필요한 경우를 위한 메모 추가
-    const materialNote = material === 'denim' ? 
-      '데님 소재의 경우 착용 후 1-2cm 늘어날 수 있습니다.' : 
-      material === 'wool' ? 
-      '울 소재의 경우 물세탁 시 수축될 수 있습니다.' : '';
 
     const response = {
       성별: gender === 'men' ? '남성' : '여성',
       키: height,
       사이즈: recommendedSize,
       옷_종류: typeToKorean[type] || type,
-      원단: material,
-      원단_특이사항: materialNote,
-      그에_맞는_사이즈_표: sizeTable,
-      추가_정보: {
-        detail: detail || '',
-        optimizedDetail: optimizedDetail || ''
-      }
+      그에_맞는_사이즈_표: sizeTable
     };
 
     return new Response(JSON.stringify(response), {

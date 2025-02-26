@@ -9,6 +9,66 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      orders: {
+        Row: {
+          admin_comment: string | null
+          cloth_type: string
+          color: string | null
+          created_at: string
+          detail_description: string | null
+          generated_image_url: string | null
+          id: string
+          material: string
+          measurements: Json | null
+          pocket_type: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          size: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          style: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_comment?: string | null
+          cloth_type: string
+          color?: string | null
+          created_at?: string
+          detail_description?: string | null
+          generated_image_url?: string | null
+          id?: string
+          material: string
+          measurements?: Json | null
+          pocket_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          size?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          style?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_comment?: string | null
+          cloth_type?: string
+          color?: string | null
+          created_at?: string
+          detail_description?: string | null
+          generated_image_url?: string | null
+          id?: string
+          material?: string
+          measurements?: Json | null
+          pocket_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          size?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          style?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -106,6 +166,7 @@ export type Database = {
       }
     }
     Enums: {
+      order_status: "pending" | "approved" | "rejected"
       user_role: "admin" | "user"
     }
     CompositeTypes: {

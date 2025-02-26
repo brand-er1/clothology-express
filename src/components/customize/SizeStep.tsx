@@ -114,55 +114,72 @@ export const SizeStep = ({
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium mb-1">성별</h3>
-                <p className="text-lg">{userGender}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium mb-1">키</h3>
-                <p className="text-lg">{userHeight ? `${userHeight}cm` : "정보 없음"}</p>
-              </div>
-            </div>
-
-            {recommendation && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-4">추천 사이즈 정보</h3>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-sm text-gray-500">추천 사이즈</span>
-                      <p className="text-xl font-semibold">{recommendation.사이즈}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">의류 종류</span>
-                      <p className="text-xl">{recommendation.옷_종류}</p>
-                    </div>
+    <div className="grid grid-cols-2 gap-8">
+      <div className="space-y-6">
+        <Card className="border-2 border-gray-100 shadow-sm">
+          <CardContent className="pt-6">
+            <div className="space-y-6">
+              {/* 사용자 정보 섹션 */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-4">기본 정보</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">성별</h4>
+                    <p className="text-lg mt-1">{userGender}</p>
                   </div>
-
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h4 className="text-sm font-medium mb-3">상세 치수</h4>
-                    <Table>
-                      <TableBody>
-                        {Object.entries(recommendation.그에_맞는_사이즈_표).map(([key, value]) => (
-                          <TableRow key={key}>
-                            <TableCell className="font-medium">{key}</TableCell>
-                            <TableCell className="text-right">{value}cm</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">키</h4>
+                    <p className="text-lg mt-1">{userHeight ? `${userHeight}cm` : "정보 없음"}</p>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+
+              {/* 추천 사이즈 정보 섹션 */}
+              {recommendation && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">추천 사이즈 정보</h3>
+                  <div className="space-y-4">
+                    <div className="bg-brand/5 rounded-lg p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">추천 사이즈</span>
+                          <p className="text-2xl font-bold text-brand mt-1">{recommendation.사이즈}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">의류 종류</span>
+                          <p className="text-lg mt-1">{recommendation.옷_종류}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-500 mb-4">상세 치수</h4>
+                      <Table>
+                        <TableBody className="divide-y">
+                          {Object.entries(recommendation.그에_맞는_사이즈_표).map(([key, value]) => (
+                            <TableRow key={key} className="hover:bg-gray-50/50">
+                              <TableCell className="py-3 font-medium">{key}</TableCell>
+                              <TableCell className="text-right py-3">
+                                <span className="font-semibold">{value}</span>
+                                <span className="text-gray-500 ml-1">cm</span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 측정 기준 이미지를 위한 공간 */}
+      <div className="min-h-[600px] bg-gray-50 rounded-lg flex items-center justify-center">
+        <p className="text-gray-400">측정 기준 이미지가 들어갈 공간입니다</p>
+      </div>
     </div>
   );
 };

@@ -1,12 +1,23 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const falApiKey = Deno.env.get('FAL_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL');
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+const SYSTEM_PROMPT = `Assist in generating precise and optimized prompts for the FLUX AI model to create high-quality fashion image based on user input.
+
+1. Make the prompt detailed with:
+- Clothing type (e.g., jacket, dress).
+- Colors, patterns, and materials.
+- Style or theme (e.g., casual, formal).
+- Accessories or design details.
+- Target audience (e.g., men's, women's).
+2. Use vivid adjectives to guide image generation accurately.
+3. Keep the prompt concise but descriptive, and don't omit details in input.
+4. If there are not sufficient details, add details based on your knowledge about garment.
+5. Add this prompt at the end. : "Showcasing the front view on the left side and the back view on the right side. Show only cloth."
+6. Output must be in English, and only return result.`;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,14 +30,6 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-    
-    // system prompt 가져오기
-    const { data: systemPrompt } = await supabase
-      .from('system_prompts')
-      .select('content')
-      .single();
-
     const { prompt } = await req.json();
 
     // 1단계: OpenAI를 통한 프롬프트 최적화
@@ -39,10 +42,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { 
-            role: 'system', 
-            content: systemPrompt?.content || 'You are a helpful assistant that optimizes image generation prompts.'
-          },
+          { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: prompt }
         ],
         max_tokens: 200,

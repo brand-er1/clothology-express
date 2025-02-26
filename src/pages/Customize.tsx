@@ -8,10 +8,17 @@ import { DetailStep } from "@/components/customize/DetailStep";
 import { ImageStep } from "@/components/customize/ImageStep";
 import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 const TOTAL_STEPS = 5;
 
 const Customize = () => {
+  const [userGender, setUserGender] = useState<string>("남성");
+  const [userHeight, setUserHeight] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const {
     currentStep,
     selectedType,
@@ -29,9 +36,8 @@ const Customize = () => {
     setSelectedPocket,
     selectedColor,
     setSelectedColor,
-    selectedFit,       // 새로 추가
-    setSelectedFit,    // 새로 추가
-    isLoading,
+    selectedFit,
+    setSelectedFit,
     generatedImageUrl,
     selectedSize,
     setSelectedSize,
@@ -42,6 +48,49 @@ const Customize = () => {
     handleNext,
     handleBack,
   } = useCustomizeForm();
+
+  // 사용자 정보 가져오기
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast({
+            title: "로그인이 필요합니다",
+            description: "사이즈 추천을 위해 로그인해주세요.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('gender, height')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        if (profile) {
+          setUserGender(profile.gender || "남성");
+          setUserHeight(profile.height);
+        }
+      } catch (error: any) {
+        console.error('Error loading profile:', error);
+        toast({
+          title: "프로필 로드 실패",
+          description: "프로필 정보를 불러오는데 실패했습니다.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserProfile();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,12 +123,12 @@ const Customize = () => {
               selectedStyle={selectedStyle}
               selectedPocket={selectedPocket}
               selectedColor={selectedColor}
-              selectedFit={selectedFit}        // 새로 추가
+              selectedFit={selectedFit}
               onDetailInputChange={setSelectedDetail}
               onStyleSelect={setSelectedStyle}
               onPocketSelect={setSelectedPocket}
               onColorSelect={setSelectedColor}
-              onFitSelect={setSelectedFit}     // 새로 추가
+              onFitSelect={setSelectedFit}
             />
           )}
 
@@ -109,7 +158,7 @@ const Customize = () => {
                 }
               }}
               selectedType={selectedType}
-              gender="남성" // TODO: 사용자의 성별에 따라 동적으로 변경
+              gender={userGender}
             />
           )}
 

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
@@ -10,10 +9,54 @@ const corsHeaders = {
 
 const sizeData = {
   men: {
-    // ... 남성 사이즈 데이터
+    recommendedSizes: [
+      { height: "160 ~ 165", size: "XS (85)" },
+      { height: "165 ~ 170", size: "S (90)" },
+      { height: "170 ~ 175", size: "M (95)" },
+      { height: "175 ~ 180", size: "L (100)" },
+      { height: "180 ~ 185", size: "XL (105)" },
+      { height: "185 ~ 190", size: "XXL (110)" },
+      { height: "190 ~ 195", size: "XXXL (115)" }
+    ],
+    categories: {
+      outer_jacket: {
+        description: "아우터/자켓 (남성)",
+        sizes: {
+          "XS": { shoulder: 41, chest: 111, waist: 101, sleeve: 82, length: 68 },
+          "S": { shoulder: 43, chest: 116, waist: 106, sleeve: 84, length: 70 },
+          "M": { shoulder: 45, chest: 121, waist: 111, sleeve: 86.5, length: 72 },
+          "L": { shoulder: 47, chest: 126, waist: 116, sleeve: 89, length: 74 },
+          "XL": { shoulder: 49, chest: 131, waist: 121, sleeve: 91.5, length: 76 },
+          "XXL": { shoulder: 51, chest: 136, waist: 126, sleeve: 94, length: 78 },
+          "XXXL": { shoulder: 53, chest: 141, waist: 131, sleeve: 96.5, length: 80 }
+        }
+      }
+    }
   },
   women: {
-    // ... 여성 사이즈 데이터
+    recommendedSizes: [
+      { height: "150 ~ 155", size: "XS (44)" },
+      { height: "155 ~ 160", size: "S (55)" },
+      { height: "160 ~ 165", size: "M (66)" },
+      { height: "165 ~ 170", size: "L (77)" },
+      { height: "170 ~ 175", size: "XL (88)" },
+      { height: "175 ~ 180", size: "XXL (99)" },
+      { height: "180 ~ 185", size: "XXXL (110)" }
+    ],
+    categories: {
+      outer_jacket: {
+        description: "아우터/자켓 (여성)",
+        sizes: {
+          "XS": { shoulder: 37, bust: 85, waist: 75, sleeve: 56, length: 63 },
+          "S": { shoulder: 38, bust: 90, waist: 80, sleeve: 58, length: 65 },
+          "M": { shoulder: 40, bust: 95, waist: 85, sleeve: 60, length: 67 },
+          "L": { shoulder: 42, bust: 100, waist: 90, sleeve: 62, length: 69 },
+          "XL": { shoulder: 44, bust: 105, waist: 95, sleeve: 64, length: 71 },
+          "XXL": { shoulder: 46, bust: 110, waist: 100, sleeve: 66, length: 73 },
+          "XXXL": { shoulder: 48, bust: 115, waist: 105, sleeve: 68, length: 75 }
+        }
+      }
+    }
   }
 } as const;
 

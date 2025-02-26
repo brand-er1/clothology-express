@@ -161,6 +161,13 @@ fal.config({
   credentials: "fal_key_..." // NOTE: fal.ai API 키가 필요합니다
 });
 
+// fal.ai API 응답 타입 정의
+type FalApiResponse = {
+  images: {
+    url: string;
+  }[];
+};
+
 const Customize = () => {
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -236,7 +243,7 @@ const Customize = () => {
       ].filter(Boolean).join(', ');
 
       // fal.ai API 호출
-      const response = await fal.subscribe('110602490-sdxl', {
+      const response = await fal.subscribe<FalApiResponse>('110602490-sdxl', {
         input: {
           prompt: `Fashion design: ${promptDetails}. Show only the garment, no background, no model. Showcasing the front view on the left side and the back view on the right side.`,
           image_size: "1024x1024",

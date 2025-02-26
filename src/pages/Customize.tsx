@@ -130,10 +130,25 @@ const Customize = () => {
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedMaterial, setSelectedMaterial] = useState<string>("");
   const [selectedDetail, setSelectedDetail] = useState<string>("");
+  const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
   const [details, setDetails] = useState<Detail[]>(defaultDetails);
+  const [newMaterialName, setNewMaterialName] = useState("");
   const [newDetailName, setNewDetailName] = useState("");
 
   const steps: Step[] = ["type", "material", "detail", "image", "size"];
+
+  const handleAddMaterial = () => {
+    if (newMaterialName.trim()) {
+      const newMaterial: Material = {
+        id: `custom-${Date.now()}`,
+        name: newMaterialName.trim(),
+        description: "사용자 지정 원단",
+        isCustom: true,
+      };
+      setMaterials([...materials, newMaterial]);
+      setNewMaterialName("");
+    }
+  };
 
   const handleAddDetail = () => {
     if (newDetailName.trim()) {

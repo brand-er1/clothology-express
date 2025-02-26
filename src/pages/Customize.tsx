@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, ArrowLeft, Shirt, Scissors } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowRight, ArrowLeft, Shirt, Scissors, Plus } from "lucide-react";
 
 type ClothType = {
   id: string;
@@ -10,6 +11,13 @@ type ClothType = {
   icon: React.ReactNode;
   description: string;
   category: "tops" | "bottoms" | "custom";
+};
+
+type Material = {
+  id: string;
+  name: string;
+  description: string;
+  isCustom?: boolean;
 };
 
 type Step = "type" | "material" | "style" | "size";
@@ -69,11 +77,27 @@ const clothTypes: ClothType[] = [
   },
 ];
 
-const materials = [
-  { id: "cotton", name: "Cotton", description: "Soft and breathable" },
-  { id: "silk", name: "Silk", description: "Luxurious and smooth" },
-  { id: "linen", name: "Linen", description: "Light and durable" },
-  { id: "wool", name: "Wool", description: "Warm and cozy" },
+const defaultMaterials: Material[] = [
+  { 
+    id: "cotton", 
+    name: "면", 
+    description: "부드럽고 통기성이 좋은 천연 소재" 
+  },
+  { 
+    id: "denim", 
+    name: "데님", 
+    description: "튼튼하고 클래식한 청바지 소재" 
+  },
+  { 
+    id: "poly", 
+    name: "폴리", 
+    description: "구김이 적고 관리가 쉬운 소재" 
+  },
+  { 
+    id: "linen", 
+    name: "린넨", 
+    description: "시원하고 자연스러운 질감의 소재" 
+  },
 ];
 
 const styles = [
@@ -88,8 +112,25 @@ const Customize = () => {
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedMaterial, setSelectedMaterial] = useState<string>("");
   const [selectedStyle, setSelectedStyle] = useState<string>("");
+  const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
+  const [newMaterialName, setNewMaterialName] = useState("");
+  const [newMaterialDescription, setNewMaterialDescription] = useState("");
 
   const steps: Step[] = ["type", "material", "style", "size"];
+
+  const handleAddMaterial = () => {
+    if (newMaterialName.trim()) {
+      const newMaterial: Material = {
+        id: `custom-${Date.now()}`,
+        name: newMaterialName.trim(),
+        description: newMaterialDescription.trim() || "사용자 지정 원단",
+        isCustom: true,
+      };
+      setMaterials([...materials, newMaterial]);
+      setNewMaterialName("");
+      setNewMaterialDescription("");
+    }
+  };
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -184,23 +225,62 @@ const Customize = () => {
 
       case "material":
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {materials.map((material) => (
-              <Card
-                key={material.id}
-                className={`p-6 cursor-pointer transition-all ${
-                  selectedMaterial === material.id
-                    ? "border-brand ring-2 ring-brand/20"
-                    : "hover:border-brand/20"
-                }`}
-                onClick={() => setSelectedMaterial(material.id)}
-              >
-                <div className="flex flex-col space-y-2">
-                  <h3 className="text-lg font-semibold">{material.name}</h3>
-                  <p className="text-sm text-gray-500">{material.description}</p>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {materials.map((material) => (
+                <Card
+                  key={material.id}
+                  className={`p-6 cursor-pointer transition-all ${
+                    selectedMaterial === material.id
+                      ? "border-brand ring-2 ring-brand/20"
+                      : "hover:border-brand/20"
+                  } ${material.isCustom ? "border-dashed" : ""}`}
+                  onClick={() => setSelectedMaterial(material.id)}
+                >
+                  <div className="flex flex-col space-y-2">
+                    <h3 className="text-lg font-semibold">{material.name}</h3>
+                    <p className="text-sm text-gray-500">{material.description}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Add Custom Material Section */}
+            <Card className="p-6 border-dashed">
+              <h3 className="text-lg font-semibold mb-4">새로운 원단 추가</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    원단 이름
+                  </label>
+                  <Input
+                    value={newMaterialName}
+                    onChange={(e) => setNewMaterialName(e.target.value)}
+                    placeholder="원단 이름을 입력하세요"
+                    className="w-full"
+                  />
                 </div>
-              </Card>
-            ))}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    원단 설명
+                  </label>
+                  <Input
+                    value={newMaterialDescription}
+                    onChange={(e) => setNewMaterialDescription(e.target.value)}
+                    placeholder="원단에 대한 설명을 입력하세요"
+                    className="w-full"
+                  />
+                </div>
+                <Button
+                  onClick={handleAddMaterial}
+                  disabled={!newMaterialName.trim()}
+                  className="w-full flex items-center justify-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  새로운 원단 추가하기
+                </Button>
+              </div>
+            </Card>
           </div>
         );
 

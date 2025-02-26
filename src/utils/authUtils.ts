@@ -12,29 +12,25 @@ export const checkUserIdAvailability = async (userId: string) => {
   }
 
   try {
-    const { data } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('user_id', userId)
-      .single();
-
-    if (data) {
-      toast({
-        title: "이미 사용 중인 아이디입니다",
-        variant: "destructive",
-      });
-      return false;
-    } else {
-      toast({
-        title: "사용 가능한 아이디입니다",
-      });
-      return true;
-    }
-  } catch (error) {
-    toast({
-      title: "사용 가능한 아이디입니다",
+    const { data, error } = await supabase.functions.invoke('check-availability', {
+      body: { type: 'userId', value: userId }
     });
-    return true;
+
+    if (error) throw error;
+
+    toast({
+      title: data.message,
+      variant: data.available ? "default" : "destructive",
+    });
+    
+    return data.available;
+  } catch (error) {
+    console.error("UserId check error:", error);
+    toast({
+      title: "아이디 확인 중 오류가 발생했습니다",
+      variant: "destructive",
+    });
+    return null;
   }
 };
 
@@ -48,41 +44,18 @@ export const checkEmailAvailability = async (email: string) => {
   }
 
   try {
-    // 이메일로 프로필 조회
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('username', email)  // 이메일이 username 필드에 저장됨
-      .maybeSingle();
+    const { data, error } = await supabase.functions.invoke('check-availability', {
+      body: { type: 'email', value: email }
+    });
 
-    if (profileError) {
-      console.error("Profile check error:", profileError);
-      throw profileError;
-    }
-
-    if (profile) {
-      toast({
-        title: "이미 등록된 이메일입니다",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user?.email === email) {
-      toast({
-        title: "이미 등록된 이메일입니다",
-        variant: "destructive",
-      });
-      return false;
-    }
+    if (error) throw error;
 
     toast({
-      title: "사용 가능한 이메일입니다",
+      title: data.message,
+      variant: data.available ? "default" : "destructive",
     });
-    return true;
-
+    
+    return data.available;
   } catch (error) {
     console.error("Email check error:", error);
     toast({

@@ -48,13 +48,14 @@ export const checkEmailAvailability = async (email: string) => {
   }
 
   try {
-    const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: "temporary-password-123456",
+    const { data: userList } = await supabase.auth.admin.listUsers({
+      filter: {
+        email: email
+      }
     });
 
     // 이메일이 이미 등록되어 있는 경우
-    if (error?.message.includes("User already registered")) {
+    if (userList && userList.users.length > 0) {
       toast({
         title: "이미 등록된 이메일입니다",
         variant: "destructive",
@@ -62,7 +63,7 @@ export const checkEmailAvailability = async (email: string) => {
       return false;
     }
 
-    // 에러가 없거나 다른 종류의 에러인 경우 이메일 사용 가능
+    // 이메일이 등록되어 있지 않은 경우
     toast({
       title: "사용 가능한 이메일입니다",
     });

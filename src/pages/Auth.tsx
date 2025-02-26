@@ -18,6 +18,7 @@ const Auth = () => {
     isEmailAvailable,
     formData,
     handleChange,
+    handleGenderChange,
     checkUserId,
     checkEmail,
     handleAuth,
@@ -66,6 +67,7 @@ const Auth = () => {
                 <SignUpForm
                   formData={formData}
                   handleChange={handleChange}
+                  handleGenderChange={handleGenderChange}
                   isLoading={isLoading}
                   isIdAvailable={isIdAvailable}
                   isCheckingId={isCheckingId}

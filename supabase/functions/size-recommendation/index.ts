@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
@@ -10,16 +11,16 @@ const corsHeaders = {
 const sizeData = {
   men: {
     recommendedSizes: [
-      { height: "160 ~ 165", size: "XS (90)" },
-      { height: "165 ~ 170", size: "S (95)" },
-      { height: "170 ~ 175", size: "M (100)" },
-      { height: "175 ~ 180", size: "L (105)" },
-      { height: "180 ~ 185", size: "XL (110)" },
-      { height: "185 ~ 190", size: "XXL (115)" },
+      { height: "160 ~ 165", size: "XS" },
+      { height: "165 ~ 170", size: "S" },
+      { height: "170 ~ 175", size: "M" },
+      { height: "175 ~ 180", size: "L" },
+      { height: "180 ~ 185", size: "XL" },
+      { height: "185 ~ 190", size: "XXL" },
     ],
     categories: {
       outer_jacket: {
-        description: "아우터/자켓 (남성)",
+        description: "자켓",
         sizes: {
           XS: { shoulder: 43, chest: 111, waist: 101, sleeve: 83.5, length: 68 },
           S: { shoulder: 44, chest: 116, waist: 106, sleeve: 85, length: 70 },
@@ -29,30 +30,8 @@ const sizeData = {
           XXL: { shoulder: 48, chest: 136, waist: 126, sleeve: 91, length: 78 },
         },
       },
-      shirts: {
-        description: "셔츠 (남성)",
-        sizes: {
-          XS: { neck: 36, chest: 102, waist: 94, sleeve: 82, length: 74 },
-          S: { neck: 37, chest: 107, waist: 99, sleeve: 83.5, length: 76 },
-          M: { neck: 38, chest: 112, waist: 104, sleeve: 85, length: 78 },
-          L: { neck: 39, chest: 117, waist: 109, sleeve: 86.5, length: 80 },
-          XL: { neck: 40, chest: 122, waist: 114, sleeve: 88, length: 82 },
-          XXL: { neck: 41, chest: 127, waist: 119, sleeve: 89.5, length: 84 },
-        },
-      },
-      t_shirts: {
-        description: "티셔츠 (남성)",
-        sizes: {
-          XS: { shoulder: 42, chest: 96, length: 68 },
-          S: { shoulder: 43.5, chest: 101, length: 70 },
-          M: { shoulder: 45, chest: 106, length: 72 },
-          L: { shoulder: 46.5, chest: 111, length: 74 },
-          XL: { shoulder: 48, chest: 116, length: 76 },
-          XXL: { shoulder: 49.5, chest: 121, length: 78 },
-        },
-      },
       long_pants: {
-        description: "긴바지 (남성)",
+        description: "긴바지",
         fits: {
           regular: {
             XS: { waist: 76, hip: 96, thigh: 58, hem: 38, length: 104 },
@@ -64,20 +43,53 @@ const sizeData = {
           },
         },
       },
+      short_sleeve: {
+        description: "반팔 티셔츠",
+        sizes: {
+          XS: { shoulder: 42, chest: 96, length: 68 },
+          S: { shoulder: 43.5, chest: 101, length: 70 },
+          M: { shoulder: 45, chest: 106, length: 72 },
+          L: { shoulder: 46.5, chest: 111, length: 74 },
+          XL: { shoulder: 48, chest: 116, length: 76 },
+          XXL: { shoulder: 49.5, chest: 121, length: 78 },
+        },
+      },
+      long_sleeve_regular: {
+        description: "긴팔 티셔츠",
+        sizes: {
+          XS: { shoulder: 42, chest: 96, sleeve: 58, length: 68 },
+          S: { shoulder: 43.5, chest: 101, sleeve: 59, length: 70 },
+          M: { shoulder: 45, chest: 106, sleeve: 60, length: 72 },
+          L: { shoulder: 46.5, chest: 111, sleeve: 61, length: 74 },
+          XL: { shoulder: 48, chest: 116, sleeve: 62, length: 76 },
+          XXL: { shoulder: 49.5, chest: 121, sleeve: 63, length: 78 },
+        },
+      },
+      sweatshirt_regular: {
+        description: "맨투맨",
+        sizes: {
+          XS: { shoulder: 43, chest: 106, sleeve: 58, length: 65 },
+          S: { shoulder: 44.5, chest: 111, sleeve: 59, length: 67 },
+          M: { shoulder: 46, chest: 116, sleeve: 60, length: 69 },
+          L: { shoulder: 47.5, chest: 121, sleeve: 61, length: 71 },
+          XL: { shoulder: 49, chest: 126, sleeve: 62, length: 73 },
+          XXL: { shoulder: 50.5, chest: 131, sleeve: 63, length: 75 },
+        },
+      },
     },
   },
   women: {
     recommendedSizes: [
-      { height: "150 ~ 155", size: "XS (44)" },
-      { height: "155 ~ 160", size: "S (55)" },
-      { height: "160 ~ 165", size: "M (66)" },
-      { height: "165 ~ 170", size: "L (77)" },
-      { height: "170 ~ 175", size: "XL (88)" },
-      { height: "175 ~ 180", size: "XXL (99)" },
+      { height: "150 ~ 155", size: "XS" },
+      { height: "155 ~ 160", size: "S" },
+      { height: "160 ~ 165", size: "M" },
+      { height: "165 ~ 170", size: "L" },
+      { height: "170 ~ 175", size: "XL" },
+      { height: "175 ~ 180", size: "XXL" },
     ],
     categories: {
       outer_jacket: {
-        description: "아우터/자켓 (여성)",
+        description: "자켓",
         sizes: {
           XS: { shoulder: 37, chest: 86, waist: 76, sleeve: 58, length: 58 },
           S: { shoulder: 38, chest: 91, waist: 81, sleeve: 59, length: 60 },
@@ -87,30 +99,8 @@ const sizeData = {
           XXL: { shoulder: 42, chest: 111, waist: 101, sleeve: 63, length: 68 },
         },
       },
-      shirts: {
-        description: "셔츠 (여성)",
-        sizes: {
-          XS: { neck: 32, chest: 82, waist: 72, sleeve: 57, length: 60 },
-          S: { neck: 33, chest: 87, waist: 77, sleeve: 58, length: 62 },
-          M: { neck: 34, chest: 92, waist: 82, sleeve: 59, length: 64 },
-          L: { neck: 35, chest: 97, waist: 87, sleeve: 60, length: 66 },
-          XL: { neck: 36, chest: 102, waist: 92, sleeve: 61, length: 68 },
-          XXL: { neck: 37, chest: 107, waist: 97, sleeve: 62, length: 70 },
-        },
-      },
-      t_shirts: {
-        description: "티셔츠 (여성)",
-        sizes: {
-          XS: { shoulder: 36, chest: 80, length: 56 },
-          S: { shoulder: 37, chest: 85, length: 58 },
-          M: { shoulder: 38, chest: 90, length: 60 },
-          L: { shoulder: 39, chest: 95, length: 62 },
-          XL: { shoulder: 40, chest: 100, length: 64 },
-          XXL: { shoulder: 41, chest: 105, length: 66 },
-        },
-      },
       long_pants: {
-        description: "긴바지 (여성)",
+        description: "긴바지",
         fits: {
           regular: {
             XS: { waist: 61, hip: 86, thigh: 50, hem: 30, length: 99 },
@@ -122,46 +112,42 @@ const sizeData = {
           },
         },
       },
+      short_sleeve: {
+        description: "반팔 티셔츠",
+        sizes: {
+          XS: { shoulder: 36, chest: 80, length: 56 },
+          S: { shoulder: 37, chest: 85, length: 58 },
+          M: { shoulder: 38, chest: 90, length: 60 },
+          L: { shoulder: 39, chest: 95, length: 62 },
+          XL: { shoulder: 40, chest: 100, length: 64 },
+          XXL: { shoulder: 41, chest: 105, length: 66 },
+        },
+      },
+      long_sleeve_regular: {
+        description: "긴팔 티셔츠",
+        sizes: {
+          XS: { shoulder: 36, chest: 80, sleeve: 57, length: 56 },
+          S: { shoulder: 37, chest: 85, sleeve: 58, length: 58 },
+          M: { shoulder: 38, chest: 90, sleeve: 59, length: 60 },
+          L: { shoulder: 39, chest: 95, sleeve: 60, length: 62 },
+          XL: { shoulder: 40, chest: 100, sleeve: 61, length: 64 },
+          XXL: { shoulder: 41, chest: 105, sleeve: 62, length: 66 },
+        },
+      },
+      sweatshirt_regular: {
+        description: "맨투맨",
+        sizes: {
+          XS: { shoulder: 37, chest: 86, sleeve: 57, length: 55 },
+          S: { shoulder: 38, chest: 91, sleeve: 58, length: 57 },
+          M: { shoulder: 39, chest: 96, sleeve: 59, length: 59 },
+          L: { shoulder: 40, chest: 101, sleeve: 60, length: 61 },
+          XL: { shoulder: 41, chest: 106, sleeve: 61, length: 63 },
+          XXL: { shoulder: 42, chest: 111, sleeve: 62, length: 65 },
+        },
+      },
     },
   },
 };
-
-// 의류 타입에 따른 한글 이름 매핑
-const typeToKorean: Record<string, string> = {
-  outer_jacket: "자켓",
-  short_sleeve: "반팔 티셔츠",
-  long_sleeve_regular: "긴팔 티셔츠",
-  long_sleeve_loose: "루즈핏 긴팔 티셔츠",
-  sweatshirt_regular: "맨투맨",
-  sweatshirt_loose: "루즈핏 맨투맨",
-  shorts: "반바지",
-  long_pants: "긴바지"
-};
-
-// 측정값을 한글 키로 변환하는 함수
-function translateMeasurementsToKorean(measurements: any, type: string): any {
-  const translation: Record<string, string> = {
-    shoulder: "어깨너비",
-    chest: "가슴둘레",
-    bust: "가슴둘레",
-    waist: "허리둘레",
-    sleeve: "소매길이",
-    length: "총장",
-    hip: "엉덩이둘레",
-    thigh: "허벅지둘레",
-    hem: "밑단 너비"
-  };
-
-  const koreanMeasurements: Record<string, number> = {};
-  
-  for (const [key, value] of Object.entries(measurements)) {
-    if (translation[key]) {
-      koreanMeasurements[translation[key]] = value as number;
-    }
-  }
-
-  return koreanMeasurements;
-}
 
 // 키에 맞는 사이즈를 찾는 함수
 function findSizeByHeight(height: number, genderData: any): string | null {
@@ -170,23 +156,7 @@ function findSizeByHeight(height: number, genderData: any): string | null {
     return height >= min && height < max;
   });
   
-  return sizeRange ? sizeRange.size.split(" ")[0] : null;
-}
-
-// 특정 사이즈의 의류 데이터를 추출하는 함수
-function extractSizeData(size: string, genderData: any, type: string) {
-  const category = Object.entries(genderData.categories).find(([key, _]) => key === type);
-  
-  if (!category) return null;
-  
-  const [_, data] = category;
-  
-  if (type === 'long_pants') {
-    // 긴바지의 경우 fits 객체에서 regular fit의 데이터만 사용
-    return translateMeasurementsToKorean(data.fits.regular[size], type);
-  } else {
-    return translateMeasurementsToKorean(data.sizes[size], type);
-  }
+  return sizeRange ? sizeRange.size : null;
 }
 
 serve(async (req) => {
@@ -196,6 +166,7 @@ serve(async (req) => {
 
   try {
     const { gender, height, type } = await req.json()
+    console.log('Received request:', { gender, height, type });
 
     if (!gender || !height || !type) {
       throw new Error('Missing required parameters')
@@ -208,15 +179,32 @@ serve(async (req) => {
       throw new Error('Could not determine appropriate size for given height')
     }
 
-    const sizeTable = extractSizeData(recommendedSize, genderData, type);
+    // 해당 카테고리의 사이즈 데이터 찾기
+    const category = genderData.categories[type];
+    if (!category) {
+      throw new Error(`Invalid type: ${type}`);
+    }
+
+    // 사이즈 데이터 추출
+    let sizeData;
+    if (type === 'long_pants') {
+      sizeData = category.fits.regular[recommendedSize];
+    } else {
+      sizeData = category.sizes[recommendedSize];
+    }
+
+    console.log('Category:', category);
+    console.log('Size data:', sizeData);
 
     const response = {
       성별: gender === 'men' ? '남성' : '여성',
       키: height,
       사이즈: recommendedSize,
-      옷_종류: typeToKorean[type] || type,
-      그에_맞는_사이즈_표: sizeTable
+      옷_종류: category.description,
+      그에_맞는_사이즈_표: sizeData
     };
+
+    console.log('Response:', response);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

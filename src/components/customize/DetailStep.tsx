@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect } from "react";
@@ -8,10 +7,12 @@ interface DetailStepProps {
   selectedStyle: string;
   selectedPocket: string;
   selectedColor: string;
+  selectedFit?: string;  // 새로운 prop 추가
   onDetailInputChange: (value: string) => void;
   onStyleSelect: (value: string) => void;
   onPocketSelect: (value: string) => void;
   onColorSelect: (value: string) => void;
+  onFitSelect?: (value: string) => void;  // 새로운 prop 추가
 }
 
 type StyleOption = {
@@ -51,15 +52,30 @@ const colorOptions: ColorOption[] = [
   { value: "gray", label: "회색", hex: "#808080" },
 ];
 
+// 새로운 핏 옵션 타입과 옵션들 추가
+type FitOption = {
+  value: string;
+  label: string;
+};
+
+const fitOptions: FitOption[] = [
+  { value: "loose", label: "루즈핏" },
+  { value: "regular", label: "레귤러핏" },
+  { value: "slim", label: "슬림핏" },
+  { value: "oversized", label: "오버사이즈" },
+];
+
 export const DetailStep = ({
   detailInput,
   selectedStyle,
   selectedPocket,
   selectedColor,
+  selectedFit = "",  // 기본값 추가
   onDetailInputChange,
   onStyleSelect,
   onPocketSelect,
   onColorSelect,
+  onFitSelect = () => {},  // 기본값 추가
 }: DetailStepProps) => {
   // 선택된 옵션들을 문자열로 변환
   const generateDetailText = () => {
@@ -80,6 +96,11 @@ export const DetailStep = ({
       if (color) details.push(`색상: ${color.label}`);
     }
 
+    if (selectedFit) {
+      const fit = fitOptions.find(f => f.value === selectedFit);
+      if (fit) details.push(`핏: ${fit.label}`);
+    }
+
     return details.join('\n');
   };
 
@@ -90,12 +111,13 @@ export const DetailStep = ({
     const existingCustomText = detailInput.split('\n').filter(line => 
       !line.startsWith('스타일:') && 
       !line.startsWith('포켓:') && 
-      !line.startsWith('색상:')
+      !line.startsWith('색상:') &&
+      !line.startsWith('핏:')
     ).join('\n');
 
     const finalText = [newDetails, existingCustomText].filter(Boolean).join('\n\n');
     onDetailInputChange(finalText.trim());
-  }, [selectedStyle, selectedPocket, selectedColor]);
+  }, [selectedStyle, selectedPocket, selectedColor, selectedFit]);
 
   return (
     <div className="space-y-8">
@@ -117,7 +139,7 @@ export const DetailStep = ({
       </Card>
 
       {/* Detail Options */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Style Selection */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">스타일</h3>
@@ -129,6 +151,23 @@ export const DetailStep = ({
               {styleOptions.map((style) => (
                 <SelectItem key={style.value} value={style.value}>
                   {style.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Card>
+
+        {/* Fit Selection - 새로 추가된 부분 */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">핏</h3>
+          <Select value={selectedFit} onValueChange={onFitSelect}>
+            <SelectTrigger>
+              <SelectValue placeholder="핏 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              {fitOptions.map((fit) => (
+                <SelectItem key={fit.value} value={fit.value}>
+                  {fit.label}
                 </SelectItem>
               ))}
             </SelectContent>

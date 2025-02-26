@@ -16,6 +16,8 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<AuthFormData>>({
     username: "",
+    fullName: "",
+    phoneNumber: "",
     address: "",
     addressDetail: "",
     postcode: "",
@@ -69,6 +71,8 @@ const Profile = () => {
 
         setFormData({
           username: profile.username || "",
+          fullName: profile.full_name || "",
+          phoneNumber: profile.phone_number || "",
           address: baseAddress || "",
           addressDetail: addressDetail || "",
           postcode: postcode || "",
@@ -103,6 +107,8 @@ const Profile = () => {
         .from('profiles')
         .update({
           username: formData.username,
+          full_name: formData.fullName,
+          phone_number: formData.phoneNumber,
           address: fullAddress,
           height: formData.height ? Number(formData.height) : null,
           weight: formData.weight ? Number(formData.weight) : null,
@@ -148,6 +154,28 @@ const Profile = () => {
                   id="username"
                   name="username"
                   value={formData.username}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fullName">이름</Label>
+                <Input
+                  id="fullName"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">전화번호</Label>
+                <Input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
                   onChange={handleChange}
                   required
                 />

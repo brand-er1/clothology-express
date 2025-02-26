@@ -5,10 +5,12 @@ import { Menu, X, ShoppingBag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
+import { useAdmin } from "@/hooks/useAdmin";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,12 +72,14 @@ export const Header = () => {
                 >
                   My Orders
                 </Link>
-                <Link
-                  to="/admin"
-                  className="text-gray-700 hover:text-brand transition-colors"
-                >
-                  Admin
-                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="text-gray-700 hover:text-brand transition-colors"
+                  >
+                    Admin
+                  </Link>
+                )}
               </>
             )}
           </nav>
@@ -139,13 +143,15 @@ export const Header = () => {
                 >
                   My Orders
                 </Link>
-                <Link
-                  to="/admin"
-                  className="text-lg text-gray-700 hover:text-brand transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Admin
-                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="text-lg text-gray-700 hover:text-brand transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Admin
+                  </Link>
+                )}
                 <Button
                   variant="ghost"
                   onClick={() => {

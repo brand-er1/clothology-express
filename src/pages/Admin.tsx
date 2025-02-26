@@ -1,21 +1,38 @@
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const Admin = () => {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAdmin, isLoading: isCheckingAdmin } = useAdmin();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    loadSystemPrompt();
-  }, []);
+    if (!isCheckingAdmin && !isAdmin) {
+      toast({
+        title: "접근 권한이 없습니다",
+        description: "관리자만 접근할 수 있는 페이지입니다.",
+        variant: "destructive",
+      });
+      navigate("/");
+    }
+  }, [isAdmin, isCheckingAdmin, navigate]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadSystemPrompt();
+    }
+  }, [isAdmin]);
 
   const loadSystemPrompt = async () => {
     try {
@@ -70,6 +87,23 @@ const Admin = () => {
       setIsSaving(false);
     }
   };
+
+  if (isCheckingAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="container mx-auto px-4 pt-24 pb-12">
+          <div className="flex items-center justify-center">
+            <p className="text-gray-500">로딩 중...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

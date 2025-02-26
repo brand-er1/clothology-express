@@ -441,15 +441,15 @@ const Customize = () => {
 
       case "image":
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* 이미지 생성 영역 */}
-            <Card className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* 이미지 생성 영역 - 2/3 차지 */}
+            <Card className="p-6 md:col-span-2">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">이미지 생성</h3>
                 <p className="text-sm text-gray-500">
                   선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다.
                 </p>
-                <div className="flex justify-center items-center h-96 bg-gray-100 rounded-lg">
+                <div className="flex justify-center items-center h-[600px] bg-gray-100 rounded-lg">
                   {isLoading ? (
                     <div className="flex flex-col items-center space-y-2">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
@@ -473,7 +473,7 @@ const Customize = () => {
               </div>
             </Card>
 
-            {/* 선택한 옵션 요약 */}
+            {/* 선택한 옵션 요약 - 1/3 차지 */}
             <Card className="p-6">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">선택한 옵션</h3>

@@ -123,12 +123,11 @@ const Customize = () => {
       const newMaterial: Material = {
         id: `custom-${Date.now()}`,
         name: newMaterialName.trim(),
-        description: newMaterialDescription.trim() || "사용자 지정 원단",
+        description: "사용자 지정 원단",
         isCustom: true,
       };
       setMaterials([...materials, newMaterial]);
       setNewMaterialName("");
-      setNewMaterialDescription("");
     }
   };
 
@@ -243,44 +242,27 @@ const Customize = () => {
                   </div>
                 </Card>
               ))}
-            </div>
 
-            {/* Add Custom Material Section */}
-            <Card className="p-6 border-dashed">
-              <h3 className="text-lg font-semibold mb-4">새로운 원단 추가</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    원단 이름
-                  </label>
+              {/* Add Custom Material Card */}
+              <Card className="p-6 border-dashed">
+                <div className="flex items-center space-x-4">
                   <Input
                     value={newMaterialName}
                     onChange={(e) => setNewMaterialName(e.target.value)}
-                    placeholder="원단 이름을 입력하세요"
-                    className="w-full"
+                    placeholder="새로운 원단 이름"
+                    className="flex-1"
                   />
+                  <Button
+                    onClick={handleAddMaterial}
+                    disabled={!newMaterialName.trim()}
+                    size="sm"
+                    className="flex items-center justify-center"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    원단 설명
-                  </label>
-                  <Input
-                    value={newMaterialDescription}
-                    onChange={(e) => setNewMaterialDescription(e.target.value)}
-                    placeholder="원단에 대한 설명을 입력하세요"
-                    className="w-full"
-                  />
-                </div>
-                <Button
-                  onClick={handleAddMaterial}
-                  disabled={!newMaterialName.trim()}
-                  className="w-full flex items-center justify-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  새로운 원단 추가하기
-                </Button>
-              </div>
-            </Card>
+              </Card>
+            </div>
           </div>
         );
 

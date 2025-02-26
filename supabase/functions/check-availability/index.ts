@@ -24,21 +24,22 @@ serve(async (req) => {
     console.log(`Checking ${type} availability for: ${value}`);
     
     if (type === 'email') {
-      // 이메일 중복 체크
-      const { data: profiles, error: profilesError } = await supabaseClient
-        .from('profiles')
-        .select('username')
-        .eq('username', value)
-        .maybeSingle();
+      // 이메일 중복 체크 - auth.users 테이블에서 확인
+      const { data: user, error: userError } = await supabaseClient
+        .auth
+        .admin
+        .listUsers();
 
-      if (profilesError) {
-        throw profilesError;
+      if (userError) {
+        throw userError;
       }
+
+      const emailExists = user.users.some(user => user.email === value);
 
       return new Response(
         JSON.stringify({ 
-          available: !profiles,
-          message: profiles ? "이미 등록된 이메일입니다" : "사용 가능한 이메일입니다"
+          available: !emailExists,
+          message: emailExists ? "이미 등록된 이메일입니다" : "사용 가능한 이메일입니다"
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

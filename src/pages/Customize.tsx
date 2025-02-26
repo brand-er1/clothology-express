@@ -178,9 +178,8 @@ const Customize = () => {
     const style = styleOptions.find(opt => opt.value === value);
     if (style) {
       setSelectedStyle(value);
-      // 스타일 선택 시 기존 텍스트는 유지
-      const lines = detailInput.split('\n').filter(line => !line.startsWith('스타일:'));
-      setDetailInput(lines.join('\n'));
+      const newDetail = `스타일: ${style.label}\n${detailInput}`;
+      setDetailInput(newDetail);
     }
   };
 
@@ -188,9 +187,8 @@ const Customize = () => {
     const pocket = pocketOptions.find(opt => opt.value === value);
     if (pocket) {
       setSelectedPocket(value);
-      // 포켓 선택 시 기존 텍스트는 유지
-      const lines = detailInput.split('\n').filter(line => !line.startsWith('포켓:'));
-      setDetailInput(lines.join('\n'));
+      const newDetail = `포켓: ${pocket.label}\n${detailInput}`;
+      setDetailInput(newDetail);
     }
   };
 
@@ -198,9 +196,8 @@ const Customize = () => {
     const color = colorOptions.find(opt => opt.value === value);
     if (color) {
       setSelectedColor(value);
-      // 색상 선택 시 기존 텍스트는 유지
-      const lines = detailInput.split('\n').filter(line => !line.startsWith('색상:'));
-      setDetailInput(lines.join('\n'));
+      const newDetail = `색상: ${color.label}\n${detailInput}`;
+      setDetailInput(newDetail);
     }
   };
 
@@ -492,50 +489,10 @@ const Customize = () => {
                       {materials.find(material => material.id === selectedMaterial)?.name || "-"}
                     </span>
                   </div>
-                  {selectedStyle && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">스타일:</span>
-                      <span className="font-medium">
-                        {styleOptions.find(style => style.value === selectedStyle)?.label || "-"}
-                      </span>
-                    </div>
-                  )}
-                  {selectedPocket && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">포켓:</span>
-                      <span className="font-medium">
-                        {pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || "-"}
-                      </span>
-                    </div>
-                  )}
-                  {selectedColor && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">색상:</span>
-                      <div className="flex items-center space-x-2">
-                        <div 
-                          className="w-4 h-4 rounded-full border border-gray-200"
-                          style={{ backgroundColor: colorOptions.find(color => color.value === selectedColor)?.hex }}
-                        />
-                        <span className="font-medium">
-                          {colorOptions.find(color => color.value === selectedColor)?.label || "-"}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {/* 사용자가 입력한 추가 디테일만 표시 */}
                   {selectedDetail && selectedDetail.trim() && (
                     <div className="pt-2 border-t">
                       <span className="text-gray-600">추가 디테일:</span>
-                      <p className="mt-1 text-sm whitespace-pre-wrap">
-                        {selectedDetail.split('\n')
-                          .filter(line => 
-                            !line.startsWith('스타일:') && 
-                            !line.startsWith('포켓:') && 
-                            !line.startsWith('색상:') &&
-                            line.trim() // 비어있지 않은 라인만 필터링
-                          )
-                          .join('\n')}
-                      </p>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail}</p>
                     </div>
                   )}
                 </div>

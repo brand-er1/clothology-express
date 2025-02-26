@@ -48,54 +48,31 @@ export const checkEmailAvailability = async (email: string) => {
   }
 
   try {
-    const { data: { users }, error } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: email
-      }
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: "check-email-exists",
     });
 
-    if (error) throw error;
-
-    if (users && users.length > 0) {
+    // 로그인 시도 시 "Invalid login credentials" 에러가 나면 해당 이메일이 존재한다는 의미
+    if (error?.message.includes("Invalid login credentials")) {
       toast({
         title: "이미 등록된 이메일입니다",
         variant: "destructive",
       });
       return false;
-    } else {
-      toast({
-        title: "사용 가능한 이메일입니다",
-      });
-      return true;
     }
+
+    // 'Invalid login credentials' 이외의 에러는 이메일이 없다는 의미
+    toast({
+      title: "사용 가능한 이메일입니다",
+    });
+    return true;
   } catch (error) {
-    // Service role key가 없는 경우 대체 로직 사용
-    try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: "temporary-password-for-check"
-      });
-
-      if (authError?.message.includes("Invalid login credentials")) {
-        // 잘못된 비밀번호로 로그인 시도 시 해당 이메일이 존재한다는 의미
-        toast({
-          title: "이미 등록된 이메일입니다",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      // 다른 에러인 경우 이메일이 없다고 가정
-      toast({
-        title: "사용 가능한 이메일입니다",
-      });
-      return true;
-    } catch (error) {
-      toast({
-        title: "사용 가능한 이메일입니다",
-      });
-      return true;
-    }
+    // 다른 에러가 발생한 경우도 이메일이 없다고 가정
+    toast({
+      title: "사용 가능한 이메일입니다",
+    });
+    return true;
   }
 };
 

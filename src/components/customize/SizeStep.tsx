@@ -4,6 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getAvailableSizes, getMeasurements, getSizeGuide } from "@/lib/size-data";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 interface SizeStepProps {
   selectedSize: string;
@@ -24,9 +27,80 @@ export const SizeStep = ({
 }: SizeStepProps) => {
   const sizes = getAvailableSizes(gender, selectedType);
   const measurements = getSizeGuide(gender, selectedType);
+  const [recommendedSize, setRecommendedSize] = useState<string | null>(null);
+  const [userHeight, setUserHeight] = useState<number | null>(null);
+
+  // 사용자 프로필에서 키 정보 가져오기
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('height')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.height) {
+        setUserHeight(profile.height);
+      }
+    };
+
+    loadUserProfile();
+  }, []);
+
+  // 사이즈 추천 로직
+  const recommendSize = (height: number, type: string): string => {
+    // 상의류 (아우터, 맨투맨, 티셔츠)
+    if (type.includes('아우터') || type.includes('맨투맨') || type.includes('티셔츠')) {
+      if (height < 165) return 'S';
+      if (height < 170) return 'M';
+      if (height < 175) return 'L';
+      if (height < 180) return 'XL';
+      return 'XXL';
+    }
+    // 하의류
+    else if (type.includes('하의')) {
+      if (height < 165) return 'S';
+      if (height < 170) return 'M';
+      if (height < 175) return 'L';
+      if (height < 180) return 'XL';
+      return 'XXL';
+    }
+    return 'M'; // 기본값
+  };
+
+  // 키 정보가 있을 때 사이즈 추천
+  useEffect(() => {
+    if (userHeight) {
+      const recommended = recommendSize(userHeight, selectedType);
+      setRecommendedSize(recommended);
+    }
+  }, [userHeight, selectedType]);
 
   return (
     <div className="space-y-8">
+      {userHeight && recommendedSize && (
+        <Card className="p-6 bg-brand/5 border-brand">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium mb-1">추천 사이즈</h3>
+              <p className="text-sm text-gray-600">
+                키 {userHeight}cm 기준으로 <span className="font-semibold text-brand">{recommendedSize}</span> 사이즈를 추천드립니다.
+              </p>
+            </div>
+            <Button
+              onClick={() => onSizeChange(recommendedSize)}
+              variant="outline"
+              className="border-brand text-brand hover:bg-brand hover:text-white"
+            >
+              추천 사이즈 선택
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {sizes.map((size) => {
           const sizeData = getMeasurements(gender, selectedType, size);
@@ -38,12 +112,15 @@ export const SizeStep = ({
                 selectedSize === size
                   ? "border-brand ring-2 ring-brand/20"
                   : "hover:border-brand/20"
-              }`}
+              } ${recommendedSize === size ? "bg-brand/5" : ""}`}
               onClick={() => onSizeChange(size)}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-bold">{size}</h3>
+                  {recommendedSize === size && (
+                    <span className="text-sm text-brand font-medium">추천</span>
+                  )}
                 </div>
                 <div className="space-y-2">
                   {sizeData && Object.entries(sizeData).map(([label, value]) => (
@@ -96,6 +173,7 @@ export const SizeStep = ({
           <li>사이즈는 측정 방법과 위치에 따라 1~3cm 오차가 있을 수 있습니다.</li>
           <li>맞춤 사이즈 선택 시 측정값의 오차 범위를 고려하여 제작됩니다.</li>
           <li>선택하신 사이즈보다 큰 사이즈가 필요한 경우, 맞춤 사이즈를 선택해주세요.</li>
+          {userHeight && <li>키를 기준으로 한 추천 사이즈는 참고용이며, 체형에 따라 다를 수 있습니다.</li>}
         </ul>
       </Card>
     </div>

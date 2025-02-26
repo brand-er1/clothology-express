@@ -353,20 +353,16 @@ const Customize = () => {
             {/* Detail Input Area */}
             <Card className="p-6">
               <div className="space-y-4">
-                <textarea
-                  value={detailInput}
-                  onChange={(e) => setDetailInput(e.target.value)}
-                  placeholder="디테일을 입력하거나 아래 옵션들을 선택해주세요"
-                  className="w-full h-32 p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-brand/20"
-                />
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleAddDetail}
-                    disabled={!detailInput.trim()}
-                    className="bg-brand hover:bg-brand-dark"
-                  >
-                    디테일 추가
-                  </Button>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">
+                    추가적인 디테일을 더 입력하세요. 아래 옵션들을 선택하거나 직접 입력할 수 있습니다.
+                  </p>
+                  <textarea
+                    value={detailInput}
+                    onChange={(e) => setDetailInput(e.target.value)}
+                    placeholder="추가 디테일을 자유롭게 입력해주세요"
+                    className="w-full h-32 p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-brand/20"
+                  />
                 </div>
               </div>
             </Card>
@@ -458,6 +454,9 @@ const Customize = () => {
 
   const handleNext = () => {
     const currentIndex = steps.indexOf(currentStep);
+    if (currentStep === "detail" && detailInput.trim()) {
+      setSelectedDetail(detailInput); // 디테일 페이지에서 Next 버튼 클릭 시 자동 저장
+    }
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
     }

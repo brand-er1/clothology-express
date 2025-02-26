@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
+import { AddressFields } from "./AddressFields";
+import { OptionalFields } from "./OptionalFields";
 
 interface SignUpFormProps {
   formData: AuthFormData;

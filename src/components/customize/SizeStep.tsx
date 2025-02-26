@@ -1,11 +1,19 @@
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAvailableSizes, getMeasurements, getSizeGuide, recommendSizeByHeight, getBaseSizeByHeight, getDetailedSizeInfo } from "@/lib/size-data";
+import { 
+  getAvailableSizes, 
+  getMeasurements, 
+  getSizeGuide, 
+  recommendSizeByHeight,
+  getBaseSizeByHeight, 
+  getDetailedSizeInfo,
+  type SizeInfo 
+} from "@/lib/size-data";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import { toast } from "@/components/ui/use-toast";
 
 interface SizeStepProps {
   selectedSize: string;
@@ -27,7 +35,7 @@ export const SizeStep = ({
   const [recommendedSize, setRecommendedSize] = useState<string | null>(null);
   const [userHeight, setUserHeight] = useState<number | null>(null);
   const [userGender, setUserGender] = useState<string | null>(null);
-  const [detailedSizeInfo, setDetailedSizeInfo] = useState<any>(null);
+  const [detailedSizeInfo, setDetailedSizeInfo] = useState<SizeInfo | null>(null);
 
   // 사용자 프로필에서 키와 성별 정보 가져오기
   useEffect(() => {

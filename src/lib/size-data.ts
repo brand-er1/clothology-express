@@ -605,6 +605,74 @@ export const sizeData = {
   }
 };
 
+// 사용 가능한 사이즈 목록 가져오기
+export const getAvailableSizes = (gender: string, clothingType: string): string[] => {
+  const genderData = gender === "남성" ? sizeData.men : sizeData.women;
+  
+  for (const range of genderData.heightRanges) {
+    const clothing = range.clothingTypes[clothingType];
+    if (clothing) {
+      return clothing.sizes.map(size => size.size);
+    }
+  }
+  
+  return ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+};
+
+// 선택한 사이즈의 측정값 가져오기
+export const getMeasurements = (gender: string, clothingType: string, size: string): Record<string, number> | null => {
+  const genderData = gender === "남성" ? sizeData.men : sizeData.women;
+  
+  for (const range of genderData.heightRanges) {
+    const clothing = range.clothingTypes[clothingType];
+    if (clothing) {
+      const sizeInfo = clothing.sizes.find(s => s.size === size);
+      return sizeInfo?.measurements || null;
+    }
+  }
+  
+  return null;
+};
+
+// 사이즈 가이드 정보 가져오기
+export const getSizeGuide = (gender: string, clothingType: string): { label: string; unit: string }[] => {
+  const genderData = gender === "남성" ? sizeData.men : sizeData.women;
+  
+  for (const range of genderData.heightRanges) {
+    const clothing = range.clothingTypes[clothingType];
+    if (clothing && clothing.sizes[0]) {
+      return Object.keys(clothing.sizes[0].measurements).map(key => ({
+        label: getKoreanLabel(key),
+        unit: "cm"
+      }));
+    }
+  }
+  
+  return [
+    { label: "총장", unit: "cm" },
+    { label: "어깨 너비", unit: "cm" },
+    { label: "가슴 둘레", unit: "cm" },
+    { label: "밑단 둘레", unit: "cm" }
+  ];
+};
+
+// 키 기반 사이즈 추천
+export const recommendSizeByHeight = (height: number, gender: string, clothingType: string): string => {
+  const genderData = gender === "남성" ? sizeData.men : sizeData.women;
+  
+  for (const range of genderData.heightRanges) {
+    const [min, max] = range.range.split("~").map(Number);
+    if (height >= min && height <= max) {
+      if (range.clothingTypes[clothingType]) {
+        return range.clothingTypes[clothingType].sizes[0].size;
+      }
+      return range.baseSize;
+    }
+  }
+  
+  return "M";
+};
+
 // 성별과 키를 기반으로 기본 사이즈 추천
 export const getBaseSizeByHeight = (gender: string, height: number): string => {
   const genderData = gender === "남성" ? sizeData.men : sizeData.women;

@@ -38,7 +38,6 @@ const Customize = () => {
     setSelectedColor,
     selectedFit,
     setSelectedFit,
-    imageLoading,
     generatedImageUrl,
     selectedSize,
     setSelectedSize,
@@ -135,7 +134,7 @@ const Customize = () => {
 
           {currentStep === 4 && (
             <ImageStep
-              isLoading={imageLoading}
+              isLoading={isLoading}
               generatedImageUrl={generatedImageUrl}
               selectedType={selectedType}
               selectedMaterial={selectedMaterial}
@@ -185,3 +184,4 @@ const Customize = () => {
 };
 
 export default Customize;
+

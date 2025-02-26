@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -26,7 +25,7 @@ export const useCustomizeForm = () => {
   const [selectedPocket, setSelectedPocket] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedFit, setSelectedFit] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
@@ -92,21 +91,28 @@ export const useCustomizeForm = () => {
 
   const handleGenerateImage = async () => {
     try {
-      setIsLoading(true);
-      const imageUrl = await generateImage(
-        selectedType,
-        selectedMaterial,
-        selectedStyle,
-        selectedColor,
-        selectedPocket,
-        selectedDetail,
-        materials
-      );
-      setGeneratedImageUrl(imageUrl);
+      setImageLoading(true);
+      setGeneratedImageUrl(null); // 새로운 이미지 생성 시 기존 이미지 제거
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 임시로 로딩 표시를 위한 지연
+      // 실제 이미지 생성 로직은 주석 처리
+      // const imageUrl = await generateImage(
+      //   selectedType,
+      //   selectedMaterial,
+      //   selectedStyle,
+      //   selectedColor,
+      //   selectedPocket,
+      //   selectedDetail,
+      //   materials
+      // );
+      // setGeneratedImageUrl(imageUrl);
     } catch (err) {
-      // Error is already handled in generateImage
+      toast({
+        title: "이미지 생성 실패",
+        description: "이미지 생성 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      setImageLoading(false);
     }
   };
 
@@ -170,7 +176,7 @@ export const useCustomizeForm = () => {
     setSelectedColor,
     selectedFit,
     setSelectedFit,
-    isLoading,
+    imageLoading,
     generatedImageUrl,
     selectedSize,
     setSelectedSize,

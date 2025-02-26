@@ -28,24 +28,35 @@ export const ImageStep = ({
           <p className="text-sm text-gray-500">
             선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다.
           </p>
-          <div className="flex justify-center items-center h-[600px] bg-gray-100 rounded-lg">
-            {isLoading ? (
-              <div className="flex flex-col items-center space-y-2">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
-                <p className="text-sm text-gray-500">이미지 생성 중...</p>
-              </div>
-            ) : generatedImageUrl ? (
-              <img
-                src={generatedImageUrl}
-                alt="Generated clothing design"
-                className="max-h-full max-w-full object-contain rounded-lg"
-              />
-            ) : (
+          <div className="flex flex-col items-center space-y-4">
+            <div className="flex justify-center items-center h-[600px] w-full bg-gray-100 rounded-lg">
+              {isLoading ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
+                  <p className="text-sm text-gray-500">이미지 생성 중...</p>
+                </div>
+              ) : generatedImageUrl ? (
+                <img
+                  src={generatedImageUrl}
+                  alt="Generated clothing design"
+                  className="max-h-full max-w-full object-contain rounded-lg"
+                />
+              ) : (
+                <Button 
+                  onClick={onGenerateImage}
+                  className="bg-brand hover:bg-brand-dark"
+                >
+                  이미지 생성하기
+                </Button>
+              )}
+            </div>
+            {generatedImageUrl && !isLoading && (
               <Button 
                 onClick={onGenerateImage}
-                className="bg-brand hover:bg-brand-dark"
+                variant="outline"
+                className="w-full max-w-[200px]"
               >
-                이미지 생성하기
+                다시 생성하기
               </Button>
             )}
           </div>

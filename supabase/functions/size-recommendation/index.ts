@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
@@ -168,10 +169,25 @@ serve(async (req) => {
   }
 
   try {
-    const { gender, height } = await req.json()
+    const { 
+      gender, 
+      height,
+      type,
+      detail, // 사용자가 입력한 디테일 정보
+      style,
+      pocket,
+      color,
+      fit,
+      optimizedDetail // GPT가 최적화한 디테일 정보
+    } = await req.json()
 
-    if (!gender || !height) {
+    if (!gender || !height || !type) {
       throw new Error('Missing required parameters')
+    }
+
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured')
     }
 
     const genderData = gender === 'men' ? sizeData.men : sizeData.women
@@ -187,7 +203,64 @@ serve(async (req) => {
       measurements: extractSizeData(recommendedSize, genderData)
     }
 
-    return new Response(JSON.stringify(sizeInfo), {
+    // GPT에게 보낼 프롬프트 구성
+    const prompt = `
+사용자 정보:
+- 성별: ${gender === 'men' ? '남성' : '여성'}
+- 키: ${height}cm
+- 선택한 의류: ${type}
+- 선택한 스타일: ${style || '없음'}
+- 선택한 포켓: ${pocket || '없음'}
+- 선택한 색상: ${color || '없음'}
+- 선택한 핏: ${fit || '없음'}
+
+사용자가 입력한 디테일:
+${detail || '없음'}
+
+GPT 최적화된 디테일:
+${optimizedDetail || '없음'}
+
+키 기준 기본 추천 사이즈: ${recommendedSize} (${sizeInfo.heightRange})
+
+해당 사이즈의 실제 측정값:
+${JSON.stringify(sizeInfo.measurements[type] || sizeInfo.measurements, null, 2)}
+
+위의 모든 정보를 종합적으로 분석하여 다음 형식으로 응답해주세요:
+
+1. 최종 추천 사이즈
+2. 추천 이유 (사용자의 선호도와 디테일을 고려한 설명)
+3. 실제 측정값 상세 설명
+4. 착용시 주의사항
+5. 체형이나 스타일에 따른 추가 조언
+`
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: '당신은 전문 의류 사이즈 추천 AI입니다. 사용자의 체형, 선호도, 스타일을 종합적으로 고려하여 가장 적합한 사이즈를 추천해주세요.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+      }),
+    })
+
+    const data = await response.json()
+    
+    return new Response(JSON.stringify({
+      sizeInfo,
+      gptRecommendation: data.choices[0].message.content
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 

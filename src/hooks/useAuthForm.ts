@@ -27,7 +27,7 @@ export const useAuthForm = () => {
     postcode: "",
     height: "",
     weight: "",
-    usualSize: "",
+    gender: "남성",
   });
   const navigate = useNavigate();
 
@@ -44,6 +44,13 @@ export const useAuthForm = () => {
     if (name === 'email') {
       setIsEmailAvailable(null);
     }
+  };
+
+  const handleGenderChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      gender: value
+    }));
   };
 
   const checkUserId = async () => {
@@ -82,7 +89,7 @@ export const useAuthForm = () => {
               address: fullAddress,
               height: formData.height || null,
               weight: formData.weight || null,
-              usual_size: formData.usualSize || null,
+              gender: formData.gender,
             },
           },
         });
@@ -126,7 +133,7 @@ export const useAuthForm = () => {
       postcode: "",
       height: "",
       weight: "",
-      usualSize: "",
+      gender: "남성",
     });
     setPasswordMatch(true);
     setIsIdAvailable(null);
@@ -142,6 +149,7 @@ export const useAuthForm = () => {
     isEmailAvailable,
     formData,
     handleChange,
+    handleGenderChange,
     checkUserId,
     checkEmail,
     handleAuth,

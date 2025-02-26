@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,7 @@ interface SignUpFormProps {
   checkUserId: () => Promise<void>;
   checkEmail: () => Promise<void>;
   isEmailAvailable: boolean | null;
+  handleGenderChange: (value: string) => void;
 }
 
 export const SignUpForm = ({
@@ -33,6 +33,7 @@ export const SignUpForm = ({
   checkUserId,
   checkEmail,
   isEmailAvailable,
+  handleGenderChange,
 }: SignUpFormProps) => {
   return (
     <>
@@ -141,7 +142,11 @@ export const SignUpForm = ({
         handleChange={handleChange}
         handleAddressSearch={handleAddressSearch}
       />
-      <OptionalFields formData={formData} handleChange={handleChange} />
+      <OptionalFields 
+        formData={formData} 
+        handleChange={handleChange}
+        handleGenderChange={handleGenderChange}
+      />
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "처리 중..." : "회원가입"}
       </Button>

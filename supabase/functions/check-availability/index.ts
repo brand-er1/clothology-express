@@ -19,7 +19,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { type, value } = await req.json();
+    const { type, value: rawValue } = await req.json();
+    const value = rawValue.trim().replace(/\n/g, '');
     console.log(`Checking ${type} availability for: ${value}`);
     
     if (type === 'email') {

@@ -54,8 +54,8 @@ export const SizeStep = ({
 
   // 키, 성별, 옷 종류 정보가 있을 때 사이즈 추천
   useEffect(() => {
-    if (userHeight && userGender) {
-      const recommended = recommendSizeByHeight(userHeight, userGender);
+    if (userHeight && userGender && selectedType) {
+      const recommended = recommendSizeByHeight(userHeight, userGender, selectedType);
       setRecommendedSize(recommended);
     }
   }, [userHeight, selectedType, userGender]);

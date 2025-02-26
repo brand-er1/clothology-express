@@ -1,3 +1,4 @@
+<lov-code>
 type MeasurementData = {
   [key: string]: number;
 };
@@ -10,14 +11,14 @@ type ClothingData = {
   [type: string]: {
     description: string;
     sizes: SizeData;
+    recommendedSizes: Array<{
+      height: string;
+      size: string;
+    }>;
   };
 };
 
 type GenderData = {
-  recommendedSizes: Array<{
-    height: string;
-    size: string;
-  }>;
   categories: ClothingData;
 };
 
@@ -26,18 +27,18 @@ export const sizeData: {
   women: GenderData;
 } = {
   men: {
-    recommendedSizes: [
-      { height: "160 ~ 165", size: "XS (85)" },
-      { height: "165 ~ 170", size: "S (90)" },
-      { height: "170 ~ 175", size: "M (95)" },
-      { height: "175 ~ 180", size: "L (100)" },
-      { height: "180 ~ 185", size: "XL (105)" },
-      { height: "185 ~ 190", size: "XXL (110)" },
-      { height: "190 ~ 195", size: "XXXL (115)" }
-    ],
     categories: {
       outer_jacket: {
         description: "아우터/자켓 (남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { shoulder: 41, chest: 111, waist: 101, sleeve: 82, length: 68 },
           "S": { shoulder: 43, chest: 116, waist: 106, sleeve: 84, length: 70 },
@@ -50,6 +51,15 @@ export const sizeData: {
       },
       short_sleeve: {
         description: "반팔 티셔츠 (레귤러 핏, 남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 42, "chest": 92, "waist": 92, "sleeve": 19, "length": 68 },
           "S": { "shoulder": 44, "chest": 96, "waist": 96, "sleeve": 20, "length": 70 },
@@ -62,6 +72,15 @@ export const sizeData: {
       },
       long_sleeve_regular: {
         description: "긴팔 티셔츠 (레귤러 핏, 남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 42, "chest": 92, "waist": 92, "sleeve": 58, "length": 68 },
           "S": { "shoulder": 44, "chest": 96, "waist": 96, "sleeve": 60, "length": 70 },
@@ -74,6 +93,15 @@ export const sizeData: {
       },
       long_sleeve_loose: {
         description: "긴팔 티셔츠 (루즈 핏, 남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 45, "chest": 100, "waist": 100, "sleeve": 60, "length": 70 },
           "S": { "shoulder": 47, "chest": 104, "waist": 104, "sleeve": 62, "length": 72 },
@@ -86,6 +114,15 @@ export const sizeData: {
       },
       sweatshirt_regular: {
         description: "맨투맨/스웨트셔츠 (레귤러 핏, 남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 44, "chest": 97, "waist": 92, "sleeve": 59, "length": 66 },
           "S": { "shoulder": 46, "chest": 101, "waist": 96, "sleeve": 61, "length": 68 },
@@ -98,6 +135,15 @@ export const sizeData: {
       },
       sweatshirt_loose: {
         description: "맨투맨/스웨트셔츠 (루즈 핏, 남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 48, "chest": 105, "waist": 100, "sleeve": 60, "length": 68 },
           "S": { "shoulder": 50, "chest": 109, "waist": 104, "sleeve": 62, "length": 70 },
@@ -110,6 +156,15 @@ export const sizeData: {
       },
       shorts: {
         description: "반바지 (남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "waist": 73, "length": 42 },
           "S": { "waist": 77, "length": 44 },
@@ -122,6 +177,15 @@ export const sizeData: {
       },
       long_pants: {
         description: "긴바지 (남성)",
+        recommendedSizes: [
+          { height: "~165", size: "XS" },
+          { height: "165~170", size: "S" },
+          { height: "170~175", size: "M" },
+          { height: "175~180", size: "L" },
+          { height: "180~185", size: "XL" },
+          { height: "185~190", size: "XXL" },
+          { height: "190~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "waist": 73, "length_regular": 93, "length_wide": 95, "length_skinny": 91 },
           "S": { "waist": 77, "length_regular": 94, "length_wide": 96, "length_skinny": 92 },
@@ -135,18 +199,18 @@ export const sizeData: {
     }
   },
   women: {
-    recommendedSizes: [
-      { height: "150 ~ 155", size: "XS (44)" },
-      { height: "155 ~ 160", size: "S (55)" },
-      { height: "160 ~ 165", size: "M (66)" },
-      { height: "165 ~ 170", size: "L (77)" },
-      { height: "170 ~ 175", size: "XL (88)" },
-      { height: "175 ~ 180", size: "XXL (99)" },
-      { height: "180 ~ 185", size: "XXXL (110)" }
-    ],
     categories: {
       outer_jacket: {
         description: "아우터/자켓 (여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { shoulder: 37, bust: 85, waist: 75, sleeve: 56, length: 63 },
           "S": { shoulder: 38, bust: 90, waist: 80, sleeve: 58, length: 65 },
@@ -159,6 +223,15 @@ export const sizeData: {
       },
       short_sleeve: {
         description: "반팔 티셔츠 (레귤러 핏, 여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 37, "bust": 85, "waist": 75, "sleeve": 15, "length": 58 },
           "S": { "shoulder": 38, "bust": 90, "waist": 80, "sleeve": 16, "length": 60 },
@@ -171,6 +244,15 @@ export const sizeData: {
       },
       long_sleeve_regular: {
         description: "긴팔 티셔츠 (레귤러 핏, 여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 37, "bust": 85, "waist": 75, "sleeve": 56, "length": 58 },
           "S": { "shoulder": 38, "bust": 90, "waist": 80, "sleeve": 58, "length": 60 },
@@ -183,6 +265,15 @@ export const sizeData: {
       },
       long_sleeve_loose: {
         description: "긴팔 티셔츠 (루즈 핏, 여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 40, "bust": 93, "waist": 88, "sleeve": 58, "length": 60 },
           "S": { "shoulder": 41, "bust": 98, "waist": 93, "sleeve": 60, "length": 62 },
@@ -195,6 +286,15 @@ export const sizeData: {
       },
       sweatshirt_regular: {
         description: "맨투맨/스웨트셔츠 (레귤러 핏, 여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 39, "bust": 90, "waist": 85, "sleeve": 57, "length": 56 },
           "S": { "shoulder": 40, "bust": 95, "waist": 90, "sleeve": 59, "length": 58 },
@@ -207,6 +307,15 @@ export const sizeData: {
       },
       sweatshirt_loose: {
         description: "맨투맨/스웨트셔츠 (루즈 핏, 여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "shoulder": 43, "bust": 98, "waist": 93, "sleeve": 58, "length": 58 },
           "S": { "shoulder": 44, "bust": 103, "waist": 98, "sleeve": 60, "length": 60 },
@@ -219,6 +328,15 @@ export const sizeData: {
       },
       shorts: {
         description: "반바지 (여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "waist": 61, "length": 30 },
           "S": { "waist": 66, "length": 32 },
@@ -231,6 +349,15 @@ export const sizeData: {
       },
       long_pants: {
         description: "긴바지 (여성)",
+        recommendedSizes: [
+          { height: "~155", size: "XS" },
+          { height: "155~160", size: "S" },
+          { height: "160~165", size: "M" },
+          { height: "165~170", size: "L" },
+          { height: "170~175", size: "XL" },
+          { height: "175~180", size: "XXL" },
+          { height: "180~", size: "XXXL" }
+        ],
         sizes: {
           "XS": { "waist": 61, "length_regular": 92, "length_wide": 94, "length_skinny": 90 },
           "S": { "waist": 66, "length_regular": 94, "length_wide": 96, "length_skinny": 92 },
@@ -298,35 +425,4 @@ const getKoreanLabel = (key: string): string => {
     length: "총장",
     length_regular: "기장 (레귤러)",
     length_wide: "기장 (와이드)",
-    length_skinny: "기장 (스키니)"
-  };
-  return labels[key] || key;
-};
-
-// 카테고리 키 매핑
-const getCategoryKey = (type: string): string => {
-  const categoryMap: Record<string, string> = {
-    "아우터": "outer_jacket",
-    "티셔츠 레귤러핏": "short_sleeve",
-    "티셔츠 루즈핏": "long_sleeve_loose",
-    "맨투맨 레귤러핏": "sweatshirt_regular",
-    "맨투맨 루즈핏": "sweatshirt_loose",
-    "하의": "long_pants"
-  };
-  return categoryMap[type] || "outer_jacket";
-};
-
-// 키를 기반으로 사이즈 추천
-export const recommendSizeByHeight = (height: number, gender: string): string => {
-  const genderKey = gender === "남성" ? "men" : "women";
-  const recommendations = sizeData[genderKey].recommendedSizes;
-  
-  for (const rec of recommendations) {
-    const [min, max] = rec.height.split(" ~ ").map(h => parseInt(h));
-    if (height >= min && height <= max) {
-      return rec.size.split(" ")[0]; // XS, S, M, L, XL, XXL, XXXL만 반환
-    }
-  }
-  
-  return "M"; // 기본값
-};
+    length_skinny: "기장 (스키니

@@ -178,8 +178,9 @@ const Customize = () => {
     const style = styleOptions.find(opt => opt.value === value);
     if (style) {
       setSelectedStyle(value);
+      // 스타일 선택 시 기존 텍스트는 유지
       const lines = detailInput.split('\n').filter(line => !line.startsWith('스타일:'));
-      setDetailInput([...lines].join('\n'));
+      setDetailInput(lines.join('\n'));
     }
   };
 
@@ -187,8 +188,9 @@ const Customize = () => {
     const pocket = pocketOptions.find(opt => opt.value === value);
     if (pocket) {
       setSelectedPocket(value);
+      // 포켓 선택 시 기존 텍스트는 유지
       const lines = detailInput.split('\n').filter(line => !line.startsWith('포켓:'));
-      setDetailInput([...lines].join('\n'));
+      setDetailInput(lines.join('\n'));
     }
   };
 
@@ -196,8 +198,9 @@ const Customize = () => {
     const color = colorOptions.find(opt => opt.value === value);
     if (color) {
       setSelectedColor(value);
+      // 색상 선택 시 기존 텍스트는 유지
       const lines = detailInput.split('\n').filter(line => !line.startsWith('색상:'));
-      setDetailInput([...lines].join('\n'));
+      setDetailInput(lines.join('\n'));
     }
   };
 
@@ -519,10 +522,20 @@ const Customize = () => {
                       </div>
                     </div>
                   )}
-                  {selectedDetail && selectedDetail.trim() !== "" && !selectedDetail.startsWith('스타일:') && !selectedDetail.startsWith('포켓:') && !selectedDetail.startsWith('색상:') && (
+                  {/* 사용자가 입력한 추가 디테일만 표시 */}
+                  {selectedDetail && selectedDetail.trim() && (
                     <div className="pt-2 border-t">
                       <span className="text-gray-600">추가 디테일:</span>
-                      <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail}</p>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">
+                        {selectedDetail.split('\n')
+                          .filter(line => 
+                            !line.startsWith('스타일:') && 
+                            !line.startsWith('포켓:') && 
+                            !line.startsWith('색상:') &&
+                            line.trim() // 비어있지 않은 라인만 필터링
+                          )
+                          .join('\n')}
+                      </p>
                     </div>
                   )}
                 </div>

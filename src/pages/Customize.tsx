@@ -565,14 +565,18 @@ const Customize = () => {
           negative_prompt: "low quality, bad quality",
           num_inference_steps: 50,
         }
-      });
+      }) as { images?: { url: string }[] };
 
-      if (result.images?.[0]?.url) {
+      if (result?.images?.[0]?.url) {
         setGeneratedImageUrl(result.images[0].url);
       }
-    } catch (error) {
-      console.error("Image generation failed:", error);
-      toast.error("이미지 생성에 실패했습니다. 다시 시도해주세요.");
+    } catch (err) {
+      console.error("Image generation failed:", err);
+      toast({
+        title: "오류",
+        description: "이미지 생성에 실패했습니다. 다시 시도해주세요.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -580,8 +584,8 @@ const Customize = () => {
 
   const handleNext = () => {
     const currentIndex = steps.indexOf(currentStep);
-    if (currentStep === "detail" && detailInput.trim()) {
-      setSelectedDetail(detailInput); // 디테일 페이지에서 Next 버튼 클릭 시 자동 저장
+    if (currentStep === "detail") {
+      setSelectedDetail(detailInput); // 항상 현재 detailInput을 저장
     }
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
@@ -651,8 +655,8 @@ const Customize = () => {
               onClick={handleNext}
               disabled={
                 (currentStep === "type" && !selectedType) ||
-                (currentStep === "material" && !selectedMaterial) ||
-                (currentStep === "detail" && !selectedDetail)
+                (currentStep === "material" && !selectedMaterial)
+                // detail 스텝에서는 항상 활성화
               }
               className="flex items-center bg-brand hover:bg-brand-dark"
             >

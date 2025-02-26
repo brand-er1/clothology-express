@@ -80,6 +80,14 @@ export const useAuthForm = () => {
           formData.weight
         );
         
+        // Height와 Weight 값이 유효한 숫자인지 확인
+        const height = parseFloat(formData.height);
+        const weight = parseFloat(formData.weight);
+        
+        if (isNaN(height) || isNaN(weight)) {
+          throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
+        }
+
         const fullAddress = formData.addressDetail 
           ? `${formData.address} ${formData.addressDetail} (${formData.postcode})`
           : `${formData.address} (${formData.postcode})`;
@@ -94,8 +102,8 @@ export const useAuthForm = () => {
               full_name: formData.fullName,
               phone_number: formData.phoneNumber,
               address: fullAddress,
-              height: Number(formData.height),
-              weight: Number(formData.weight),
+              height: height,
+              weight: weight,
               gender: formData.gender,
             },
           },

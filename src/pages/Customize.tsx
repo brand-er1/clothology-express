@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import { DetailStep } from "@/components/customize/DetailStep";
 import { ImageStep } from "@/components/customize/ImageStep";
 import { SizeStep } from "@/components/customize/SizeStep";
 import { supabase } from "@/lib/supabase";
-import { useNavigate } from "react-router-dom";
 import { 
   clothTypes, 
   styleOptions, 
@@ -20,7 +20,6 @@ import {
 const TOTAL_STEPS = 5;
 
 const Customize = () => {
-  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedType, setSelectedType] = useState("");
   const [selectedMaterial, setSelectedMaterial] = useState("");
@@ -56,70 +55,10 @@ const Customize = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
 
-  const handleCreateOrder = async () => {
-    try {
-      setIsLoading(true);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "로그인 필요",
-          description: "주문하기 전에 로그인해주세요.",
-          variant: "destructive",
-        });
-        navigate("/auth");
-        return;
-      }
-
-      const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name;
-      const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name;
-      const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
-      const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
-      const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
-
-      const { error } = await supabase.from('orders').insert({
-        user_id: user.id,
-        cloth_type: selectedClothType,
-        material: selectedMaterialName,
-        style: selectedStyleName,
-        pocket_type: selectedPocketName,
-        color: selectedColorName,
-        detail_description: selectedDetail,
-        size: selectedSize,
-        measurements: selectedSize === 'custom' ? customMeasurements : null,
-        generated_image_url: generatedImageUrl,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "주문 완료",
-        description: "주문이 성공적으로 접수되었습니다.",
-      });
-      
-      navigate("/orders");
-    } catch (err) {
-      console.error("Order creation failed:", err);
-      toast({
-        title: "주문 실패",
-        description: "주문 생성 중 오류가 발생했습니다. 다시 시도해주세요.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleNext = () => {
     if (!validateCurrentStep()) {
       return;
     }
-
-    if (currentStep === TOTAL_STEPS) {
-      handleCreateOrder();
-      return;
-    }
-
     setCurrentStep(prev => prev + 1);
   };
 
@@ -299,8 +238,6 @@ const Customize = () => {
                   }));
                 }
               }}
-              selectedType={selectedType}
-              gender="남성" // TODO: 사용자의 성별에 따라 동적으로 변경
             />
           )}
 

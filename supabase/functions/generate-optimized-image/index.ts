@@ -31,8 +31,10 @@ serve(async (req) => {
 
   try {
     const { prompt } = await req.json();
+    console.log("Received prompt:", prompt);
 
     // 1단계: OpenAI를 통한 프롬프트 최적화
+    console.log("Optimizing prompt with OpenAI...");
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -52,8 +54,10 @@ serve(async (req) => {
 
     const openaiData = await openaiResponse.json();
     const optimizedPrompt = openaiData.choices[0].message.content;
+    console.log("Optimized prompt:", optimizedPrompt);
 
     // 2단계: Replicate를 통한 이미지 생성
+    console.log("Generating image with Replicate...");
     const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -69,7 +73,6 @@ serve(async (req) => {
           num_outputs: 1,
           aspect_ratio: "1:1",
           output_format: "webp",
-          guidance_scale: 3.5,
           output_quality: 80,
           prompt_strength: 0.8,
           num_inference_steps: 28
@@ -78,6 +81,7 @@ serve(async (req) => {
     });
 
     let prediction = await replicateResponse.json();
+    console.log("Initial prediction:", prediction);
 
     // Replicate는 비동기로 작업을 처리하므로, 결과가 나올 때까지 폴링
     while (
@@ -91,9 +95,11 @@ serve(async (req) => {
         },
       });
       prediction = await response.json();
+      console.log("Polling prediction status:", prediction.status);
     }
 
     if (prediction.status === "succeeded") {
+      console.log("Image generation succeeded:", prediction.output);
       return new Response(
         JSON.stringify({
           optimizedPrompt,
@@ -104,6 +110,7 @@ serve(async (req) => {
         },
       );
     } else {
+      console.error("Image generation failed:", prediction);
       throw new Error("Image generation failed");
     }
 
@@ -118,3 +125,4 @@ serve(async (req) => {
     );
   }
 });
+

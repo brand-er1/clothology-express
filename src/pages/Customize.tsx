@@ -155,6 +155,7 @@ const steps: Step[] = ["type", "material", "detail", "image", "size"];
 
 import * as fal from '@fal-ai/serverless-client';
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 
 fal.config({
   credentials: "fal_key_..." // NOTE: fal.ai API 키가 필요합니다
@@ -520,27 +521,28 @@ const Customize = () => {
       setIsLoading(true);
       
       // 선택된 옵션들을 하나의 프롬프트로 조합
-      const prompt = `${
-        clothTypes.find(type => type.id === selectedType)?.name || ""
-      } ${
-        materials.find(material => material.id === selectedMaterial)?.name || ""
-      } ${selectedDetail || ""}`;
+      const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
+      const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name || "";
+      
+      const prompt = `${selectedClothType} made of ${selectedMaterialName}. ${selectedDetail || ""}`.trim();
 
-      const response = await fetch('/api/generate-optimized-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
+      const { data, error } = await supabase.functions.invoke('generate-optimized-image', {
+        body: { prompt }
       });
 
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
+      if (error) {
+        throw new Error(error.message);
       }
 
-      setGeneratedImageUrl(data.imageUrl);
+      if (data.imageUrl) {
+        setGeneratedImageUrl(data.imageUrl);
+        toast({
+          title: "이미지 생성 완료",
+          description: "AI가 생성한 이미지가 준비되었습니다.",
+        });
+      } else {
+        throw new Error("이미지 생성에 실패했습니다");
+      }
       
     } catch (err) {
       console.error("Image generation failed:", err);

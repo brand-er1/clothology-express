@@ -124,16 +124,6 @@ export const useCustomizeForm = () => {
           return false;
         }
         break;
-      case 3:
-        if (!selectedStyle || !selectedPocket || !selectedColor) {
-          toast({
-            title: "옵션 선택 필요",
-            description: "스타일, 포켓, 색상을 모두 선택해주세요.",
-            variant: "destructive",
-          });
-          return false;
-        }
-        break;
       case 4:
         if (!generatedImageUrl) {
           toast({
@@ -177,17 +167,19 @@ export const useCustomizeForm = () => {
       
       const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
       const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name || "";
-      const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label || "";
-      const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || "";
-      const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label || "";
+      
+      // 선택된 옵션들만 프롬프트에 포함
+      const optionalDetails = [
+        selectedStyle && `Style: ${styleOptions.find(style => style.value === selectedStyle)?.label}`,
+        selectedColor && `Color: ${colorOptions.find(color => color.value === selectedColor)?.label}`,
+        selectedPocket && `Pockets: ${pocketOptions.find(pocket => pocket.value === selectedPocket)?.label}`,
+        selectedDetail && `Additional details: ${selectedDetail}`
+      ].filter(Boolean).join('\n');
       
       const prompt = `
         Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.
         Material: ${selectedMaterialName}
-        Style: ${selectedStyleName}
-        Color: ${selectedColorName}
-        Pockets: ${selectedPocketName}
-        Additional details: ${selectedDetail || "none"}
+        ${optionalDetails}
       `.trim();
 
       const { data, error } = await supabase.functions.invoke('generate-optimized-image', {

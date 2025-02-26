@@ -1,9 +1,12 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, ArrowLeft, Shirt, Scissors, Plus } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 import {
   Select,
   SelectContent,

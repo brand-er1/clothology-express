@@ -224,7 +224,7 @@ const Auth = () => {
             .from('profiles')
             .select('email')
             .eq('user_id', formData.email)
-            .single();
+            .maybeSingle();
           
           if (!userData) {
             throw new Error("존재하지 않는 아이디입니다.");

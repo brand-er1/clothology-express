@@ -108,6 +108,7 @@ const Customize = () => {
   const [selectedType, setSelectedType] = useState<"tops" | "bottoms">("tops");
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
+  const [currentStep, setCurrentStep] = useState(1);
 
   const handleSizeChange = (sizeId: string) => {
     setSelectedSize(sizeId);
@@ -141,12 +142,11 @@ const Customize = () => {
       });
       return;
     }
-    
-    // TODO: 다음 단계로 진행하는 로직 구현
-    toast({
-      title: "사이즈 저장 완료",
-      description: "선택하신 사이즈가 저장되었습니다.",
-    });
+    setCurrentStep(prev => prev + 1);
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => prev - 1);
   };
 
   return (
@@ -154,109 +154,164 @@ const Customize = () => {
       <Header />
       <main className="container mx-auto px-4 pt-24 pb-12">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-center mb-8">
-            옷 사이즈 선택
-          </h1>
-
-          {/* 옷 종류 선택 */}
+          {/* 단계 표시 */}
           <div className="mb-8">
-            <div className="flex justify-center gap-4">
-              <Button
-                variant={selectedType === "tops" ? "default" : "outline"}
-                onClick={() => setSelectedType("tops")}
-              >
-                상의
-              </Button>
-              <Button
-                variant={selectedType === "bottoms" ? "default" : "outline"}
-                onClick={() => setSelectedType("bottoms")}
-              >
-                하의
-              </Button>
+            <div className="flex justify-center items-center gap-4">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    step === currentStep
+                      ? "bg-brand text-white"
+                      : step < currentStep
+                      ? "bg-green-500 text-white"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {step}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* 사이즈 선택 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {(selectedType === "tops" ? topSizes : bottomSizes).map((size) => (
-              <Card
-                key={size.id}
-                className={`p-6 cursor-pointer transition-all ${
-                  selectedSize === size.id
-                    ? "border-brand ring-2 ring-brand/20"
-                    : "hover:border-brand/20"
-                }`}
-                onClick={() => handleSizeChange(size.id)}
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold">{size.name}</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {size.measurements.map((measurement) => (
-                      <div key={measurement.label} className="flex justify-between text-sm">
-                        <span className="text-gray-600">{measurement.label}</span>
-                        <span>
-                          {measurement.min}~{measurement.max}{measurement.unit}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            ))}
+          {currentStep === 1 && (
+            <>
+              <h1 className="text-3xl font-bold text-center mb-8">
+                옷 사이즈 선택
+              </h1>
 
-            {/* 맞춤 사이즈 카드 */}
-            <Card 
-              className={`p-6 cursor-pointer transition-all border-dashed hover:border-brand/20 ${
-                selectedSize === "custom"
-                  ? "border-brand ring-2 ring-brand/20"
-                  : ""
-              }`}
-              onClick={() => handleSizeChange("custom")}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-bold">맞춤 사이즈</h3>
-                </div>
-                <div className="space-y-4">
-                  {(selectedType === "tops" ? topSizes[0] : bottomSizes[0]).measurements.map((measurement) => (
-                    <div key={measurement.label} className="space-y-2">
-                      <Label htmlFor={measurement.label}>{measurement.label} ({measurement.unit})</Label>
-                      <Input
-                        id={measurement.label}
-                        type="number"
-                        min={measurement.min - 5}
-                        max={measurement.max + 5}
-                        value={customMeasurements[measurement.label] || ""}
-                        onChange={(e) => handleCustomMeasurementChange(measurement.label, e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-                  ))}
+              {/* 옷 종류 선택 */}
+              <div className="mb-8">
+                <div className="flex justify-center gap-4">
+                  <Button
+                    variant={selectedType === "tops" ? "default" : "outline"}
+                    onClick={() => setSelectedType("tops")}
+                  >
+                    상의
+                  </Button>
+                  <Button
+                    variant={selectedType === "bottoms" ? "default" : "outline"}
+                    onClick={() => setSelectedType("bottoms")}
+                  >
+                    하의
+                  </Button>
                 </div>
               </div>
-            </Card>
-          </div>
 
-          {/* 사이즈 안내 */}
-          <Card className="p-6 mb-8">
-            <h4 className="font-medium mb-4">사이즈 안내</h4>
-            <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
-              <li>사이즈는 측정 방법과 위치에 따라 1~3cm 오차가 있을 수 있습니다.</li>
-              <li>맞춤 사이즈 선택 시 측정값의 오차 범위를 고려하여 제작됩니다.</li>
-              <li>선택하신 사이즈보다 큰 사이즈가 필요한 경우, 맞춤 사이즈를 선택해주세요.</li>
-            </ul>
-          </Card>
+              {/* 사이즈 선택 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {(selectedType === "tops" ? topSizes : bottomSizes).map((size) => (
+                  <Card
+                    key={size.id}
+                    className={`p-6 cursor-pointer transition-all ${
+                      selectedSize === size.id
+                        ? "border-brand ring-2 ring-brand/20"
+                        : "hover:border-brand/20"
+                    }`}
+                    onClick={() => handleSizeChange(size.id)}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-bold">{size.name}</h3>
+                      </div>
+                      <div className="space-y-2">
+                        {size.measurements.map((measurement) => (
+                          <div key={measurement.label} className="flex justify-between text-sm">
+                            <span className="text-gray-600">{measurement.label}</span>
+                            <span>
+                              {measurement.min}~{measurement.max}{measurement.unit}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+
+                {/* 맞춤 사이즈 카드 */}
+                <Card 
+                  className={`p-6 cursor-pointer transition-all border-dashed hover:border-brand/20 ${
+                    selectedSize === "custom"
+                      ? "border-brand ring-2 ring-brand/20"
+                      : ""
+                  }`}
+                  onClick={() => handleSizeChange("custom")}
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-2xl font-bold">맞춤 사이즈</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {(selectedType === "tops" ? topSizes[0] : bottomSizes[0]).measurements.map((measurement) => (
+                        <div key={measurement.label} className="space-y-2">
+                          <Label htmlFor={measurement.label}>{measurement.label} ({measurement.unit})</Label>
+                          <Input
+                            id={measurement.label}
+                            type="number"
+                            min={measurement.min - 5}
+                            max={measurement.max + 5}
+                            value={customMeasurements[measurement.label] || ""}
+                            onChange={(e) => handleCustomMeasurementChange(measurement.label, e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* 사이즈 안내 */}
+              <Card className="p-6 mb-8">
+                <h4 className="font-medium mb-4">사이즈 안내</h4>
+                <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
+                  <li>사이즈는 측정 방법과 위치에 따라 1~3cm 오차가 있을 수 있습니다.</li>
+                  <li>맞춤 사이즈 선택 시 측정값의 오차 범위를 고려하여 제작됩니다.</li>
+                  <li>선택하신 사이즈보다 큰 사이즈가 필요한 경우, 맞춤 사이즈를 선택해주세요.</li>
+                </ul>
+              </Card>
+            </>
+          )}
+
+          {currentStep === 2 && (
+            <>
+              <h1 className="text-3xl font-bold text-center mb-8">
+                디자인 선택 (Coming Soon)
+              </h1>
+              <div className="text-center text-gray-600">
+                곧 준비될 예정입니다.
+              </div>
+            </>
+          )}
+
+          {currentStep === 3 && (
+            <>
+              <h1 className="text-3xl font-bold text-center mb-8">
+                주문 확인 (Coming Soon)
+              </h1>
+              <div className="text-center text-gray-600">
+                곧 준비될 예정입니다.
+              </div>
+            </>
+          )}
 
           {/* 하단 버튼 */}
-          <div className="flex justify-end">
+          <div className="flex justify-between">
+            {currentStep > 1 && (
+              <Button
+                variant="outline"
+                onClick={handleBack}
+              >
+                이전
+              </Button>
+            )}
+            <div className="flex-1" />
             <Button
               onClick={handleNext}
               className="bg-brand hover:bg-brand-dark"
-              disabled={!selectedSize}
+              disabled={currentStep === 1 && !selectedSize}
             >
-              선택 완료
+              {currentStep === 3 ? "주문하기" : "다음"}
             </Button>
           </div>
         </div>

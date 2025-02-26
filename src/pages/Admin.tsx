@@ -2,20 +2,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAdmin } from "@/hooks/useAdmin";
+import { SystemPromptEditor } from "@/components/admin/SystemPromptEditor";
+import { OrderList } from "@/components/admin/OrderList";
+import { OrderReviewDialog } from "@/components/admin/OrderReviewDialog";
+import { type Order } from "@/types/order";
 
 const Admin = () => {
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const { isAdmin, isLoading: isCheckingAdmin } = useAdmin();
   const navigate = useNavigate();
+  
+  // 주문 관리 상태
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isCheckingAdmin && !isAdmin) {
@@ -31,8 +36,28 @@ const Admin = () => {
   useEffect(() => {
     if (isAdmin) {
       loadSystemPrompt();
+      loadOrders();
     }
   }, [isAdmin]);
+
+  const loadOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      toast({
+        title: "오류",
+        description: "주문 목록을 불러오는데 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadSystemPrompt = async () => {
     try {
@@ -60,27 +85,64 @@ const Admin = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveSystemPrompt = async (newPrompt: string) => {
     try {
       setIsSaving(true);
       
       const { error } = await supabase.functions.invoke('update-system-prompt', {
-        body: { systemPrompt }
+        body: { systemPrompt: newPrompt }
       });
 
       if (error) throw error;
 
+      setSystemPrompt(newPrompt);
       toast({
         title: "저장 완료",
         description: "시스템 프롬프트가 업데이트되었습니다.",
       });
-      
-      setIsEditing(false);
     } catch (error) {
       console.error('Error saving system prompt:', error);
       toast({
         title: "오류",
         description: "시스템 프롬프트 저장에 실패했습니다.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (status: 'approved' | 'rejected', comment: string) => {
+    if (!selectedOrder) return;
+
+    try {
+      setIsSaving(true);
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status,
+          admin_comment: comment,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+        })
+        .eq('id', selectedOrder.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "상태 업데이트 완료",
+        description: `주문이 ${status === 'approved' ? '승인' : '거부'}되었습니다.`,
+      });
+
+      setIsReviewDialogOpen(false);
+      loadOrders();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "오류",
+        description: "주문 상태 업데이트에 실패했습니다.",
         variant: "destructive",
       });
     } finally {
@@ -109,50 +171,30 @@ const Admin = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <main className="container mx-auto px-4 pt-24 pb-12">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">관리자 설정</h1>
           
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">이미지 생성 시스템 프롬프트</h2>
-            <div className="space-y-4">
-              {isLoading ? (
-                <div className="h-[300px] flex items-center justify-center">
-                  <p className="text-gray-500">로딩 중...</p>
-                </div>
-              ) : (
-                <Textarea
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  disabled={!isEditing}
-                  className="min-h-[300px] font-mono text-sm"
-                />
-              )}
-              
-              <div className="flex justify-end gap-4">
-                {!isEditing ? (
-                  <Button onClick={() => setIsEditing(true)} disabled={isLoading}>
-                    수정하기
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsEditing(false)}
-                      disabled={isSaving}
-                    >
-                      취소
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "저장 중..." : "저장하기"}
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </Card>
+          <SystemPromptEditor
+            systemPrompt={systemPrompt}
+            isLoading={isLoading}
+            onSave={handleSaveSystemPrompt}
+          />
+
+          <OrderList
+            orders={orders}
+            onReviewOrder={(order) => {
+              setSelectedOrder(order);
+              setIsReviewDialogOpen(true);
+            }}
+          />
+
+          <OrderReviewDialog
+            order={selectedOrder}
+            isOpen={isReviewDialogOpen}
+            isSaving={isSaving}
+            onOpenChange={setIsReviewDialogOpen}
+            onUpdateStatus={handleUpdateOrderStatus}
+          />
         </div>
       </main>
     </div>

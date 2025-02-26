@@ -20,7 +20,14 @@ type Material = {
   isCustom?: boolean;
 };
 
-type Step = "type" | "material" | "style" | "size";
+type Detail = {
+  id: string;
+  name: string;
+  description: string;
+  isCustom?: boolean;
+};
+
+type Step = "type" | "material" | "detail" | "image" | "size";
 
 const clothTypes: ClothType[] = [
   // Tops
@@ -100,34 +107,44 @@ const defaultMaterials: Material[] = [
   },
 ];
 
-const styles = [
-  { id: "casual", name: "Casual", description: "Perfect for everyday wear" },
-  { id: "formal", name: "Formal", description: "Elegant and sophisticated" },
-  { id: "business", name: "Business", description: "Professional attire" },
-  { id: "vintage", name: "Vintage", description: "Classic and timeless" },
+const defaultDetails: Detail[] = [
+  { 
+    id: "basic", 
+    name: "기본형", 
+    description: "심플하고 깔끔한 기본 디자인" 
+  },
+  { 
+    id: "pocket", 
+    name: "포켓 디테일", 
+    description: "실용적인 포켓이 있는 디자인" 
+  },
+  { 
+    id: "stitch", 
+    name: "스티치 장식", 
+    description: "디자인 스티치가 포인트인 디테일" 
+  },
 ];
 
 const Customize = () => {
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedMaterial, setSelectedMaterial] = useState<string>("");
-  const [selectedStyle, setSelectedStyle] = useState<string>("");
-  const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
-  const [newMaterialName, setNewMaterialName] = useState("");
-  const [newMaterialDescription, setNewMaterialDescription] = useState("");
+  const [selectedDetail, setSelectedDetail] = useState<string>("");
+  const [details, setDetails] = useState<Detail[]>(defaultDetails);
+  const [newDetailName, setNewDetailName] = useState("");
 
-  const steps: Step[] = ["type", "material", "style", "size"];
+  const steps: Step[] = ["type", "material", "detail", "image", "size"];
 
-  const handleAddMaterial = () => {
-    if (newMaterialName.trim()) {
-      const newMaterial: Material = {
+  const handleAddDetail = () => {
+    if (newDetailName.trim()) {
+      const newDetail: Detail = {
         id: `custom-${Date.now()}`,
-        name: newMaterialName.trim(),
-        description: "사용자 지정 원단",
+        name: newDetailName.trim(),
+        description: "사용자 지정 디테일",
         isCustom: true,
       };
-      setMaterials([...materials, newMaterial]);
-      setNewMaterialName("");
+      setDetails([...details, newDetail]);
+      setNewDetailName("");
     }
   };
 
@@ -266,25 +283,56 @@ const Customize = () => {
           </div>
         );
 
-      case "style":
+      case "detail":
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {styles.map((style) => (
-              <Card
-                key={style.id}
-                className={`p-6 cursor-pointer transition-all ${
-                  selectedStyle === style.id
-                    ? "border-brand ring-2 ring-brand/20"
-                    : "hover:border-brand/20"
-                }`}
-                onClick={() => setSelectedStyle(style.id)}
-              >
-                <div className="flex flex-col space-y-2">
-                  <h3 className="text-lg font-semibold">{style.name}</h3>
-                  <p className="text-sm text-gray-500">{style.description}</p>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {details.map((detail) => (
+                <Card
+                  key={detail.id}
+                  className={`p-6 cursor-pointer transition-all ${
+                    selectedDetail === detail.id
+                      ? "border-brand ring-2 ring-brand/20"
+                      : "hover:border-brand/20"
+                  } ${detail.isCustom ? "border-dashed" : ""}`}
+                  onClick={() => setSelectedDetail(detail.id)}
+                >
+                  <div className="flex flex-col space-y-2">
+                    <h3 className="text-lg font-semibold">{detail.name}</h3>
+                    <p className="text-sm text-gray-500">{detail.description}</p>
+                  </div>
+                </Card>
+              ))}
+
+              {/* Add Custom Detail Card */}
+              <Card className="p-6 border-dashed">
+                <div className="flex items-center space-x-4">
+                  <Input
+                    value={newDetailName}
+                    onChange={(e) => setNewDetailName(e.target.value)}
+                    placeholder="새로운 디테일 추가"
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleAddDetail}
+                    disabled={!newDetailName.trim()}
+                    size="sm"
+                    className="flex items-center justify-center"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
               </Card>
-            ))}
+            </div>
+          </div>
+        );
+
+      case "image":
+        return (
+          <div className="max-w-md mx-auto">
+            <p className="text-center text-gray-600 mb-8">
+              이미지 생성 준비중...
+            </p>
           </div>
         );
 
@@ -292,7 +340,7 @@ const Customize = () => {
         return (
           <div className="max-w-md mx-auto">
             <p className="text-center text-gray-600 mb-8">
-              Size customization coming in the next update
+              사이즈 커스터마이징은 다음 업데이트에서 제공됩니다
             </p>
           </div>
         );
@@ -350,7 +398,8 @@ const Customize = () => {
           <h1 className="text-3xl font-bold text-center mb-8">
             {currentStep === "type" && "Choose Your Garment"}
             {currentStep === "material" && "Select Material"}
-            {currentStep === "style" && "Pick Your Style"}
+            {currentStep === "detail" && "Add Details"}
+            {currentStep === "image" && "Generate Image"}
             {currentStep === "size" && "Specify Your Size"}
           </h1>
 
@@ -372,7 +421,7 @@ const Customize = () => {
               disabled={
                 (currentStep === "type" && !selectedType) ||
                 (currentStep === "material" && !selectedMaterial) ||
-                (currentStep === "style" && !selectedStyle)
+                (currentStep === "detail" && !selectedDetail)
               }
               className="flex items-center bg-brand hover:bg-brand-dark"
             >

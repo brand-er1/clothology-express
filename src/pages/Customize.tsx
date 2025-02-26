@@ -519,10 +519,10 @@ const Customize = () => {
                       </div>
                     </div>
                   )}
-                  {detailInput && (
+                  {selectedDetail && (
                     <div className="pt-2 border-t">
                       <span className="text-gray-600">추가 디테일:</span>
-                      <p className="mt-1 text-sm whitespace-pre-wrap">{detailInput}</p>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail}</p>
                     </div>
                   )}
                 </div>

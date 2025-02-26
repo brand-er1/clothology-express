@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -195,7 +194,7 @@ const Customize = () => {
   };
 
   const handleColorSelect = (value: string) => {
-    const color = colorOptions.find(opt => opt.value === value);
+    const color = colorOptions.find(color => color.value === value);
     if (color) {
       setSelectedColor(value);
       const newDetail = `색상: ${color.label}\n${detailInput}`;
@@ -450,7 +449,7 @@ const Customize = () => {
                 <p className="text-sm text-gray-500">
                   선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다.
                 </p>
-                <div className="flex justify-center items-center h-64 bg-gray-100 rounded-lg">
+                <div className="flex justify-center items-center h-96 bg-gray-100 rounded-lg">
                   {isLoading ? (
                     <div className="flex flex-col items-center space-y-2">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
@@ -460,7 +459,7 @@ const Customize = () => {
                     <img
                       src={generatedImageUrl}
                       alt="Generated clothing design"
-                      className="max-h-full rounded-lg"
+                      className="max-h-full max-w-full object-contain rounded-lg"
                     />
                   ) : (
                     <Button 

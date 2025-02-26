@@ -179,8 +179,12 @@ const Customize = () => {
     const style = styleOptions.find(opt => opt.value === value);
     if (style) {
       setSelectedStyle(value);
-      const newDetail = `스타일: ${style.label}\n${detailInput}`;
-      setDetailInput(newDetail);
+      // 기존 스타일 관련 내용을 제거하고 새로운 내용 추가
+      const updatedDetail = detailInput
+        .split('\n')
+        .filter(line => !line.startsWith('스타일:'))
+        .join('\n');
+      setDetailInput(updatedDetail ? `스타일: ${style.label}\n${updatedDetail}` : `스타일: ${style.label}`);
     }
   };
 
@@ -188,8 +192,12 @@ const Customize = () => {
     const pocket = pocketOptions.find(opt => opt.value === value);
     if (pocket) {
       setSelectedPocket(value);
-      const newDetail = `포켓: ${pocket.label}\n${detailInput}`;
-      setDetailInput(newDetail);
+      // 기존 포켓 관련 내용을 제거하고 새로운 내용 추가
+      const updatedDetail = detailInput
+        .split('\n')
+        .filter(line => !line.startsWith('포켓:'))
+        .join('\n');
+      setDetailInput(updatedDetail ? `포켓: ${pocket.label}\n${updatedDetail}` : `포켓: ${pocket.label}`);
     }
   };
 
@@ -197,8 +205,12 @@ const Customize = () => {
     const color = colorOptions.find(color => color.value === value);
     if (color) {
       setSelectedColor(value);
-      const newDetail = `색상: ${color.label}\n${detailInput}`;
-      setDetailInput(newDetail);
+      // 기존 색상 관련 내용을 제거하고 새로운 내용 추가
+      const updatedDetail = detailInput
+        .split('\n')
+        .filter(line => !line.startsWith('색상:'))
+        .join('\n');
+      setDetailInput(updatedDetail ? `색상: ${color.label}\n${updatedDetail}` : `색상: ${color.label}`);
     }
   };
 

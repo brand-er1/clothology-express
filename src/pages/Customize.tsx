@@ -151,12 +151,15 @@ const colorOptions: ColorOption[] = [
   { value: "gray", label: "회색", hex: "#808080" },
 ];
 
+const steps: Step[] = ["type", "material", "detail", "image", "size"];
+
 const Customize = () => {
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedMaterial, setSelectedMaterial] = useState<string>("");
   const [selectedDetail, setSelectedDetail] = useState<string>("");
   const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
+  const [newMaterialName, setNewMaterialName] = useState("");
   const [detailInput, setDetailInput] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedPocket, setSelectedPocket] = useState("");

@@ -75,39 +75,39 @@ export type Database = {
           created_at: string
           full_name: string | null
           gender: string
-          height: number | null
+          height: number
           id: string
           phone_number: string | null
           updated_at: string
           user_id: string | null
           username: string | null
-          weight: number | null
+          weight: number
         }
         Insert: {
           address?: string | null
           created_at?: string
           full_name?: string | null
           gender?: string
-          height?: number | null
+          height: number
           id: string
           phone_number?: string | null
           updated_at?: string
           user_id?: string | null
           username?: string | null
-          weight?: number | null
+          weight: number
         }
         Update: {
           address?: string | null
           created_at?: string
           full_name?: string | null
           gender?: string
-          height?: number | null
+          height?: number
           id?: string
           phone_number?: string | null
           updated_at?: string
           user_id?: string | null
           username?: string | null
-          weight?: number | null
+          weight?: number
         }
         Relationships: []
       }

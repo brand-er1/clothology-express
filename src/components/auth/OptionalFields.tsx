@@ -14,7 +14,7 @@ export const OptionalFields = ({ formData, handleChange, handleGenderChange }: O
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="height">키 (cm)</Label>
+        <Label htmlFor="height">키 (cm) *</Label>
         <Input
           id="height"
           name="height"
@@ -25,7 +25,7 @@ export const OptionalFields = ({ formData, handleChange, handleGenderChange }: O
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="weight">몸무게 (kg)</Label>
+        <Label htmlFor="weight">몸무게 (kg) *</Label>
         <Input
           id="weight"
           name="weight"

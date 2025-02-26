@@ -71,7 +71,14 @@ export const useAuthForm = () => {
 
     try {
       if (isSignUp) {
-        await validateSignUpForm(passwordMatch, formData.password, isIdAvailable, isEmailAvailable);
+        await validateSignUpForm(
+          passwordMatch, 
+          formData.password, 
+          isIdAvailable, 
+          isEmailAvailable,
+          formData.height,
+          formData.weight
+        );
         
         const fullAddress = formData.addressDetail 
           ? `${formData.address} ${formData.addressDetail} (${formData.postcode})`
@@ -87,8 +94,8 @@ export const useAuthForm = () => {
               full_name: formData.fullName,
               phone_number: formData.phoneNumber,
               address: fullAddress,
-              height: formData.height || null,
-              weight: formData.weight || null,
+              height: Number(formData.height),
+              weight: Number(formData.weight),
               gender: formData.gender,
             },
           },

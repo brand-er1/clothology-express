@@ -168,6 +168,12 @@ type FalApiResponse = {
   }[];
 };
 
+// fal.ai API input 타입 정의
+type FalApiInput = {
+  prompt: string;
+  image_size: string;
+};
+
 const Customize = () => {
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -243,7 +249,7 @@ const Customize = () => {
       ].filter(Boolean).join(', ');
 
       // fal.ai API 호출
-      const response = await fal.subscribe<FalApiResponse>('110602490-sdxl', {
+      const response = await fal.subscribe<FalApiResponse, FalApiInput>('110602490-sdxl', {
         input: {
           prompt: `Fashion design: ${promptDetails}. Show only the garment, no background, no model. Showcasing the front view on the left side and the back view on the right side.`,
           image_size: "1024x1024",

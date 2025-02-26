@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,13 @@ import { MaterialStep } from "@/components/customize/MaterialStep";
 import { DetailStep } from "@/components/customize/DetailStep";
 import { ImageStep } from "@/components/customize/ImageStep";
 import { SizeStep } from "@/components/customize/SizeStep";
+import { supabase } from "@/lib/supabase";
+import { 
+  clothTypes, 
+  styleOptions, 
+  pocketOptions, 
+  colorOptions 
+} from "@/lib/customize-constants";
 
 const TOTAL_STEPS = 5;
 
@@ -110,7 +118,6 @@ const Customize = () => {
         id: `custom-${Date.now()}`,
         name: newMaterialName.trim(),
         description: "사용자 지정 원단",
-        isCustom: true,
       };
       setMaterials([...materials, newMaterial]);
       setSelectedMaterial(newMaterial.id);

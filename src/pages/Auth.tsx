@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Header } from "@/components/Header";
+
+declare global {
+  interface Window {
+    daum: any;
+  }
+}
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,17 +26,51 @@ const Auth = () => {
     fullName: "",
     phoneNumber: "",
     address: "",
+    addressDetail: "",
+    postcode: "",
     height: "",
     weight: "",
     usualSize: "",
   });
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Daum 우편번호 스크립트 동적 로드
+    const script = document.createElement("script");
+    script.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+    script.async = true;
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleAddressSearch = () => {
+    if (window.daum) {
+      new window.daum.Postcode({
+        oncomplete: (data: any) => {
+          setFormData(prev => ({
+            ...prev,
+            postcode: data.zonecode,
+            address: data.address,
+          }));
+        },
+      }).open();
+    } else {
+      toast({
+        title: "오류 발생",
+        description: "주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    }
   };
 
   const validateSignUpForm = async () => {
@@ -79,6 +119,10 @@ const Auth = () => {
       if (isSignUp) {
         await validateSignUpForm();
         
+        const fullAddress = formData.addressDetail 
+          ? `${formData.address} ${formData.addressDetail} (${formData.postcode})`
+          : `${formData.address} (${formData.postcode})`;
+
         const { error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
@@ -87,7 +131,7 @@ const Auth = () => {
               username: formData.username,
               full_name: formData.fullName,
               phone_number: formData.phoneNumber,
-              address: formData.address,
+              address: fullAddress,
               height: formData.height || null,
               weight: formData.weight || null,
               usual_size: formData.usualSize || null,
@@ -207,13 +251,40 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="address">주소</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="postcode"
+                        name="postcode"
+                        type="text"
+                        value={formData.postcode}
+                        placeholder="우편번호"
+                        readOnly
+                        required
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleAddressSearch}
+                        className="whitespace-nowrap"
+                      >
+                        주소 검색
+                      </Button>
+                    </div>
                     <Input
                       id="address"
                       name="address"
                       type="text"
                       value={formData.address}
-                      onChange={handleChange}
+                      placeholder="기본주소"
+                      readOnly
                       required
+                    />
+                    <Input
+                      id="addressDetail"
+                      name="addressDetail"
+                      type="text"
+                      value={formData.addressDetail}
+                      onChange={handleChange}
+                      placeholder="상세주소를 입력해주세요"
                     />
                   </div>
                   <div className="space-y-2">
@@ -270,6 +341,8 @@ const Auth = () => {
                     fullName: "",
                     phoneNumber: "",
                     address: "",
+                    addressDetail: "",
+                    postcode: "",
                     height: "",
                     weight: "",
                     usualSize: "",

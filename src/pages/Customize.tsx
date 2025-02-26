@@ -155,23 +155,9 @@ const colorOptions: ColorOption[] = [
 
 const steps: Step[] = ["type", "material", "detail", "image", "size"];
 
-import * as fal from '@fal-ai/serverless-client';
-
-fal.config({
-  credentials: "fal_key_..." // NOTE: fal.ai API 키가 필요합니다
-});
-
-// fal.ai API 응답 타입 정의
-type FalApiResponse = {
-  images: {
-    url: string;
-  }[];
-};
-
-// fal.ai API input 타입 정의
-type FalApiInput = {
-  prompt: string;
-  image_size: string;
+// Replicate API 응답 타입 정의
+type ReplicateResponse = {
+  output: string[];
 };
 
 const Customize = () => {
@@ -207,7 +193,7 @@ const Customize = () => {
   };
 
   const handleColorSelect = (value: string) => {
-    const color = colorOptions.find(opt => opt.value === value);
+    const color = colorOptions.find(color => color.value === value);
     if (color) {
       setSelectedColor(value);
       const newDetail = `색상: ${color.label}\n${detailInput}`;
@@ -248,20 +234,54 @@ const Customize = () => {
         `Details: ${detailInput}`,
       ].filter(Boolean).join(', ');
 
-      // fal.ai API 호출
-      const response = await fal.subscribe<FalApiResponse, FalApiInput>('110602490-sdxl', {
-        input: {
-          prompt: `Fashion design: ${promptDetails}. Show only the garment, no background, no model. Showcasing the front view on the left side and the back view on the right side.`,
-          image_size: "1024x1024",
+      // Replicate API 호출
+      const response = await fetch('https://api.replicate.com/v1/predictions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${process.env.REPLICATE_API_KEY}`,
+          'Content-Type': 'application/json',
         },
-        pollInterval: 1000,
-        onQueueUpdate: (update) => {
-          console.log('Queue update:', update);
-        }
+        body: JSON.stringify({
+          version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+          input: {
+            prompt: `Fashion design: ${promptDetails}. Show only the garment, no background, no model. Showcasing the front view on the left side and the back view on the right side.`,
+            negative_prompt: "low quality, blurry, distorted, deformed",
+            num_outputs: 1,
+            scheduler: "K_EULER",
+            num_inference_steps: 50,
+            guidance_scale: 7.5
+          }
+        })
       });
 
-      if (response?.images?.[0]?.url) {
-        setGeneratedImageUrl(response.images[0].url);
+      const prediction = await response.json();
+
+      // 이미지 생성이 완료될 때까지 폴링
+      let imageResult;
+      while (!imageResult) {
+        const statusResponse = await fetch(
+          `https://api.replicate.com/v1/predictions/${prediction.id}`,
+          {
+            headers: {
+              'Authorization': `Token ${process.env.REPLICATE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        const status = await statusResponse.json();
+        
+        if (status.status === 'succeeded') {
+          imageResult = status.output[0];
+          break;
+        } else if (status.status === 'failed') {
+          throw new Error('이미지 생성에 실패했습니다.');
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      if (imageResult) {
+        setGeneratedImageUrl(imageResult);
         toast({
           title: "이미지 생성 완료",
           description: "AI가 의상 이미지를 생성했습니다.",

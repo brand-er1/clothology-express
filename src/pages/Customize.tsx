@@ -299,6 +299,8 @@ const Customize = () => {
                   }));
                 }
               }}
+              selectedType={selectedType}
+              gender="남성" // TODO: 사용자의 성별에 따라 동적으로 변경
             />
           )}
 

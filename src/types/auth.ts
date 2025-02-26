@@ -12,5 +12,5 @@ export interface AuthFormData {
   postcode: string;
   height: string;
   weight: string;
-  usualSize: string;
+  gender: string;
 }

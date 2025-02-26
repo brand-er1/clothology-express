@@ -19,7 +19,7 @@ export const useProfileForm = () => {
     postcode: "",
     height: "",
     weight: "",
-    usualSize: "",
+    gender: "남성",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,6 +27,13 @@ export const useProfileForm = () => {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleGenderChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      gender: value
     }));
   };
 
@@ -67,7 +74,7 @@ export const useProfileForm = () => {
           postcode: postcode || "",
           height: profile.height?.toString() || "",
           weight: profile.weight?.toString() || "",
-          usualSize: profile.usual_size || "",
+          gender: profile.gender || "남성",
         });
       }
     } catch (error: any) {
@@ -99,7 +106,7 @@ export const useProfileForm = () => {
           address: fullAddress,
           height: formData.height ? Number(formData.height) : null,
           weight: formData.weight ? Number(formData.weight) : null,
-          usual_size: formData.usualSize,
+          gender: formData.gender,
         })
         .eq('id', user.id);
 
@@ -131,6 +138,7 @@ export const useProfileForm = () => {
     userId,
     formData,
     handleChange,
+    handleGenderChange,
     handleSubmit
   };
 };

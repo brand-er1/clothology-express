@@ -15,12 +15,11 @@ const Profile = () => {
     userId,
     formData,
     handleChange,
+    handleGenderChange,
     handleSubmit
   } = useProfileForm();
 
   const handleAddressSearch = useAddressSearch((data) => {
-    // 주소 검색 결과 처리 로직은 useProfileForm 내부로 이동할 수 있지만,
-    // useAddressSearch hook의 재사용성을 위해 여기서 처리
     handleChange({
       target: { name: 'postcode', value: data.zonecode }
     } as React.ChangeEvent<HTMLInputElement>);
@@ -50,8 +49,9 @@ const Profile = () => {
                 username={formData.username || ""}
                 height={formData.height || ""}
                 weight={formData.weight || ""}
-                usualSize={formData.usualSize || ""}
+                gender={formData.gender || "남성"}
                 onChange={handleChange}
+                onGenderChange={handleGenderChange}
               />
 
               <AddressFields 

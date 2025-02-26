@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, ArrowLeft, Shirt, Pants, Dress } from "lucide-react";
+import { ArrowRight, ArrowLeft, Shirt, TShirt, Scissors } from "lucide-react";
 
 type ClothType = {
   id: string;
@@ -22,16 +22,16 @@ const clothTypes: ClothType[] = [
     description: "Classic shirts for any occasion",
   },
   {
-    id: "pants",
-    name: "Pants",
-    icon: <Pants className="w-8 h-8" />,
-    description: "Comfortable and stylish pants",
+    id: "tshirt",
+    name: "T-Shirt",
+    icon: <TShirt className="w-8 h-8" />,
+    description: "Comfortable and casual t-shirts",
   },
   {
-    id: "dress",
-    name: "Dress",
-    icon: <Dress className="w-8 h-8" />,
-    description: "Elegant dresses for special moments",
+    id: "custom",
+    name: "Custom",
+    icon: <Scissors className="w-8 h-8" />,
+    description: "Design your own custom piece",
   },
 ];
 

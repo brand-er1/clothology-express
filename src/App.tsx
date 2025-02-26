@@ -1,6 +1,7 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Admin from "@/pages/Admin";
@@ -15,10 +16,38 @@ function App() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/customize" element={<Customize />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route
+          path="/admin"
+          element={
+            <AuthGuard>
+              <Admin />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <AuthGuard>
+              <Orders />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/customize"
+          element={
+            <AuthGuard>
+              <Customize />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <AuthGuard>
+              <Profile />
+            </AuthGuard>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />

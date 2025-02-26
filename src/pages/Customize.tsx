@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, ArrowLeft, Shirt, TShirt, Scissors } from "lucide-react";
+import { ArrowRight, ArrowLeft, Shirt, Scissors } from "lucide-react";
 
 type ClothType = {
   id: string;
@@ -17,15 +17,15 @@ type Step = "type" | "material" | "style" | "size";
 const clothTypes: ClothType[] = [
   {
     id: "shirt",
-    name: "Shirt",
+    name: "Dress Shirt",
     icon: <Shirt className="w-8 h-8" />,
     description: "Classic shirts for any occasion",
   },
   {
-    id: "tshirt",
-    name: "T-Shirt",
-    icon: <TShirt className="w-8 h-8" />,
-    description: "Comfortable and casual t-shirts",
+    id: "casual",
+    name: "Casual Shirt",
+    icon: <Shirt className="w-8 h-8" />,
+    description: "Comfortable and casual shirts",
   },
   {
     id: "custom",

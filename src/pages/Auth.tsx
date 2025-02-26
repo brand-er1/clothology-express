@@ -22,6 +22,7 @@ const Auth = () => {
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [isCheckingId, setIsCheckingId] = useState(false);
   const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
+  const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
   const [formData, setFormData] = useState<AuthFormData>({
     userId: "",
     email: "",
@@ -66,6 +67,9 @@ const Auth = () => {
     if (name === 'userId') {
       setIsIdAvailable(null);
     }
+    if (name === 'email') {
+      setIsEmailAvailable(null);
+    }
   };
 
   const checkUserId = async () => {
@@ -107,6 +111,38 @@ const Auth = () => {
     }
   };
 
+  const checkEmail = async () => {
+    if (!formData.email) {
+      toast({
+        title: "이메일을 입력해주세요",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email: formData.email,
+        options: {
+          shouldCreateUser: false,
+        }
+      });
+
+      // If we get here without an error, the email exists
+      setIsEmailAvailable(false);
+      toast({
+        title: "이미 등록된 이메일입니다",
+        variant: "destructive",
+      });
+    } catch (error) {
+      // If we get an error, the email doesn't exist (in most cases)
+      setIsEmailAvailable(true);
+      toast({
+        title: "사용 가능한 이메일입니다",
+      });
+    }
+  };
+
   const handleAddressSearch = () => {
     if (window.daum) {
       new window.daum.Postcode({
@@ -140,26 +176,8 @@ const Auth = () => {
       throw new Error("아이디 중복 확인이 필요합니다.");
     }
 
-    // 닉네임 중복 확인
-    const { data: usernameExists } = await supabase
-      .from('profiles')
-      .select()
-      .eq('username', formData.username)
-      .single();
-
-    if (usernameExists) {
-      throw new Error("이미 사용 중인 닉네임입니다.");
-    }
-
-    // 전화번호 중복 확인
-    const { data: phoneExists } = await supabase
-      .from('profiles')
-      .select()
-      .eq('phone_number', formData.phoneNumber)
-      .single();
-
-    if (phoneExists) {
-      throw new Error("이미 등록된 전화번호입니다.");
+    if (!isEmailAvailable) {
+      throw new Error("이메일 중복 확인이 필요합니다.");
     }
   };
 
@@ -255,6 +273,7 @@ const Auth = () => {
     });
     setPasswordMatch(true);
     setIsIdAvailable(null);
+    setIsEmailAvailable(null);
   };
 
   return (
@@ -282,6 +301,8 @@ const Auth = () => {
                   passwordMatch={passwordMatch}
                   handleAddressSearch={handleAddressSearch}
                   checkUserId={checkUserId}
+                  checkEmail={checkEmail}
+                  isEmailAvailable={isEmailAvailable}
                 />
               ) : (
                 <LoginForm

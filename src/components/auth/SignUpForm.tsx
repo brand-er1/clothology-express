@@ -18,6 +18,8 @@ interface SignUpFormProps {
   passwordMatch: boolean;
   handleAddressSearch: () => void;
   checkUserId: () => Promise<void>;
+  checkEmail: () => Promise<void>;
+  isEmailAvailable: boolean | null;
 }
 
 export const SignUpForm = ({
@@ -29,6 +31,8 @@ export const SignUpForm = ({
   passwordMatch,
   handleAddressSearch,
   checkUserId,
+  checkEmail,
+  isEmailAvailable,
 }: SignUpFormProps) => {
   return (
     <>
@@ -55,14 +59,23 @@ export const SignUpForm = ({
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">이메일</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
+        <div className="flex gap-2">
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+          <Button
+            type="button"
+            onClick={checkEmail}
+            className="whitespace-nowrap"
+          >
+            중복 확인
+          </Button>
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">비밀번호</Label>

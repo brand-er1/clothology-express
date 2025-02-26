@@ -1,4 +1,4 @@
-<lov-code>
+
 type MeasurementData = {
   [key: string]: number;
 };
@@ -425,4 +425,38 @@ const getKoreanLabel = (key: string): string => {
     length: "총장",
     length_regular: "기장 (레귤러)",
     length_wide: "기장 (와이드)",
-    length_skinny: "기장 (스키니
+    length_skinny: "기장 (스키니)"
+  };
+  return labels[key] || key;
+};
+
+// 카테고리 키 매핑
+const getCategoryKey = (type: string): string => {
+  return type;
+};
+
+// 키를 기반으로 사이즈 추천 (옷 종류별로 다른 추천)
+export const recommendSizeByHeight = (height: number, gender: string, clothType: string): string => {
+  const genderKey = gender === "남성" ? "men" : "women";
+  const categoryKey = getCategoryKey(clothType);
+
+  try {
+    const recommendations = sizeData[genderKey].categories[categoryKey].recommendedSizes;
+    
+    for (const rec of recommendations) {
+      const [min, max] = rec.height.split("~").map(h => h === "" ? null : parseInt(h));
+      
+      if (min === null) {
+        if (height <= max!) return rec.size;
+      } else if (max === null) {
+        if (height >= min) return rec.size;
+      } else if (height >= min && height <= max) {
+        return rec.size;
+      }
+    }
+    
+    return "M"; // 기본값
+  } catch (e) {
+    return "M"; // 에러 발생 시 기본값
+  }
+};

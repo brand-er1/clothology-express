@@ -1,5 +1,7 @@
+
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEffect } from "react";
 
 interface DetailStepProps {
   detailInput: string;
@@ -24,8 +26,8 @@ type PocketOption = {
 
 type ColorOption = {
   value: string;
-  label: string;
   hex: string;
+  label: string;
 };
 
 const styleOptions: StyleOption[] = [
@@ -59,6 +61,42 @@ export const DetailStep = ({
   onPocketSelect,
   onColorSelect,
 }: DetailStepProps) => {
+  // 선택된 옵션들을 문자열로 변환
+  const generateDetailText = () => {
+    const details = [];
+    
+    if (selectedStyle) {
+      const style = styleOptions.find(s => s.value === selectedStyle);
+      if (style) details.push(`스타일: ${style.label}`);
+    }
+    
+    if (selectedPocket) {
+      const pocket = pocketOptions.find(p => p.value === selectedPocket);
+      if (pocket) details.push(`포켓: ${pocket.label}`);
+    }
+    
+    if (selectedColor) {
+      const color = colorOptions.find(c => c.value === selectedColor);
+      if (color) details.push(`색상: ${color.label}`);
+    }
+
+    return details.join('\n');
+  };
+
+  // 옵션이 변경될 때마다 텍스트 업데이트
+  useEffect(() => {
+    const newDetails = generateDetailText();
+    // 기존 수동 입력 텍스트를 보존하고 선택된 옵션들을 추가
+    const existingCustomText = detailInput.split('\n').filter(line => 
+      !line.startsWith('스타일:') && 
+      !line.startsWith('포켓:') && 
+      !line.startsWith('색상:')
+    ).join('\n');
+
+    const finalText = [newDetails, existingCustomText].filter(Boolean).join('\n\n');
+    onDetailInputChange(finalText.trim());
+  }, [selectedStyle, selectedPocket, selectedColor]);
+
   return (
     <div className="space-y-8">
       {/* Detail Input Area */}

@@ -43,6 +43,7 @@ export const useCustomizeForm = () => {
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedPocket, setSelectedPocket] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
+  const [selectedFit, setSelectedFit] = useState("");  // 새로 추가된 상태
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState("");
@@ -248,6 +249,8 @@ export const useCustomizeForm = () => {
     setSelectedPocket,
     selectedColor,
     setSelectedColor,
+    selectedFit,        // 새로 추가
+    setSelectedFit,     // 새로 추가
     isLoading,
     generatedImageUrl,
     selectedSize,

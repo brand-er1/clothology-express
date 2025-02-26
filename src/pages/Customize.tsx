@@ -29,6 +29,8 @@ const Customize = () => {
     setSelectedPocket,
     selectedColor,
     setSelectedColor,
+    selectedFit,       // 새로 추가
+    setSelectedFit,    // 새로 추가
     isLoading,
     generatedImageUrl,
     selectedSize,
@@ -72,10 +74,12 @@ const Customize = () => {
               selectedStyle={selectedStyle}
               selectedPocket={selectedPocket}
               selectedColor={selectedColor}
+              selectedFit={selectedFit}        // 새로 추가
               onDetailInputChange={setSelectedDetail}
               onStyleSelect={setSelectedStyle}
               onPocketSelect={setSelectedPocket}
               onColorSelect={setSelectedColor}
+              onFitSelect={setSelectedFit}     // 새로 추가
             />
           )}
 

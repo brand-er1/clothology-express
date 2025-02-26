@@ -569,9 +569,21 @@ const Customize = () => {
 
   const handleNext = () => {
     const currentIndex = steps.indexOf(currentStep);
-    if (currentStep === "detail") {
-      setSelectedDetail(detailInput); // 항상 현재 detailInput을 저장
+    
+    // image 단계에서는 이미지가 생성되어야만 다음으로 넘어갈 수 있음
+    if (currentStep === "image" && !generatedImageUrl) {
+      toast({
+        title: "이미지 필요",
+        description: "다음 단계로 진행하기 전에 이미지를 생성해주세요.",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    if (currentStep === "detail") {
+      setSelectedDetail(detailInput);
+    }
+    
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
     }
@@ -640,8 +652,8 @@ const Customize = () => {
               onClick={handleNext}
               disabled={
                 (currentStep === "type" && !selectedType) ||
-                (currentStep === "material" && !selectedMaterial)
-                // detail 스텝에서는 항상 활성화
+                (currentStep === "material" && !selectedMaterial) ||
+                (currentStep === "image" && !generatedImageUrl)
               }
               className="flex items-center bg-brand hover:bg-brand-dark"
             >

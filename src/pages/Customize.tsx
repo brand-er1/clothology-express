@@ -146,6 +146,7 @@ const Customize = () => {
         isCustom: true,
       };
       setMaterials([...materials, newMaterial]);
+      setSelectedMaterial(newMaterial.id); // 새로 추가된 원단 자동 선택
       setNewMaterialName("");
     }
   };

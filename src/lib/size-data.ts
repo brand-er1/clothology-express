@@ -1,4 +1,5 @@
-type SizeInfo = {
+
+export type SizeInfo = {
   size: string;
   measurements: {
     [key: string]: number;

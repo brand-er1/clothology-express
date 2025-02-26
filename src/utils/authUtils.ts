@@ -3,7 +3,9 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
 export const checkUserIdAvailability = async (userId: string) => {
-  if (!userId) {
+  const trimmedUserId = userId.trim().replace(/\n/g, '');
+  
+  if (!trimmedUserId) {
     toast({
       title: "아이디를 입력해주세요",
       variant: "destructive",
@@ -13,7 +15,7 @@ export const checkUserIdAvailability = async (userId: string) => {
 
   try {
     const { data, error } = await supabase.functions.invoke('check-availability', {
-      body: { type: 'userId', value: userId }
+      body: { type: 'userId', value: trimmedUserId }
     });
 
     if (error) throw error;
@@ -35,7 +37,9 @@ export const checkUserIdAvailability = async (userId: string) => {
 };
 
 export const checkEmailAvailability = async (email: string) => {
-  if (!email) {
+  const trimmedEmail = email.trim().replace(/\n/g, '');
+  
+  if (!trimmedEmail) {
     toast({
       title: "이메일을 입력해주세요",
       variant: "destructive",
@@ -45,7 +49,7 @@ export const checkEmailAvailability = async (email: string) => {
 
   try {
     const { data, error } = await supabase.functions.invoke('check-availability', {
-      body: { type: 'email', value: email }
+      body: { type: 'email', value: trimmedEmail }
     });
 
     if (error) throw error;

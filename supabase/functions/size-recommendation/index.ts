@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
@@ -127,6 +126,44 @@ const sizeData = {
   },
 };
 
+// 의류 타입에 따른 한글 이름 매핑
+const typeToKorean: Record<string, string> = {
+  outer_jacket: "자켓",
+  short_sleeve: "반팔 티셔츠",
+  long_sleeve_regular: "긴팔 티셔츠",
+  long_sleeve_loose: "루즈핏 긴팔 티셔츠",
+  sweatshirt_regular: "맨투맨",
+  sweatshirt_loose: "루즈핏 맨투맨",
+  shorts: "반바지",
+  long_pants: "긴바지"
+};
+
+// 측정값을 한글 키로 변환하는 함수
+function translateMeasurementsToKorean(measurements: any, type: string): any {
+  const translation: Record<string, string> = {
+    shoulder: "어깨너비",
+    chest: "가슴둘레",
+    bust: "가슴둘레",
+    waist: "허리둘레",
+    sleeve: "소매길이",
+    length: "총장",
+    hip: "엉덩이둘레",
+    thigh: "허벅지둘레",
+    bottom_width: "밑단 너비",
+    inseam: "인심"
+  };
+
+  const koreanMeasurements: Record<string, number> = {};
+  
+  for (const [key, value] of Object.entries(measurements)) {
+    if (translation[key]) {
+      koreanMeasurements[translation[key]] = value as number;
+    }
+  }
+
+  return koreanMeasurements;
+}
+
 // 키에 맞는 사이즈를 찾는 함수
 function findSizeByHeight(height: number, genderData: any): string | null {
   const sizeRange = genderData.recommendedSizes.find(range => {
@@ -138,29 +175,19 @@ function findSizeByHeight(height: number, genderData: any): string | null {
 }
 
 // 특정 사이즈의 의류 데이터를 추출하는 함수
-function extractSizeData(size: string, genderData: any) {
-  const result: Record<string, any> = {};
-
-  Object.entries(genderData.categories).forEach(([category, data]: [string, any]) => {
-    if (category === 'long_pants') {
-      result[category] = {
-        description: data.description,
-        fits: Object.fromEntries(
-          Object.entries(data.fits).map(([fit, sizes]: [string, any]) => [
-            fit,
-            sizes[size]
-          ])
-        )
-      };
-    } else {
-      result[category] = {
-        description: data.description,
-        measurements: data.sizes[size]
-      };
-    }
-  });
-
-  return result;
+function extractSizeData(size: string, genderData: any, type: string) {
+  const category = Object.entries(genderData.categories).find(([key, _]) => key === type);
+  
+  if (!category) return null;
+  
+  const [_, data] = category;
+  
+  if (type === 'long_pants') {
+    // 긴바지의 경우 fits 객체에서 regular fit의 데이터만 사용
+    return translateMeasurementsToKorean(data.fits.regular[size], type);
+  } else {
+    return translateMeasurementsToKorean(data.sizes[size], type);
+  }
 }
 
 serve(async (req) => {
@@ -197,70 +224,18 @@ serve(async (req) => {
       throw new Error('Could not determine appropriate size for given height')
     }
 
-    const sizeInfo = {
-      recommendedSize,
-      heightRange: genderData.recommendedSizes.find(r => r.size.startsWith(recommendedSize))?.height,
-      measurements: extractSizeData(recommendedSize, genderData)
-    }
+    const heightRange = genderData.recommendedSizes.find(r => r.size.startsWith(recommendedSize))?.height;
+    const sizeTable = extractSizeData(recommendedSize, genderData, type);
 
-    // GPT에게 보낼 프롬프트 구성
-    const prompt = `
-사용자 정보:
-- 성별: ${gender === 'men' ? '남성' : '여성'}
-- 키: ${height}cm
-- 선택한 의류: ${type}
-- 선택한 스타일: ${style || '없음'}
-- 선택한 포켓: ${pocket || '없음'}
-- 선택한 색상: ${color || '없음'}
-- 선택한 핏: ${fit || '없음'}
+    const response = {
+      성별: gender === 'men' ? '남성' : '여성',
+      키: height,
+      사이즈: recommendedSize,
+      옷_종류: typeToKorean[type] || type,
+      그에_맞는_사이즈_표: sizeTable
+    };
 
-사용자가 입력한 디테일:
-${detail || '없음'}
-
-GPT 최적화된 디테일:
-${optimizedDetail || '없음'}
-
-키 기준 기본 추천 사이즈: ${recommendedSize} (${sizeInfo.heightRange})
-
-해당 사이즈의 실제 측정값:
-${JSON.stringify(sizeInfo.measurements[type] || sizeInfo.measurements, null, 2)}
-
-위의 모든 정보를 종합적으로 분석하여 다음 형식으로 응답해주세요:
-
-1. 최종 추천 사이즈
-2. 추천 이유 (사용자의 선호도와 디테일을 고려한 설명)
-3. 실제 측정값 상세 설명
-4. 착용시 주의사항
-5. 체형이나 스타일에 따른 추가 조언
-`
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: '당신은 전문 의류 사이즈 추천 AI입니다. 사용자의 체형, 선호도, 스타일을 종합적으로 고려하여 가장 적합한 사이즈를 추천해주세요.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-      }),
-    })
-
-    const data = await response.json()
-    
-    return new Response(JSON.stringify({
-      sizeInfo,
-      gptRecommendation: data.choices[0].message.content
-    }), {
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 

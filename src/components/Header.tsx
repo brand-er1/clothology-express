@@ -16,7 +16,11 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="text-xl font-bold">
-            TAILOR
+            <img 
+              src="/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png" 
+              alt="BRAND-ER Logo"
+              className="h-8"
+            />
           </Link>
           <nav className="flex items-center gap-4">
             <Link to="/customize">

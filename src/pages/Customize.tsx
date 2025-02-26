@@ -114,24 +114,6 @@ const defaultMaterials: Material[] = [
   },
 ];
 
-const defaultDetails: Detail[] = [
-  { 
-    id: "basic", 
-    name: "기본형", 
-    description: "심플하고 깔끔한 기본 디자인" 
-  },
-  { 
-    id: "pocket", 
-    name: "포켓 디테일", 
-    description: "실용적인 포켓이 있는 디자인" 
-  },
-  { 
-    id: "stitch", 
-    name: "스티치 장식", 
-    description: "디자인 스티치가 포인트인 디테일" 
-  },
-];
-
 type StyleOption = {
   value: string;
   label: string;
@@ -175,38 +157,35 @@ const Customize = () => {
   const [selectedMaterial, setSelectedMaterial] = useState<string>("");
   const [selectedDetail, setSelectedDetail] = useState<string>("");
   const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
-  const [details, setDetails] = useState<Detail[]>(defaultDetails);
-  const [newMaterialName, setNewMaterialName] = useState("");
-  const [newDetailName, setNewDetailName] = useState("");
-
   const [detailInput, setDetailInput] = useState("");
-
-  const steps: Step[] = ["type", "material", "detail", "image", "size"];
+  const [selectedStyle, setSelectedStyle] = useState("");
+  const [selectedPocket, setSelectedPocket] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
 
   const handleStyleSelect = (value: string) => {
     const style = styleOptions.find(opt => opt.value === value);
     if (style) {
-      setDetailInput((prev) => 
-        prev + (prev ? "\n" : "") + `스타일: ${style.label}`
-      );
+      setSelectedStyle(value);
+      const lines = detailInput.split('\n').filter(line => !line.startsWith('스타일:'));
+      setDetailInput([`스타일: ${style.label}`, ...lines].join('\n'));
     }
   };
 
   const handlePocketSelect = (value: string) => {
     const pocket = pocketOptions.find(opt => opt.value === value);
     if (pocket) {
-      setDetailInput((prev) => 
-        prev + (prev ? "\n" : "") + `포켓: ${pocket.label}`
-      );
+      setSelectedPocket(value);
+      const lines = detailInput.split('\n').filter(line => !line.startsWith('포켓:'));
+      setDetailInput([`포켓: ${pocket.label}`, ...lines].join('\n'));
     }
   };
 
   const handleColorSelect = (value: string) => {
     const color = colorOptions.find(opt => opt.value === value);
     if (color) {
-      setDetailInput((prev) => 
-        prev + (prev ? "\n" : "") + `색상: ${color.label}`
-      );
+      setSelectedColor(value);
+      const lines = detailInput.split('\n').filter(line => !line.startsWith('색상:'));
+      setDetailInput([`색상: ${color.label}`, ...lines].join('\n'));
     }
   };
 
@@ -226,15 +205,7 @@ const Customize = () => {
 
   const handleAddDetail = () => {
     if (detailInput.trim()) {
-      const newDetail: Detail = {
-        id: `custom-${Date.now()}`,
-        name: "커스텀 디테일",
-        description: detailInput.trim(),
-        isCustom: true,
-      };
-      setDetails([...details, newDetail]);
-      setSelectedDetail(newDetail.id);
-      setDetailInput("");
+      setSelectedDetail(detailInput);
     }
   };
 
@@ -402,7 +373,7 @@ const Customize = () => {
               {/* Style Selection */}
               <Card className="p-6">
                 <h3 className="text-lg font-semibold mb-4">스타일</h3>
-                <Select onValueChange={handleStyleSelect}>
+                <Select value={selectedStyle} onValueChange={handleStyleSelect}>
                   <SelectTrigger>
                     <SelectValue placeholder="스타일 선택" />
                   </SelectTrigger>
@@ -419,7 +390,7 @@ const Customize = () => {
               {/* Pocket Selection */}
               <Card className="p-6">
                 <h3 className="text-lg font-semibold mb-4">포켓</h3>
-                <Select onValueChange={handlePocketSelect}>
+                <Select value={selectedPocket} onValueChange={handlePocketSelect}>
                   <SelectTrigger>
                     <SelectValue placeholder="포켓 선택" />
                   </SelectTrigger>
@@ -436,7 +407,7 @@ const Customize = () => {
               {/* Color Selection */}
               <Card className="p-6">
                 <h3 className="text-lg font-semibold mb-4">색상</h3>
-                <Select onValueChange={handleColorSelect}>
+                <Select value={selectedColor} onValueChange={handleColorSelect}>
                   <SelectTrigger>
                     <SelectValue placeholder="색상 선택" />
                   </SelectTrigger>
@@ -455,28 +426,6 @@ const Customize = () => {
                   </SelectContent>
                 </Select>
               </Card>
-            </div>
-
-            {/* Selected Details List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {details.map((detail) => (
-                <Card
-                  key={detail.id}
-                  className={`p-6 cursor-pointer transition-all ${
-                    selectedDetail === detail.id
-                      ? "border-brand ring-2 ring-brand/20"
-                      : "hover:border-brand/20"
-                  } ${detail.isCustom ? "border-dashed" : ""}`}
-                  onClick={() => setSelectedDetail(detail.id)}
-                >
-                  <div className="flex flex-col space-y-2">
-                    <h3 className="text-lg font-semibold">{detail.name}</h3>
-                    <p className="text-sm text-gray-500 whitespace-pre-line">
-                      {detail.description}
-                    </p>
-                  </div>
-                </Card>
-              ))}
             </div>
           </div>
         );

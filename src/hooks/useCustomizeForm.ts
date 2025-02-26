@@ -30,6 +30,7 @@ export const useCustomizeForm = () => {
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
+  const [imageLoading, setImageLoading] = useState(false);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -92,7 +93,7 @@ export const useCustomizeForm = () => {
 
   const handleGenerateImage = async () => {
     try {
-      setIsLoading(true);
+      setImageLoading(true);
       const imageUrl = await generateImage(
         selectedType,
         selectedMaterial,
@@ -106,7 +107,7 @@ export const useCustomizeForm = () => {
     } catch (err) {
       // Error is already handled in generateImage
     } finally {
-      setIsLoading(false);
+      setImageLoading(false);
     }
   };
 
@@ -171,6 +172,7 @@ export const useCustomizeForm = () => {
     selectedFit,
     setSelectedFit,
     isLoading,
+    imageLoading,
     generatedImageUrl,
     selectedSize,
     setSelectedSize,

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,23 +8,40 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 
 const Admin = () => {
-  const [systemPrompt, setSystemPrompt] = useState(
-    `Assist in generating precise and optimized prompts for the FLUX AI model to create high-quality fashion image based on user input.
-
-1. Make the prompt detailed with:
-- Clothing type (e.g., jacket, dress).
-- Colors, patterns, and materials.
-- Style or theme (e.g., casual, formal).
-- Accessories or design details.
-- Target audience (e.g., men's, women's).
-2. Use vivid adjectives to guide image generation accurately.
-3. Keep the prompt concise but descriptive, and don't omit details in input.
-4. If there are not sufficient details, add details based on your knowledge about garment.
-5. Add this prompt at the end. : "Showcasing the front view on the left side and the back view on the right side. Show only cloth."
-6. Output must be in English, and only return result.`
-  );
+  const [systemPrompt, setSystemPrompt] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadSystemPrompt();
+  }, []);
+
+  const loadSystemPrompt = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('system_prompts')
+        .select('prompt')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setSystemPrompt(data[0].prompt);
+      }
+    } catch (error) {
+      console.error('Error loading system prompt:', error);
+      toast({
+        title: "오류",
+        description: "시스템 프롬프트를 불러오는데 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -64,16 +81,22 @@ const Admin = () => {
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">이미지 생성 시스템 프롬프트</h2>
             <div className="space-y-4">
-              <Textarea
-                value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
-                disabled={!isEditing}
-                className="min-h-[300px] font-mono text-sm"
-              />
+              {isLoading ? (
+                <div className="h-[300px] flex items-center justify-center">
+                  <p className="text-gray-500">로딩 중...</p>
+                </div>
+              ) : (
+                <Textarea
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  disabled={!isEditing}
+                  className="min-h-[300px] font-mono text-sm"
+                />
+              )}
               
               <div className="flex justify-end gap-4">
                 {!isEditing ? (
-                  <Button onClick={() => setIsEditing(true)}>
+                  <Button onClick={() => setIsEditing(true)} disabled={isLoading}>
                     수정하기
                   </Button>
                 ) : (

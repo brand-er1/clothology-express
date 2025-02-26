@@ -85,10 +85,21 @@ export const SizeStep = ({
 
   const requestSizeRecommendation = async (height: number, gender: string, type: string) => {
     try {
+      // 타입 매핑
+      const typeMapping: { [key: string]: string } = {
+        'jacket': 'outer_jacket',
+        'pants': 'long_pants',
+        'short_sleeve': 'short_sleeve',
+        'long_sleeve': 'long_sleeve_regular',
+        'sweatshirt': 'sweatshirt_regular'
+      };
+
+      const mappedType = typeMapping[type] || type;
+      
       const request = {
         gender: gender === "남성" ? "men" : "women",
         height: height,
-        type: type
+        type: mappedType
       };
       
       setRequestData(request);

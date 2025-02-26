@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -220,6 +219,52 @@ const Customize = () => {
   const handleAddDetail = () => {
     if (detailInput.trim()) {
       setSelectedDetail(detailInput);
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    try {
+      setIsLoading(true);
+
+      // 선택된 옵션들을 기반으로 프롬프트 생성
+      const promptDetails = [
+        `Clothing type: ${clothTypes.find(type => type.id === selectedType)?.name}`,
+        `Material: ${materials.find(material => material.id === selectedMaterial)?.name}`,
+        `Style: ${selectedStyle}`,
+        `Color: ${colorOptions.find(color => color.value === selectedColor)?.label}`,
+        `Details: ${detailInput}`,
+      ].filter(Boolean).join(', ');
+
+      // fal.ai API 호출
+      const response = await fal.subscribe('110602490-sdxl', {
+        input: {
+          prompt: `Fashion design: ${promptDetails}. Show only the garment, no background, no model. Showcasing the front view on the left side and the back view on the right side.`,
+          image_size: "1024x1024",
+        },
+        pollInterval: 1000,
+        onQueueUpdate: (update) => {
+          console.log('Queue update:', update);
+        }
+      });
+
+      if (response?.images?.[0]?.url) {
+        setGeneratedImageUrl(response.images[0].url);
+        toast({
+          title: "이미지 생성 완료",
+          description: "AI가 의상 이미지를 생성했습니다.",
+        });
+      } else {
+        throw new Error('이미지 URL을 받지 못했습니다.');
+      }
+    } catch (error) {
+      console.error('Error generating image:', error);
+      toast({
+        title: "이미지 생성 실패",
+        description: "이미지 생성 중 오류가 발생했습니다. 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 

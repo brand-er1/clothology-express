@@ -176,11 +176,13 @@ export const useCustomizeForm = () => {
         selectedDetail && `Additional details: ${selectedDetail}`
       ].filter(Boolean).join('\n');
       
-      const prompt = `
-        Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.
-        Material: ${selectedMaterialName}
-        ${optionalDetails}
-      `.trim();
+      const prompt = [
+        `Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.`,
+        `Material: ${selectedMaterialName}`,
+        optionalDetails
+      ].filter(Boolean).join('\n');
+
+      console.log('Generated prompt:', prompt); // 디버깅용
 
       const { data, error } = await supabase.functions.invoke('generate-optimized-image', {
         body: { prompt }

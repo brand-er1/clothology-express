@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,6 @@ declare global {
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [isCheckingId, setIsCheckingId] = useState(false);
   const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
@@ -108,62 +106,6 @@ const Auth = () => {
     }
   };
 
-  const sendVerificationEmail = async () => {
-    if (!formData.email) {
-      toast({
-        title: "이메일을 입력해주세요",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // 이메일로 6자리 인증 코드 생성
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // 이메일 전송을 위한 Edge Function 호출
-      const { error } = await supabase.functions.invoke('send-verification-email', {
-        body: { 
-          email: formData.email,
-          code: verificationCode,
-        }
-      });
-
-      if (error) throw error;
-
-      // 인증 코드를 임시로 localStorage에 저장 (실제 프로덕션에서는 서버에서 관리해야 함)
-      localStorage.setItem(`verification_${formData.email}`, verificationCode);
-      
-      setEmailVerificationSent(true);
-      toast({
-        title: "인증 코드가 이메일로 전송되었습니다",
-        description: "이메일을 확인해주세요",
-      });
-    } catch (error: any) {
-      toast({
-        title: "이메일 전송 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const verifyEmail = () => {
-    const savedCode = localStorage.getItem(`verification_${formData.email}`);
-    if (verificationCode === savedCode) {
-      setIsVerifying(false);
-      localStorage.removeItem(`verification_${formData.email}`);
-      toast({
-        title: "이메일 인증 완료",
-      });
-    } else {
-      toast({
-        title: "인증 코드가 일치하지 않습니다",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleAddressSearch = () => {
     if (window.daum) {
       new window.daum.Postcode({
@@ -195,12 +137,6 @@ const Auth = () => {
 
     if (!isIdAvailable) {
       throw new Error("아이디 중복 확인이 필요합니다.");
-    }
-
-    // 이메일 인증 확인
-    const savedCode = localStorage.getItem(`verification_${formData.email}`);
-    if (savedCode) {
-      throw new Error("이메일 인증이 필요합니다.");
     }
 
     // 닉네임 중복 확인
@@ -339,47 +275,15 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">이메일</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        onClick={sendVerificationEmail}
-                        disabled={emailVerificationSent}
-                        className="whitespace-nowrap"
-                      >
-                        {emailVerificationSent ? "재전송" : "인증하기"}
-                      </Button>
-                    </div>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                    />
                   </div>
-                  {emailVerificationSent && (
-                    <div className="space-y-2">
-                      <Label htmlFor="verificationCode">인증 코드</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="verificationCode"
-                          value={verificationCode}
-                          onChange={(e) => setVerificationCode(e.target.value)}
-                          placeholder="인증 코드 6자리"
-                          maxLength={6}
-                        />
-                        <Button
-                          type="button"
-                          onClick={verifyEmail}
-                          disabled={verificationCode.length !== 6}
-                          className="whitespace-nowrap"
-                        >
-                          확인
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : (
                 <div className="space-y-2">
@@ -556,8 +460,6 @@ const Auth = () => {
                   });
                   setPasswordMatch(true);
                   setIsIdAvailable(null);
-                  setEmailVerificationSent(false);
-                  setVerificationCode("");
                 }}
               >
                 {isSignUp

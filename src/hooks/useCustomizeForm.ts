@@ -3,6 +3,13 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { 
+  clothTypes, 
+  styleOptions, 
+  pocketOptions, 
+  colorOptions,
+  TOTAL_STEPS 
+} from "@/lib/customize-constants";
 
 export const useCustomizeForm = () => {
   const navigate = useNavigate();

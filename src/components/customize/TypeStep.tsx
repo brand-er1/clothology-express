@@ -1,69 +1,7 @@
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Shirt, Scissors } from "lucide-react";
-
-type ClothType = {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  description: string;
-  category: "tops" | "bottoms" | "custom";
-};
-
-const clothTypes: ClothType[] = [
-  // Tops
-  {
-    id: "tshirt-short",
-    name: "반팔 티셔츠",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "시원하고 캐주얼한 반팔 티셔츠",
-    category: "tops",
-  },
-  {
-    id: "tshirt-long",
-    name: "긴소매 티셔츠",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "편안하고 실용적인 긴소매 티셔츠",
-    category: "tops",
-  },
-  {
-    id: "sweatshirt",
-    name: "맨투맨",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "포근하고 세련된 맨투맨",
-    category: "tops",
-  },
-  {
-    id: "jacket",
-    name: "자켓",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "스타일리시한 자켓",
-    category: "tops",
-  },
-  // Bottoms
-  {
-    id: "shorts",
-    name: "반바지",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "시원하고 활동적인 반바지",
-    category: "bottoms",
-  },
-  {
-    id: "pants",
-    name: "긴바지",
-    icon: <Shirt className="w-8 h-8" />,
-    description: "편안하고 세련된 긴바지",
-    category: "bottoms",
-  },
-  // Custom
-  {
-    id: "custom",
-    name: "커스텀",
-    icon: <Scissors className="w-8 h-8" />,
-    description: "나만의 특별한 의상을 제작해보세요 (※ 상황에 따라 주문이 반려될 수 있습니다)",
-    category: "custom",
-  },
-];
+import { clothTypes } from "@/lib/customize-constants";
 
 interface TypeStepProps {
   selectedType: string;

@@ -18,6 +18,7 @@ export type Database = {
           id: string
           phone_number: string | null
           updated_at: string
+          user_id: string | null
           username: string | null
           usual_size: string | null
           weight: number | null
@@ -30,6 +31,7 @@ export type Database = {
           id: string
           phone_number?: string | null
           updated_at?: string
+          user_id?: string | null
           username?: string | null
           usual_size?: string | null
           weight?: number | null
@@ -42,6 +44,7 @@ export type Database = {
           id?: string
           phone_number?: string | null
           updated_at?: string
+          user_id?: string | null
           username?: string | null
           usual_size?: string | null
           weight?: number | null

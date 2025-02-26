@@ -1,12 +1,7 @@
 
 import { Header } from "@/components/Header";
-import { UserInfo } from "../App";
 
-interface OrdersProps {
-  userInfo: UserInfo;
-}
-
-const Orders = ({ userInfo }: OrdersProps) => {
+const Orders = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -15,7 +10,6 @@ const Orders = ({ userInfo }: OrdersProps) => {
         <p className="text-center text-gray-600">
           Order management interface coming in the next update
         </p>
-        {/* userInfo를 사용하여 필요한 기능 구현 */}
       </main>
     </div>
   );

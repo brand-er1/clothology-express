@@ -3,7 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const falApiKey = Deno.env.get('FAL_KEY');
+const replicateApiKey = Deno.env.get('REPLICATE_API_KEY');
 
 const SYSTEM_PROMPT = `Assist in generating precise and optimized prompts for the FLUX AI model to create high-quality fashion image based on user input.
 
@@ -53,38 +53,59 @@ serve(async (req) => {
     const openaiData = await openaiResponse.json();
     const optimizedPrompt = openaiData.choices[0].message.content;
 
-    // 2단계: Fal.ai를 통한 이미지 생성
-    const falResponse = await fetch('https://110602490-flux-lora.gateway.alpha.fal.ai/generate', {
+    // 2단계: Replicate를 통한 이미지 생성
+    const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
-        'Authorization': `Key ${falApiKey}`,
+        'Authorization': `Token ${replicateApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt: optimizedPrompt,
-        hf_lora: "ccchhhoi/fashion",
-        lora_scale: 0.8,
-        num_outputs: 1,
-        aspect_ratio: "1:1",
-        output_format: "webp",
-        guidance_scale: 3.5,
-        output_quality: 80,
-        prompt_strength: 0.8,
-        num_inference_steps: 28
+        version: "091495765fa5ef2725a175a57b276ec30dc9d39c22d30410f2ede68a3eab66b3",
+        input: {
+          prompt: optimizedPrompt,
+          hf_lora: "ccchhhoi/fashion",
+          lora_scale: 0.8,
+          num_outputs: 1,
+          aspect_ratio: "1:1",
+          output_format: "webp",
+          guidance_scale: 3.5,
+          output_quality: 80,
+          prompt_strength: 0.8,
+          num_inference_steps: 28
+        }
       }),
     });
 
-    const falData = await falResponse.json();
+    let prediction = await replicateResponse.json();
 
-    return new Response(
-      JSON.stringify({
-        optimizedPrompt,
-        imageUrl: falData.images[0].url,
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    );
+    // Replicate는 비동기로 작업을 처리하므로, 결과가 나올 때까지 폴링
+    while (
+      prediction.status === "starting" || 
+      prediction.status === "processing"
+    ) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch(prediction.urls.get, {
+        headers: {
+          'Authorization': `Token ${replicateApiKey}`,
+        },
+      });
+      prediction = await response.json();
+    }
+
+    if (prediction.status === "succeeded") {
+      return new Response(
+        JSON.stringify({
+          optimizedPrompt,
+          imageUrl: prediction.output[0],
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    } else {
+      throw new Error("Image generation failed");
+    }
 
   } catch (error) {
     console.error('Error:', error);

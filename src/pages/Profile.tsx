@@ -14,6 +14,8 @@ import { AuthFormData } from "@/types/auth";
 const Profile = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [formData, setFormData] = useState<Partial<AuthFormData>>({
     username: "",
     fullName: "",
@@ -50,6 +52,8 @@ const Profile = () => {
         return;
       }
 
+      setEmail(user.email || "");
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -69,6 +73,7 @@ const Profile = () => {
         const addressDetail = addressParts.length > 1 ? addressParts.pop() : "";
         const baseAddress = addressParts.join(" ");
 
+        setUserId(profile.user_id || "");
         setFormData({
           username: profile.username || "",
           fullName: profile.full_name || "",
@@ -107,8 +112,6 @@ const Profile = () => {
         .from('profiles')
         .update({
           username: formData.username,
-          full_name: formData.fullName,
-          phone_number: formData.phoneNumber,
           address: fullAddress,
           height: formData.height ? Number(formData.height) : null,
           weight: formData.weight ? Number(formData.weight) : null,
@@ -149,6 +152,26 @@ const Profile = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="userId">아이디</Label>
+                <Input
+                  id="userId"
+                  value={userId}
+                  readOnly
+                  className="bg-gray-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">이메일</Label>
+                <Input
+                  id="email"
+                  value={email}
+                  readOnly
+                  className="bg-gray-100"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="username">닉네임</Label>
                 <Input
                   id="username"
@@ -165,8 +188,8 @@ const Profile = () => {
                   id="fullName"
                   name="fullName"
                   value={formData.fullName}
-                  onChange={handleChange}
-                  required
+                  readOnly
+                  className="bg-gray-100"
                 />
               </div>
 
@@ -176,8 +199,8 @@ const Profile = () => {
                   id="phoneNumber"
                   name="phoneNumber"
                   value={formData.phoneNumber}
-                  onChange={handleChange}
-                  required
+                  readOnly
+                  className="bg-gray-100"
                 />
               </div>
 

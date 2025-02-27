@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,9 +9,6 @@ interface SizeStepProps {
   onSizeChange: (size: string) => void;
   onCustomMeasurementChange: (label: string, value: string) => void;
   selectedType: string;
-  selectedMaterial: string;
-  selectedDetail: string;
-  generatedPrompt?: string;
   gender?: string;
 }
 
@@ -39,9 +35,6 @@ export const SizeStep = ({
   onSizeChange,
   onCustomMeasurementChange,
   selectedType,
-  selectedMaterial,
-  selectedDetail,
-  generatedPrompt = "",
   gender = "남성",
 }: SizeStepProps) => {
   const [userHeight, setUserHeight] = useState<number | null>(null);
@@ -77,7 +70,7 @@ export const SizeStep = ({
           setUserHeight(profile.height);
           setUserGender(profile.gender || "남성");
           if (profile.height && selectedType) {
-            await requestSizeRecommendation(profile.height, profile.gender || "남성", selectedType, selectedMaterial, selectedDetail, generatedPrompt);
+            await requestSizeRecommendation(profile.height, profile.gender || "남성", selectedType);
           }
         }
       } catch (error) {
@@ -88,22 +81,14 @@ export const SizeStep = ({
     };
 
     loadUserProfile();
-  }, [selectedType, selectedMaterial, selectedDetail, generatedPrompt]);
+  }, [selectedType]);
 
-  const requestSizeRecommendation = async (
-    height: number, 
-    gender: string, 
-    type: string, 
-    material: string, 
-    detail: string, 
-    prompt: string
-  ) => {
+  const requestSizeRecommendation = async (height: number, gender: string, type: string) => {
     try {
       // 타입 매핑
       const typeMapping: { [key: string]: string } = {
         'jacket': 'outer_jacket',
-        'long_pants': 'long_pants',
-        'short_pants': 'short_pants',
+        'pants': 'long_pants',
         'short_sleeve': 'short_sleeve',
         'long_sleeve': 'long_sleeve_regular',
         'sweatshirt': 'sweatshirt_regular'
@@ -114,10 +99,7 @@ export const SizeStep = ({
       const request = {
         gender: gender === "남성" ? "men" : "women",
         height: height,
-        type: mappedType,
-        material: material,
-        detail: detail,
-        prompt: prompt
+        type: mappedType
       };
       
       setRequestData(request);
@@ -179,9 +161,6 @@ export const SizeStep = ({
               <h3 className="text-lg font-semibold mb-4">현재 상태 값</h3>
               <div className="space-y-2">
                 <p><strong>선택된 타입:</strong> {selectedType}</p>
-                <p><strong>선택된 원단:</strong> {selectedMaterial}</p>
-                <p><strong>선택된 디테일:</strong> {selectedDetail ? selectedDetail.substring(0, 50) + '...' : '없음'}</p>
-                <p><strong>생성된 프롬프트:</strong> {generatedPrompt ? generatedPrompt.substring(0, 50) + '...' : '없음'}</p>
                 <p><strong>사용자 키:</strong> {userHeight}cm</p>
                 <p><strong>사용자 성별:</strong> {userGender}</p>
                 <p><strong>현재 선택된 사이즈:</strong> {selectedSize}</p>

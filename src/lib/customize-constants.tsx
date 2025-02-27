@@ -13,14 +13,14 @@ export type ClothType = {
 export const clothTypes: ClothType[] = [
   // Tops
   {
-    id: "short_sleeve",
+    id: "tshirt-short",
     name: "반팔 티셔츠",
     icon: React.createElement(Shirt, { className: "w-8 h-8" }),
     description: "시원하고 캐주얼한 반팔 티셔츠",
     category: "tops",
   },
   {
-    id: "long_sleeve",
+    id: "tshirt-long",
     name: "긴소매 티셔츠",
     icon: React.createElement(Shirt, { className: "w-8 h-8" }),
     description: "편안하고 실용적인 긴소매 티셔츠",
@@ -42,14 +42,14 @@ export const clothTypes: ClothType[] = [
   },
   // Bottoms
   {
-    id: "short_pants",
+    id: "shorts",
     name: "반바지",
     icon: React.createElement(Shirt, { className: "w-8 h-8" }),
     description: "시원하고 활동적인 반바지",
     category: "bottoms",
   },
   {
-    id: "long_pants",
+    id: "pants",
     name: "긴바지",
     icon: React.createElement(Shirt, { className: "w-8 h-8" }),
     description: "편안하고 세련된 긴바지",

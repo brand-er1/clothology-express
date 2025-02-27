@@ -28,7 +28,6 @@ export const useCustomizeForm = () => {
   const [selectedFit, setSelectedFit] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
-  const [generatedPrompt, setGeneratedPrompt] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
   const [imageLoading, setImageLoading] = useState(false);
@@ -95,7 +94,7 @@ export const useCustomizeForm = () => {
   const handleGenerateImage = async () => {
     try {
       setImageLoading(true);
-      const result = await generateImage(
+      const imageUrl = await generateImage(
         selectedType,
         selectedMaterial,
         selectedStyle,
@@ -104,11 +103,7 @@ export const useCustomizeForm = () => {
         selectedDetail,
         materials
       );
-      
-      if (result && result.imageUrl) {
-        setGeneratedImageUrl(result.imageUrl);
-        setGeneratedPrompt(result.prompt || "");
-      }
+      setGeneratedImageUrl(imageUrl);
     } catch (err) {
       // Error is already handled in generateImage
     } finally {
@@ -179,7 +174,6 @@ export const useCustomizeForm = () => {
     isLoading,
     imageLoading,
     generatedImageUrl,
-    generatedPrompt,
     selectedSize,
     setSelectedSize,
     customMeasurements,

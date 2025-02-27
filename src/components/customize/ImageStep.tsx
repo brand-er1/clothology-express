@@ -40,6 +40,10 @@ export const ImageStep = ({
                   src={generatedImageUrl}
                   alt="Generated clothing design"
                   className="max-h-full max-w-full object-contain rounded-lg"
+                  onError={(e) => {
+                    console.error("Image loading error:", e);
+                    e.currentTarget.src = "/placeholder.svg";
+                  }}
                 />
               ) : (
                 <Button 

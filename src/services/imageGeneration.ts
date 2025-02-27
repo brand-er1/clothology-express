@@ -39,7 +39,7 @@ export const generateImage = async (
       throw new Error(error.message);
     }
 
-    if (!data.imageUrl) {
+    if (!data || !data.imageUrl) {
       throw new Error("이미지 생성에 실패했습니다");
     }
 
@@ -48,7 +48,10 @@ export const generateImage = async (
       description: "AI가 생성한 이미지가 준비되었습니다.",
     });
 
-    return data.imageUrl;
+    return {
+      imageUrl: data.imageUrl,
+      prompt: data.optimizedPrompt || prompt
+    };
     
   } catch (err) {
     console.error("Image generation failed:", err);

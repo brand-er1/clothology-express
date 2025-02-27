@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,7 +89,8 @@ export const SizeStep = ({
       // 타입 매핑
       const typeMapping: { [key: string]: string } = {
         'jacket': 'outer_jacket',
-        'pants': 'long_pants',
+        'long_pants': 'long_pants',
+        'short_pants': 'short_pants',
         'short_sleeve': 'short_sleeve',
         'long_sleeve': 'long_sleeve_regular',
         'sweatshirt': 'sweatshirt_regular'

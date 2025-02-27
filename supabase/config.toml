@@ -1,4 +1,4 @@
 
 project_id = "jwmzjszdjlrqrhadbggr"
 [functions.size-recommendation]
-verify_jwt = true
+verify_jwt = false

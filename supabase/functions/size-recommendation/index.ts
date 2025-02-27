@@ -1,220 +1,157 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { sizeData } from "./size-data.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const sizeData = {
-  men: {
-    recommendedSizes: [
-      { height: "160 ~ 165", size: "XS" },
-      { height: "165 ~ 170", size: "S" },
-      { height: "170 ~ 175", size: "M" },
-      { height: "175 ~ 180", size: "L" },
-      { height: "180 ~ 185", size: "XL" },
-      { height: "185 ~ 190", size: "XXL" },
-    ],
-    categories: {
-      outer_jacket: {
-        description: "자켓",
-        sizes: {
-          XS: { shoulder: 43, chest: 111, waist: 101, sleeve: 83.5, length: 68 },
-          S: { shoulder: 44, chest: 116, waist: 106, sleeve: 85, length: 70 },
-          M: { shoulder: 45, chest: 121, waist: 111, sleeve: 86.5, length: 72 },
-          L: { shoulder: 46, chest: 126, waist: 116, sleeve: 88, length: 74 },
-          XL: { shoulder: 47, chest: 131, waist: 121, sleeve: 89.5, length: 76 },
-          XXL: { shoulder: 48, chest: 136, waist: 126, sleeve: 91, length: 78 },
-        },
-      },
-      long_pants: {
-        description: "긴바지",
-        fits: {
-          regular: {
-            XS: { waist: 76, hip: 96, thigh: 58, hem: 38, length: 104 },
-            S: { waist: 81, hip: 101, thigh: 61, hem: 39, length: 106 },
-            M: { waist: 86, hip: 106, thigh: 64, hem: 40, length: 108 },
-            L: { waist: 91, hip: 111, thigh: 67, hem: 41, length: 110 },
-            XL: { waist: 96, hip: 116, thigh: 70, hem: 42, length: 112 },
-            XXL: { waist: 101, hip: 121, thigh: 73, hem: 43, length: 114 },
-          },
-        },
-      },
-      short_sleeve: {
-        description: "반팔 티셔츠",
-        sizes: {
-          XS: { shoulder: 42, chest: 96, length: 68 },
-          S: { shoulder: 43.5, chest: 101, length: 70 },
-          M: { shoulder: 45, chest: 106, length: 72 },
-          L: { shoulder: 46.5, chest: 111, length: 74 },
-          XL: { shoulder: 48, chest: 116, length: 76 },
-          XXL: { shoulder: 49.5, chest: 121, length: 78 },
-        },
-      },
-      long_sleeve_regular: {
-        description: "긴팔 티셔츠",
-        sizes: {
-          XS: { shoulder: 42, chest: 96, sleeve: 58, length: 68 },
-          S: { shoulder: 43.5, chest: 101, sleeve: 59, length: 70 },
-          M: { shoulder: 45, chest: 106, sleeve: 60, length: 72 },
-          L: { shoulder: 46.5, chest: 111, sleeve: 61, length: 74 },
-          XL: { shoulder: 48, chest: 116, sleeve: 62, length: 76 },
-          XXL: { shoulder: 49.5, chest: 121, sleeve: 63, length: 78 },
-        },
-      },
-      sweatshirt_regular: {
-        description: "맨투맨",
-        sizes: {
-          XS: { shoulder: 43, chest: 106, sleeve: 58, length: 65 },
-          S: { shoulder: 44.5, chest: 111, sleeve: 59, length: 67 },
-          M: { shoulder: 46, chest: 116, sleeve: 60, length: 69 },
-          L: { shoulder: 47.5, chest: 121, sleeve: 61, length: 71 },
-          XL: { shoulder: 49, chest: 126, sleeve: 62, length: 73 },
-          XXL: { shoulder: 50.5, chest: 131, sleeve: 63, length: 75 },
-        },
-      },
-    },
-  },
-  women: {
-    recommendedSizes: [
-      { height: "150 ~ 155", size: "XS" },
-      { height: "155 ~ 160", size: "S" },
-      { height: "160 ~ 165", size: "M" },
-      { height: "165 ~ 170", size: "L" },
-      { height: "170 ~ 175", size: "XL" },
-      { height: "175 ~ 180", size: "XXL" },
-    ],
-    categories: {
-      outer_jacket: {
-        description: "자켓",
-        sizes: {
-          XS: { shoulder: 37, chest: 86, waist: 76, sleeve: 58, length: 58 },
-          S: { shoulder: 38, chest: 91, waist: 81, sleeve: 59, length: 60 },
-          M: { shoulder: 39, chest: 96, waist: 86, sleeve: 60, length: 62 },
-          L: { shoulder: 40, chest: 101, waist: 91, sleeve: 61, length: 64 },
-          XL: { shoulder: 41, chest: 106, waist: 96, sleeve: 62, length: 66 },
-          XXL: { shoulder: 42, chest: 111, waist: 101, sleeve: 63, length: 68 },
-        },
-      },
-      long_pants: {
-        description: "긴바지",
-        fits: {
-          regular: {
-            XS: { waist: 61, hip: 86, thigh: 50, hem: 30, length: 99 },
-            S: { waist: 66, hip: 91, thigh: 53, hem: 31, length: 101 },
-            M: { waist: 71, hip: 96, thigh: 56, hem: 32, length: 103 },
-            L: { waist: 76, hip: 101, thigh: 59, hem: 33, length: 105 },
-            XL: { waist: 81, hip: 106, thigh: 62, hem: 34, length: 107 },
-            XXL: { waist: 86, hip: 111, thigh: 65, hem: 35, length: 109 },
-          },
-        },
-      },
-      short_sleeve: {
-        description: "반팔 티셔츠",
-        sizes: {
-          XS: { shoulder: 36, chest: 80, length: 56 },
-          S: { shoulder: 37, chest: 85, length: 58 },
-          M: { shoulder: 38, chest: 90, length: 60 },
-          L: { shoulder: 39, chest: 95, length: 62 },
-          XL: { shoulder: 40, chest: 100, length: 64 },
-          XXL: { shoulder: 41, chest: 105, length: 66 },
-        },
-      },
-      long_sleeve_regular: {
-        description: "긴팔 티셔츠",
-        sizes: {
-          XS: { shoulder: 36, chest: 80, sleeve: 57, length: 56 },
-          S: { shoulder: 37, chest: 85, sleeve: 58, length: 58 },
-          M: { shoulder: 38, chest: 90, sleeve: 59, length: 60 },
-          L: { shoulder: 39, chest: 95, sleeve: 60, length: 62 },
-          XL: { shoulder: 40, chest: 100, sleeve: 61, length: 64 },
-          XXL: { shoulder: 41, chest: 105, sleeve: 62, length: 66 },
-        },
-      },
-      sweatshirt_regular: {
-        description: "맨투맨",
-        sizes: {
-          XS: { shoulder: 37, chest: 86, sleeve: 57, length: 55 },
-          S: { shoulder: 38, chest: 91, sleeve: 58, length: 57 },
-          M: { shoulder: 39, chest: 96, sleeve: 59, length: 59 },
-          L: { shoulder: 40, chest: 101, sleeve: 60, length: 61 },
-          XL: { shoulder: 41, chest: 106, sleeve: 61, length: 63 },
-          XXL: { shoulder: 42, chest: 111, sleeve: 62, length: 65 },
-        },
-      },
-    },
-  },
 };
 
-// 키에 맞는 사이즈를 찾는 함수
-function findSizeByHeight(height: number, genderData: any): string | null {
-  const sizeRange = genderData.recommendedSizes.find(range => {
-    const [min, max] = range.height.split(" ~ ").map(Number);
-    return height >= min && height < max;
-  });
-  
-  return sizeRange ? sizeRange.size : null;
+interface RequestParams {
+  gender: 'men' | 'women';
+  height: number;
+  type: string;
+  material: string;
+  detail: string;
+  prompt: string;
 }
 
 serve(async (req) => {
+  // CORS 요청 처리
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { gender, height, type } = await req.json()
-    console.log('Received request:', { gender, height, type });
+    const params: RequestParams = await req.json();
+    console.log("Received request params:", params);
 
-    if (!gender || !height || !type) {
-      throw new Error('Missing required parameters')
+    // 1. 성별 기준 필터링
+    const genderData = sizeData.filter(item => item.성별 === (params.gender === 'men' ? '남성' : '여성'));
+    console.log(`Found ${genderData.length} items for gender: ${params.gender}`);
+
+    // 2. 의류 종류 기준 필터링 (부분 매칭)
+    const baseType = params.type.split('_')[0]; // 예: long_pants -> long
+    const typeData = genderData.filter(item => {
+      // long_pants -> long_pants_regular, long_pants_overfit 등 모두 매칭
+      return item.옷_종류.includes(baseType);
+    });
+    console.log(`Found ${typeData.length} items matching type: ${params.type} (base: ${baseType})`);
+
+    if (typeData.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: `No data found for type: ${params.type}`,
+          availableTypes: [...new Set(genderData.map(item => item.옷_종류))] 
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
-    const genderData = gender === 'men' ? sizeData.men : sizeData.women
-    const recommendedSize = findSizeByHeight(height, genderData)
-    
-    if (!recommendedSize) {
-      throw new Error('Could not determine appropriate size for given height')
+    // 3. 키 범위 필터링
+    const heightData = typeData.filter(item => {
+      // 키 범위를 확장해서 찾기 (±5cm)
+      return Math.abs(item.키 - params.height) <= 5;
+    });
+
+    // 가장 가까운 키 찾기
+    let closestHeightData = typeData[0];
+    let minHeightDiff = Math.abs(typeData[0].키 - params.height);
+
+    for (const item of typeData) {
+      const diff = Math.abs(item.키 - params.height);
+      if (diff < minHeightDiff) {
+        minHeightDiff = diff;
+        closestHeightData = item;
+      }
     }
 
-    // 해당 카테고리의 사이즈 데이터 찾기
-    const category = genderData.categories[type];
-    if (!category) {
-      throw new Error(`Invalid type: ${type}`);
+    const selectedData = heightData.length > 0 ? heightData[0] : closestHeightData;
+    console.log("Selected size data:", selectedData);
+
+    // 4. GPT로 사이즈 분석 요청
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: `당신은 패션 사이즈 분석 전문가입니다. 
+            사용자의 신체 정보와 옷 정보를 바탕으로 적절한 사이즈를 추천해주세요.
+            응답은 반드시 JSON 형식으로 {"총장": 숫자, "어깨너비": 숫자, ...} 형태로 해주세요.
+            모든 측정치는 cm 단위로 제공해주세요.` 
+          },
+          { 
+            role: 'user', 
+            content: `
+            성별: ${params.gender === 'men' ? '남성' : '여성'}
+            키: ${params.height}cm
+            의류 종류: ${params.type}
+            원단: ${params.material}
+            디테일: ${params.detail}
+            의류 설명: ${params.prompt}
+            
+            기본 사이즈 정보:
+            ${JSON.stringify(selectedData.그에_맞는_사이즈_표, null, 2)}
+            
+            이 정보를 바탕으로 적절한 사이즈 데이터를 JSON 형식으로 제공해주세요.`
+          }
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    const gptResponse = await openaiResponse.json();
+    const sizeSuggestion = gptResponse.choices[0].message.content;
+    console.log("GPT Response:", sizeSuggestion);
+
+    // GPT 응답에서 JSON 추출 (문자열로 반환되었을 가능성이 있음)
+    let sizeJSON;
+    try {
+      // JSON 문자열만 추출
+      const jsonMatch = sizeSuggestion.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : sizeSuggestion;
+      sizeJSON = JSON.parse(jsonString);
+    } catch (e) {
+      console.error("Error parsing GPT JSON:", e);
+      // 실패할 경우 원본 사이즈 데이터 사용
+      sizeJSON = selectedData.그에_맞는_사이즈_표;
     }
 
-    // 사이즈 데이터 추출
-    let sizeData;
-    if (type === 'long_pants') {
-      sizeData = category.fits.regular[recommendedSize];
-    } else {
-      sizeData = category.sizes[recommendedSize];
-    }
-
-    console.log('Category:', category);
-    console.log('Size data:', sizeData);
-
+    // 5. 최종 응답 데이터 구성
     const response = {
-      성별: gender === 'men' ? '남성' : '여성',
-      키: height,
-      사이즈: recommendedSize,
-      옷_종류: category.description,
-      그에_맞는_사이즈_표: sizeData
+      성별: params.gender === 'men' ? '남성' : '여성',
+      키: params.height,
+      사이즈: selectedData.사이즈, // XS, S, M, L, XL 등
+      옷_종류: selectedData.옷_종류,
+      그에_맞는_사이즈_표: sizeJSON,
+      원본_사이즈_데이터: selectedData.그에_맞는_사이즈_표,
+      원단: params.material,
+      디테일: params.detail,
+      프롬프트: params.prompt
     };
 
-    console.log('Response:', response);
-
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-
+    return new Response(
+      JSON.stringify(response),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    console.error('Error:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    console.error('Error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
   }
-})
+});

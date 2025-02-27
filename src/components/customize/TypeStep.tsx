@@ -9,6 +9,20 @@ interface TypeStepProps {
 }
 
 export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
+  // 타입 매핑 - Edge Function에 전달될 타입명과 일치하도록
+  const getTypeValue = (typeId: string): string => {
+    const typeMapping: { [key: string]: string } = {
+      'jacket': 'outer_jacket',
+      'long_pants': 'long_pants_regular',
+      'short_pants': 'shorts',
+      'short_sleeve': 'short_sleeve',
+      'long_sleeve': 'long_sleeve_regular',
+      'sweatshirt': 'sweatshirt_regular'
+    };
+    
+    return typeMapping[typeId] || typeId;
+  };
+
   return (
     <div className="space-y-8">
       {/* Tops Section */}

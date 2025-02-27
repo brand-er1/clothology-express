@@ -40,6 +40,7 @@ const Customize = () => {
     setSelectedFit,
     imageLoading,
     generatedImageUrl,
+    generatedPrompt,
     selectedSize,
     setSelectedSize,
     customMeasurements,
@@ -159,6 +160,9 @@ const Customize = () => {
                 }
               }}
               selectedType={selectedType}
+              selectedMaterial={selectedMaterial}
+              selectedDetail={selectedDetail}
+              generatedPrompt={generatedPrompt}
               gender={userGender}
             />
           )}

@@ -44,6 +44,9 @@ serve(async (req) => {
     const subcategories = Object.keys(dataForGender.categories).filter(catKey =>
       catKey.startsWith(type)
     );
+    // 후보 목록을 콘솔에 출력
+    console.log("Subcategory candidates:", subcategories);
+
     if (subcategories.length === 0) {
       return errorResponse(`${type}에 해당하는 사이즈 카테고리가 없습니다.`, 404);
     }
@@ -128,20 +131,24 @@ async function pickSubcategoryWithGPT(options: {
         {
           role: "system",
           content: `
-당신은 패션 전문가입니다.
-아래 정보에 따라 가능한 하위 카테고리 중 하나를 골라 JSON 형식으로 반환하세요.
-예시: {"subcategory": "short_sleeve"}
+You are a fashion expert.
+Based on the information provided, please choose one and only one subcategory from the candidate list below.
+Do not return any value outside the candidate list.
+Return your answer strictly in JSON format with no extra text.
+Example:
+{"subcategory": "short_sleeve"}
+Candidate list:
+- ${subcategories.join("\n- ")}
           `,
         },
         {
           role: "user",
           content: `
-- 성별: ${gender === "men" ? "남성" : "여성"}
-- 의류 종류: ${type}
-- 가능한 하위 카테고리: ${subcategories.join(", ")}
-- 원단/소재: ${material}
-- 디테일: ${detail}
-- 추가 설명: ${prompt}
+- Gender: ${gender === "men" ? "Male" : "Female"}
+- Garment Type: ${type}
+- Material: ${material}
+- Detail: ${detail}
+- Additional description: ${prompt}
           `,
         },
       ],

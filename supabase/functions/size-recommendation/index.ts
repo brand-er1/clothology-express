@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 interface RequestParams {
-  gender: "men" | "women";
+  gender: "남성" | "여성";
   height: number;
   type: string;     // 예: "short_sleeve", "outer_jacket", "sweatshirt", "short_pants", "long_sleeve"
   material: string; // e.g. "cotton", "polyester"
@@ -47,22 +47,16 @@ serve(async (req) => {
       return errorResponse(`잘못된 성별 값: ${gender}`, 400);
     }
 
-    // 3. 키에 맞는 사이즈 찾기
-    const recommendedSizes = dataForGender.recommendedSizes;
-    const userSize = findRecommendedSize(height, recommendedSizes);
-    if (!userSize) {
-      return errorResponse(`해당 키(${height})에 맞는 사이즈를 찾을 수 없습니다.`, 404);
-    }
-    console.log("[2] 키에 따른 추천 사이즈:", userSize);
 
     // 4. 입력된 type(예: sweatshirt)을 synonymMap으로 보정하여 subcategory 결정
     const subcategory = synonymMap[type] || type;
     console.log("[3] 최종 subcategory 결정:", subcategory);
 
-    const categoryData = dataForGender.categories[subcategory];
+    const categoryData = dataForGender[subcategory];
     if (!categoryData) {
       return errorResponse(`카테고리 데이터가 없습니다: '${subcategory}'`, 404);
     }
+
 
     // 5. GPT에게 핏만 결정하도록 요청
     const fit = await pickFitWithGPT({
@@ -77,15 +71,18 @@ serve(async (req) => {
     }
     console.log("[4] GPT가 선택한 핏:", fit);
 
-    // 6. 핏별 사이즈표에서 userSize 데이터를 찾는다
-    const fitData = categoryData.fits?.[fit];
-    if (!fitData) {
-      return errorResponse(
-        `'${subcategory}' 카테고리에 '${fit}' 핏 데이터가 없습니다.`,
-        404,
-      );
+
+    // 3. 키에 맞는 사이즈 찾기
+    const recommendedSizes = categoryData[fit];
+    const userSize = findRecommendedSize(height, recommendedSizes);
+    if (!userSize) {
+      return errorResponse(`해당 키(${height})에 맞는 사이즈를 찾을 수 없습니다.`, 404);
     }
-    const finalSizeTable = fitData[userSize];
+    console.log("[2] 키에 따른 추천 사이즈:", userSize);
+
+
+
+    const finalSizeTable = recommendedSizes[userSize];
     if (!finalSizeTable) {
       return errorResponse(
         `'${subcategory}'의 '${fit}' 핏에서 '${userSize}' 사이즈 데이터를 찾을 수 없습니다.`,
@@ -96,7 +93,7 @@ serve(async (req) => {
 
     // 7. 최종 결과
     const result = {
-      성별: gender === "men" ? "남성" : "여성",
+      성별: gender,
       키: height,
       카테고리: subcategory,
       핏: fit,
@@ -114,23 +111,36 @@ serve(async (req) => {
   }
 });
 
+
 function findRecommendedSize(
   height: number,
-  sizes: { height: string; size: string }[],
+  sizeTable: Record<string, Record<string, string>>
 ): string | null {
-  for (const range of sizes) {
-    const parts = range.height.split("~");
-    if (parts.length === 2) {
-      const min = parseInt(parts[0].trim());
-      const max = parseInt(parts[1].trim());
-      if (height >= min && height <= max) {
-        // 예: "M (170~175cm)" 형태일 수 있으므로 첫 단어만 사이즈로 파싱
-        return range.size.split(" ")[0];
-      }
+  for (const [size, measurements] of Object.entries(sizeTable)) {
+    const heightRange = measurements["추천 키"];
+    if (!heightRange) continue;
+    
+    // "160~165cm" 형식에서 숫자만 추출
+    const range = heightRange.replace('cm', '').split('~');
+    const min = parseInt(range[0]);
+    const max = parseInt(range[1]);
+    
+    if (height >= min && height <= max) {
+      return size;
     }
   }
-  // 범위에 해당되지 않으면 첫 사이즈라도 반환 (혹은 null)
-  return sizes.length > 0 ? sizes[0].size.split(" ")[0] : null;
+  
+  // 범위를 벗어난 경우, 가장 가까운 사이즈 반환
+  const sizes = Object.entries(sizeTable);
+  if (sizes.length === 0) return null;
+  
+  const firstRange = sizes[0][1]["추천 키"].replace('cm', '').split('~');
+  const lastRange = sizes[sizes.length - 1][1]["추천 키"].replace('cm', '').split('~');
+  
+  if (height < parseInt(firstRange[0])) return sizes[0][0];  // 가장 작은 사이즈
+  if (height > parseInt(lastRange[1])) return sizes[sizes.length - 1][0];  // 가장 큰 사이즈
+  
+  return null;
 }
 
 /**
@@ -162,7 +172,7 @@ async function pickFitWithGPT(options: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4", // 또는 gpt-3.5-turbo, gpt-4 등
+      model: "gpt-4o-mini", // 또는 gpt-3.5-turbo, gpt-4 등
       temperature: 0.3,
       messages: [
         {
@@ -179,11 +189,11 @@ For example: {"fit": "regular"}
         {
           role: "user",
           content: `
-- Gender: ${gender === "men" ? "Male" : "Female"}
+- Gender: ${gender}
 - Category (subtype): ${type}
 - Material: ${material}
 - Detail: ${detail}
-- Additional prompt: ${prompt}
+- Fashion description optimized by gpt: ${prompt}
         `,
         },
       ],

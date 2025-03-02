@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { sizeData, tolerances, sizeRanges, measurementCategories, clothingTypeTranslation, genderTranslation } from "./size-data.ts";
+import { sizeData, sizeRanges, clothingTypeTranslation, genderTranslation } from "./size-data.ts";
 
 // Define CORS headers
 const corsHeaders = {
@@ -104,17 +104,13 @@ serve(async (req) => {
 
     // Prepare and return the response
     const response = {
-      성별: gender === "men" ? "남성" : "여성",
+      성별: genderEn === "men" ? "남성" : "여성",
       키: height,
       카테고리: type,
       핏: fit,
       사이즈: recommendedSize.toUpperCase(),
       사이즈표: measurements,
-      debugLogs: {
-        steps: debug.steps,
-        errors: debug.errors,
-        warnings: debug.warnings
-      }
+      debugLogs: debug
     };
 
     return new Response(

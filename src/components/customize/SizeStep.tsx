@@ -1,3 +1,4 @@
+
 // SizeStep.tsx
 
 import { useEffect, useState } from "react";
@@ -93,19 +94,20 @@ export const SizeStep = ({
         detail,
         prompt,
       };
-      const response = await fetch("https://<YOUR-PROJECT>.supabase.co/functions/v1/size-recommendation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      
+      // Use the supabase client's functions.invoke method instead of direct fetch
+      const { data, error } = await supabase.functions.invoke("size-recommendation", {
+        body: payload
       });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Size recommendation request failed");
+      
+      if (error) {
+        throw new Error(error.message || "Size recommendation request failed");
       }
-      const data = await response.json() as SizeRecommendation;
-      setRecommendation(data);
+      
+      setRecommendation(data as SizeRecommendation);
       setError(null);
     } catch (err: any) {
+      console.error("Size recommendation error:", err);
       setError(err.message || "사이즈 추천 요청 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);

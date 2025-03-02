@@ -1,4 +1,3 @@
-
 // SizeStep.tsx
 
 import { useEffect, useState } from "react";
@@ -168,7 +167,10 @@ export const SizeStep = ({
   };
 
   const renderDebugInfo = () => {
-    if (!recommendation?.debugLogs) return null;
+    if (!recommendation?.debugLogs) {
+      console.log("No debug logs available:", recommendation);
+      return null;
+    }
     
     const { steps, errors, warnings } = recommendation.debugLogs;
     
@@ -180,12 +182,12 @@ export const SizeStep = ({
             <AccordionTrigger className="text-blue-600 font-medium">
               <div className="flex items-center gap-2">
                 <Info size={16} />
-                <span>처리 단계 ({steps.length})</span>
+                <span>처리 단계 ({steps?.length || 0})</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-3">
-                {steps.map((step, index) => (
+                {steps?.map((step, index) => (
                   <div key={index} className="bg-white p-3 rounded border border-slate-200">
                     <h4 className="font-medium mb-2">{step.step}</h4>
                     <pre className="bg-slate-100 p-2 rounded text-xs overflow-auto max-h-60">

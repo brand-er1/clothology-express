@@ -42,15 +42,13 @@ file_size_limit = "50MiB"
 enabled = false
 port = 54327
 vector_port = 54328
+gcp_logging_enabled = true
+gcp_logging_project_id = ""
 
-[functions.size-recommendation]
-verify_jwt = false
+[experimental]
+[experimental.mfa]
+enabled = true
 
-[functions.check-availability]
-verify_jwt = false
-
-[functions.generate-optimized-image]
-verify_jwt = false
-
-[functions.update-system-prompt]
+[[edge_functions]]
+path = "size-recommendation"
 verify_jwt = false

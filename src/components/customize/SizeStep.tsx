@@ -94,7 +94,7 @@ export const SizeStep = ({
   ) => {
     try {
       setIsLoading(true);
-      const mappedGender = gender === "남성" ? "men" : "women";
+      const mappedGender = gender;
       const payload = {
         gender: mappedGender,
         height,

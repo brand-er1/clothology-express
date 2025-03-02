@@ -14,6 +14,11 @@ interface SizeStepProps {
   selectedDetail: string;
   generatedPrompt?: string;
   gender?: string;
+  // Add the missing props
+  selectedSize?: string;
+  customMeasurements?: Record<string, number>;
+  onSizeChange?: (size: string) => void;
+  onCustomMeasurementChange?: (label: string, value: string) => void;
 }
 
 interface SizeRecommendation {
@@ -29,6 +34,10 @@ export const SizeStep = ({
   selectedDetail,
   generatedPrompt = "",
   gender = "남성",
+  selectedSize,
+  customMeasurements,
+  onSizeChange,
+  onCustomMeasurementChange,
 }: SizeStepProps) => {
   const [userHeight, setUserHeight] = useState<number | null>(null);
   const [userGender, setUserGender] = useState<string>("남성");
@@ -105,6 +114,9 @@ export const SizeStep = ({
       }
       
       setRecommendation(data as SizeRecommendation);
+      if (onSizeChange && data && data.사이즈) {
+        onSizeChange(data.사이즈);
+      }
       setError(null);
     } catch (err: any) {
       console.error("Size recommendation error:", err);
@@ -128,6 +140,20 @@ export const SizeStep = ({
       inseam: "인심"
     };
     return map[key] || key;
+  };
+
+  // Handle selecting a size manually (for when the user wants to override the recommendation)
+  const handleSizeSelect = (size: string) => {
+    if (onSizeChange) {
+      onSizeChange(size);
+    }
+  };
+
+  // Handle custom measurement changes
+  const handleMeasurementChange = (label: string, value: string) => {
+    if (onCustomMeasurementChange) {
+      onCustomMeasurementChange(label, value);
+    }
   };
 
   if (isLoading) {

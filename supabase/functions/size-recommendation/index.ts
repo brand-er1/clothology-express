@@ -6,7 +6,8 @@ import { sizeData } from "./size-data.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 interface RequestParams {
@@ -18,15 +19,14 @@ interface RequestParams {
   prompt: string;   // 다른 텍스트 프롬프트
 }
 
-// 이 맵을 통해 type이 일치하지 않을 경우(예: sweatshirt -> 맨투맨),
-// 혹은 원하는 키워드로 변경하여 subcategory 검색 가능하도록 처리
+// type -> subcategory 매핑
 const synonymMap: Record<string, string> = {
-  "sweatshirt": "맨투맨",
-  "short_sleeve":"반팔티셔츠",
-  "outer_jacket":"자켓",
-  "long_sleeve":"긴팔티셔츠",
-  "long_pants":"긴바지",
-  "short_pants":"반바지"
+  sweatshirt: "맨투맨",
+  short_sleeve: "반팔티셔츠",
+  outer_jacket: "자켓",
+  long_sleeve: "긴팔티셔츠",
+  long_pants: "긴바지",
+  short_pants: "반바지",
 };
 
 serve(async (req) => {
@@ -35,44 +35,49 @@ serve(async (req) => {
   }
 
   try {
+    // 1. 요청 파라미터 수신
     const params: RequestParams = await req.json();
-    console.log("Received request params:", params);
+    console.log("[1] Received request params:", params);
 
     const { gender, height, type, detail, material, prompt } = params;
 
-    // 1. 성별 데이터 가져오기
+    // 2. 성별 데이터 가져오기
     const dataForGender = sizeData[gender];
     if (!dataForGender) {
       return errorResponse(`잘못된 성별 값: ${gender}`, 400);
     }
 
-    // 2. 키에 맞는 사이즈 찾기
+    // 3. 키에 맞는 사이즈 찾기
     const recommendedSizes = dataForGender.recommendedSizes;
     const userSize = findRecommendedSize(height, recommendedSizes);
     if (!userSize) {
       return errorResponse(`해당 키(${height})에 맞는 사이즈를 찾을 수 없습니다.`, 404);
     }
+    console.log("[2] 키에 따른 추천 사이즈:", userSize);
 
-    // 3. 입력된 type(예: sweatshirt)을 synonymMap으로 보정하여 subcategory 결정
-    const subcategory = synonymMap[type] || type; // 데이터 내 카테고리와 일치하도록
+    // 4. 입력된 type(예: sweatshirt)을 synonymMap으로 보정하여 subcategory 결정
+    const subcategory = synonymMap[type] || type;
+    console.log("[3] 최종 subcategory 결정:", subcategory);
+
     const categoryData = dataForGender.categories[subcategory];
     if (!categoryData) {
       return errorResponse(`카테고리 데이터가 없습니다: '${subcategory}'`, 404);
     }
 
-    // 4. GPT에게 fit만 결정하도록 요청
+    // 5. GPT에게 핏만 결정하도록 요청
     const fit = await pickFitWithGPT({
       gender,
       detail,
-      type: subcategory, // 최종 결정된 subcategory
+      type: subcategory,
       material,
       prompt,
     });
     if (!fit) {
       return errorResponse("GPT가 적절한 핏을 결정하지 못했습니다.", 500);
     }
+    console.log("[4] GPT가 선택한 핏:", fit);
 
-    // 5. 핏별 사이즈표에서 userSize 데이터를 찾는다
+    // 6. 핏별 사이즈표에서 userSize 데이터를 찾는다
     const fitData = categoryData.fits?.[fit];
     if (!fitData) {
       return errorResponse(
@@ -87,8 +92,9 @@ serve(async (req) => {
         404,
       );
     }
+    console.log("[5] 최종 사이즈 데이터:", finalSizeTable);
 
-    // 6. 최종 결과
+    // 7. 최종 결과
     const result = {
       성별: gender === "men" ? "남성" : "여성",
       키: height,
@@ -97,6 +103,7 @@ serve(async (req) => {
       사이즈: userSize,
       사이즈표: finalSizeTable,
     };
+    console.log("[6] 최종 결과:", result);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -117,10 +124,12 @@ function findRecommendedSize(
       const min = parseInt(parts[0].trim());
       const max = parseInt(parts[1].trim());
       if (height >= min && height <= max) {
+        // 예: "M (170~175cm)" 형태일 수 있으므로 첫 단어만 사이즈로 파싱
         return range.size.split(" ")[0];
       }
     }
   }
+  // 범위에 해당되지 않으면 첫 사이즈라도 반환 (혹은 null)
   return sizes.length > 0 ? sizes[0].size.split(" ")[0] : null;
 }
 
@@ -153,7 +162,7 @@ async function pickFitWithGPT(options: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4", // 또는 gpt-3.5-turbo, gpt-4 등
       temperature: 0.3,
       messages: [
         {
@@ -185,6 +194,7 @@ For example: {"fit": "regular"}
     console.error("OpenAI 요청 실패:", await openaiResponse.text());
     return null;
   }
+
   const gptData = await openaiResponse.json();
   const content = gptData.choices?.[0]?.message?.content;
   if (!content) return null;

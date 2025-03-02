@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 
 interface SizeStepProps {
   selectedType: string;      // 예: "short_sleeve", "outer_jacket", "long_sleeve", "sweatshirt", "short_pants", 등
@@ -14,7 +16,7 @@ interface SizeStepProps {
   selectedDetail: string;
   generatedPrompt?: string;
   gender?: string;
-  // Add the missing props
+  // 추가된 props
   selectedSize?: string;
   customMeasurements?: Record<string, number>;
   onSizeChange?: (size: string) => void;
@@ -24,8 +26,15 @@ interface SizeStepProps {
 interface SizeRecommendation {
   성별: string;
   키: number;
+  카테고리?: string;
+  핏?: string;
   사이즈: string;
   사이즈표: Record<string, number>;
+  debugLogs?: {
+    steps: Array<{ step: string; data: any }>;
+    errors: Array<string>;
+    warnings: Array<string>;
+  };
 }
 
 export const SizeStep = ({
@@ -44,6 +53,7 @@ export const SizeStep = ({
   const [isLoading, setIsLoading] = useState(true);
   const [recommendation, setRecommendation] = useState<SizeRecommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [debugVisible, setDebugVisible] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -113,6 +123,7 @@ export const SizeStep = ({
         throw new Error(error.message || "Size recommendation request failed");
       }
       
+      console.log("Size recommendation response:", data);
       setRecommendation(data as SizeRecommendation);
       if (onSizeChange && data && data.사이즈) {
         onSizeChange(data.사이즈);
@@ -154,6 +165,124 @@ export const SizeStep = ({
     if (onCustomMeasurementChange) {
       onCustomMeasurementChange(label, value);
     }
+  };
+
+  const renderDebugInfo = () => {
+    if (!recommendation?.debugLogs) return null;
+    
+    const { steps, errors, warnings } = recommendation.debugLogs;
+    
+    return (
+      <div className="mt-6 bg-slate-50 rounded-lg p-4 text-sm">
+        <Accordion type="single" collapsible className="w-full">
+          {/* 디버그 단계 표시 */}
+          <AccordionItem value="debug-steps">
+            <AccordionTrigger className="text-blue-600 font-medium">
+              <div className="flex items-center gap-2">
+                <Info size={16} />
+                <span>처리 단계 ({steps.length})</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-3">
+                {steps.map((step, index) => (
+                  <div key={index} className="bg-white p-3 rounded border border-slate-200">
+                    <h4 className="font-medium mb-2">{step.step}</h4>
+                    <pre className="bg-slate-100 p-2 rounded text-xs overflow-auto max-h-60">
+                      {JSON.stringify(step.data, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* 에러 표시 */}
+          {errors && errors.length > 0 && (
+            <AccordionItem value="debug-errors">
+              <AccordionTrigger className="text-red-600 font-medium">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} />
+                  <span>오류 ({errors.length})</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  {errors.map((error, index) => (
+                    <div key={index} className="bg-red-50 text-red-700 p-2 rounded border border-red-200">
+                      {error}
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          {/* 경고 표시 */}
+          {warnings && warnings.length > 0 && (
+            <AccordionItem value="debug-warnings">
+              <AccordionTrigger className="text-amber-600 font-medium">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} />
+                  <span>경고 ({warnings.length})</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  {warnings.map((warning, index) => (
+                    <div key={index} className="bg-amber-50 text-amber-700 p-2 rounded border border-amber-200">
+                      {warning}
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          {/* 결과 요약 */}
+          <AccordionItem value="debug-summary">
+            <AccordionTrigger className="text-green-600 font-medium">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} />
+                <span>결과 요약</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">성별</TableCell>
+                    <TableCell>{recommendation.성별}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">키</TableCell>
+                    <TableCell>{recommendation.키} cm</TableCell>
+                  </TableRow>
+                  {recommendation.카테고리 && (
+                    <TableRow>
+                      <TableCell className="font-medium">카테고리</TableCell>
+                      <TableCell>{recommendation.카테고리}</TableCell>
+                    </TableRow>
+                  )}
+                  {recommendation.핏 && (
+                    <TableRow>
+                      <TableCell className="font-medium">핏</TableCell>
+                      <TableCell>{recommendation.핏}</TableCell>
+                    </TableRow>
+                  )}
+                  <TableRow>
+                    <TableCell className="font-medium">최종 사이즈</TableCell>
+                    <TableCell>
+                      <Badge>{recommendation.사이즈}</Badge>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -232,9 +361,17 @@ export const SizeStep = ({
                 </h3>
                 <p className="text-gray-500 mt-1">
                   {recommendation.성별}, 키 {recommendation.키}cm
+                  {recommendation.핏 && `, ${recommendation.핏} 핏`}
                 </p>
               </div>
+              <Button variant="outline" size="sm" onClick={() => setDebugVisible(!debugVisible)}>
+                {debugVisible ? "디버그 정보 숨기기" : "디버그 정보 보기"}
+              </Button>
             </div>
+            
+            {/* 디버그 정보 */}
+            {debugVisible && renderDebugInfo()}
+            
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-4">사이즈 세부 정보</h3>
               <Table>

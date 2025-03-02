@@ -164,7 +164,6 @@ const Customize = () => {
               selectedDetail={selectedDetail}
               generatedPrompt={generatedPrompt}
               gender={userGender}
-              height={userHeight}
             />
           )}
 

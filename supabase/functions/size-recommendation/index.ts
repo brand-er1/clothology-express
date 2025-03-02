@@ -1,27 +1,9 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SizeData, getSizeData } from "./size-data.ts";
-
-// Define CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-export type SizeRecommendationResult = {
-  성별: string;
-  키: number;
-  카테고리: string;
-  핏: string;
-  사이즈: string;
-  사이즈표: Record<string, any>;
-  debugLogs?: {
-    steps: Array<{ step: string; data: any }>;
-    errors: Array<string>;
-    warnings: Array<string>;
-  };
-  error?: string;
-};
+import { corsHeaders } from "../_shared/cors.ts";
+import {
+  SizeData,
+  getSizeData,
+} from "./size-data.ts";
 
 export const sizeRecommendation = async (
   gender: string,
@@ -30,7 +12,7 @@ export const sizeRecommendation = async (
   material: string,
   detail: string,
   prompt: string
-): Promise<SizeRecommendationResult> => {
+) => {
   const debugLogs = {
     steps: [] as Array<{ step: string; data: any }>,
     errors: [] as Array<string>,
@@ -38,48 +20,30 @@ export const sizeRecommendation = async (
   };
 
   try {
-    // 사용자 입력 정보 로깅
-    debugLogs.steps.push({
-      step: "사용자 입력 정보",
-      data: { 
-        성별: gender,
-        키: height,
-        의류유형: type,
-        소재: material,
-        디테일: detail 
-      }
-    });
-
-    // AI 프롬프트 로깅
-    debugLogs.steps.push({
-      step: "생성된 프롬프트",
-      data: { prompt }
-    });
-
     // 키 데이터 처리 단계 로깅
     debugLogs.steps.push({
-      step: "키 데이터 처리",
+      step: "Height Data Processing",
       data: { height, gender }
     });
 
     // 의류 타입 처리 단계 로깅
     debugLogs.steps.push({
-      step: "의류 타입 처리",
+      step: "Clothing Type Processing",
       data: { type, material, detail }
     });
 
     // size-data.ts에서 사이즈 데이터 가져오기
     const sizeData = getSizeData();
     debugLogs.steps.push({
-      step: "사이즈 데이터 검색 완료",
+      step: "Size Data Retrieved",
       data: sizeData
     });
 
     // 성별에 따른 데이터 필터링
-    const genderData = sizeData[gender === "남성" ? "men" : "women"];
+    const genderData = sizeData[gender === "men" ? "men" : "women"];
     if (!genderData) {
-      debugLogs.errors.push(`유효하지 않은 성별: ${gender}`);
-      throw new Error("유효하지 않은 성별이 지정되었습니다");
+      debugLogs.errors.push(`Invalid gender: ${gender}`);
+      throw new Error("Invalid gender specified");
     }
 
     // 키에 따른 사이즈 결정
@@ -101,7 +65,7 @@ export const sizeRecommendation = async (
     }
 
     debugLogs.steps.push({
-      step: "사이즈 계산 완료",
+      step: "Size Calculation",
       data: {
         height,
         recommendedSize,
@@ -111,7 +75,7 @@ export const sizeRecommendation = async (
 
     // 최종 응답 생성
     const response = {
-      성별: gender,
+      성별: gender === "men" ? "남성" : "여성",
       키: height,
       카테고리: type,
       핏: detail,
@@ -136,21 +100,17 @@ serve(async (req) => {
   try {
     const { gender, height, type, material, detail, prompt } = await req.json();
 
-    console.log("Received size recommendation request:", { gender, height, type, material, detail, prompt });
-
-    if (!gender || !height || !type || !material) {
-      throw new Error("필수 매개변수가 누락되었습니다");
+    if (!gender || !height || !type || !material || !detail || !prompt) {
+      throw new Error("Missing required parameters");
     }
 
-    const response = await sizeRecommendation(gender, height, type, material, detail || "", prompt || "");
-    console.log("Size recommendation response:", response);
+    const response = await sizeRecommendation(gender, height, type, material, detail, prompt);
 
     return new Response(
       JSON.stringify(response),
       { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
-    console.error("Size recommendation error:", error);
     return new Response(
       JSON.stringify({ error: error.message, debugLogs: error.debugLogs }),
       {

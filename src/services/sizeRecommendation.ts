@@ -1,51 +1,28 @@
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from '@/lib/supabase';
+import { SizeRecommendationParams, SizeRecommendationResult } from '@/types/customize';
 
-export interface SizeRecommendationParams {
-  gender: 'men' | 'women';
-  height: number;
-  type: string;
-  fit?: 'regular' | 'loose' | 'skinny';
-  material?: string;
-  detail?: string;
-  prompt?: string;
-}
-
-export interface SizeRecommendationResponse {
-  성별: string;
-  키: number;
-  카테고리?: string;
-  핏?: string;
-  사이즈: string;
-  사이즈표: Record<string, number>;
-  debugLogs?: {
-    steps: Array<{ step: string; data: any }>;
-    errors: Array<string>;
-    warnings: Array<string>;
-    clothingType?: string;
-    gptResults?: any;
-    inputParams?: any;
-    intermediateCalculations?: any;
-  };
-}
-
-export async function getSizeRecommendation(params: SizeRecommendationParams): Promise<SizeRecommendationResponse> {
+export async function getSizeRecommendation(params: SizeRecommendationParams): Promise<SizeRecommendationResult> {
   try {
-    console.log("Sending size recommendation request with params:", params);
-    
     const { data, error } = await supabase.functions.invoke('size-recommendation', {
-      body: params
+      body: params,
     });
 
     if (error) {
-      console.error('Error in size recommendation function:', error);
-      throw error;
+      console.error('Error fetching size recommendation:', error);
+      throw new Error(error.message);
     }
-    
-    console.log("Size recommendation response:", data);
-    return data;
-  } catch (error) {
-    console.error('Error getting size recommendation:', error);
-    throw error;
+
+    // Include the debug information in the response
+    return {
+      recommendedSize: data.recommendedSize || '?',
+      measurements: data.measurements || {},
+      debugInfo: data.debug || null, // Include all debug info
+      clothingType: data.clothingType, // Include the clothing type
+      gender: data.gender // Include the gender
+    };
+  } catch (error: any) {
+    console.error('Error in size recommendation service:', error);
+    throw new Error(`Failed to get size recommendation: ${error.message}`);
   }
 }

@@ -43,7 +43,6 @@ enabled = false
 port = 54327
 vector_port = 54328
 
-# Define functions with the correct syntax
 [functions.size-recommendation]
 verify_jwt = false
 

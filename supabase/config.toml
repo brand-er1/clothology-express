@@ -42,13 +42,8 @@ file_size_limit = "50MiB"
 enabled = false
 port = 54327
 vector_port = 54328
-gcp_logging_enabled = true
-gcp_logging_project_id = ""
 
-[experimental]
-[experimental.mfa]
-enabled = true
-
-[[edge_functions]]
-path = "size-recommendation"
+# Define functions as a list of tables
+[[functions]]
+name = "size-recommendation"
 verify_jwt = false

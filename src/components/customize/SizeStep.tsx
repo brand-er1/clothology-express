@@ -1,20 +1,18 @@
 
-// SizeStep.tsx
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast";
 
 interface SizeStepProps {
-  selectedType: string;      // 예: "short_sleeve", "outer_jacket", "long_sleeve", "sweatshirt", "short_pants", 등
+  selectedType: string;
   selectedMaterial: string;
   selectedDetail: string;
   generatedPrompt?: string;
   gender?: string;
-  // Add the missing props
   selectedSize?: string;
   customMeasurements?: Record<string, number>;
   onSizeChange?: (size: string) => void;
@@ -52,20 +50,34 @@ export const SizeStep = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setError("사이즈 추천을 위해 로그인이 필요합니다.");
+          setIsLoading(false);
           return;
         }
+        
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("height, gender")
           .eq("id", user.id)
           .single();
-        if (profileError || !profile) {
+          
+        if (profileError) {
+          console.error("Profile error:", profileError);
           setError("프로필 정보를 불러오는데 실패했습니다.");
+          setIsLoading(false);
           return;
         }
+        
+        if (!profile || !profile.height) {
+          setError("사이즈 추천을 위한 키 정보가 없습니다.");
+          setIsLoading(false);
+          return;
+        }
+        
         setUserHeight(profile.height);
         setUserGender(profile.gender || "남성");
-        if (profile.height) {
+        
+        // If we have height and type, request size recommendation
+        if (profile.height && selectedType) {
           await requestSizeRecommendation(
             profile.height,
             profile.gender || "남성",
@@ -74,13 +86,16 @@ export const SizeStep = ({
             selectedDetail,
             generatedPrompt
           );
+        } else {
+          setIsLoading(false);
         }
       } catch (err: any) {
+        console.error("Error loading profile:", err);
         setError("프로필 정보를 불러오는 중 오류가 발생했습니다.");
-      } finally {
         setIsLoading(false);
       }
     };
+    
     loadUserProfile();
   }, [selectedType, selectedMaterial, selectedDetail, generatedPrompt]);
 
@@ -94,9 +109,10 @@ export const SizeStep = ({
   ) => {
     try {
       setIsLoading(true);
-      const mappedGender = gender;
+      setError(null);
+      
       const payload = {
-        gender: mappedGender,
+        gender,
         height,
         type,
         material,
@@ -104,24 +120,36 @@ export const SizeStep = ({
         prompt,
       };
       
-      // Use the supabase client's functions.invoke method instead of direct fetch
+      console.log("Sending size recommendation request with payload:", payload);
+      
+      // Use the supabase client's functions.invoke method
       const { data, error } = await supabase.functions.invoke("size-recommendation", {
         body: payload
       });
       
       if (error) {
+        console.error("Edge function error:", error);
         throw new Error(error.message || "Size recommendation request failed");
       }
       
-      console.log(data)
+      console.log("Size recommendation response:", data);
+      
+      if (!data || !data.사이즈) {
+        throw new Error("Invalid response format from size recommendation service");
+      }
+      
       setRecommendation(data as SizeRecommendation);
-      if (onSizeChange && data && data.사이즈) {
+      if (onSizeChange && data.사이즈) {
         onSizeChange(data.사이즈);
       }
-      setError(null);
     } catch (err: any) {
       console.error("Size recommendation error:", err);
       setError(err.message || "사이즈 추천 요청 중 오류가 발생했습니다.");
+      toast({
+        title: "사이즈 추천 오류",
+        description: err.message || "사이즈 추천 요청 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -157,6 +185,23 @@ export const SizeStep = ({
     }
   };
 
+  // Handle retry
+  const handleRetry = () => {
+    if (!userHeight) {
+      setError("사이즈 추천을 위한 키 정보가 없습니다.");
+      return;
+    }
+    
+    requestSizeRecommendation(
+      userHeight,
+      userGender,
+      selectedType,
+      selectedMaterial,
+      selectedDetail,
+      generatedPrompt
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -175,17 +220,7 @@ export const SizeStep = ({
               <h3 className="text-lg font-medium text-red-700">사이즈 추천 오류</h3>
               <p className="text-gray-600">{error}</p>
               <Button
-                onClick={() =>
-                  userHeight &&
-                  requestSizeRecommendation(
-                    userHeight,
-                    userGender,
-                    selectedType,
-                    selectedMaterial,
-                    selectedDetail,
-                    generatedPrompt
-                  )
-                }
+                onClick={handleRetry}
                 className="mt-4"
               >
                 다시 시도
@@ -202,17 +237,7 @@ export const SizeStep = ({
       <div className="text-center py-8">
         <p>사이즈 추천 데이터가 없습니다. 다시 시도해주세요.</p>
         <Button
-          onClick={() =>
-            userHeight &&
-            requestSizeRecommendation(
-              userHeight,
-              userGender,
-              selectedType,
-              selectedMaterial,
-              selectedDetail,
-              generatedPrompt
-            )
-          }
+          onClick={handleRetry}
           className="mt-4"
         >
           다시 시도

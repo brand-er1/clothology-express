@@ -113,6 +113,7 @@ export const SizeStep = ({
         throw new Error(error.message || "Size recommendation request failed");
       }
       
+      console.log(data)
       setRecommendation(data as SizeRecommendation);
       if (onSizeChange && data && data.사이즈) {
         onSizeChange(data.사이즈);

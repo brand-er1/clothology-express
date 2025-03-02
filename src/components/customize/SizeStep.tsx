@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -6,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getSizeRecommendation, SizeRecommendationResult } from "@/services/sizeRecommendation";
-import { materials, clothTypes } from "@/lib/customize-constants";
+import { clothTypes } from "@/lib/customize-constants";
 import {
   Accordion,
   AccordionContent,

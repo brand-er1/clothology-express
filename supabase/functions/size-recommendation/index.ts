@@ -1,10 +1,27 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
-import {
-  SizeData,
-  getSizeData,
-} from "./size-data.ts";
+import { SizeData, getSizeData } from "./size-data.ts";
+
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+export type SizeRecommendationResult = {
+  성별: string;
+  키: number;
+  카테고리: string;
+  핏: string;
+  사이즈: string;
+  사이즈표: Record<string, any>;
+  debugLogs?: {
+    steps: Array<{ step: string; data: any }>;
+    errors: Array<string>;
+    warnings: Array<string>;
+  };
+  error?: string;
+};
 
 export const sizeRecommendation = async (
   gender: string,
@@ -13,7 +30,7 @@ export const sizeRecommendation = async (
   material: string,
   detail: string,
   prompt: string
-) => {
+): Promise<SizeRecommendationResult> => {
   const debugLogs = {
     steps: [] as Array<{ step: string; data: any }>,
     errors: [] as Array<string>,

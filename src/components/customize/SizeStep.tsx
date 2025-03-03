@@ -43,12 +43,12 @@ interface SizeRecommendation {
 
 // 각 의류 타입별 이미지 매핑
 const clothingImages: Record<string, string> = {
-  'short_sleeve': '/lovable-uploads/94f6a5a8-f57a-4f3c-86c4-95e5dc38c085.png',
-  'long_sleeve': '/lovable-uploads/ddefb143-84f8-43b4-8a5c-09c1a178b272.png', 
-  'sweatshirt': '/lovable-uploads/56fe7f18-2fc2-48ca-9333-4b1a63fa558d.png',
-  'jacket': '/lovable-uploads/1e26c4d3-8284-4115-aeaf-e4c6ca2930da.png',
-  'short_pants': '/lovable-uploads/2e70626a-578d-47c6-8fa3-fa7f174447ee.png',
-  'long_pants': '/lovable-uploads/876531fa-628e-462b-9bca-48fde0278c91.png'
+  '반팔': '/lovable-uploads/반팔티셔츠.png',
+  '긴팔': '/lovable-uploads/긴팔티셔츠.png', 
+  '맨투맨': '/lovable-uploads/맨투맨.png',
+  '자켓': '/lovable-uploads/자켓.png',
+  '반바지': '/lovable-uploads/반바지.png',
+  '긴바지': '/lovable-uploads/긴바지.png'
 };
 
 export const SizeStep = ({
@@ -125,12 +125,12 @@ export const SizeStep = ({
       setIsLoading(true);
       // 타입 매핑
       const typeMapping: { [key: string]: string } = {
-        'jacket': 'outer_jacket',
-        'long_pants': 'long_pants',
-        'short_pants': 'short_pants',
-        'short_sleeve': 'short_sleeve',
-        'long_sleeve': 'long_sleeve',
-        'sweatshirt': 'sweatshirt'
+        'jacket': '자켓',
+        'long_pants': '긴바지',
+        'short_pants': '반바지',
+        'short_sleeve': '반팔',
+        'long_sleeve': '긴팔',
+        'sweatshirt': '맨투맨'
       };
 
       const mappedType = typeMapping[type] || type;

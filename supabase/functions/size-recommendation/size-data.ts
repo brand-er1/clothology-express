@@ -1,7 +1,6 @@
 // size-data.ts
 
 export const sizeData = {
-   
    "남성": {
       "자켓": {
          "slim": {

@@ -113,11 +113,11 @@ export const SizeStep = ({
       // 타입 매핑
       const typeMapping: { [key: string]: string } = {
         'jacket': 'outer_jacket',
-        'long_pants': 'long_pants_regular',
-        'short_pants': 'shorts',
+        'long_pants': 'long_pants',
+        'short_pants': 'short_pants',
         'short_sleeve': 'short_sleeve',
-        'long_sleeve': 'long_sleeve_regular',
-        'sweatshirt': 'sweatshirt_regular'
+        'long_sleeve': 'long_sleeve',
+        'sweatshirt': 'sweatshirt'
       };
 
       const mappedType = typeMapping[type] || type;

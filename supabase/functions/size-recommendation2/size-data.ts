@@ -1,411 +1,595 @@
 
+// 이 파일은 새로운 Edge Function에도 필요합니다.
+// size-data.ts를 size-recommendation2 폴더에도 배치해야 합니다.
+
 export const sizeData = {
-  men: {
-    heightRanges: [
-      {
-        range: "160~165",
-        baseSize: "XS (85)",
-        clothingTypes: {
-          outer_jacket: {
-            description: "아우터/자켓 (남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 41, chest: 111, waist: 101, sleeve: 82, length: 68 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 43, chest: 116, waist: 106, sleeve: 84, length: 70 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 45, chest: 121, waist: 111, sleeve: 86.5, length: 72 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 47, chest: 126, waist: 116, sleeve: 89, length: 74 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 49, chest: 131, waist: 121, sleeve: 91.5, length: 76 }
-              },
-              {
-                size: "XXL",
-                measurements: { shoulder: 51, chest: 136, waist: 126, sleeve: 94, length: 78 }
-              },
-              {
-                size: "XXXL",
-                measurements: { shoulder: 53, chest: 141, waist: 131, sleeve: 96.5, length: 80 }
-              }
-            ]
-          },
-          jacket: {
-            description: "자켓 (남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 41, chest: 111, waist: 101, sleeve: 82, length: 68 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 43, chest: 116, waist: 106, sleeve: 84, length: 70 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 45, chest: 121, waist: 111, sleeve: 86.5, length: 72 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 47, chest: 126, waist: 116, sleeve: 89, length: 74 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 49, chest: 131, waist: 121, sleeve: 91.5, length: 76 }
-              },
-              {
-                size: "XXL",
-                measurements: { shoulder: 51, chest: 136, waist: 126, sleeve: 94, length: 78 }
-              },
-              {
-                size: "XXXL",
-                measurements: { shoulder: 53, chest: 141, waist: 131, sleeve: 96.5, length: 80 }
-              }
-            ]
-          },
-          short_sleeve: {
-            description: "반팔 티셔츠 (레귤러 핏, 남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 42, chest: 92, waist: 92, sleeve: 19, length: 68 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 44, chest: 96, waist: 96, sleeve: 20, length: 70 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 47, chest: 101, waist: 101, sleeve: 21, length: 72 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 49, chest: 107, waist: 107, sleeve: 22, length: 74 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 52, chest: 113, waist: 113, sleeve: 23, length: 76 }
-              },
-              {
-                size: "XXL",
-                measurements: { shoulder: 54, chest: 120, waist: 120, sleeve: 24, length: 78 }
-              },
-              {
-                size: "XXXL",
-                measurements: { shoulder: 57, chest: 127, waist: 127, sleeve: 25, length: 80 }
-              }
-            ]
-          },
-          long_sleeve: {
-            description: "긴팔 티셔츠 (레귤러 핏, 남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 42, chest: 92, waist: 92, sleeve: 58, length: 68 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 44, chest: 96, waist: 96, sleeve: 60, length: 70 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 47, chest: 101, waist: 101, sleeve: 62, length: 72 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 49, chest: 107, waist: 107, sleeve: 64, length: 74 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 52, chest: 113, waist: 113, sleeve: 66, length: 76 }
-              },
-              {
-                size: "XXL",
-                measurements: { shoulder: 54, chest: 120, waist: 120, sleeve: 68, length: 78 }
-              },
-              {
-                size: "XXXL",
-                measurements: { shoulder: 57, chest: 127, waist: 127, sleeve: 70, length: 80 }
-              }
-            ]
-          },
-          long_sleeve_regular: {
-            description: "긴팔 티셔츠 (레귤러 핏, 남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 42, chest: 92, waist: 92, sleeve: 58, length: 68 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 44, chest: 96, waist: 96, sleeve: 60, length: 70 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 47, chest: 101, waist: 101, sleeve: 62, length: 72 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 49, chest: 107, waist: 107, sleeve: 64, length: 74 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 52, chest: 113, waist: 113, sleeve: 66, length: 76 }
-              },
-              {
-                size: "XXL",
-                measurements: { shoulder: 54, chest: 120, waist: 120, sleeve: 68, length: 78 }
-              },
-              {
-                size: "XXXL",
-                measurements: { shoulder: 57, chest: 127, waist: 127, sleeve: 70, length: 80 }
-              }
-            ]
-          },
-          sweatshirt: {
-            description: "맨투맨/스웨트셔츠 (남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 44, chest: 104, waist: 94, sleeve: 60, length: 66 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 46, chest: 109, waist: 99, sleeve: 62, length: 68 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 49, chest: 114, waist: 104, sleeve: 64, length: 70 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 52, chest: 119, waist: 109, sleeve: 66, length: 72 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 55, chest: 124, waist: 114, sleeve: 68, length: 74 }
-              },
-              {
-                size: "XXL",
-                measurements: { shoulder: 58, chest: 129, waist: 119, sleeve: 70, length: 76 }
-              },
-              {
-                size: "XXXL",
-                measurements: { shoulder: 61, chest: 134, waist: 124, sleeve: 72, length: 78 }
-              }
-            ]
-          },
-          sweatshirt_regular: {
-            description: "맨투맨/스웨트셔츠 (레귤러 핏, 남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 44, chest: 104, waist: 94, sleeve: 60, length: 66 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 46, chest: 109, waist: 99, sleeve: 62, length: 68 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 49, chest: 114, waist: 104, sleeve: 64, length: 70 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 52, chest: 119, waist: 109, sleeve: 66, length: 72 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 55, chest: 124, waist: 114, sleeve: 68, length: 74 }
-              },
-              {
-                size: "XXL",
-                measurements: { shoulder: 58, chest: 129, waist: 119, sleeve: 70, length: 76 }
-              },
-              {
-                size: "XXXL",
-                measurements: { shoulder: 61, chest: 134, waist: 124, sleeve: 72, length: 78 }
-              }
-            ]
-          },
-          long_pants: {
-            description: "긴바지 (남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { waist: 78, hip: 96, thigh: 58, inseam: 78, length: 102 }
-              },
-              {
-                size: "S",
-                measurements: { waist: 83, hip: 101, thigh: 61, inseam: 79, length: 103 }
-              },
-              {
-                size: "M",
-                measurements: { waist: 88, hip: 106, thigh: 64, inseam: 80, length: 104 }
-              },
-              {
-                size: "L",
-                measurements: { waist: 93, hip: 111, thigh: 67, inseam: 81, length: 105 }
-              },
-              {
-                size: "XL",
-                measurements: { waist: 98, hip: 116, thigh: 70, inseam: 82, length: 106 }
-              },
-              {
-                size: "XXL",
-                measurements: { waist: 103, hip: 121, thigh: 73, inseam: 83, length: 107 }
-              },
-              {
-                size: "XXXL",
-                measurements: { waist: 108, hip: 126, thigh: 76, inseam: 84, length: 108 }
-              }
-            ]
-          },
-          long_pants_regular: {
-            description: "긴바지 (레귤러 핏, 남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { waist: 78, hip: 96, thigh: 58, inseam: 78, length: 102 }
-              },
-              {
-                size: "S",
-                measurements: { waist: 83, hip: 101, thigh: 61, inseam: 79, length: 103 }
-              },
-              {
-                size: "M",
-                measurements: { waist: 88, hip: 106, thigh: 64, inseam: 80, length: 104 }
-              },
-              {
-                size: "L",
-                measurements: { waist: 93, hip: 111, thigh: 67, inseam: 81, length: 105 }
-              },
-              {
-                size: "XL",
-                measurements: { waist: 98, hip: 116, thigh: 70, inseam: 82, length: 106 }
-              },
-              {
-                size: "XXL",
-                measurements: { waist: 103, hip: 121, thigh: 73, inseam: 83, length: 107 }
-              },
-              {
-                size: "XXXL",
-                measurements: { waist: 108, hip: 126, thigh: 76, inseam: 84, length: 108 }
-              }
-            ]
-          },
-          short_pants: {
-            description: "반바지 (남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { waist: 78, hip: 96, thigh: 58, length: 46 }
-              },
-              {
-                size: "S",
-                measurements: { waist: 83, hip: 101, thigh: 61, length: 47 }
-              },
-              {
-                size: "M",
-                measurements: { waist: 88, hip: 106, thigh: 64, length: 48 }
-              },
-              {
-                size: "L",
-                measurements: { waist: 93, hip: 111, thigh: 67, length: 49 }
-              },
-              {
-                size: "XL",
-                measurements: { waist: 98, hip: 116, thigh: 70, length: 50 }
-              },
-              {
-                size: "XXL",
-                measurements: { waist: 103, hip: 121, thigh: 73, length: 51 }
-              },
-              {
-                size: "XXXL",
-                measurements: { waist: 108, hip: 126, thigh: 76, length: 52 }
-              }
-            ]
-          },
-          shorts: {
-            description: "반바지 (남성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { waist: 78, hip: 96, thigh: 58, length: 46 }
-              },
-              {
-                size: "S",
-                measurements: { waist: 83, hip: 101, thigh: 61, length: 47 }
-              },
-              {
-                size: "M",
-                measurements: { waist: 88, hip: 106, thigh: 64, length: 48 }
-              },
-              {
-                size: "L",
-                measurements: { waist: 93, hip: 111, thigh: 67, length: 49 }
-              },
-              {
-                size: "XL",
-                measurements: { waist: 98, hip: 116, thigh: 70, length: 50 }
-              },
-              {
-                size: "XXL",
-                measurements: { waist: 103, hip: 121, thigh: 73, length: 51 }
-              },
-              {
-                size: "XXXL",
-                measurements: { waist: 108, hip: 126, thigh: 76, length: 52 }
-              }
-            ]
-          }
+  "남성": {
+    "맨투맨": {
+      "regular": {
+        "S": {
+          "추천 키": "160~170cm",
+          "어깨너비": "46cm",
+          "가슴둘레": "108cm",
+          "총장": "68cm",
+          "소매길이": "62cm"
+        },
+        "M": {
+          "추천 키": "168~176cm",
+          "어깨너비": "48cm",
+          "가슴둘레": "114cm",
+          "총장": "70cm",
+          "소매길이": "63cm"
+        },
+        "L": {
+          "추천 키": "174~182cm",
+          "어깨너비": "50cm",
+          "가슴둘레": "120cm",
+          "총장": "72cm",
+          "소매길이": "64cm"
+        },
+        "XL": {
+          "추천 키": "180~188cm",
+          "어깨너비": "52cm",
+          "가슴둘레": "126cm",
+          "총장": "74cm",
+          "소매길이": "65cm"
+        }
+      },
+      "slim": {
+        "S": {
+          "추천 키": "160~170cm",
+          "어깨너비": "44cm",
+          "가슴둘레": "102cm",
+          "총장": "66cm",
+          "소매길이": "61cm"
+        },
+        "M": {
+          "추천 키": "168~176cm",
+          "어깨너비": "46cm",
+          "가슴둘레": "108cm",
+          "총장": "68cm",
+          "소매길이": "62cm"
+        },
+        "L": {
+          "추천 키": "174~182cm",
+          "어깨너비": "48cm",
+          "가슴둘레": "114cm",
+          "총장": "70cm",
+          "소매길이": "63cm"
+        },
+        "XL": {
+          "추천 키": "180~188cm",
+          "어깨너비": "50cm",
+          "가슴둘레": "120cm",
+          "총장": "72cm",
+          "소매길이": "64cm"
+        }
+      },
+      "loose": {
+        "S": {
+          "추천 키": "160~170cm",
+          "어깨너비": "48cm",
+          "가슴둘레": "114cm",
+          "총장": "70cm",
+          "소매길이": "63cm"
+        },
+        "M": {
+          "추천 키": "168~176cm",
+          "어깨너비": "50cm",
+          "가슴둘레": "120cm",
+          "총장": "72cm",
+          "소매길이": "64cm"
+        },
+        "L": {
+          "추천 키": "174~182cm",
+          "어깨너비": "52cm",
+          "가슴둘레": "126cm",
+          "총장": "74cm",
+          "소매길이": "65cm"
+        },
+        "XL": {
+          "추천 키": "180~188cm",
+          "어깨너비": "54cm",
+          "가슴둘레": "132cm",
+          "총장": "76cm",
+          "소매길이": "66cm"
         }
       }
-    ]
+    },
+    "반팔티셔츠": {
+      "regular": {
+        "S": {
+          "추천 키": "160~170cm",
+          "어깨너비": "45cm",
+          "가슴둘레": "104cm",
+          "총장": "68cm",
+          "소매길이": "21cm"
+        },
+        "M": {
+          "추천 키": "168~176cm",
+          "어깨너비": "47cm",
+          "가슴둘레": "110cm",
+          "총장": "70cm",
+          "소매길이": "22cm"
+        },
+        "L": {
+          "추천 키": "174~182cm",
+          "어깨너비": "49cm",
+          "가슴둘레": "116cm",
+          "총장": "72cm",
+          "소매길이": "23cm"
+        },
+        "XL": {
+          "추천 키": "180~188cm",
+          "어깨너비": "51cm",
+          "가슴둘레": "122cm",
+          "총장": "74cm",
+          "소매길이": "24cm"
+        }
+      },
+      "slim": {
+        "S": {
+          "추천 키": "160~170cm",
+          "어깨너비": "43cm",
+          "가슴둘레": "98cm",
+          "총장": "66cm",
+          "소매길이": "20cm"
+        },
+        "M": {
+          "추천 키": "168~176cm",
+          "어깨너비": "45cm",
+          "가슴둘레": "104cm",
+          "총장": "68cm",
+          "소매길이": "21cm"
+        },
+        "L": {
+          "추천 키": "174~182cm",
+          "어깨너비": "47cm",
+          "가슴둘레": "110cm",
+          "총장": "70cm",
+          "소매길이": "22cm"
+        },
+        "XL": {
+          "추천 키": "180~188cm",
+          "어깨너비": "49cm",
+          "가슴둘레": "116cm",
+          "총장": "72cm",
+          "소매길이": "23cm"
+        }
+      },
+      "loose": {
+        "S": {
+          "추천 키": "160~170cm",
+          "어깨너비": "47cm",
+          "가슴둘레": "110cm",
+          "총장": "70cm",
+          "소매길이": "22cm"
+        },
+        "M": {
+          "추천 키": "168~176cm",
+          "어깨너비": "49cm",
+          "가슴둘레": "116cm",
+          "총장": "72cm",
+          "소매길이": "23cm"
+        },
+        "L": {
+          "추천 키": "174~182cm",
+          "어깨너비": "51cm",
+          "가슴둘레": "122cm",
+          "총장": "74cm",
+          "소매길이": "24cm"
+        },
+        "XL": {
+          "추천 키": "180~188cm",
+          "어깨너비": "53cm",
+          "가슴둘레": "128cm",
+          "총장": "76cm",
+          "소매길이": "25cm"
+        }
+      }
+    },
+    "긴바지": {
+      "regular": {
+        "28": {
+          "추천 키": "160~170cm",
+          "허리둘레": "76cm",
+          "엉덩이둘레": "96cm",
+          "허벅지둘레": "58cm",
+          "밑단 너비": "18cm",
+          "총장": "97cm",
+          "인심": "73cm"
+        },
+        "30": {
+          "추천 키": "165~175cm",
+          "허리둘레": "81cm",
+          "엉덩이둘레": "101cm",
+          "허벅지둘레": "60cm",
+          "밑단 너비": "19cm",
+          "총장": "99cm",
+          "인심": "75cm"
+        },
+        "32": {
+          "추천 키": "170~180cm",
+          "허리둘레": "86cm",
+          "엉덩이둘레": "106cm",
+          "허벅지둘레": "62cm",
+          "밑단 너비": "20cm",
+          "총장": "101cm",
+          "인심": "77cm"
+        },
+        "34": {
+          "추천 키": "175~185cm",
+          "허리둘레": "91cm",
+          "엉덩이둘레": "111cm",
+          "허벅지둘레": "64cm",
+          "밑단 너비": "21cm",
+          "총장": "103cm",
+          "인심": "79cm"
+        },
+        "36": {
+          "추천 키": "180~190cm",
+          "허리둘레": "96cm",
+          "엉덩이둘레": "116cm",
+          "허벅지둘레": "66cm",
+          "밑단 너비": "22cm",
+          "총장": "105cm",
+          "인심": "81cm"
+        }
+      },
+      "skinny": {
+        "28": {
+          "추천 키": "160~170cm",
+          "허리둘레": "76cm",
+          "엉덩이둘레": "94cm",
+          "허벅지둘레": "54cm",
+          "밑단 너비": "15cm",
+          "총장": "97cm",
+          "인심": "73cm"
+        },
+        "30": {
+          "추천 키": "165~175cm",
+          "허리둘레": "81cm",
+          "엉덩이둘레": "99cm",
+          "허벅지둘레": "56cm",
+          "밑단 너비": "16cm",
+          "총장": "99cm",
+          "인심": "75cm"
+        },
+        "32": {
+          "추천 키": "170~180cm",
+          "허리둘레": "86cm",
+          "엉덩이둘레": "104cm",
+          "허벅지둘레": "58cm",
+          "밑단 너비": "17cm",
+          "총장": "101cm",
+          "인심": "77cm"
+        },
+        "34": {
+          "추천 키": "175~185cm",
+          "허리둘레": "91cm",
+          "엉덩이둘레": "109cm",
+          "허벅지둘레": "60cm",
+          "밑단 너비": "18cm",
+          "총장": "103cm",
+          "인심": "79cm"
+        },
+        "36": {
+          "추천 키": "180~190cm",
+          "허리둘레": "96cm",
+          "엉덩이둘레": "114cm",
+          "허벅지둘레": "62cm",
+          "밑단 너비": "19cm",
+          "총장": "105cm",
+          "인심": "81cm"
+        }
+      },
+      "wide": {
+        "28": {
+          "추천 키": "160~170cm",
+          "허리둘레": "76cm",
+          "엉덩이둘레": "102cm",
+          "허벅지둘레": "64cm",
+          "밑단 너비": "22cm",
+          "총장": "97cm",
+          "인심": "73cm"
+        },
+        "30": {
+          "추천 키": "165~175cm",
+          "허리둘레": "81cm",
+          "엉덩이둘레": "107cm",
+          "허벅지둘레": "66cm",
+          "밑단 너비": "23cm",
+          "총장": "99cm",
+          "인심": "75cm"
+        },
+        "32": {
+          "추천 키": "170~180cm",
+          "허리둘레": "86cm",
+          "엉덩이둘레": "112cm",
+          "허벅지둘레": "68cm",
+          "밑단 너비": "24cm",
+          "총장": "101cm",
+          "인심": "77cm"
+        },
+        "34": {
+          "추천 키": "175~185cm",
+          "허리둘레": "91cm",
+          "엉덩이둘레": "117cm",
+          "허벅지둘레": "70cm",
+          "밑단 너비": "25cm",
+          "총장": "103cm",
+          "인심": "79cm"
+        },
+        "36": {
+          "추천 키": "180~190cm",
+          "허리둘레": "96cm",
+          "엉덩이둘레": "122cm",
+          "허벅지둘레": "72cm",
+          "밑단 너비": "26cm",
+          "총장": "105cm",
+          "인심": "81cm"
+        }
+      }
+    }
   },
-  women: {
-    heightRanges: [
-      {
-        range: "150~155",
-        baseSize: "XS (80)",
-        clothingTypes: {
-          outer_jacket: {
-            description: "아우터/자켓 (여성)",
-            sizes: [
-              {
-                size: "XS",
-                measurements: { shoulder: 37, chest: 85, waist: 75, sleeve: 56, length: 63 }
-              },
-              {
-                size: "S",
-                measurements: { shoulder: 38, chest: 90, waist: 80, sleeve: 58, length: 65 }
-              },
-              {
-                size: "M",
-                measurements: { shoulder: 40, chest: 95, waist: 85, sleeve: 60, length: 67 }
-              },
-              {
-                size: "L",
-                measurements: { shoulder: 42, chest: 100, waist: 90, sleeve: 62, length: 69 }
-              },
-              {
-                size: "XL",
-                measurements: { shoulder: 44, chest: 105, waist: 95, sleeve: 64, length: 71 }
-              }
-            ]
-          }
+  "여성": {
+    "맨투맨": {
+      "regular": {
+        "S": {
+          "추천 키": "150~160cm",
+          "어깨너비": "42cm",
+          "가슴둘레": "98cm",
+          "총장": "64cm",
+          "소매길이": "58cm"
+        },
+        "M": {
+          "추천 키": "155~165cm",
+          "어깨너비": "44cm",
+          "가슴둘레": "102cm",
+          "총장": "66cm",
+          "소매길이": "59cm"
+        },
+        "L": {
+          "추천 키": "160~170cm",
+          "어깨너비": "46cm",
+          "가슴둘레": "106cm",
+          "총장": "68cm",
+          "소매길이": "60cm"
+        }
+      },
+      "slim": {
+        "S": {
+          "추천 키": "150~160cm",
+          "어깨너비": "40cm",
+          "가슴둘레": "94cm",
+          "총장": "62cm",
+          "소매길이": "57cm"
+        },
+        "M": {
+          "추천 키": "155~165cm",
+          "어깨너비": "42cm",
+          "가슴둘레": "98cm",
+          "총장": "64cm",
+          "소매길이": "58cm"
+        },
+        "L": {
+          "추천 키": "160~170cm",
+          "어깨너비": "44cm",
+          "가슴둘레": "102cm",
+          "총장": "66cm",
+          "소매길이": "59cm"
+        }
+      },
+      "loose": {
+        "S": {
+          "추천 키": "150~160cm",
+          "어깨너비": "44cm",
+          "가슴둘레": "102cm",
+          "총장": "66cm",
+          "소매길이": "59cm"
+        },
+        "M": {
+          "추천 키": "155~165cm",
+          "어깨너비": "46cm",
+          "가슴둘레": "106cm",
+          "총장": "68cm",
+          "소매길이": "60cm"
+        },
+        "L": {
+          "추천 키": "160~170cm",
+          "어깨너비": "48cm",
+          "가슴둘레": "110cm",
+          "총장": "70cm",
+          "소매길이": "61cm"
         }
       }
-    ]
+    },
+    "반팔티셔츠": {
+      "regular": {
+        "S": {
+          "추천 키": "150~160cm",
+          "어깨너비": "41cm",
+          "가슴둘레": "94cm",
+          "총장": "62cm",
+          "소매길이": "19cm"
+        },
+        "M": {
+          "추천 키": "155~165cm",
+          "어깨너비": "43cm",
+          "가슴둘레": "98cm",
+          "총장": "64cm",
+          "소매길이": "20cm"
+        },
+        "L": {
+          "추천 키": "160~170cm",
+          "어깨너비": "45cm",
+          "가슴둘레": "102cm",
+          "총장": "66cm",
+          "소매길이": "21cm"
+        }
+      },
+      "slim": {
+        "S": {
+          "추천 키": "150~160cm",
+          "어깨너비": "39cm",
+          "가슴둘레": "90cm",
+          "총장": "60cm",
+          "소매길이": "18cm"
+        },
+        "M": {
+          "추천 키": "155~165cm",
+          "어깨너비": "41cm",
+          "가슴둘레": "94cm",
+          "총장": "62cm",
+          "소매길이": "19cm"
+        },
+        "L": {
+          "추천 키": "160~170cm",
+          "어깨너비": "43cm",
+          "가슴둘레": "98cm",
+          "총장": "64cm",
+          "소매길이": "20cm"
+        }
+      },
+      "loose": {
+        "S": {
+          "추천 키": "150~160cm",
+          "어깨너비": "43cm",
+          "가슴둘레": "98cm",
+          "총장": "64cm",
+          "소매길이": "20cm"
+        },
+        "M": {
+          "추천 키": "155~165cm",
+          "어깨너비": "45cm",
+          "가슴둘레": "102cm",
+          "총장": "66cm",
+          "소매길이": "21cm"
+        },
+        "L": {
+          "추천 키": "160~170cm",
+          "어깨너비": "47cm",
+          "가슴둘레": "106cm",
+          "총장": "68cm",
+          "소매길이": "22cm"
+        }
+      }
+    },
+    "긴바지": {
+      "regular": {
+        "25": {
+          "추천 키": "150~160cm",
+          "허리둘레": "66cm",
+          "엉덩이둘레": "91cm",
+          "허벅지둘레": "54cm",
+          "밑단 너비": "17cm",
+          "총장": "92cm",
+          "인심": "69cm"
+        },
+        "26": {
+          "추천 키": "155~165cm",
+          "허리둘레": "69cm",
+          "엉덩이둘레": "94cm",
+          "허벅지둘레": "55cm",
+          "밑단 너비": "17.5cm",
+          "총장": "94cm",
+          "인심": "71cm"
+        },
+        "27": {
+          "추천 키": "160~170cm",
+          "허리둘레": "72cm",
+          "엉덩이둘레": "97cm",
+          "허벅지둘레": "56cm",
+          "밑단 너비": "18cm",
+          "총장": "96cm",
+          "인심": "73cm"
+        },
+        "28": {
+          "추천 키": "165~175cm",
+          "허리둘레": "76cm",
+          "엉덩이둘레": "100cm",
+          "허벅지둘레": "57cm",
+          "밑단 너비": "18.5cm",
+          "총장": "98cm",
+          "인심": "75cm"
+        }
+      },
+      "skinny": {
+        "25": {
+          "추천 키": "150~160cm",
+          "허리둘레": "66cm",
+          "엉덩이둘레": "88cm",
+          "허벅지둘레": "50cm",
+          "밑단 너비": "14cm",
+          "총장": "92cm",
+          "인심": "69cm"
+        },
+        "26": {
+          "추천 키": "155~165cm",
+          "허리둘레": "69cm",
+          "엉덩이둘레": "91cm",
+          "허벅지둘레": "51cm",
+          "밑단 너비": "14.5cm",
+          "총장": "94cm",
+          "인심": "71cm"
+        },
+        "27": {
+          "추천 키": "160~170cm",
+          "허리둘레": "72cm",
+          "엉덩이둘레": "94cm",
+          "허벅지둘레": "52cm",
+          "밑단 너비": "15cm",
+          "총장": "96cm",
+          "인심": "73cm"
+        },
+        "28": {
+          "추천 키": "165~175cm",
+          "허리둘레": "76cm",
+          "엉덩이둘레": "97cm",
+          "허벅지둘레": "53cm",
+          "밑단 너비": "15.5cm",
+          "총장": "98cm",
+          "인심": "75cm"
+        }
+      },
+      "wide": {
+        "25": {
+          "추천 키": "150~160cm",
+          "허리둘레": "66cm",
+          "엉덩이둘레": "94cm",
+          "허벅지둘레": "60cm",
+          "밑단 너비": "22cm",
+          "총장": "92cm",
+          "인심": "69cm"
+        },
+        "26": {
+          "추천 키": "155~165cm",
+          "허리둘레": "69cm",
+          "엉덩이둘레": "97cm",
+          "허벅지둘레": "61cm",
+          "밑단 너비": "22.5cm",
+          "총장": "94cm",
+          "인심": "71cm"
+        },
+        "27": {
+          "추천 키": "160~170cm",
+          "허리둘레": "72cm",
+          "엉덩이둘레": "100cm",
+          "허벅지둘레": "62cm",
+          "밑단 너비": "23cm",
+          "총장": "96cm",
+          "인심": "73cm"
+        },
+        "28": {
+          "추천 키": "165~175cm",
+          "허리둘레": "76cm",
+          "엉덩이둘레": "103cm",
+          "허벅지둘레": "63cm",
+          "밑단 너비": "23.5cm",
+          "총장": "98cm",
+          "인심": "75cm"
+        }
+      }
+    }
   }
 };

@@ -12,7 +12,9 @@ export type Order = {
   detail_description: string;
   size: string;
   measurements: Record<string, string | number> | null;
-  generated_image_url: string;
+  generated_image_url: string | null;
   image_path?: string | null;
-  admin_comment?: string;
+  admin_comment?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
 };

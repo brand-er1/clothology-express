@@ -130,6 +130,22 @@ export const useCustomizeForm = () => {
     try {
       setIsLoading(true);
       
+      console.log("Order data:", {
+        selectedType,
+        selectedMaterial,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
+        selectedDetail,
+        selectedSize,
+        customMeasurements,
+        storedImageUrl,
+        generatedImageUrl,
+        imagePath,
+        materials,
+        sizeTableData
+      });
+      
       const success = await createOrder(
         selectedType,
         selectedMaterial,
@@ -148,6 +164,13 @@ export const useCustomizeForm = () => {
       if (success) {
         navigate("/orders");
       }
+    } catch (error) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "주문 실패",
+        description: "주문 생성 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

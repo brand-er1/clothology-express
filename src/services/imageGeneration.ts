@@ -1,7 +1,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { clothTypes, styleOptions, colorOptions, pocketOptions } from "@/lib/customize-constants";
+import { clothTypes, styleOptions, colorOptions, pocketOptions, fitOptions } from "@/lib/customize-constants";
 
 export const generateImage = async (
   selectedType: string,
@@ -10,8 +10,9 @@ export const generateImage = async (
   selectedColor: string,
   selectedPocket: string,
   selectedDetail: string,
+  selectedFit: string,
   materials: { id: string; name: string }[],
-  saveProgress: boolean = false
+  saveProgress: boolean = true // 기본값을 true로 변경
 ) => {
   try {
     const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
@@ -21,6 +22,7 @@ export const generateImage = async (
       selectedStyle && `Style: ${styleOptions.find(style => style.value === selectedStyle)?.label}`,
       selectedColor && `Color: ${colorOptions.find(color => color.value === selectedColor)?.label}`,
       selectedPocket && `Pockets: ${pocketOptions.find(pocket => pocket.value === selectedPocket)?.label}`,
+      selectedFit && `Fit: ${fitOptions.find(fit => fit.value === selectedFit)?.label}`,
       selectedDetail && `Additional details: ${selectedDetail}`
     ].filter(Boolean).join('\n');
     
@@ -89,6 +91,7 @@ export const generateImage = async (
           const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
           const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
           const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
+          const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
           
           await supabase.functions.invoke('save-order', {
             body: {
@@ -98,6 +101,7 @@ export const generateImage = async (
               style: selectedStyleName,
               pocketType: selectedPocketName,
               color: selectedColorName,
+              fit: selectedFitName, // 추가: 핏 정보도 저장
               detailDescription: selectedDetail,
               size: null,
               measurements: null,
@@ -109,9 +113,22 @@ export const generateImage = async (
           });
           
           console.log("Progress saved as draft order");
+          
+          // 사용자에게 저장 알림
+          toast({
+            title: "임시 저장 완료",
+            description: "디자인 정보가 임시로 저장되었습니다.",
+          });
+        } else {
+          console.log("User not logged in, progress not saved");
         }
       } catch (error) {
         console.error("Failed to save progress:", error);
+        toast({
+          title: "임시 저장 실패",
+          description: "디자인 정보를 저장하는데 실패했습니다.",
+          variant: "destructive",
+        });
         // Don't throw here, as we want to continue with image generation even if saving progress fails
       }
     }

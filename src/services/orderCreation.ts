@@ -1,7 +1,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { clothTypes, styleOptions, pocketOptions, colorOptions } from "@/lib/customize-constants";
+import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
 
 export const createOrder = async (
@@ -11,6 +11,7 @@ export const createOrder = async (
   selectedPocket: string,
   selectedColor: string,
   selectedDetail: string,
+  selectedFit: string, // 추가: 핏 정보 매개변수
   selectedSize: string,
   customMeasurements: CustomMeasurements,
   generatedImageUrl: string | null,
@@ -40,6 +41,7 @@ export const createOrder = async (
     const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
     const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
     const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
+    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label; // 추가: 핏 이름 찾기
 
     // Prepare measurements data
     let measurementsData = null;
@@ -83,6 +85,7 @@ export const createOrder = async (
       style: selectedStyleName,
       pocket_type: selectedPocketName,
       color: selectedColorName,
+      fit: selectedFitName, // 추가: 핏 정보 로깅
       detail_description: selectedDetail,
       size: selectedSize,
       measurements: measurementsData,
@@ -99,6 +102,7 @@ export const createOrder = async (
         style: selectedStyleName,
         pocketType: selectedPocketName,
         color: selectedColorName,
+        fit: selectedFitName, // 추가: 핏 정보 전달
         detailDescription: selectedDetail,
         size: selectedSize,
         measurements: measurementsData,

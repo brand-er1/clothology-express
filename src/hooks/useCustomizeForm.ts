@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -109,8 +110,9 @@ export const useCustomizeForm = () => {
         selectedColor,
         selectedPocket,
         selectedDetail,
+        selectedFit, // 추가: 핏 정보 전달
         materials,
-        true // Set saveProgress to true to automatically save as draft
+        true // 항상 true로 설정하여 항상 진행 상태 저장
       );
       
       if (result) {
@@ -136,6 +138,7 @@ export const useCustomizeForm = () => {
         selectedStyle,
         selectedPocket,
         selectedColor,
+        selectedFit, // 추가: 핏 정보 포함
         selectedDetail,
         selectedSize,
         customMeasurements,
@@ -153,6 +156,7 @@ export const useCustomizeForm = () => {
         selectedPocket,
         selectedColor,
         selectedDetail,
+        selectedFit, // 추가: 핏 정보 전달
         selectedSize,
         customMeasurements,
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available

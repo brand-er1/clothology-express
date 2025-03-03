@@ -146,6 +146,10 @@ const Customize = () => {
               storedImageUrl={storedImageUrl}
               selectedType={selectedType}
               selectedMaterial={selectedMaterial}
+              selectedStyle={selectedStyle}
+              selectedColor={selectedColor}
+              selectedPocket={selectedPocket}
+              selectedFit={selectedFit}
               selectedDetail={selectedDetail}
               onGenerateImage={handleGenerateImage}
             />

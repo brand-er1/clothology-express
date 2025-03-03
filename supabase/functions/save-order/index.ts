@@ -1,154 +1,150 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface OrderData {
+  userId: string;
+  clothType: string; 
+  material: string;
+  style?: string;
+  pocketType?: string;
+  color?: string;
+  fit?: string; // 추가: 핏 정보 필드
+  detailDescription?: string;
+  size?: string | null;
+  measurements?: Record<string, any> | null;
+  generatedImageUrl?: string | null;
+  imagePath?: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'draft';
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    const supabase = createClient(supabaseUrl, supabaseKey)
-
-    // Get request body
-    const requestData = await req.json()
-    const {
-      userId,
-      clothType,
-      material,
-      style,
-      pocketType,
-      color,
-      detailDescription,
-      size,
-      measurements,
-      generatedImageUrl,
-      imagePath,
-      status = 'pending' // Default status
-    } = requestData
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'User ID is required' 
-        }),
-        { 
-          status: 400, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          } 
-        }
-      )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    if (req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    // Validate user exists
-    const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single()
+    const orderData: OrderData = await req.json();
+    console.log('Received order data:', orderData);
 
-    if (userError || !userData) {
-      console.error('User validation error:', userError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid user ID' 
-        }),
-        { 
-          status: 400, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          } 
-        }
-      )
+    // Validate required fields
+    if (!orderData.userId) {
+      return new Response(JSON.stringify({ error: 'User ID is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log('Saving order for user:', userId)
-    console.log('Order data:', {
-      clothType,
-      material,
-      style,
-      pocketType,
-      color,
-      detailDescription,
-      size,
-      measurements,
-      generatedImageUrl,
-      imagePath
-    })
-
-    // Insert order into database
-    const { data, error } = await supabase
-      .from('orders')
-      .insert({
-        user_id: userId,
-        cloth_type: clothType,
-        material: material,
-        style: style,
-        pocket_type: pocketType,
-        color: color,
-        detail_description: detailDescription,
-        size: size,
-        measurements: measurements,
-        generated_image_url: generatedImageUrl,
-        image_path: imagePath,
-        status: status
-      })
-      .select()
-
-    if (error) {
-      console.error('Order creation error:', error)
-      return new Response(
-        JSON.stringify({
-          error: `Failed to save order: ${error.message}`,
-          details: error
-        }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          }
-        }
-      )
+    if (!orderData.clothType) {
+      return new Response(JSON.stringify({ error: 'Cloth type is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Order saved successfully',
-        data: data
-      }),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+    if (!orderData.material) {
+      return new Response(JSON.stringify({ error: 'Material is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // First, check if there's a draft order with the same specifications to update
+    let existingOrder = null;
+    
+    if (orderData.status === 'pending') {
+      // If this is a finalized order, look for a draft to update
+      const { data: drafts, error: draftError } = await supabase
+        .from('orders')
+        .select('id, status')
+        .eq('user_id', orderData.userId)
+        .eq('cloth_type', orderData.clothType)
+        .eq('material', orderData.material)
+        .eq('status', 'draft')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (draftError) {
+        console.error('Error fetching drafts:', draftError);
+      } else if (drafts && drafts.length > 0) {
+        existingOrder = drafts[0];
+        console.log('Found existing draft to update:', existingOrder.id);
       }
-    )
+    }
+
+    // Create the order object with extracted data
+    const orderObject = {
+      user_id: orderData.userId,
+      cloth_type: orderData.clothType,
+      material: orderData.material,
+      style: orderData.style || null,
+      pocket_type: orderData.pocketType || null,
+      color: orderData.color || null,
+      fit: orderData.fit || null, // 추가: 핏 정보 저장
+      detail_description: orderData.detailDescription || null,
+      size: orderData.size || null,
+      measurements: orderData.measurements || null,
+      generated_image_url: orderData.generatedImageUrl || null,
+      image_path: orderData.imagePath || null,
+      status: orderData.status
+    };
+
+    let result;
+    
+    if (existingOrder) {
+      // Update existing draft
+      const { data, error } = await supabase
+        .from('orders')
+        .update(orderObject)
+        .eq('id', existingOrder.id)
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      result = { id: existingOrder.id, updated: true, data };
+      console.log('Updated existing draft order:', existingOrder.id);
+    } else {
+      // Insert new order
+      const { data, error } = await supabase
+        .from('orders')
+        .insert(orderObject)
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      result = { id: data?.[0]?.id, created: true, data };
+      console.log('Created new order:', data?.[0]?.id);
+    }
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   } catch (error) {
-    console.error('Unexpected error:', error)
-    return new Response(
-      JSON.stringify({
-        error: `Unexpected error: ${error.message}`,
-      }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
+    console.error('Error processing order:', error);
+    
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 })

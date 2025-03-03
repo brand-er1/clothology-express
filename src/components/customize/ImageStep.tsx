@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ImageOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ImageStepProps {
   isLoading: boolean;
@@ -24,8 +24,21 @@ export const ImageStep = ({
   onGenerateImage,
 }: ImageStepProps) => {
   // Prefer stored image URL if available
-  const displayImageUrl = storedImageUrl || generatedImageUrl;
+  const [displayImageUrl, setDisplayImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  
+  // 이미지 URL 처리 로직 개선
+  useEffect(() => {
+    // 우선순위: 1. storedImageUrl (영구 저장), 2. generatedImageUrl (임시)
+    const imageUrl = storedImageUrl || generatedImageUrl;
+    setDisplayImageUrl(imageUrl);
+    setImageError(false); // 새 URL이 설정되면 에러 상태 초기화
+  }, [storedImageUrl, generatedImageUrl]);
+
+  // 이미지가 로드되면 콘솔에 성공 메시지 출력
+  const handleImageLoad = () => {
+    console.log("Image loaded successfully:", displayImageUrl);
+  };
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -49,8 +62,9 @@ export const ImageStep = ({
                     src={displayImageUrl}
                     alt="Generated clothing design"
                     className="max-h-full max-w-full object-contain rounded-lg mx-auto"
+                    onLoad={handleImageLoad}
                     onError={(e) => {
-                      console.error("Image loading error:", e);
+                      console.error("Image loading error for URL:", displayImageUrl);
                       setImageError(true);
                     }}
                   />
@@ -61,12 +75,20 @@ export const ImageStep = ({
                   )}
                 </div>
               ) : (
-                <Button 
-                  onClick={onGenerateImage}
-                  className="bg-brand hover:bg-brand-dark"
-                >
-                  {imageError ? "이미지 다시 생성하기" : "이미지 생성하기"}
-                </Button>
+                <div className="flex flex-col items-center">
+                  {imageError ? (
+                    <>
+                      <ImageOff className="w-12 h-12 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500 mb-4">이미지를 불러올 수 없습니다</p>
+                    </>
+                  ) : null}
+                  <Button 
+                    onClick={onGenerateImage}
+                    className="bg-brand hover:bg-brand-dark"
+                  >
+                    {imageError ? "이미지 다시 생성하기" : "이미지 생성하기"}
+                  </Button>
+                </div>
               )}
             </div>
             {displayImageUrl && !isLoading && (

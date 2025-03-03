@@ -56,9 +56,10 @@ export const createOrder = async (
       measurementsData = customMeasurements;
     }
 
-    // If we have a stored image path, get the public URL for it
+    // 항상 스토리지 URL 사용
     let finalImageUrl = generatedImageUrl;
     
+    // 이미지 경로가 있으면 스토리지에서 공개 URL 가져오기
     if (imagePath) {
       try {
         const { data: publicUrlData } = await supabase.storage

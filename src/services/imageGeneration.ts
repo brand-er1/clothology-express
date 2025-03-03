@@ -66,6 +66,19 @@ export const generateImage = async (
       };
     }
 
+    // 중요: Supabase Storage에서 공개 URL을 가져옵니다
+    let finalImageUrl = generationData.imageUrl;
+    if (storageData && storageData.path) {
+      const { data: publicUrlData } = await supabase.storage
+        .from('generated-images')
+        .getPublicUrl(storageData.path);
+      
+      if (publicUrlData && publicUrlData.publicUrl) {
+        finalImageUrl = publicUrlData.publicUrl;
+        console.log("Using storage public URL:", finalImageUrl);
+      }
+    }
+
     // If saveProgress is true, save the current progress as a draft order
     if (saveProgress) {
       try {
@@ -88,8 +101,9 @@ export const generateImage = async (
               detailDescription: selectedDetail,
               size: null,
               measurements: null,
-              generatedImageUrl: storageData.storedImageUrl || generationData.imageUrl,
-              imagePath: storageData.path,
+              // 중요: 항상 영구 스토리지 URL 사용
+              generatedImageUrl: finalImageUrl,
+              imagePath: storageData?.path,
               status: 'draft'
             }
           });
@@ -110,8 +124,8 @@ export const generateImage = async (
     return {
       imageUrl: generationData.imageUrl, // Original URL (temporary)
       prompt: generationData.optimizedPrompt || prompt,
-      storedImageUrl: storageData.storedImageUrl, // Permanent storage URL
-      imagePath: storageData.path // Path in storage
+      storedImageUrl: finalImageUrl, // 수정: 영구 스토리지 URL 사용
+      imagePath: storageData?.path // Path in storage
     };
     
   } catch (err) {

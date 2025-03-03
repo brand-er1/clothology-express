@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Order } from "@/types/order";
 import { CheckCircle, XCircle, Clock, ImageOff } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface OrderDetailsProps {
   order: Order;
@@ -44,7 +45,36 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
     }
   };
 
-  const [imageError, setImageError] = React.useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(order.generated_image_url);
+
+  // 이미지 경로가 있으면 스토리지에서 이미지 URL 가져오기
+  useEffect(() => {
+    const fetchImageUrl = async () => {
+      if (order.image_path) {
+        try {
+          const { data } = await supabase.storage
+            .from('generated-images')
+            .getPublicUrl(order.image_path);
+          
+          if (data && data.publicUrl) {
+            console.log("Using storage URL for image:", data.publicUrl);
+            setImageUrl(data.publicUrl);
+            setImageError(false);
+          }
+        } catch (error) {
+          console.error("Failed to get public URL:", error);
+          // 원래 URL 사용
+          setImageUrl(order.generated_image_url);
+        }
+      } else {
+        // 이미지 경로가 없으면 원래 URL 사용
+        setImageUrl(order.generated_image_url);
+      }
+    };
+
+    fetchImageUrl();
+  }, [order.image_path, order.generated_image_url]);
 
   return (
     <Dialog open={!!order} onOpenChange={() => onClose()}>
@@ -116,13 +146,14 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
           <div className="space-y-4">
             <h3 className="text-lg font-medium">생성된 이미지</h3>
             <div className="border rounded-md p-1 bg-gray-50 h-80 flex items-center justify-center">
-              {order.generated_image_url && !imageError ? (
+              {imageUrl && !imageError ? (
                 <img
-                  src={order.generated_image_url}
+                  src={imageUrl}
                   alt="Generated clothing design"
                   className="max-h-full max-w-full object-contain rounded"
+                  onLoad={() => console.log("Image loaded successfully in OrderDetails")}
                   onError={(e) => {
-                    console.error("Image loading error:", e);
+                    console.error("Image loading error in OrderDetails:", imageUrl);
                     setImageError(true);
                   }}
                 />
@@ -130,6 +161,9 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
                 <div className="text-gray-400 text-center">
                   <ImageOff className="w-12 h-12 mx-auto mb-2" />
                   <p>이미지를 불러올 수 없습니다</p>
+                  {order.image_path && (
+                    <p className="text-xs mt-2">파일 경로: {order.image_path}</p>
+                  )}
                 </div>
               )}
             </div>

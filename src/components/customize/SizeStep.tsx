@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,12 +42,12 @@ interface SizeRecommendation {
 
 // 각 의류 타입별 이미지 매핑
 const clothingImages: Record<string, string> = {
-  '반팔': '/lovable-uploads/반팔티셔츠.png',
-  '긴팔': '/lovable-uploads/긴팔티셔츠.png', 
-  '맨투맨': '/lovable-uploads/맨투맨.png',
-  '자켓': '/lovable-uploads/자켓.png',
-  '반바지': '/lovable-uploads/반바지.png',
-  '긴바지': '/lovable-uploads/긴바지.png'
+  'short_sleeve': '/lovable-uploads/반팔티셔츠.png',
+  'long_sleeve': '/lovable-uploads/긴팔티셔츠.png', 
+  'sweatshirt': '/lovable-uploads/맨투맨.png',
+  'jacket': '/lovable-uploads/자켓.png',
+  'short_pants': '/lovable-uploads/짧은바지.png',
+  'long_pants': '/lovable-uploads/긴바지.png'
 };
 
 export const SizeStep = ({
@@ -247,7 +246,7 @@ export const SizeStep = ({
     );
   }
 
-  // console log to debug the image path
+  // 이미지 경로 디버깅
   console.log("Selected Type:", selectedType);
   console.log("Image Path:", clothingImages[selectedType]);
 
@@ -298,6 +297,11 @@ export const SizeStep = ({
                       src={clothingImages[selectedType]} 
                       alt={`${selectedType} 사이즈 가이드`}
                       className="w-full max-w-[280px] h-auto object-contain mx-auto"
+                      onError={(e) => {
+                        console.error("이미지 로드 오류:", e);
+                        console.log("오류가 발생한 이미지 경로:", clothingImages[selectedType]);
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
                     />
                     <p className="text-center text-xs text-gray-500 mt-2">사이즈 가이드</p>
                   </div>
@@ -323,6 +327,26 @@ export const SizeStep = ({
       </Card>
     </div>
   );
+};
+
+// 필수 함수 추가
+const translateKey = (key: string): string => {
+  const keyMap: Record<string, string> = {
+    어깨너비: '어깨너비',
+    가슴단면: '가슴단면',
+    허리단면: '허리단면',
+    소매길이: '소매길이',
+    총장: '총장',
+    엉덩이단면: '엉덩이단면',
+    허벅지단면: '허벅지단면',
+    밑단: '밑단',
+    인심: '인심',
+    "추천 키": '추천 키',
+    "바지 길이": '바지 길이',
+    밑위: '밑위'
+  };
+  
+  return keyMap[key] || key;
 };
 
 export default SizeStep;

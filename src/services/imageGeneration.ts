@@ -73,8 +73,8 @@ export const generateImage = async (
     let storedImageUrl = null;
     let imagePath = null;
 
-    // If we have an image URL and save flag is true, store in Supabase Storage
-    if (imageUrl && saveAsDraft) {
+    // If we have an image URL, store in Supabase Storage
+    if (imageUrl) {
       try {
         const { data: storeData, error: storeError } = await supabase.functions.invoke(
           'store-generated-image',
@@ -91,8 +91,18 @@ export const generateImage = async (
           console.error("Image storage error:", storeError);
         } else {
           console.log("Image storage result:", storeData);
-          storedImageUrl = storeData?.storedImageUrl;
-          imagePath = storeData?.imagePath;
+          // Get the path and create a public URL for the stored image
+          if (storeData?.path) {
+            imagePath = storeData.path;
+            const { data: publicUrlData } = supabase.storage
+              .from('generated_images')
+              .getPublicUrl(imagePath);
+            
+            if (publicUrlData) {
+              storedImageUrl = publicUrlData.publicUrl;
+              console.log("Stored image public URL:", storedImageUrl);
+            }
+          }
         }
       } catch (storageError) {
         console.error("Failed to store image:", storageError);
@@ -110,7 +120,7 @@ export const generateImage = async (
         selectedColor,
         selectedDetail,
         selectedFit,
-        storedImageUrl || imageUrl,
+        storedImageUrl || imageUrl, // Prefer stored URL if available
         imagePath,
         materials
       );

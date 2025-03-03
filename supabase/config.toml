@@ -1,8 +1,42 @@
 
 project_id = "jwmzjszdjlrqrhadbggr"
-[functions.size-recommendation]
-verify_jwt = false
-[functions.size-recommendation2]
-verify_jwt = false
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+
+[auth]
+enabled = true
+port = 54325
+
+[storage]
+enabled = true
+
+[realtime]
+enabled = true
+
+[functions]
+[functions.generate-optimized-image]
+verify_jwt = true
 [functions.save-order]
-verify_jwt = false
+verify_jwt = true
+[functions.store-generated-image]
+verify_jwt = true
+[functions.check-availability]
+verify_jwt = true
+[functions.size-recommendation]
+verify_jwt = true
+[functions.size-recommendation2]
+verify_jwt = true
+[functions.update-system-prompt]
+verify_jwt = true

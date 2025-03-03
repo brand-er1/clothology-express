@@ -23,7 +23,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get request data
-    const { imageUrl } = await req.json();
+    const { imageUrl, userId, clothType } = await req.json();
 
     if (!imageUrl) {
       return new Response(
@@ -41,11 +41,11 @@ serve(async (req) => {
     }
     
     const imageBlob = await imageResponse.blob();
-    const fileName = `${crypto.randomUUID()}.jpg`;
+    const fileName = `${clothType ? clothType + '_' : ''}${userId ? userId.slice(0, 8) + '_' : ''}${crypto.randomUUID()}.jpg`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
+      .from('generated_images')
       .upload(fileName, imageBlob, {
         contentType: 'image/jpeg',
         upsert: false,
@@ -55,10 +55,18 @@ serve(async (req) => {
       throw error;
     }
 
+    // Generate a public URL for the stored image
+    const { data: publicUrlData } = supabase.storage
+      .from('generated_images')
+      .getPublicUrl(fileName);
+
+    const storedImageUrl = publicUrlData?.publicUrl;
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        path: fileName,
+        imagePath: fileName,
+        storedImageUrl: storedImageUrl,
         message: 'Image stored successfully'
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }

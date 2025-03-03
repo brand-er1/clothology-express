@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -250,25 +249,6 @@ export const SizeStep = ({
   // 이미지 경로 디버깅
   console.log("Selected Type:", selectedType);
   console.log("Image Path:", clothingImages[selectedType]);
-  
-  // 이미지 존재 확인을 위한 함수
-  const checkImageExists = (imageSrc: string) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      img.src = imageSrc;
-    });
-  };
-
-  // 컴포넌트 마운트 시 이미지 존재 확인
-  useEffect(() => {
-    if (selectedType && clothingImages[selectedType]) {
-      checkImageExists(clothingImages[selectedType]).then((exists) => {
-        console.log(`Image ${clothingImages[selectedType]} exists: ${exists}`);
-      });
-    }
-  }, [selectedType]);
 
   return (
     <div className="space-y-8 p-4">
@@ -310,7 +290,7 @@ export const SizeStep = ({
               </div>
 
               {/* 옷 이미지 표시 */}
-              {selectedType && (
+              {clothingImages[selectedType] && (
                 <div className="bg-white rounded-lg p-4 flex items-center justify-center md:w-1/3">
                   <div className="relative w-full">
                     <img 

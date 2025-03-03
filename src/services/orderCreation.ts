@@ -14,6 +14,7 @@ export const createOrder = async (
   selectedSize: string,
   customMeasurements: CustomMeasurements,
   generatedImageUrl: string | null,
+  imagePath: string | null,
   materials: Material[]
 ) => {
   const { data } = await supabase.auth.getSession();
@@ -45,6 +46,7 @@ export const createOrder = async (
     size: selectedSize,
     measurements: selectedSize === 'custom' ? customMeasurements : null,
     generated_image_url: generatedImageUrl,
+    image_path: imagePath, // Store the path in the storage bucket
   });
 
   if (error) {

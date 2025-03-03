@@ -13,5 +13,6 @@ export type Order = {
   size: string;
   measurements: Record<string, number> | null;
   generated_image_url: string;
+  image_path?: string | null;
   admin_comment?: string;
 };

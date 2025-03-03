@@ -31,16 +31,38 @@ export const generateImage = async (
 
     console.log('Generated prompt:', prompt);
 
-    const { data, error } = await supabase.functions.invoke('generate-optimized-image', {
+    // Generate the image
+    const { data: generationData, error: generationError } = await supabase.functions.invoke('generate-optimized-image', {
       body: { prompt }
     });
 
-    if (error) {
-      throw new Error(error.message);
+    if (generationError) {
+      throw new Error(generationError.message);
     }
 
-    if (!data || !data.imageUrl) {
+    if (!generationData || !generationData.imageUrl) {
       throw new Error("이미지 생성에 실패했습니다");
+    }
+
+    // Store the generated image in Supabase Storage
+    const { data: storageData, error: storageError } = await supabase.functions.invoke('store-generated-image', {
+      body: { imageUrl: generationData.imageUrl }
+    });
+
+    if (storageError) {
+      console.error("Image storage error:", storageError);
+      // Still return the original image URL if storage fails
+      toast({
+        title: "이미지 저장 오류",
+        description: "생성된 이미지를 저장하는데 오류가 발생했습니다. 일시적인 링크가 사용됩니다.",
+        variant: "destructive",
+      });
+      
+      return {
+        imageUrl: generationData.imageUrl,
+        prompt: generationData.optimizedPrompt || prompt,
+        storedImageUrl: null
+      };
     }
 
     toast({
@@ -49,8 +71,10 @@ export const generateImage = async (
     });
 
     return {
-      imageUrl: data.imageUrl,
-      prompt: data.optimizedPrompt || prompt
+      imageUrl: generationData.imageUrl, // Original URL (temporary)
+      prompt: generationData.optimizedPrompt || prompt,
+      storedImageUrl: storageData.storedImageUrl, // Permanent storage URL
+      imagePath: storageData.path // Path in storage
     };
     
   } catch (err) {

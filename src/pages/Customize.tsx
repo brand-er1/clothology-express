@@ -40,6 +40,7 @@ const Customize = () => {
     setSelectedFit,
     imageLoading,
     generatedImageUrl,
+    storedImageUrl,
     generatedPrompt,
     selectedSize,
     setSelectedSize,
@@ -140,6 +141,7 @@ const Customize = () => {
             <ImageStep
               isLoading={imageLoading}
               generatedImageUrl={generatedImageUrl}
+              storedImageUrl={storedImageUrl}
               selectedType={selectedType}
               selectedMaterial={selectedMaterial}
               selectedDetail={selectedDetail}

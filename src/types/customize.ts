@@ -22,6 +22,8 @@ export interface UseCustomizeFormState {
   selectedFit: string;
   isLoading: boolean;
   generatedImageUrl: string | null;
+  storedImageUrl: string | null;
+  imagePath: string | null;
   selectedSize: string;
   customMeasurements: CustomMeasurements;
 }

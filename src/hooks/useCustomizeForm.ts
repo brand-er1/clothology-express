@@ -28,6 +28,8 @@ export const useCustomizeForm = () => {
   const [selectedFit, setSelectedFit] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [storedImageUrl, setStoredImageUrl] = useState<string | null>(null);
+  const [imagePath, setImagePath] = useState<string | null>(null);
   const [generatedPrompt, setGeneratedPrompt] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
@@ -105,8 +107,10 @@ export const useCustomizeForm = () => {
         materials
       );
       
-      if (result && result.imageUrl) {
+      if (result) {
         setGeneratedImageUrl(result.imageUrl);
+        setStoredImageUrl(result.storedImageUrl || null);
+        setImagePath(result.imagePath || null);
         setGeneratedPrompt(result.prompt || "");
       }
     } catch (err) {
@@ -128,7 +132,8 @@ export const useCustomizeForm = () => {
         selectedDetail,
         selectedSize,
         customMeasurements,
-        generatedImageUrl,
+        storedImageUrl || generatedImageUrl, // Prefer stored URL if available
+        imagePath, // Include the storage path
         materials
       );
       
@@ -179,6 +184,8 @@ export const useCustomizeForm = () => {
     isLoading,
     imageLoading,
     generatedImageUrl,
+    storedImageUrl,
+    imagePath,
     generatedPrompt,
     selectedSize,
     setSelectedSize,

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 interface ImageStepProps {
   isLoading: boolean;
   generatedImageUrl: string | null;
+  storedImageUrl?: string | null;
   selectedType: string;
   selectedMaterial: string;
   selectedDetail: string;
@@ -14,11 +15,15 @@ interface ImageStepProps {
 export const ImageStep = ({
   isLoading,
   generatedImageUrl,
+  storedImageUrl,
   selectedType,
   selectedMaterial,
   selectedDetail,
   onGenerateImage,
 }: ImageStepProps) => {
+  // Prefer stored image URL if available
+  const displayImageUrl = storedImageUrl || generatedImageUrl;
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* 이미지 생성 영역 - 2/3 차지 */}
@@ -35,9 +40,9 @@ export const ImageStep = ({
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
                   <p className="text-sm text-gray-500">이미지 생성 중...</p>
                 </div>
-              ) : generatedImageUrl ? (
+              ) : displayImageUrl ? (
                 <img
-                  src={generatedImageUrl}
+                  src={displayImageUrl}
                   alt="Generated clothing design"
                   className="max-h-full max-w-full object-contain rounded-lg"
                   onError={(e) => {
@@ -54,7 +59,7 @@ export const ImageStep = ({
                 </Button>
               )}
             </div>
-            {generatedImageUrl && !isLoading && (
+            {displayImageUrl && !isLoading && (
               <Button 
                 onClick={onGenerateImage}
                 variant="outline"

@@ -10,7 +10,8 @@ export const generateImage = async (
   selectedColor: string,
   selectedPocket: string,
   selectedDetail: string,
-  materials: { id: string; name: string }[]
+  materials: { id: string; name: string }[],
+  saveProgress: boolean = false
 ) => {
   try {
     const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
@@ -63,6 +64,42 @@ export const generateImage = async (
         prompt: generationData.optimizedPrompt || prompt,
         storedImageUrl: null
       };
+    }
+
+    // If saveProgress is true, save the current progress as a draft order
+    if (saveProgress) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const user = sessionData.session?.user;
+        
+        if (user) {
+          const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
+          const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
+          const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
+          
+          await supabase.functions.invoke('save-order', {
+            body: {
+              userId: user.id,
+              clothType: selectedClothType,
+              material: selectedMaterialName,
+              style: selectedStyleName,
+              pocketType: selectedPocketName,
+              color: selectedColorName,
+              detailDescription: selectedDetail,
+              size: null,
+              measurements: null,
+              generatedImageUrl: storageData.storedImageUrl || generationData.imageUrl,
+              imagePath: storageData.path,
+              status: 'draft'
+            }
+          });
+          
+          console.log("Progress saved as draft order");
+        }
+      } catch (error) {
+        console.error("Failed to save progress:", error);
+        // Don't throw here, as we want to continue with image generation even if saving progress fails
+      }
     }
 
     toast({

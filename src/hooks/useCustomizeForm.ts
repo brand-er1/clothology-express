@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -110,7 +109,8 @@ export const useCustomizeForm = () => {
         selectedColor,
         selectedPocket,
         selectedDetail,
-        materials
+        materials,
+        true // Set saveProgress to true to automatically save as draft
       );
       
       if (result) {

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions } from "@/lib/customize-constants";
@@ -69,25 +70,29 @@ export const createOrder = async (
       image_path: imagePath,
     });
 
-    const { error } = await supabase.from('orders').insert({
-      user_id: user.id,
-      cloth_type: selectedClothType,
-      material: selectedMaterialName,
-      style: selectedStyleName,
-      pocket_type: selectedPocketName,
-      color: selectedColorName,
-      detail_description: selectedDetail,
-      size: selectedSize,
-      measurements: measurementsData,
-      generated_image_url: generatedImageUrl,
-      image_path: imagePath,
+    // Use the new edge function to save the order
+    const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
+      body: {
+        userId: user.id,
+        clothType: selectedClothType,
+        material: selectedMaterialName,
+        style: selectedStyleName,
+        pocketType: selectedPocketName,
+        color: selectedColorName,
+        detailDescription: selectedDetail,
+        size: selectedSize,
+        measurements: measurementsData,
+        generatedImageUrl: generatedImageUrl,
+        imagePath: imagePath,
+        status: 'pending'
+      }
     });
 
-    if (error) {
-      console.error("Order creation failed:", error);
+    if (orderError) {
+      console.error("Order creation failed:", orderError);
       toast({
         title: "주문 실패",
-        description: `주문 생성 중 오류가 발생했습니다: ${error.message}`,
+        description: `주문 생성 중 오류가 발생했습니다: ${orderError.message}`,
         variant: "destructive",
       });
       return false;
@@ -99,7 +104,7 @@ export const createOrder = async (
     });
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Order creation error:", error);
     toast({
       title: "주문 실패",

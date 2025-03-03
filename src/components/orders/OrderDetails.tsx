@@ -54,7 +54,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
       if (order.image_path) {
         try {
           const { data } = await supabase.storage
-            .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
+            .from('generated_images')
             .getPublicUrl(order.image_path);
           
           if (data && data.publicUrl) {
@@ -78,7 +78,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
 
   return (
     <Dialog open={!!order} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>주문 상세 정보</DialogTitle>
           <DialogDescription>
@@ -113,7 +113,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
             {order.measurements && Object.keys(order.measurements).length > 0 && (
               <div className="mt-4">
                 <h4 className="text-md font-medium">맞춤 측정 정보</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+                <div className="grid grid-cols-2 gap-2 text-sm mt-2 p-2 bg-gray-50 rounded border border-gray-200">
                   {Object.entries(order.measurements).map(([key, value]) => (
                     <React.Fragment key={key}>
                       <span className="text-gray-500">{key}:</span>

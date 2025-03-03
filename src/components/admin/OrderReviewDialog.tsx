@@ -9,9 +9,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { type Order } from "@/types/order";
 import { ImageOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { Badge } from "@/components/ui/badge";
 
 interface OrderReviewDialogProps {
   order: Order | null;
@@ -31,14 +33,39 @@ export const OrderReviewDialog = ({
   const [adminComment, setAdminComment] = useState(order?.admin_comment || "");
   const [imageError, setImageError] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(order?.generated_image_url || null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
-  // 주문 정보가 변경되면 댓글 초기화
+  // 주문 정보가 변경되면 댓글 초기화 및 사용자 정보 가져오기
   useEffect(() => {
     if (order) {
       setAdminComment(order.admin_comment || "");
       setImageError(false);
+      fetchUserProfile(order.user_id);
     }
   }, [order]);
+
+  // 사용자 프로필 정보 가져오기
+  const fetchUserProfile = async (userId: string) => {
+    if (!userId) return;
+    
+    setIsLoadingProfile(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      setUserProfile(null);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
 
   // 이미지 경로가 있으면 스토리지에서 이미지 URL 가져오기
   useEffect(() => {
@@ -46,7 +73,7 @@ export const OrderReviewDialog = ({
       if (order?.image_path) {
         try {
           const { data } = await supabase.storage
-            .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
+            .from('generated_images')
             .getPublicUrl(order.image_path);
           
           if (data && data.publicUrl) {
@@ -72,40 +99,61 @@ export const OrderReviewDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>주문 검토</DialogTitle>
         </DialogHeader>
         
         {order && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="font-semibold mb-2">주문 정보</h3>
-                <dl className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">주문 정보</h3>
+                  <dl className="space-y-2">
+                    <div>
+                      <dt className="text-sm text-gray-500">의류 종류</dt>
+                      <dd>{order.cloth_type}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-500">소재</dt>
+                      <dd>{order.material}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-500">사이즈</dt>
+                      <dd>
+                        <Badge>{order.size}</Badge>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-500">상세 설명</dt>
+                      <dd className="whitespace-pre-wrap bg-gray-50 p-2 rounded text-sm">
+                        {order.detail_description || '-'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                {order.measurements && Object.keys(order.measurements).length > 0 && (
                   <div>
-                    <dt className="text-sm text-gray-500">의류 종류</dt>
-                    <dd>{order.cloth_type}</dd>
+                    <h3 className="font-semibold mb-2">상세 사이즈 정보</h3>
+                    <div className="bg-gray-50 p-3 rounded">
+                      <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                        {Object.entries(order.measurements).map(([key, value]) => (
+                          <div key={key} className="flex justify-between">
+                            <span className="text-gray-600">{key}:</span>
+                            <span>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <dt className="text-sm text-gray-500">소재</dt>
-                    <dd>{order.material}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-gray-500">사이즈</dt>
-                    <dd>{order.size}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-gray-500">상세 설명</dt>
-                    <dd className="whitespace-pre-wrap">
-                      {order.detail_description || '-'}
-                    </dd>
-                  </div>
-                </dl>
+                )}
               </div>
+
               <div>
                 <h3 className="font-semibold mb-2">생성된 이미지</h3>
-                <div className="w-full h-auto min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                <div className="w-full h-auto min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
                   {imageUrl && !imageError ? (
                     <img
                       src={imageUrl}
@@ -128,6 +176,47 @@ export const OrderReviewDialog = ({
                   )}
                 </div>
               </div>
+            </div>
+
+            <Separator />
+
+            {/* 사용자 정보 섹션 */}
+            <div>
+              <h3 className="font-semibold mb-2">고객 정보</h3>
+              {isLoadingProfile ? (
+                <p className="text-sm text-gray-500">고객 정보를 불러오는 중...</p>
+              ) : userProfile ? (
+                <div className="bg-gray-50 p-3 rounded">
+                  <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">이름:</span>
+                      <span className="ml-2">{userProfile.full_name || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">연락처:</span>
+                      <span className="ml-2">{userProfile.phone_number || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">주소:</span>
+                      <span className="ml-2">{userProfile.address || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">성별:</span>
+                      <span className="ml-2">{userProfile.gender || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">키:</span>
+                      <span className="ml-2">{userProfile.height ? `${userProfile.height}cm` : '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">체중:</span>
+                      <span className="ml-2">{userProfile.weight ? `${userProfile.weight}kg` : '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">고객 정보를 불러올 수 없습니다.</p>
+              )}
             </div>
 
             <div>

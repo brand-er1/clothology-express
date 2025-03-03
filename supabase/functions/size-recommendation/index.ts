@@ -1,6 +1,5 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { corsHeaders } from '../_shared/cors.ts'
 import { clothingTypeSizeData } from './size-data.ts'
 
@@ -20,17 +19,18 @@ interface SizeRecommendation {
   사이즈표: Record<string, number>;
 }
 
-console.log('Hello from size-recommendation function!')
+console.log('Size-recommendation function initialized!')
 
 serve(async (req) => {
-  // This is needed if you're planning to invoke your function from a browser.
+  console.log('Request received:', req.method)
+  
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request')
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('Request received:', req.method)
-    
     // Parse request
     if (req.method !== 'POST') {
       console.error('Invalid method:', req.method)

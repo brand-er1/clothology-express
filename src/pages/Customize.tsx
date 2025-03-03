@@ -11,13 +11,17 @@ import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const TOTAL_STEPS = 5;
 
 const Customize = () => {
+  const navigate = useNavigate();
   const [userGender, setUserGender] = useState<string>("남성");
   const [userHeight, setUserHeight] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saveInProgress, setSaveInProgress] = useState(false);
 
   const {
     currentStep,
@@ -70,6 +74,8 @@ const Customize = () => {
           return;
         }
 
+        setUserId(user.id);
+
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('gender, height')
@@ -98,6 +104,116 @@ const Customize = () => {
 
     loadUserProfile();
   }, []);
+
+  // Save progress whenever user completes a step
+  const saveProgress = async () => {
+    if (!userId) {
+      toast({
+        title: "로그인이 필요합니다",
+        description: "진행 상태를 저장하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSaveInProgress(true);
+      
+      console.log("Saving progress:", {
+        step: currentStep,
+        selectedType,
+        selectedMaterial,
+        selectedDetail
+      });
+      
+      const { data, error } = await supabase.functions.invoke('save-customize-progress', {
+        body: {
+          user_id: userId,
+          selectedType,
+          selectedMaterial,
+          selectedStyle,
+          selectedPocket,
+          selectedColor, 
+          selectedDetail,
+          selectedSize,
+          customMeasurements,
+          generatedImageUrl: storedImageUrl || generatedImageUrl,
+          imagePath: null,
+          sizeTableData,
+          step: currentStep
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log("Progress saved:", data);
+      // Silent success - no need to show a toast for routine saves
+    } catch (error) {
+      console.error("Error saving progress:", error);
+      toast({
+        title: "저장 실패",
+        description: "진행 상태 저장에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaveInProgress(false);
+    }
+  };
+
+  // Enhanced handleNext to save progress before advancing
+  const handleNextWithSave = async () => {
+    await saveProgress();
+    handleNext();
+  };
+
+  // Handle final submission with save
+  const handleSubmitOrder = async () => {
+    try {
+      setSaveInProgress(true);
+      
+      // Final save with pending status
+      const { data, error } = await supabase.functions.invoke('save-customize-progress', {
+        body: {
+          user_id: userId,
+          selectedType,
+          selectedMaterial,
+          selectedStyle,
+          selectedPocket,
+          selectedColor, 
+          selectedDetail,
+          selectedSize,
+          customMeasurements,
+          generatedImageUrl: storedImageUrl || generatedImageUrl,
+          imagePath: null,
+          sizeTableData,
+          step: TOTAL_STEPS,
+          finalSubmit: true
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "주문 완료",
+        description: "주문이 성공적으로 접수되었습니다.",
+      });
+      
+      navigate("/orders");
+    } catch (error: any) {
+      console.error("Error submitting order:", error);
+      toast({
+        title: "주문 실패",
+        description: `주문 제출 중 오류가 발생했습니다: ${error.message || "알 수 없는 오류"}`,
+        variant: "destructive",
+      });
+    } finally {
+      setSaveInProgress(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -184,10 +300,21 @@ const Customize = () => {
             )}
             <div className="flex-1" />
             <Button
-              onClick={handleNext}
+              onClick={currentStep === TOTAL_STEPS ? handleSubmitOrder : handleNextWithSave}
               className="bg-brand hover:bg-brand-dark"
+              disabled={saveInProgress}
             >
-              {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
+              {saveInProgress ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  처리 중...
+                </span>
+              ) : (
+                currentStep === TOTAL_STEPS ? "주문하기" : "다음"
+              )}
             </Button>
           </div>
         </div>

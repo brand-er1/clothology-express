@@ -16,7 +16,9 @@ export const createOrder = async (
   generatedImageUrl: string | null,
   materials: Material[]
 ) => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
+  
   if (!user) {
     toast({
       title: "로그인 필요",

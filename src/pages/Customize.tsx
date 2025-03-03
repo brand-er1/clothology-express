@@ -55,7 +55,9 @@ const Customize = () => {
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        
         if (!user) {
           toast({
             title: "로그인이 필요합니다",

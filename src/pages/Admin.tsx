@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -119,13 +118,16 @@ const Admin = () => {
     try {
       setIsSaving(true);
 
+      const { data: { session } } = await supabase.auth.getSession(); 
+      const user = session?.user;
+
       const { error } = await supabase
         .from('orders')
         .update({
           status,
           admin_comment: comment,
           reviewed_at: new Date().toISOString(),
-          reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+          reviewed_by: user?.id,
         })
         .eq('id', selectedOrder.id);
 

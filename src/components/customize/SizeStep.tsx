@@ -60,7 +60,8 @@ export const SizeStep = ({
     const loadUserProfile = async () => {
       try {
         setIsLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         
         if (!user) {
           console.log("사용자가 로그인하지 않았습니다.");

@@ -123,7 +123,7 @@ export const SizeStep = ({
       const mappedType = typeMapping[type] || type;
       
       const request = {
-        gender: gender === "남성" ? "men" : "women",
+        gender: gender,
         height: height,
         type: mappedType,
         material: material,

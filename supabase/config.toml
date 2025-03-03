@@ -38,17 +38,4 @@ enable_confirmations = true
 [storage]
 file_size_limit = "50MiB"
 
-[analytics]
-enabled = false
-port = 54327
-vector_port = 54328
-gcp_logging_enabled = true
-gcp_logging_project_id = ""
-
-[experimental]
-[experimental.mfa]
-enabled = true
-
-[[edge_functions]]
-path = "size-recommendation"
-verify_jwt = false
+# Removing analytics, experimental, and edge_functions sections that contain invalid keys

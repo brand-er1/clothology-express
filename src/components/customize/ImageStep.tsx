@@ -10,10 +10,6 @@ interface ImageStepProps {
   storedImageUrl?: string | null;
   selectedType: string;
   selectedMaterial: string;
-  selectedStyle: string;
-  selectedColor: string;
-  selectedPocket: string;
-  selectedFit: string;
   selectedDetail: string;
   onGenerateImage: () => void;
 }
@@ -24,10 +20,6 @@ export const ImageStep = ({
   storedImageUrl,
   selectedType,
   selectedMaterial,
-  selectedStyle,
-  selectedColor,
-  selectedPocket,
-  selectedFit,
   selectedDetail,
   onGenerateImage,
 }: ImageStepProps) => {
@@ -46,42 +38,6 @@ export const ImageStep = ({
   // 이미지가 로드되면 콘솔에 성공 메시지 출력
   const handleImageLoad = () => {
     console.log("Image loaded successfully:", displayImageUrl);
-  };
-  
-  // 선택된 스타일 이름 가져오기
-  const getSelectedStyleName = (value: string) => {
-    if (!value) return "-";
-    const styleOptions = [
-      { value: "casual", label: "캐주얼" },
-      { value: "formal", label: "포멀" },
-      { value: "street", label: "스트릿" },
-      { value: "modern", label: "모던" },
-    ];
-    return styleOptions.find(style => style.value === value)?.label || value;
-  };
-
-  // 선택된 핏 이름 가져오기
-  const getSelectedFitName = (value: string) => {
-    if (!value) return "-";
-    const fitOptions = [
-      { value: "loose", label: "루즈핏" },
-      { value: "regular", label: "레귤러핏" },
-      { value: "slim", label: "슬림핏" },
-      { value: "oversized", label: "오버사이즈" },
-    ];
-    return fitOptions.find(fit => fit.value === value)?.label || value;
-  };
-
-  // 선택된 색상 이름 가져오기
-  const getSelectedColorName = (value: string) => {
-    if (!value) return "-";
-    const colorOptions = [
-      { value: "black", label: "검정" },
-      { value: "white", label: "흰색" },
-      { value: "navy", label: "네이비" },
-      { value: "gray", label: "회색" },
-    ];
-    return colorOptions.find(color => color.value === value)?.label || value;
   };
   
   return (
@@ -164,21 +120,9 @@ export const ImageStep = ({
               <span className="text-gray-600">소재:</span>
               <span className="font-medium">{selectedMaterial || "-"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">스타일:</span>
-              <span className="font-medium">{getSelectedStyleName(selectedStyle)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">핏:</span>
-              <span className="font-medium">{getSelectedFitName(selectedFit)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">색상:</span>
-              <span className="font-medium">{getSelectedColorName(selectedColor)}</span>
-            </div>
             {selectedDetail && selectedDetail.trim() && (
               <div className="pt-2 border-t">
-                <span className="text-gray-600">추가 디테일:</span>
+                <span className="text-gray-600">상세 디테일:</span>
                 <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail}</p>
               </div>
             )}

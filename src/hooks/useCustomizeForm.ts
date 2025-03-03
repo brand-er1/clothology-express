@@ -22,10 +22,6 @@ export const useCustomizeForm = () => {
     { id: "poly", name: "폴리", description: "구김이 적고 관리가 쉬운 소재" },
     { id: "linen", name: "린넨", description: "시원하고 자연스러운 질감의 소재" },
   ]);
-  const [selectedStyle, setSelectedStyle] = useState("");
-  const [selectedPocket, setSelectedPocket] = useState("");
-  const [selectedColor, setSelectedColor] = useState("");
-  const [selectedFit, setSelectedFit] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [storedImageUrl, setStoredImageUrl] = useState<string | null>(null);
@@ -106,11 +102,7 @@ export const useCustomizeForm = () => {
       const result = await generateImage(
         selectedType,
         selectedMaterial,
-        selectedStyle,
-        selectedColor,
-        selectedPocket,
         selectedDetail,
-        selectedFit, // 추가: 핏 정보 전달
         materials,
         true // 항상 true로 설정하여 항상 진행 상태 저장
       );
@@ -135,10 +127,6 @@ export const useCustomizeForm = () => {
       console.log("Order data:", {
         selectedType,
         selectedMaterial,
-        selectedStyle,
-        selectedPocket,
-        selectedColor,
-        selectedFit, // 추가: 핏 정보 포함
         selectedDetail,
         selectedSize,
         customMeasurements,
@@ -152,11 +140,7 @@ export const useCustomizeForm = () => {
       const success = await createOrder(
         selectedType,
         selectedMaterial,
-        selectedStyle,
-        selectedPocket,
-        selectedColor,
         selectedDetail,
-        selectedFit, // 추가: 핏 정보 전달
         selectedSize,
         customMeasurements,
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available
@@ -225,14 +209,6 @@ export const useCustomizeForm = () => {
     newMaterialName,
     setNewMaterialName,
     materials,
-    selectedStyle,
-    setSelectedStyle,
-    selectedPocket,
-    setSelectedPocket,
-    selectedColor,
-    setSelectedColor,
-    selectedFit,
-    setSelectedFit,
     isLoading,
     imageLoading,
     generatedImageUrl,

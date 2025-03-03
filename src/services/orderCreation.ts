@@ -1,18 +1,13 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
+import { clothTypes } from "@/lib/customize-constants";
 import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
 
 // Function to create a draft order when generating an image
 export const createDraftOrder = async (
   selectedType: string,
   selectedMaterial: string,
-  selectedStyle: string,
-  selectedPocket: string,
-  selectedColor: string,
   selectedDetail: string,
-  selectedFit: string,
   generatedImageUrl: string | null,
   imagePath: string | null,
   materials: Material[]
@@ -31,11 +26,6 @@ export const createDraftOrder = async (
     // Find material by ID, handling both built-in and custom materials
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name;
-    
-    const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
-    const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
-    const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
-    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
 
     // Use the edge function to save the draft order
     const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
@@ -43,10 +33,6 @@ export const createDraftOrder = async (
         userId: user.id,
         clothType: selectedClothType,
         material: selectedMaterialName,
-        style: selectedStyleName,
-        pocketType: selectedPocketName,
-        color: selectedColorName,
-        fit: selectedFitName,
         detailDescription: selectedDetail,
         generatedImageUrl: generatedImageUrl,
         imagePath: imagePath,
@@ -70,11 +56,7 @@ export const createDraftOrder = async (
 export const createOrder = async (
   selectedType: string,
   selectedMaterial: string,
-  selectedStyle: string,
-  selectedPocket: string,
-  selectedColor: string,
   selectedDetail: string,
-  selectedFit: string,
   selectedSize: string,
   customMeasurements: CustomMeasurements,
   generatedImageUrl: string | null,
@@ -100,11 +82,6 @@ export const createOrder = async (
     // Find material by ID, handling both built-in and custom materials
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name;
-    
-    const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
-    const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
-    const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
-    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
 
     // Prepare measurements data
     let measurementsData = null;
@@ -145,10 +122,6 @@ export const createOrder = async (
       user_id: user.id,
       cloth_type: selectedClothType,
       material: selectedMaterialName,
-      style: selectedStyleName,
-      pocket_type: selectedPocketName,
-      color: selectedColorName,
-      fit: selectedFitName,
       detail_description: selectedDetail,
       size: selectedSize,
       measurements: measurementsData,
@@ -162,10 +135,6 @@ export const createOrder = async (
         userId: user.id,
         clothType: selectedClothType,
         material: selectedMaterialName,
-        style: selectedStyleName,
-        pocketType: selectedPocketName,
-        color: selectedColorName,
-        fit: selectedFitName,
         detailDescription: selectedDetail,
         size: selectedSize,
         measurements: measurementsData,

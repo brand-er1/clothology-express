@@ -71,42 +71,50 @@ export const generateImage = async (
 
     const imageUrl = generationData?.imageUrl;
     
+    if (!imageUrl) {
+      console.error("No image URL returned from generation");
+      toast({
+        title: "이미지 생성 실패",
+        description: "이미지 URL을 받지 못했습니다.",
+        variant: "destructive",
+      });
+      return null;
+    }
+    
     // Default values for storage results
     let storedImageUrl = null;
     let imagePath = null;
 
     // If we have an image URL, store in Supabase Storage
-    if (imageUrl) {
-      try {
-        // Store the generated image in Supabase Storage
-        const { data: storeData, error: storeError } = await supabase.functions.invoke(
-          'store-generated-image',
-          {
-            body: { 
-              imageUrl,
-              userId: user.id,
-              clothType: selectedClothType
-            }
-          }
-        );
-
-        if (storeError) {
-          console.error("Image storage error:", storeError);
-          // Even if storage fails, we still have the original URL
-        } else {
-          console.log("Image storage result:", storeData);
-          
-          // Get the storage path and public URL
-          if (storeData?.imagePath) {
-            imagePath = storeData.imagePath;
-            storedImageUrl = storeData.storedImageUrl;
-            console.log("Stored image path:", imagePath);
-            console.log("Stored image URL:", storedImageUrl);
+    try {
+      // Store the generated image in Supabase Storage
+      const { data: storeData, error: storeError } = await supabase.functions.invoke(
+        'store-generated-image',
+        {
+          body: { 
+            imageUrl,
+            userId: user.id,
+            clothType: selectedClothType
           }
         }
-      } catch (storageError) {
-        console.error("Failed to store image:", storageError);
+      );
+
+      if (storeError) {
+        console.error("Image storage error:", storeError);
+        // Even if storage fails, we still have the original URL
+      } else {
+        console.log("Image storage result:", storeData);
+        
+        // Get the storage path and public URL
+        if (storeData?.imagePath) {
+          imagePath = storeData.imagePath;
+          storedImageUrl = storeData.storedImageUrl;
+          console.log("Stored image path:", imagePath);
+          console.log("Stored image URL:", storedImageUrl);
+        }
       }
+    } catch (storageError) {
+      console.error("Failed to store image:", storageError);
     }
 
     // Use stored URL if available, fallback to original URL
@@ -163,7 +171,7 @@ export const generateImage = async (
         selectedColor,
         selectedDetail,
         selectedFit,
-        storedImageUrl, // Use the stored URL from storage as primary
+        storedImageUrl || imageUrl, // Use the stored URL if available, otherwise fallback to the generated URL
         imagePath, // Also pass the image path for future reference
         materials
       );

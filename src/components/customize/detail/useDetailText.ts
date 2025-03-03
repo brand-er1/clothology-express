@@ -47,28 +47,44 @@ export const useDetailText = ({
     return fullText.replace(pattern, '').trim();
   };
   
-  // 선택된 옵션들을 문자열로 생성
+  // 선택된 옵션들을 문자열로 생성 - 이미 있는지 확인 후 중복 방지
   const generateOptionsText = () => {
     const optionLines = [];
     
     if (selectedStyle) {
       const style = styleOptions.find(s => s.value === selectedStyle);
-      if (style) optionLines.push(`스타일: ${style.label}`);
+      // 해당 스타일이 이미 detailInput에 있는지 확인
+      const stylePattern = new RegExp(`스타일\\s*:\\s*${style?.label}`, 'g');
+      if (style && !stylePattern.test(detailInput)) {
+        optionLines.push(`스타일: ${style.label}`);
+      }
     }
     
     if (selectedPocket) {
       const pocket = pocketOptions.find(p => p.value === selectedPocket);
-      if (pocket) optionLines.push(`포켓: ${pocket.label}`);
+      // 해당 포켓이 이미 detailInput에 있는지 확인
+      const pocketPattern = new RegExp(`포켓\\s*:\\s*${pocket?.label}`, 'g');
+      if (pocket && !pocketPattern.test(detailInput)) {
+        optionLines.push(`포켓: ${pocket.label}`);
+      }
     }
     
     if (selectedColor) {
       const color = colorOptions.find(c => c.value === selectedColor);
-      if (color) optionLines.push(`색상: ${color.label}`);
+      // 해당 색상이 이미 detailInput에 있는지 확인
+      const colorPattern = new RegExp(`색상\\s*:\\s*${color?.label}`, 'g');
+      if (color && !colorPattern.test(detailInput)) {
+        optionLines.push(`색상: ${color.label}`);
+      }
     }
 
     if (selectedFit) {
       const fit = fitOptions.find(f => f.value === selectedFit);
-      if (fit) optionLines.push(`핏: ${fit.label}`);
+      // 해당 핏이 이미 detailInput에 있는지 확인
+      const fitPattern = new RegExp(`핏\\s*:\\s*${fit?.label}`, 'g');
+      if (fit && !fitPattern.test(detailInput)) {
+        optionLines.push(`핏: ${fit.label}`);
+      }
     }
 
     return optionLines.join('\n');
@@ -95,8 +111,10 @@ export const useDetailText = ({
       userText = removeOptionText(userText, "핏", fit.label);
     });
     
-    // 줄바꿈 정리
-    userText = userText.split('\n').filter(line => line.trim() !== '').join('\n');
+    // 줄바꿈 정리 및 중복 제거
+    userText = userText.split('\n')
+      .filter(line => line.trim() !== '')
+      .join('\n');
     
     setCustomUserText(userText);
     
@@ -116,11 +134,28 @@ export const useDetailText = ({
 
   // 옵션 변경 시 텍스트 업데이트
   useEffect(() => {
+    // 중복 방지를 위해 이전 옵션 텍스트를 제거
+    let updatedText = customUserText;
+    
+    // 이전 옵션들이 있었다면 제거
+    if (prevOptions.style) {
+      updatedText = removeOptionText(updatedText, "스타일", prevOptions.style);
+    }
+    if (prevOptions.pocket) {
+      updatedText = removeOptionText(updatedText, "포켓", prevOptions.pocket);
+    }
+    if (prevOptions.color) {
+      updatedText = removeOptionText(updatedText, "색상", prevOptions.color);
+    }
+    if (prevOptions.fit) {
+      updatedText = removeOptionText(updatedText, "핏", prevOptions.fit);
+    }
+    
     // 현재 옵션에 대한 텍스트 생성
     const optionsText = generateOptionsText();
     
-    // 옵션 텍스트와 사용자 텍스트 결합
-    const combinedText = [optionsText, customUserText]
+    // 옵션 텍스트와 사용자 텍스트 결합 (중복 없이)
+    const combinedText = [optionsText, updatedText]
       .filter(text => text.trim() !== '')
       .join('\n\n');
     
@@ -165,8 +200,10 @@ export const useDetailText = ({
       userText = removeOptionText(userText, "핏", fit.label);
     });
     
-    // 줄바꿈 정리
-    userText = userText.split('\n').filter(line => line.trim() !== '').join('\n');
+    // 줄바꿈 정리 및 중복 제거
+    userText = userText.split('\n')
+      .filter(line => line.trim() !== '')
+      .join('\n');
     
     setCustomUserText(userText);
     

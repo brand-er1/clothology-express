@@ -112,7 +112,21 @@ export const generateImage = async (
     // Save to the generated_images table
     if (imageUrl && user.id) {
       try {
-        // Store image information in the new generated_images table
+        // Extract the custom detail text without the option labels
+        // This helps prevent duplicate details when saving to the database
+        let cleanDetail = selectedDetail;
+        
+        // Remove any option-prefixed entries that will be saved in separate fields
+        const optionPrefixes = ["스타일:", "포켓:", "색상:", "핏:"];
+        optionPrefixes.forEach(prefix => {
+          const regex = new RegExp(`${prefix}[^,\n]*[,\n]?`, 'g');
+          cleanDetail = cleanDetail.replace(regex, '');
+        });
+        
+        // Trim any extra whitespace or line breaks
+        cleanDetail = cleanDetail.trim();
+
+        // Store image information in the generated_images table
         const { data: imageData, error: imageError } = await supabase.functions.invoke(
           'save-generated-image',
           {
@@ -128,7 +142,7 @@ export const generateImage = async (
               pocket: selectedPocketName,
               color: selectedColorName,
               fit: selectedFitName,
-              detail: selectedDetail
+              detail: cleanDetail // Use the cleaned detail text
             }
           }
         );

@@ -37,12 +37,35 @@ export const createDraftOrder = async (
     const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
     const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
 
-    // 통합된 상세 설명 생성
-    let detailDesc = selectedDetail || '';
-    if (selectedStyleName) detailDesc += `\n스타일: ${selectedStyleName}`;
-    if (selectedPocketName) detailDesc += `\n포켓: ${selectedPocketName}`;
-    if (selectedColorName) detailDesc += `\n색상: ${selectedColorName}`;
-    if (selectedFitName) detailDesc += `\n핏: ${selectedFitName}`;
+    // Extract custom detail text and avoid duplicating option information
+    let customDetailText = selectedDetail || '';
+    
+    // Remove any option-specific text that will be saved separately
+    if (selectedStyleName) {
+      customDetailText = customDetailText.replace(new RegExp(`스타일\\s*:\\s*${selectedStyleName}`, 'g'), '');
+    }
+    if (selectedPocketName) {
+      customDetailText = customDetailText.replace(new RegExp(`포켓\\s*:\\s*${selectedPocketName}`, 'g'), '');
+    }
+    if (selectedColorName) {
+      customDetailText = customDetailText.replace(new RegExp(`색상\\s*:\\s*${selectedColorName}`, 'g'), '');
+    }
+    if (selectedFitName) {
+      customDetailText = customDetailText.replace(new RegExp(`핏\\s*:\\s*${selectedFitName}`, 'g'), '');
+    }
+    
+    // Clean up any extra commas, line breaks or whitespace
+    customDetailText = customDetailText.replace(/,+/g, ',').replace(/\n+/g, '\n').trim();
+    
+    // Create a formatted description with the selections
+    let detailDesc = '';
+    if (customDetailText) detailDesc += customDetailText + '\n';
+    if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
+    if (selectedPocketName) detailDesc += `포켓: ${selectedPocketName}\n`;
+    if (selectedColorName) detailDesc += `색상: ${selectedColorName}\n`;
+    if (selectedFitName) detailDesc += `핏: ${selectedFitName}`;
+    
+    detailDesc = detailDesc.trim();
 
     // Use the edge function to save the draft order
     const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
@@ -50,7 +73,7 @@ export const createDraftOrder = async (
         userId: user.id,
         clothType: selectedClothType,
         material: selectedMaterialName,
-        detailDescription: detailDesc.trim(),
+        detailDescription: detailDesc,
         generatedImageUrl: generatedImageUrl,
         imagePath: imagePath,
         status: 'draft' // Set as draft initially
@@ -109,12 +132,35 @@ export const createOrder = async (
     const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
     const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
 
-    // 통합된 상세 설명 생성
-    let detailDesc = selectedDetail || '';
-    if (selectedStyleName) detailDesc += `\n스타일: ${selectedStyleName}`;
-    if (selectedPocketName) detailDesc += `\n포켓: ${selectedPocketName}`;
-    if (selectedColorName) detailDesc += `\n색상: ${selectedColorName}`;
-    if (selectedFitName) detailDesc += `\n핏: ${selectedFitName}`;
+    // Extract custom detail text and avoid duplicating option information
+    let customDetailText = selectedDetail || '';
+    
+    // Remove any option-specific text that will be saved separately
+    if (selectedStyleName) {
+      customDetailText = customDetailText.replace(new RegExp(`스타일\\s*:\\s*${selectedStyleName}`, 'g'), '');
+    }
+    if (selectedPocketName) {
+      customDetailText = customDetailText.replace(new RegExp(`포켓\\s*:\\s*${selectedPocketName}`, 'g'), '');
+    }
+    if (selectedColorName) {
+      customDetailText = customDetailText.replace(new RegExp(`색상\\s*:\\s*${selectedColorName}`, 'g'), '');
+    }
+    if (selectedFitName) {
+      customDetailText = customDetailText.replace(new RegExp(`핏\\s*:\\s*${selectedFitName}`, 'g'), '');
+    }
+    
+    // Clean up any extra commas, line breaks or whitespace
+    customDetailText = customDetailText.replace(/,+/g, ',').replace(/\n+/g, '\n').trim();
+    
+    // Create a formatted description with the selections
+    let detailDesc = '';
+    if (customDetailText) detailDesc += customDetailText + '\n';
+    if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
+    if (selectedPocketName) detailDesc += `포켓: ${selectedPocketName}\n`;
+    if (selectedColorName) detailDesc += `색상: ${selectedColorName}\n`;
+    if (selectedFitName) detailDesc += `핏: ${selectedFitName}`;
+    
+    detailDesc = detailDesc.trim();
 
     // Prepare measurements data
     let measurementsData = null;

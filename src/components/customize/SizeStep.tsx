@@ -18,25 +18,25 @@ interface SizeStepProps {
   gender?: string;
 }
 
+// 서버 응답 형식에 맞게 인터페이스 수정
 interface SizeRecommendation {
   성별: string;
   키: number;
   사이즈: string;
-  옷_종류: string;
-  그에_맞는_사이즈_표: {
-    어깨너비?: number;
-    가슴둘레?: number;
-    허리둘레?: number;
-    소매길이?: number;
-    총장: number;
-    엉덩이둘레?: number;
-    허벅지둘레?: number;
-    밑단_너비?: number;
-    인심?: number;
+  카테고리: string;
+  핏: string;
+  사이즈표: {
+    어깨너비?: string;
+    가슴둘레?: string;
+    허리둘레?: string;
+    소매길이?: string;
+    총장?: string;
+    엉덩이둘레?: string;
+    허벅지둘레?: string;
+    밑단_너비?: string;
+    인심?: string;
+    "추천 키"?: string;
   };
-  원단?: string;
-  디테일?: string;
-  프롬프트?: string;
 }
 
 export const SizeStep = ({
@@ -134,7 +134,6 @@ export const SizeStep = ({
       
       console.log("사이즈 추천 요청 데이터:", request);
       
-      // 여기서 size-recommendation2로 변경
       const response = await fetch('https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/size-recommendation2', {
         method: 'POST',
         headers: {
@@ -155,6 +154,7 @@ export const SizeStep = ({
         return;
       }
       
+      // 응답 데이터 형식에 맞게 처리
       setRecommendation(data);
       onSizeChange(data.사이즈);
       setError(null);
@@ -177,7 +177,8 @@ export const SizeStep = ({
       엉덩이둘레: '엉덩이둘레',
       허벅지둘레: '허벅지둘레',
       밑단_너비: '밑단 너비',
-      인심: '인심'
+      인심: '인심',
+      "추천 키": '추천 키'
     };
     
     return keyMap[key] || key;
@@ -241,8 +242,11 @@ export const SizeStep = ({
               <div>
                 <h3 className="text-xl font-semibold">추천 사이즈: <Badge className="ml-2 text-lg">{recommendation.사이즈}</Badge></h3>
                 <p className="text-gray-500 mt-1">
-                  {recommendation.성별 === '남성' ? '남성' : '여성'}, 키 {recommendation.키}cm, {recommendation.옷_종류.replace(/_/g, ' ')}
+                  {recommendation.성별 === '남성' ? '남성' : '여성'}, 키 {recommendation.키}cm, {recommendation.카테고리}
                 </p>
+              </div>
+              <div>
+                <Badge variant="outline" className="text-sm">{recommendation.핏} 핏</Badge>
               </div>
             </div>
 
@@ -252,11 +256,11 @@ export const SizeStep = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead>측정 부위</TableHead>
-                    <TableHead className="text-right">크기 (cm)</TableHead>
+                    <TableHead className="text-right">크기</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(recommendation.그에_맞는_사이즈_표).map(([key, value]) => (
+                  {Object.entries(recommendation.사이즈표).map(([key, value]) => (
                     <TableRow key={key}>
                       <TableCell className="font-medium">{translateKey(key)}</TableCell>
                       <TableCell className="text-right">{value}</TableCell>

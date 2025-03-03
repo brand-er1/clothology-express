@@ -42,6 +42,7 @@ export const SizeStep = ({
   const [isLoading, setIsLoading] = useState(true);
   const [recommendation, setRecommendation] = useState<SizeRecommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requestAttempted, setRequestAttempted] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -110,6 +111,7 @@ export const SizeStep = ({
     try {
       setIsLoading(true);
       setError(null);
+      setRequestAttempted(true);
       
       const payload = {
         gender,
@@ -202,6 +204,7 @@ export const SizeStep = ({
     );
   };
 
+  // If loading, show loading indicator
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -211,6 +214,7 @@ export const SizeStep = ({
     );
   }
 
+  // If there's an error, show error message with retry button
   if (error) {
     return (
       <div className="py-8 px-4">
@@ -228,10 +232,35 @@ export const SizeStep = ({
             </div>
           </CardContent>
         </Card>
+        
+        {/* Fallback to manual size selection */}
+        {requestAttempted && (
+          <div className="mt-8">
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-semibold mb-4">수동 사이즈 선택</h3>
+                <p className="text-gray-600 mb-4">사이즈 추천에 실패했습니다. 수동으로 사이즈를 선택해주세요.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
+                    <Button
+                      key={size}
+                      variant={selectedSize === size ? "default" : "outline"}
+                      onClick={() => handleSizeSelect(size)}
+                      className="w-full"
+                    >
+                      {size}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     );
   }
 
+  // If no recommendation data, show message and retry button
   if (!recommendation) {
     return (
       <div className="text-center py-8">
@@ -242,10 +271,33 @@ export const SizeStep = ({
         >
           다시 시도
         </Button>
+        
+        {/* Fallback to manual size selection */}
+        <div className="mt-8">
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="text-lg font-semibold mb-4">수동 사이즈 선택</h3>
+              <p className="text-gray-600 mb-4">원하시는 사이즈를 선택해주세요.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
+                  <Button
+                    key={size}
+                    variant={selectedSize === size ? "default" : "outline"}
+                    onClick={() => handleSizeSelect(size)}
+                    className="w-full"
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
+  // If we have a recommendation, show it
   return (
     <div className="space-y-8 p-4">
       <Card className="border-2 border-gray-100 shadow-sm">

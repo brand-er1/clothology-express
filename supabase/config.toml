@@ -37,5 +37,3 @@ enable_confirmations = true
 
 [storage]
 file_size_limit = "50MiB"
-
-# Removing analytics, experimental, and edge_functions sections that contain invalid keys

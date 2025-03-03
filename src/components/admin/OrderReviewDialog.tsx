@@ -99,10 +99,6 @@ export const OrderReviewDialog = ({
                     <dt className="text-sm text-gray-500">상세 설명</dt>
                     <dd className="whitespace-pre-wrap">
                       {order.detail_description || '-'}
-                      {order.style && <span>{`\n스타일: ${order.style}`}</span>}
-                      {order.pocket_type && <span>{`\n포켓: ${order.pocket_type}`}</span>}
-                      {order.color && <span>{`\n색상: ${order.color}`}</span>}
-                      {order.fit && <span>{`\n핏: ${order.fit}`}</span>}
                     </dd>
                   </div>
                 </dl>

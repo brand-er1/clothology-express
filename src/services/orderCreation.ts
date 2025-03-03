@@ -37,17 +37,20 @@ export const createDraftOrder = async (
     const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
     const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
 
+    // 통합된 상세 설명 생성
+    let detailDesc = selectedDetail || '';
+    if (selectedStyleName) detailDesc += `\n스타일: ${selectedStyleName}`;
+    if (selectedPocketName) detailDesc += `\n포켓: ${selectedPocketName}`;
+    if (selectedColorName) detailDesc += `\n색상: ${selectedColorName}`;
+    if (selectedFitName) detailDesc += `\n핏: ${selectedFitName}`;
+
     // Use the edge function to save the draft order
     const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
       body: {
         userId: user.id,
         clothType: selectedClothType,
         material: selectedMaterialName,
-        style: selectedStyleName,
-        pocketType: selectedPocketName,
-        color: selectedColorName,
-        fit: selectedFitName,
-        detailDescription: selectedDetail,
+        detailDescription: detailDesc.trim(),
         generatedImageUrl: generatedImageUrl,
         imagePath: imagePath,
         status: 'draft' // Set as draft initially
@@ -106,6 +109,13 @@ export const createOrder = async (
     const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
     const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
 
+    // 통합된 상세 설명 생성
+    let detailDesc = selectedDetail || '';
+    if (selectedStyleName) detailDesc += `\n스타일: ${selectedStyleName}`;
+    if (selectedPocketName) detailDesc += `\n포켓: ${selectedPocketName}`;
+    if (selectedColorName) detailDesc += `\n색상: ${selectedColorName}`;
+    if (selectedFitName) detailDesc += `\n핏: ${selectedFitName}`;
+
     // Prepare measurements data
     let measurementsData = null;
     
@@ -145,11 +155,7 @@ export const createOrder = async (
       user_id: user.id,
       cloth_type: selectedClothType,
       material: selectedMaterialName,
-      style: selectedStyleName,
-      pocket_type: selectedPocketName,
-      color: selectedColorName,
-      fit: selectedFitName,
-      detail_description: selectedDetail,
+      detail_description: detailDesc.trim(),
       size: selectedSize,
       measurements: measurementsData,
       generated_image_url: finalImageUrl,
@@ -162,11 +168,7 @@ export const createOrder = async (
         userId: user.id,
         clothType: selectedClothType,
         material: selectedMaterialName,
-        style: selectedStyleName,
-        pocketType: selectedPocketName,
-        color: selectedColorName,
-        fit: selectedFitName,
-        detailDescription: selectedDetail,
+        detailDescription: detailDesc.trim(),
         size: selectedSize,
         measurements: measurementsData,
         generatedImageUrl: finalImageUrl,

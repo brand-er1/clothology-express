@@ -10,10 +10,6 @@ interface OrderData {
   userId: string;
   clothType: string; 
   material: string;
-  style?: string;
-  pocketType?: string;
-  color?: string;
-  fit?: string;
   detailDescription?: string;
   size?: string | null;
   measurements?: Record<string, any> | null;
@@ -120,10 +116,6 @@ Deno.serve(async (req) => {
       user_id: orderData.userId,
       cloth_type: orderData.clothType,
       material: orderData.material,
-      style: orderData.style || null,
-      pocket_type: orderData.pocketType || null,
-      color: orderData.color || null,
-      fit: orderData.fit || null,
       detail_description: orderData.detailDescription || null,
       size: orderData.size || null,
       measurements: orderData.measurements || null,

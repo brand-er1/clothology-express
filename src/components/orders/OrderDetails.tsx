@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Order } from "@/types/order";
-import { CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Clock, ImageOff } from "lucide-react";
 
 interface OrderDetailsProps {
   order: Order;
@@ -43,6 +43,8 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
         return <Badge className="bg-yellow-500"><Clock className="h-3 w-3 mr-1" /> 검토중</Badge>;
     }
   };
+
+  const [imageError, setImageError] = React.useState(false);
 
   return (
     <Dialog open={!!order} onOpenChange={() => onClose()}>
@@ -112,21 +114,22 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
 
           {/* 오른쪽: 이미지 */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">생성된.이미지</h3>
+            <h3 className="text-lg font-medium">생성된 이미지</h3>
             <div className="border rounded-md p-1 bg-gray-50 h-80 flex items-center justify-center">
-              {order.generated_image_url ? (
+              {order.generated_image_url && !imageError ? (
                 <img
                   src={order.generated_image_url}
                   alt="Generated clothing design"
                   className="max-h-full max-w-full object-contain rounded"
                   onError={(e) => {
                     console.error("Image loading error:", e);
-                    e.currentTarget.src = "/placeholder.svg";
+                    setImageError(true);
                   }}
                 />
               ) : (
                 <div className="text-gray-400 text-center">
-                  <p>이미지가 없습니다</p>
+                  <ImageOff className="w-12 h-12 mx-auto mb-2" />
+                  <p>이미지를 불러올 수 없습니다</p>
                 </div>
               )}
             </div>

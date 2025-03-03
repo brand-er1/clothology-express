@@ -1,6 +1,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ImageOff } from "lucide-react";
+import { useState } from "react";
 
 interface ImageStepProps {
   isLoading: boolean;
@@ -23,6 +25,7 @@ export const ImageStep = ({
 }: ImageStepProps) => {
   // Prefer stored image URL if available
   const displayImageUrl = storedImageUrl || generatedImageUrl;
+  const [imageError, setImageError] = useState(false);
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -40,7 +43,7 @@ export const ImageStep = ({
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
                   <p className="text-sm text-gray-500">이미지 생성 중...</p>
                 </div>
-              ) : displayImageUrl ? (
+              ) : displayImageUrl && !imageError ? (
                 <div className="relative w-full h-full">
                   <img
                     src={displayImageUrl}
@@ -48,10 +51,10 @@ export const ImageStep = ({
                     className="max-h-full max-w-full object-contain rounded-lg mx-auto"
                     onError={(e) => {
                       console.error("Image loading error:", e);
-                      e.currentTarget.src = "/placeholder.svg";
+                      setImageError(true);
                     }}
                   />
-                  {storedImageUrl && (
+                  {storedImageUrl && !imageError && (
                     <div className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
                       저장됨
                     </div>
@@ -62,13 +65,16 @@ export const ImageStep = ({
                   onClick={onGenerateImage}
                   className="bg-brand hover:bg-brand-dark"
                 >
-                  이미지 생성하기
+                  {imageError ? "이미지 다시 생성하기" : "이미지 생성하기"}
                 </Button>
               )}
             </div>
             {displayImageUrl && !isLoading && (
               <Button 
-                onClick={onGenerateImage}
+                onClick={() => {
+                  setImageError(false);
+                  onGenerateImage();
+                }}
                 variant="outline"
                 className="w-full max-w-[200px]"
               >

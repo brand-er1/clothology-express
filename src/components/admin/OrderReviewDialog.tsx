@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { type Order } from "@/types/order";
+import { ImageOff } from "lucide-react";
 
 interface OrderReviewDialogProps {
   order: Order | null;
@@ -27,6 +28,7 @@ export const OrderReviewDialog = ({
   onUpdateStatus,
 }: OrderReviewDialogProps) => {
   const [adminComment, setAdminComment] = useState(order?.admin_comment || "");
+  const [imageError, setImageError] = useState(false);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -69,12 +71,21 @@ export const OrderReviewDialog = ({
               </div>
               <div>
                 <h3 className="font-semibold mb-2">생성된 이미지</h3>
-                {order.generated_image_url && (
+                {order.generated_image_url && !imageError ? (
                   <img
                     src={order.generated_image_url}
                     alt="Generated design"
                     className="w-full h-auto rounded-lg"
+                    onError={(e) => {
+                      console.error("Image loading error:", e);
+                      setImageError(true);
+                    }}
                   />
+                ) : (
+                  <div className="w-full h-48 flex flex-col items-center justify-center bg-gray-100 rounded-lg">
+                    <ImageOff className="w-8 h-8 mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-400">이미지를 불러올 수 없습니다</p>
+                  </div>
                 )}
               </div>
             </div>

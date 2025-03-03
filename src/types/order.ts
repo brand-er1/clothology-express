@@ -17,4 +17,5 @@ export type Order = {
   admin_comment?: string | null;
   reviewed_at?: string | null;
   reviewed_by?: string | null;
+  fit?: string | null; // Added fit property
 };

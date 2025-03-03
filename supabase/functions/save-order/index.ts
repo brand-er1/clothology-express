@@ -13,7 +13,7 @@ interface OrderData {
   style?: string;
   pocketType?: string;
   color?: string;
-  fit?: string; // 추가: 핏 정보 필드
+  fit?: string;
   detailDescription?: string;
   size?: string | null;
   measurements?: Record<string, any> | null;
@@ -65,11 +65,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // First, check if there's a draft order with the same specifications to update
+    // If this is a finalized order (pending), look for a draft to update
     let existingOrder = null;
     
     if (orderData.status === 'pending') {
-      // If this is a finalized order, look for a draft to update
+      // Look for a draft with matching basic information
       const { data: drafts, error: draftError } = await supabase
         .from('orders')
         .select('id, status')
@@ -77,6 +77,33 @@ Deno.serve(async (req) => {
         .eq('cloth_type', orderData.clothType)
         .eq('material', orderData.material)
         .eq('status', 'draft')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (draftError) {
+        console.error('Error fetching drafts:', draftError);
+      } else if (drafts && drafts.length > 0) {
+        existingOrder = drafts[0];
+        console.log('Found existing draft to update:', existingOrder.id);
+      }
+    } 
+    // If this is a draft, check for an existing draft to update
+    else if (orderData.status === 'draft') {
+      // Look for an existing draft with matching image path (if available) or basic info
+      let query = supabase
+        .from('orders')
+        .select('id, status')
+        .eq('user_id', orderData.userId)
+        .eq('cloth_type', orderData.clothType)
+        .eq('material', orderData.material)
+        .eq('status', 'draft');
+      
+      // If we have an image path, use that for more precise matching
+      if (orderData.imagePath) {
+        query = query.eq('image_path', orderData.imagePath);
+      }
+      
+      const { data: drafts, error: draftError } = await query
         .order('created_at', { ascending: false })
         .limit(1);
       
@@ -96,7 +123,7 @@ Deno.serve(async (req) => {
       style: orderData.style || null,
       pocket_type: orderData.pocketType || null,
       color: orderData.color || null,
-      fit: orderData.fit || null, // 추가: 핏 정보 저장
+      fit: orderData.fit || null,
       detail_description: orderData.detailDescription || null,
       size: orderData.size || null,
       measurements: orderData.measurements || null,
@@ -120,7 +147,7 @@ Deno.serve(async (req) => {
       }
       
       result = { id: existingOrder.id, updated: true, data };
-      console.log('Updated existing draft order:', existingOrder.id);
+      console.log('Updated existing order:', existingOrder.id);
     } else {
       // Insert new order
       const { data, error } = await supabase

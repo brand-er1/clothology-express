@@ -1,7 +1,8 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { clothTypes, styleOptions, colorOptions, pocketOptions, fitOptions } from "@/lib/customize-constants";
+import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
+import { Material } from "@/types/customize";
+import { createDraftOrder } from "./orderCreation";
 
 export const generateImage = async (
   selectedType: string,
@@ -11,147 +12,122 @@ export const generateImage = async (
   selectedPocket: string,
   selectedDetail: string,
   selectedFit: string,
-  materials: { id: string; name: string }[],
-  saveProgress: boolean = true // 기본값을 true로 변경
+  materials: Material[],
+  saveAsDraft: boolean = true,
 ) => {
   try {
-    const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || "";
-    const selectedMaterialName = materials.find(material => material.id === selectedMaterial)?.name || "";
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
     
-    const optionalDetails = [
-      selectedStyle && `Style: ${styleOptions.find(style => style.value === selectedStyle)?.label}`,
-      selectedColor && `Color: ${colorOptions.find(color => color.value === selectedColor)?.label}`,
-      selectedPocket && `Pockets: ${pocketOptions.find(pocket => pocket.value === selectedPocket)?.label}`,
-      selectedFit && `Fit: ${fitOptions.find(fit => fit.value === selectedFit)?.label}`,
-      selectedDetail && `Additional details: ${selectedDetail}`
-    ].filter(Boolean).join('\n');
-    
-    const prompt = [
-      `Create a detailed fashion design for a ${selectedClothType.toLowerCase()}.`,
-      `Material: ${selectedMaterialName}`,
-      optionalDetails
-    ].filter(Boolean).join('\n');
-
-    console.log('Generated prompt:', prompt);
-
-    // Generate the image
-    const { data: generationData, error: generationError } = await supabase.functions.invoke('generate-optimized-image', {
-      body: { prompt }
-    });
-
-    if (generationError) {
-      throw new Error(generationError.message);
-    }
-
-    if (!generationData || !generationData.imageUrl) {
-      throw new Error("이미지 생성에 실패했습니다");
-    }
-
-    // Store the generated image in Supabase Storage
-    const { data: storageData, error: storageError } = await supabase.functions.invoke('store-generated-image', {
-      body: { imageUrl: generationData.imageUrl }
-    });
-
-    if (storageError) {
-      console.error("Image storage error:", storageError);
-      // Still return the original image URL if storage fails
+    if (!user) {
       toast({
-        title: "이미지 저장 오류",
-        description: "생성된 이미지를 저장하는데 오류가 발생했습니다. 일시적인 링크가 사용됩니다.",
+        title: "로그인 필요",
+        description: "이미지를 생성하려면 로그인해주세요.",
         variant: "destructive",
       });
-      
-      return {
-        imageUrl: generationData.imageUrl,
-        prompt: generationData.optimizedPrompt || prompt,
-        storedImageUrl: null
-      };
+      return null;
     }
 
-    // 중요: Supabase Storage에서 공개 URL을 가져옵니다
-    let finalImageUrl = generationData.imageUrl;
-    if (storageData && storageData.path) {
-      const { data: publicUrlData } = await supabase.storage
-        .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
-        .getPublicUrl(storageData.path);
-      
-      if (publicUrlData && publicUrlData.publicUrl) {
-        finalImageUrl = publicUrlData.publicUrl;
-        console.log("Using storage public URL:", finalImageUrl);
+    // Build the prompt based on selections
+    const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || selectedType;
+    
+    // Find material by ID, including handling custom materials
+    const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
+    const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
+    
+    const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label || selectedStyle;
+    const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || selectedPocket;
+    const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label || selectedColor;
+    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label || selectedFit;
+
+    // Construct the generation prompt
+    const prompt = `${selectedColorName} ${selectedMaterialName} ${selectedClothType}, ${selectedStyleName} 스타일, ${selectedFitName}, ` +
+      (selectedPocket !== 'none' ? `${selectedPocketName}, ` : '') +
+      (selectedDetail ? `${selectedDetail}, ` : '') +
+      `인체 없는 의류 사진, 고해상도, 프로덕트 이미지`;
+
+    console.log("Generation prompt:", prompt);
+
+    // Call the function to generate the image
+    const { data: generationData, error: generationError } = await supabase.functions.invoke(
+      'generate-optimized-image',
+      {
+        body: { prompt }
       }
+    );
+
+    if (generationError) {
+      console.error("Image generation error:", generationError);
+      toast({
+        title: "이미지 생성 실패",
+        description: "이미지를 생성하는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+      return null;
     }
 
-    // If saveProgress is true, save the current progress as a draft order
-    if (saveProgress) {
+    console.log("Generation result:", generationData);
+
+    const imageUrl = generationData?.imageUrl;
+    let storedImageUrl = null;
+    let imagePath = null;
+
+    // If we have an image URL and save flag is true, store in Supabase Storage
+    if (imageUrl && saveAsDraft) {
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const user = sessionData.session?.user;
-        
-        if (user) {
-          const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
-          const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
-          const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
-          const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
-          
-          await supabase.functions.invoke('save-order', {
-            body: {
+        const { data: storeData, error: storeError } = await supabase.functions.invoke(
+          'store-generated-image',
+          {
+            body: { 
+              imageUrl,
               userId: user.id,
-              clothType: selectedClothType,
-              material: selectedMaterialName,
-              style: selectedStyleName,
-              pocketType: selectedPocketName,
-              color: selectedColorName,
-              fit: selectedFitName, // 추가: 핏 정보도 저장
-              detailDescription: selectedDetail,
-              size: null,
-              measurements: null,
-              // 중요: 항상 영구 스토리지 URL 사용
-              generatedImageUrl: finalImageUrl,
-              imagePath: storageData?.path,
-              status: 'draft'
+              clothType: selectedClothType
             }
-          });
-          
-          console.log("Progress saved as draft order");
-          
-          // 사용자에게 저장 알림
-          toast({
-            title: "임시 저장 완료",
-            description: "디자인 정보가 임시로 저장되었습니다.",
-          });
+          }
+        );
+
+        if (storeError) {
+          console.error("Image storage error:", storeError);
         } else {
-          console.log("User not logged in, progress not saved");
+          console.log("Image storage result:", storeData);
+          storedImageUrl = storeData?.storedImageUrl;
+          imagePath = storeData?.imagePath;
         }
-      } catch (error) {
-        console.error("Failed to save progress:", error);
-        toast({
-          title: "임시 저장 실패",
-          description: "디자인 정보를 저장하는데 실패했습니다.",
-          variant: "destructive",
-        });
-        // Don't throw here, as we want to continue with image generation even if saving progress fails
+      } catch (storageError) {
+        console.error("Failed to store image:", storageError);
       }
     }
 
-    toast({
-      title: "이미지 생성 완료",
-      description: "AI가 생성한 이미지가 준비되었습니다.",
-    });
+    // Save as draft order if requested
+    if (saveAsDraft) {
+      // Use the createDraftOrder function to save the draft
+      await createDraftOrder(
+        selectedType,
+        selectedMaterial,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
+        selectedDetail,
+        selectedFit,
+        storedImageUrl || imageUrl,
+        imagePath,
+        materials
+      );
+    }
 
     return {
-      imageUrl: generationData.imageUrl, // Original URL (temporary)
-      prompt: generationData.optimizedPrompt || prompt,
-      storedImageUrl: finalImageUrl, // 수정: 영구 스토리지 URL 사용
-      imagePath: storageData?.path // Path in storage
+      imageUrl,
+      storedImageUrl,
+      imagePath,
+      prompt,
     };
-    
-  } catch (err) {
-    console.error("Image generation failed:", err);
+  } catch (error: any) {
+    console.error("Image generation error:", error);
     toast({
-      title: "오류",
-      description: "이미지 생성에 실패했습니다. 다시 시도해주세요.",
+      title: "이미지 생성 실패",
+      description: "이미지를 생성하는 중 예상치 못한 오류가 발생했습니다.",
       variant: "destructive",
     });
-    throw err;
+    return null;
   }
 };

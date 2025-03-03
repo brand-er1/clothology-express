@@ -4,6 +4,69 @@ import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
 
+// Function to create a draft order when generating an image
+export const createDraftOrder = async (
+  selectedType: string,
+  selectedMaterial: string,
+  selectedStyle: string,
+  selectedPocket: string,
+  selectedColor: string,
+  selectedDetail: string,
+  selectedFit: string,
+  generatedImageUrl: string | null,
+  imagePath: string | null,
+  materials: Material[]
+) => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+    
+    if (!user) {
+      console.log("User not logged in, can't save draft");
+      return false;
+    }
+
+    const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name;
+    
+    // Find material by ID, handling both built-in and custom materials
+    const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
+    const selectedMaterialName = selectedMaterialObj?.name;
+    
+    const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
+    const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
+    const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
+    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
+
+    // Use the edge function to save the draft order
+    const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
+      body: {
+        userId: user.id,
+        clothType: selectedClothType,
+        material: selectedMaterialName,
+        style: selectedStyleName,
+        pocketType: selectedPocketName,
+        color: selectedColorName,
+        fit: selectedFitName,
+        detailDescription: selectedDetail,
+        generatedImageUrl: generatedImageUrl,
+        imagePath: imagePath,
+        status: 'draft' // Set as draft initially
+      }
+    });
+
+    if (orderError) {
+      console.error("Draft order creation failed:", orderError);
+      return false;
+    }
+
+    console.log("Draft order created:", orderData);
+    return true;
+  } catch (error: any) {
+    console.error("Draft order creation error:", error);
+    return false;
+  }
+};
+
 export const createOrder = async (
   selectedType: string,
   selectedMaterial: string,
@@ -11,7 +74,7 @@ export const createOrder = async (
   selectedPocket: string,
   selectedColor: string,
   selectedDetail: string,
-  selectedFit: string, // 추가: 핏 정보 매개변수
+  selectedFit: string,
   selectedSize: string,
   customMeasurements: CustomMeasurements,
   generatedImageUrl: string | null,
@@ -41,7 +104,7 @@ export const createOrder = async (
     const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label;
     const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
     const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
-    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label; // 추가: 핏 이름 찾기
+    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label;
 
     // Prepare measurements data
     let measurementsData = null;
@@ -65,7 +128,7 @@ export const createOrder = async (
     if (imagePath) {
       try {
         const { data: publicUrlData } = await supabase.storage
-          .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
+          .from('generated_images')
           .getPublicUrl(imagePath);
         
         if (publicUrlData && publicUrlData.publicUrl) {
@@ -85,11 +148,11 @@ export const createOrder = async (
       style: selectedStyleName,
       pocket_type: selectedPocketName,
       color: selectedColorName,
-      fit: selectedFitName, // 추가: 핏 정보 로깅
+      fit: selectedFitName,
       detail_description: selectedDetail,
       size: selectedSize,
       measurements: measurementsData,
-      generated_image_url: finalImageUrl, // Use the storage URL if available
+      generated_image_url: finalImageUrl,
       image_path: imagePath,
     });
 
@@ -102,13 +165,13 @@ export const createOrder = async (
         style: selectedStyleName,
         pocketType: selectedPocketName,
         color: selectedColorName,
-        fit: selectedFitName, // 추가: 핏 정보 전달
+        fit: selectedFitName,
         detailDescription: selectedDetail,
         size: selectedSize,
         measurements: measurementsData,
-        generatedImageUrl: finalImageUrl, // Use the storage URL if available
+        generatedImageUrl: finalImageUrl,
         imagePath: imagePath,
-        status: 'pending'
+        status: 'pending' // Set as pending for review
       }
     });
 

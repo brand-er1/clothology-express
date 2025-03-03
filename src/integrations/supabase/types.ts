@@ -18,6 +18,7 @@ export type Database = {
           detail_description: string | null
           generated_image_url: string | null
           id: string
+          image_path: string | null
           material: string
           measurements: Json | null
           pocket_type: string | null
@@ -37,6 +38,7 @@ export type Database = {
           detail_description?: string | null
           generated_image_url?: string | null
           id?: string
+          image_path?: string | null
           material: string
           measurements?: Json | null
           pocket_type?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           detail_description?: string | null
           generated_image_url?: string | null
           id?: string
+          image_path?: string | null
           material?: string
           measurements?: Json | null
           pocket_type?: string | null

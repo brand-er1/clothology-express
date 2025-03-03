@@ -28,6 +28,11 @@ export const MaterialStep = ({
   onNewMaterialNameChange,
   onAddMaterial,
 }: MaterialStepProps) => {
+  // Find the selected material to display
+  const selectedMaterialItem = materials.find(
+    (material) => material.id === selectedMaterial
+  );
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

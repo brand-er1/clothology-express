@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -83,13 +84,18 @@ export const useCustomizeForm = () => {
 
   const handleAddMaterial = () => {
     if (newMaterialName.trim()) {
+      // Create a readable ID based on the material name
+      const newId = `custom-${newMaterialName.trim().toLowerCase().replace(/\s+/g, '-')}`;
+      
       const newMaterial = {
-        id: `custom-${Date.now()}`,
+        id: newId,
         name: newMaterialName.trim(),
         description: "사용자 지정 원단",
+        isCustom: true,
       };
+      
       setMaterials([...materials, newMaterial]);
-      setSelectedMaterial(newMaterial.id);
+      setSelectedMaterial(newId);
       setNewMaterialName("");
     }
   };

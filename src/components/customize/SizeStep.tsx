@@ -59,7 +59,7 @@ export const SizeStep = ({
           .from("profiles")
           .select("height, gender")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
           
         if (profileError) {
           console.error("Profile error:", profileError);

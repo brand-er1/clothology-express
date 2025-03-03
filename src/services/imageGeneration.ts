@@ -126,6 +126,16 @@ export const generateImage = async (
         // Trim any extra whitespace or line breaks
         cleanDetail = cleanDetail.trim();
 
+        // Create a formatted description with the selections
+        let detailDesc = '';
+        if (cleanDetail) detailDesc += cleanDetail + '\n';
+        if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
+        if (selectedPocketName && selectedPocket !== 'none') detailDesc += `포켓: ${selectedPocketName}\n`;
+        if (selectedColorName) detailDesc += `색상: ${selectedColorName}\n`;
+        if (selectedFitName) detailDesc += `핏: ${selectedFitName}`;
+        
+        detailDesc = detailDesc.trim();
+
         // Store image information in the generated_images table
         const { data: imageData, error: imageError } = await supabase.functions.invoke(
           'save-generated-image',
@@ -138,11 +148,7 @@ export const generateImage = async (
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
-              style: selectedStyleName,
-              pocket: selectedPocketName,
-              color: selectedColorName,
-              fit: selectedFitName,
-              detail: cleanDetail // Use the cleaned detail text
+              detailDescription: detailDesc // Use a single unified detail description
             }
           }
         );

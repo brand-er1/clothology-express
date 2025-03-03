@@ -61,7 +61,7 @@ export const createDraftOrder = async (
     let detailDesc = '';
     if (customDetailText) detailDesc += customDetailText + '\n';
     if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
-    if (selectedPocketName) detailDesc += `포켓: ${selectedPocketName}\n`;
+    if (selectedPocketName && selectedPocket !== 'none') detailDesc += `포켓: ${selectedPocketName}\n`;
     if (selectedColorName) detailDesc += `색상: ${selectedColorName}\n`;
     if (selectedFitName) detailDesc += `핏: ${selectedFitName}`;
     
@@ -156,7 +156,7 @@ export const createOrder = async (
     let detailDesc = '';
     if (customDetailText) detailDesc += customDetailText + '\n';
     if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
-    if (selectedPocketName) detailDesc += `포켓: ${selectedPocketName}\n`;
+    if (selectedPocketName && selectedPocket !== 'none') detailDesc += `포켓: ${selectedPocketName}\n`;
     if (selectedColorName) detailDesc += `색상: ${selectedColorName}\n`;
     if (selectedFitName) detailDesc += `핏: ${selectedFitName}`;
     

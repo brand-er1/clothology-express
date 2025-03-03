@@ -301,7 +301,7 @@ export const SizeStep = ({
                       onError={(e) => {
                         console.error("이미지 로드 오류:", e);
                         console.log("오류가 발생한 이미지 경로:", clothingImages[selectedType]);
-                        (e.target as HTMLImageElement).src = "/lovable-uploads/긴바지.png";
+                        (e.target as HTMLImageElement).src = "/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png";
                       }}
                     />
                     <p className="text-center text-xs text-gray-500 mt-2">사이즈 가이드</p>

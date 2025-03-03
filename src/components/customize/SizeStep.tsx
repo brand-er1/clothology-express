@@ -27,15 +27,17 @@ interface SizeRecommendation {
   핏: string;
   사이즈표: {
     어깨너비?: string;
-    가슴둘레?: string;
-    허리둘레?: string;
+    가슴단면?: string;
+    허리단면?: string;
     소매길이?: string;
     총장?: string;
-    엉덩이둘레?: string;
-    허벅지둘레?: string;
-    밑단_너비?: string;
+    엉덩이단면?: string;
+    허벅지단면?: string;
+    밑단?: string;
     인심?: string;
     "추천 키"?: string;
+    "바지 길이"?: string;
+    밑위?: string;
   };
 }
 
@@ -180,15 +182,17 @@ export const SizeStep = ({
   const translateKey = (key: string): string => {
     const keyMap: Record<string, string> = {
       어깨너비: '어깨너비',
-      가슴둘레: '가슴둘레',
-      허리둘레: '허리둘레',
+      가슴단면: '가슴단면',
+      허리단면: '허리단면',
       소매길이: '소매길이',
       총장: '총장',
-      엉덩이둘레: '엉덩이둘레',
-      허벅지둘레: '허벅지둘레',
-      밑단_너비: '밑단 너비',
+      엉덩이단면: '엉덩이단면',
+      허벅지단면: '허벅지단면',
+      밑단: '밑단',
       인심: '인심',
-      "추천 키": '추천 키'
+      "추천 키": '추천 키',
+      "바지 길이": '바지 길이',
+      밑위: '밑위'
     };
     
     return keyMap[key] || key;

@@ -41,15 +41,22 @@ export const ImageStep = ({
                   <p className="text-sm text-gray-500">이미지 생성 중...</p>
                 </div>
               ) : displayImageUrl ? (
-                <img
-                  src={displayImageUrl}
-                  alt="Generated clothing design"
-                  className="max-h-full max-w-full object-contain rounded-lg"
-                  onError={(e) => {
-                    console.error("Image loading error:", e);
-                    e.currentTarget.src = "/placeholder.svg";
-                  }}
-                />
+                <div className="relative w-full h-full">
+                  <img
+                    src={displayImageUrl}
+                    alt="Generated clothing design"
+                    className="max-h-full max-w-full object-contain rounded-lg mx-auto"
+                    onError={(e) => {
+                      console.error("Image loading error:", e);
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
+                  />
+                  {storedImageUrl && (
+                    <div className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                      저장됨
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Button 
                   onClick={onGenerateImage}

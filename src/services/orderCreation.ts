@@ -56,6 +56,25 @@ export const createOrder = async (
       measurementsData = customMeasurements;
     }
 
+    // If we have a stored image path, get the public URL for it
+    let finalImageUrl = generatedImageUrl;
+    
+    if (imagePath) {
+      try {
+        const { data: publicUrlData } = await supabase.storage
+          .from('generated-images')
+          .getPublicUrl(imagePath);
+        
+        if (publicUrlData && publicUrlData.publicUrl) {
+          finalImageUrl = publicUrlData.publicUrl;
+          console.log("Using stored image public URL:", finalImageUrl);
+        }
+      } catch (urlError) {
+        console.error("Failed to get public URL for stored image:", urlError);
+        // Fall back to the original generated URL
+      }
+    }
+
     console.log("Creating order with data:", {
       user_id: user.id,
       cloth_type: selectedClothType,
@@ -66,11 +85,11 @@ export const createOrder = async (
       detail_description: selectedDetail,
       size: selectedSize,
       measurements: measurementsData,
-      generated_image_url: generatedImageUrl,
+      generated_image_url: finalImageUrl, // Use the storage URL if available
       image_path: imagePath,
     });
 
-    // Use the new edge function to save the order
+    // Use the edge function to save the order
     const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
       body: {
         userId: user.id,
@@ -82,7 +101,7 @@ export const createOrder = async (
         detailDescription: selectedDetail,
         size: selectedSize,
         measurements: measurementsData,
-        generatedImageUrl: generatedImageUrl,
+        generatedImageUrl: finalImageUrl, // Use the storage URL if available
         imagePath: imagePath,
         status: 'pending'
       }

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
 import { SizeTableItem } from "@/types/customize";
 
 interface SizeStepProps {
@@ -83,6 +85,7 @@ export const SizeStep = ({
         if (!user) {
           console.log("사용자가 로그인하지 않았습니다.");
           setError("사이즈 추천을 위해 로그인이 필요합니다.");
+          setIsLoading(false);
           return;
         }
 
@@ -95,6 +98,7 @@ export const SizeStep = ({
         if (error) {
           console.error("프로필 로드 오류:", error);
           setError("프로필 정보를 불러오는데 실패했습니다.");
+          setIsLoading(false);
           return;
         }
 
@@ -103,14 +107,17 @@ export const SizeStep = ({
           setUserGender(profile.gender || "남성");
           if (profile.height && selectedType) {
             await requestSizeRecommendation(profile.height, profile.gender || "남성", selectedType, selectedMaterial, selectedDetail, generatedPrompt);
+          } else {
+            setIsLoading(false);
+            setError("사이즈 추천을 위해 프로필에서 키 정보를 설정해주세요.");
           }
         } else {
           setError("사이즈 추천을 위해 프로필에서 키와 성별 정보를 설정해주세요.");
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("프로필 로드 중 오류 발생:", error);
         setError("프로필 정보를 불러오는 중 오류가 발생했습니다.");
-      } finally {
         setIsLoading(false);
       }
     };
@@ -128,6 +135,8 @@ export const SizeStep = ({
   ) => {
     try {
       setIsLoading(true);
+      setError(null);
+      
       // 타입 매핑
       const typeMapping: { [key: string]: string } = {
         'jacket': '자켓',
@@ -151,29 +160,39 @@ export const SizeStep = ({
       
       console.log("사이즈 추천 요청 데이터:", request);
       
-      const response = await fetch('https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/size-recommendation2', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request)
+      const { data, error } = await supabase.functions.invoke('size-recommendation2', {
+        body: request
       });
 
-      if (!response.ok) {
-        throw new Error('Size recommendation request failed');
+      if (error) {
+        console.error("사이즈 추천 요청 오류:", error);
+        setError("사이즈 추천을 가져오는데 실패했습니다. 다시 시도해주세요.");
+        setIsLoading(false);
+        return;
       }
 
-      const data = await response.json();
       console.log("사이즈 추천 응답 데이터:", data);
       
       if (data.error) {
         setError(data.error);
+        setIsLoading(false);
         return;
       }
       
       // 응답 데이터 형식에 맞게 처리
       setRecommendation(data);
-      onSizeChange(data.사이즈);
+      
+      // 사이즈가 비어있지 않은 경우에만 설정
+      if (data.사이즈 && data.사이즈.trim() !== '') {
+        onSizeChange(data.사이즈);
+      } else {
+        // 기본 사이즈 설정 (M)
+        onSizeChange("M");
+        toast({
+          title: "기본 사이즈 적용",
+          description: "추천 사이즈를 찾을 수 없어 기본 사이즈 M으로 설정했습니다.",
+        });
+      }
       
       // Create editable size table data from recommendation
       if (data.사이즈표) {
@@ -293,7 +312,8 @@ export const SizeStep = ({
     );
   }
 
-  if (!recommendation && sizeTableData.length === 0) {
+  // Check if we have size table data
+  if (sizeTableData.length === 0) {
     return (
       <div className="text-center py-8">
         <p>사이즈 추천 데이터가 없습니다. 다시 시도해주세요.</p>
@@ -319,17 +339,17 @@ export const SizeStep = ({
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
               <div>
                 <h3 className="text-xl font-semibold">추천 사이즈: 
-                  <Badge className="ml-2 text-lg">{selectedSize}</Badge>
+                  <Badge className="ml-2 text-lg">{selectedSize || "M"}</Badge>
                 </h3>
                 <p className="text-gray-500 mt-1">
-                  {recommendation?.성별 === '남성' ? '남성' : '여성'}, 
-                  키 {recommendation?.키}cm, 
-                  {recommendation?.카테고리}
+                  {recommendation?.성별 || userGender}, 
+                  키 {recommendation?.키 || userHeight}cm
+                  {recommendation?.카테고리 ? `, ${recommendation.카테고리}` : ''}
                 </p>
                 <p className="text-sm mt-2 text-blue-600">아래 사이즈 정보를 수정하여 맞춤 주문이 가능합니다.</p>
               </div>
               <div>
-                {recommendation && (
+                {recommendation && recommendation.핏 && (
                   <Badge variant="outline" className="text-sm">{recommendation.핏} 핏</Badge>
                 )}
               </div>

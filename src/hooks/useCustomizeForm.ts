@@ -69,7 +69,7 @@ export const useCustomizeForm = () => {
         }
         break;
       case 5:
-        if (!selectedSize) {
+        if (!selectedSize && sizeTableData.length === 0) {
           toast({
             title: "사이즈 필요",
             description: "사이즈를 선택해주세요.",
@@ -148,6 +148,9 @@ export const useCustomizeForm = () => {
         materials,
         sizeTableData
       });
+
+      // If no size is selected, use default size 'M'
+      const finalSize = selectedSize || "M";
       
       const success = await createOrder(
         selectedType,
@@ -157,7 +160,7 @@ export const useCustomizeForm = () => {
         selectedColor,
         selectedDetail,
         selectedFit, // 추가: 핏 정보 전달
-        selectedSize,
+        finalSize,
         customMeasurements,
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available
         imagePath, // Include the storage path

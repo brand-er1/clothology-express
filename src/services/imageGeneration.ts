@@ -109,6 +109,40 @@ export const generateImage = async (
       }
     }
 
+    // Save to the generated_images table
+    if (imageUrl && user.id) {
+      try {
+        // Store image information in the new generated_images table
+        const { data: imageData, error: imageError } = await supabase.functions.invoke(
+          'save-generated-image',
+          {
+            body: {
+              userId: user.id,
+              originalImageUrl: imageUrl,
+              storedImageUrl: storedImageUrl,
+              imagePath: imagePath,
+              prompt: prompt,
+              clothType: selectedClothType,
+              material: selectedMaterialName,
+              style: selectedStyleName,
+              pocket: selectedPocketName,
+              color: selectedColorName,
+              fit: selectedFitName,
+              detail: selectedDetail
+            }
+          }
+        );
+
+        if (imageError) {
+          console.error("Failed to save image data:", imageError);
+        } else {
+          console.log("Image data saved:", imageData);
+        }
+      } catch (saveError) {
+        console.error("Error saving image data:", saveError);
+      }
+    }
+
     // Save as draft order if requested
     if (saveAsDraft) {
       // Use the createDraftOrder function to save the draft

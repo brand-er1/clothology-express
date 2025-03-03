@@ -1,157 +1,236 @@
+// size-recommendation.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { sizeData } from "./size-data.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 interface RequestParams {
-  gender: 'men' | 'women';
+  gender: "남성" | "여성";
   height: number;
-  type: string;
-  material: string;
-  detail: string;
-  prompt: string;
+  type: string;     // 예: "short_sleeve", "outer_jacket", "sweatshirt", "short_pants", "long_sleeve"
+  material: string; // e.g. "cotton", "polyester"
+  detail: string;   // 사용자가 추가적으로 입력한 상세 정보
+  prompt: string;   // 다른 텍스트 프롬프트
 }
 
+// type -> subcategory 매핑
+const synonymMap: Record<string, string> = {
+  sweatshirt: "맨투맨",
+  short_sleeve: "반팔티셔츠",
+  outer_jacket: "자켓",
+  long_sleeve: "긴팔티셔츠",
+  long_pants: "긴바지",
+  short_pants: "반바지",
+};
+
 serve(async (req) => {
-  // CORS 요청 처리
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // 1. 요청 파라미터 수신
     const params: RequestParams = await req.json();
-    console.log("Received request params:", params);
+    console.log("[1] Received request params:", params);
 
-    // 1. 성별 기준 필터링
-    const genderData = sizeData.filter(item => item.성별 === (params.gender === 'men' ? '남성' : '여성'));
-    console.log(`Found ${genderData.length} items for gender: ${params.gender}`);
+    const { gender, height, type, detail, material, prompt } = params;
 
-    // 2. 의류 종류 기준 필터링 (부분 매칭)
-    const baseType = params.type.split('_')[0]; // 예: long_pants -> long
-    const typeData = genderData.filter(item => {
-      // long_pants -> long_pants_regular, long_pants_overfit 등 모두 매칭
-      return item.옷_종류.includes(baseType);
+    // 2. 성별 데이터 가져오기
+    const dataForGender = sizeData[gender];
+    if (!dataForGender) {
+      return errorResponse(`잘못된 성별 값: ${gender}`, 400);
+    }
+
+
+    // 4. 입력된 type(예: sweatshirt)을 synonymMap으로 보정하여 subcategory 결정
+    const subcategory = synonymMap[type] || type;
+    console.log("[3] 최종 subcategory 결정:", subcategory);
+
+    const categoryData = dataForGender[subcategory];
+    if (!categoryData) {
+      return errorResponse(`카테고리 데이터가 없습니다: '${subcategory}'`, 404);
+    }
+
+
+    // 5. GPT에게 핏만 결정하도록 요청
+    const fit = await pickFitWithGPT({
+      gender,
+      detail,
+      type: subcategory,
+      material,
+      prompt,
     });
-    console.log(`Found ${typeData.length} items matching type: ${params.type} (base: ${baseType})`);
+    if (!fit) {
+      return errorResponse("GPT가 적절한 핏을 결정하지 못했습니다.", 500);
+    }
+    console.log("[4] GPT가 선택한 핏:", fit);
 
-    if (typeData.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          error: `No data found for type: ${params.type}`,
-          availableTypes: [...new Set(genderData.map(item => item.옷_종류))] 
-        }),
-        { 
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+
+    // 3. 키에 맞는 사이즈 찾기
+    const recommendedSizes = categoryData[fit];
+    const userSize = findRecommendedSize(height, recommendedSizes);
+    if (!userSize) {
+      return errorResponse(`해당 키(${height})에 맞는 사이즈를 찾을 수 없습니다.`, 404);
+    }
+    console.log("[2] 키에 따른 추천 사이즈:", userSize);
+
+
+
+    const finalSizeTable = recommendedSizes[userSize];
+    if (!finalSizeTable) {
+      return errorResponse(
+        `'${subcategory}'의 '${fit}' 핏에서 '${userSize}' 사이즈 데이터를 찾을 수 없습니다.`,
+        404,
       );
     }
+    console.log("[5] 최종 사이즈 데이터:", finalSizeTable);
 
-    // 3. 키 범위 필터링
-    const heightData = typeData.filter(item => {
-      // 키 범위를 확장해서 찾기 (±5cm)
-      return Math.abs(item.키 - params.height) <= 5;
-    });
-
-    // 가장 가까운 키 찾기
-    let closestHeightData = typeData[0];
-    let minHeightDiff = Math.abs(typeData[0].키 - params.height);
-
-    for (const item of typeData) {
-      const diff = Math.abs(item.키 - params.height);
-      if (diff < minHeightDiff) {
-        minHeightDiff = diff;
-        closestHeightData = item;
-      }
-    }
-
-    const selectedData = heightData.length > 0 ? heightData[0] : closestHeightData;
-    console.log("Selected size data:", selectedData);
-
-    // 4. GPT로 사이즈 분석 요청
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: `당신은 패션 사이즈 분석 전문가입니다. 
-            사용자의 신체 정보와 옷 정보를 바탕으로 적절한 사이즈를 추천해주세요.
-            응답은 반드시 JSON 형식으로 {"총장": 숫자, "어깨너비": 숫자, ...} 형태로 해주세요.
-            모든 측정치는 cm 단위로 제공해주세요.` 
-          },
-          { 
-            role: 'user', 
-            content: `
-            성별: ${params.gender === 'men' ? '남성' : '여성'}
-            키: ${params.height}cm
-            의류 종류: ${params.type}
-            원단: ${params.material}
-            디테일: ${params.detail}
-            의류 설명: ${params.prompt}
-            
-            기본 사이즈 정보:
-            ${JSON.stringify(selectedData.그에_맞는_사이즈_표, null, 2)}
-            
-            이 정보를 바탕으로 적절한 사이즈 데이터를 JSON 형식으로 제공해주세요.`
-          }
-        ],
-        temperature: 0.3,
-      }),
-    });
-
-    const gptResponse = await openaiResponse.json();
-    const sizeSuggestion = gptResponse.choices[0].message.content;
-    console.log("GPT Response:", sizeSuggestion);
-
-    // GPT 응답에서 JSON 추출 (문자열로 반환되었을 가능성이 있음)
-    let sizeJSON;
-    try {
-      // JSON 문자열만 추출
-      const jsonMatch = sizeSuggestion.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : sizeSuggestion;
-      sizeJSON = JSON.parse(jsonString);
-    } catch (e) {
-      console.error("Error parsing GPT JSON:", e);
-      // 실패할 경우 원본 사이즈 데이터 사용
-      sizeJSON = selectedData.그에_맞는_사이즈_표;
-    }
-
-    // 5. 최종 응답 데이터 구성
-    const response = {
-      성별: params.gender === 'men' ? '남성' : '여성',
-      키: params.height,
-      사이즈: selectedData.사이즈, // XS, S, M, L, XL 등
-      옷_종류: selectedData.옷_종류,
-      그에_맞는_사이즈_표: sizeJSON,
-      원본_사이즈_데이터: selectedData.그에_맞는_사이즈_표,
-      원단: params.material,
-      디테일: params.detail,
-      프롬프트: params.prompt
+    // 7. 최종 결과
+    const result = {
+      성별: gender,
+      키: height,
+      카테고리: subcategory,
+      핏: fit,
+      사이즈: userSize,
+      사이즈표: finalSizeTable,
     };
+    console.log("[6] 최종 결과:", result);
 
-    return new Response(
-      JSON.stringify(response),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    console.error("Error:", error);
+    return errorResponse(error.message, 500);
   }
 });
+
+
+function findRecommendedSize(
+  height: number,
+  sizeTable: Record<string, Record<string, string>>
+): string | null {
+  for (const [size, measurements] of Object.entries(sizeTable)) {
+    const heightRange = measurements["추천 키"];
+    if (!heightRange) continue;
+    
+    // "160~165cm" 형식에서 숫자만 추출
+    const range = heightRange.replace('cm', '').split('~');
+    const min = parseInt(range[0]);
+    const max = parseInt(range[1]);
+    
+    if (height >= min && height <= max) {
+      return size;
+    }
+  }
+  
+  // 범위를 벗어난 경우, 가장 가까운 사이즈 반환
+  const sizes = Object.entries(sizeTable);
+  if (sizes.length === 0) return null;
+  
+  const firstRange = sizes[0][1]["추천 키"].replace('cm', '').split('~');
+  const lastRange = sizes[sizes.length - 1][1]["추천 키"].replace('cm', '').split('~');
+  
+  if (height < parseInt(firstRange[0])) return sizes[0][0];  // 가장 작은 사이즈
+  if (height > parseInt(lastRange[1])) return sizes[sizes.length - 1][0];  // 가장 큰 사이즈
+  
+  return null;
+}
+
+/**
+ * GPT에게 'fit'(상의: slim, regular, loose / 하의: skinny, regular, wide) 중 1개를 고르게 함
+ */
+async function pickFitWithGPT(options: {
+  gender: string;
+  detail: string;
+  type: string;
+  material: string;
+  prompt: string;
+}): Promise<string | null> {
+  const { gender, detail, type, material, prompt } = options;
+
+  // 상/하의 구분 - 예시 (단순하게 '바지' 단어 포함 여부로 구분)
+  const isBottom = /바지/.test(type) || /pants?/.test(type.toLowerCase());
+
+  // fit 후보
+  const fitCandidates = isBottom
+    ? ["skinny", "regular", "wide"]
+    : ["slim", "regular", "loose"];
+
+  const candidateListText = fitCandidates.map((f) => `- ${f}`).join("\n");
+
+  const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini", // 또는 gpt-3.5-turbo, gpt-4 등
+      temperature: 0.3,
+      messages: [
+        {
+          role: "system",
+          content: `
+You are a fashion expert.
+You must pick exactly one "fit" from the candidates below:
+${candidateListText}
+
+Return your answer in strict JSON format only.
+For example: {"fit": "regular"}
+        `,
+        },
+        {
+          role: "user",
+          content: `
+- Gender: ${gender}
+- Category (subtype): ${type}
+- Material: ${material}
+- Detail: ${detail}
+- Fashion description optimized by gpt: ${prompt}
+        `,
+        },
+      ],
+    }),
+  });
+
+  if (!openaiResponse.ok) {
+    console.error("OpenAI 요청 실패:", await openaiResponse.text());
+    return null;
+  }
+
+  const gptData = await openaiResponse.json();
+  const content = gptData.choices?.[0]?.message?.content;
+  if (!content) return null;
+
+  try {
+    // 예: {"fit":"regular"}
+    const match = content.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]);
+    const fit = parsed.fit || null;
+
+    // 만약 GPT가 다른 fit을 반환했다면 null
+    if (!fitCandidates.includes(fit)) {
+      console.warn("GPT가 fit 목록 외의 값을 반환:", fit);
+      return null;
+    }
+    return fit;
+  } catch (err) {
+    console.error("GPT 파싱 실패:", err);
+    return null;
+  }
+}
+
+function errorResponse(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}

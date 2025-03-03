@@ -127,8 +127,8 @@ export const SizeStep = ({
         'jacket': '자켓',
         'long_pants': '긴바지',
         'short_pants': '반바지',
-        'short_sleeve': '반팔',
-        'long_sleeve': '긴팔',
+        'short_sleeve': '반팔티셔츠',
+        'long_sleeve': '긴팔티셔츠',
         'sweatshirt': '맨투맨'
       };
 

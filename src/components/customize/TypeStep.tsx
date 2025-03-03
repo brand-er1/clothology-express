@@ -13,19 +13,14 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
   const getTypeValue = (typeId: string): string => {
     const typeMapping: { [key: string]: string } = {
       'jacket': 'outer_jacket',
-      'long_pants': 'long_pants',
-      'short_pants': 'short_pants',
+      'long_pants': 'long_pants_regular',
+      'short_pants': 'shorts',
       'short_sleeve': 'short_sleeve',
-      'long_sleeve': 'long_sleeve',
-      'sweatshirt': 'sweatshirt'
+      'long_sleeve': 'long_sleeve_regular',
+      'sweatshirt': 'sweatshirt_regular'
     };
     
     return typeMapping[typeId] || typeId;
-  };
-
-  const handleTypeSelect = (typeId: string) => {
-    const mappedType = getTypeValue(typeId);
-    onSelectType(mappedType);
   };
 
   return (
@@ -40,11 +35,11 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
               <Card
                 key={type.id}
                 className={`p-6 cursor-pointer transition-all ${
-                  selectedType === getTypeValue(type.id)
+                  selectedType === type.id
                     ? "border-brand ring-2 ring-brand/20"
                     : "hover:border-brand/20"
                 }`}
-                onClick={() => handleTypeSelect(type.id)}
+                onClick={() => onSelectType(type.id)}
               >
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="p-4 bg-brand/5 rounded-full">
@@ -68,11 +63,11 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
               <Card
                 key={type.id}
                 className={`p-6 cursor-pointer transition-all ${
-                  selectedType === getTypeValue(type.id)
+                  selectedType === type.id
                     ? "border-brand ring-2 ring-brand/20"
                     : "hover:border-brand/20"
                 }`}
-                onClick={() => handleTypeSelect(type.id)}
+                onClick={() => onSelectType(type.id)}
               >
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="p-4 bg-brand/5 rounded-full">
@@ -96,11 +91,11 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
               <Card
                 key={type.id}
                 className={`p-6 cursor-pointer transition-all ${
-                  selectedType === getTypeValue(type.id)
+                  selectedType === type.id
                     ? "border-brand ring-2 ring-brand/20"
                     : "hover:border-brand/20"
                 }`}
-                onClick={() => handleTypeSelect(type.id)}
+                onClick={() => onSelectType(type.id)}
               >
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="p-4 bg-brand/5 rounded-full">

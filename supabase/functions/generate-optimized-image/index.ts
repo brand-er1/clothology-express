@@ -3,46 +3,6 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const replicateApiKey = Deno.env.get('REPLICATE_API_KEY');
-
-const SYSTEM_PROMPT = `Assist in generating precise and optimized prompts for the FLUX AI model to create high-quality fashion image based on user input.
-
-
-1. Make the prompt detailed with:
-- Clothing type (e.g., jacket, dress).
-- Colors, patterns, and materials.
-- Style or theme (e.g., casual, formal).
-- Accessories or design details.
-- Target audience (e.g., men's, women's).
-2. Use vivid adjectives to guide image generation accurately.
-3. Keep the prompt concise but descriptive, and don't omit details in input.
-4. If there are not sufficient details, add details based on your knowledge about garment.
-5. Add this prompt at the end. : "Showcasing the front view on the left side and the back view on the right side. Show only cloth."
-6. Output must be in English, and only return result. 
-
-**Example**:
-1. solid black long-sleeved sports top in fast-drying breathable functional fabric with overlocked seams for optimum comfort some of the polyester content of the top is recycled
-
-2. solid black short padded jacket with a jersey-lined hood and stand-up collar with a drawstring zip down the front flap side pockets with a press-stud one inner pocket and ribbing at the cuffs and hem quilted lining
-
-3. solid black short bell-shaped skirt in stretch jersey with wide elastication at the waist unlined
-
-4. solid dark grey short fine-knit dress with a hood waterfall neckline and long sleeves unlined
-
-5. denim blue long straight-cut shirt in soft tencelTM lyocell denim with a collar and buttons down the front chest pockets with a pleat and long sleeves with buttoned cuffs
-
-6. solid black padded bomber jacket with a ribbed collar zip at the front zipped side pockets a pocket on the sleeve one inner pocket and ribbing at the cuffs and hem lined
-
-7. contrast black long-sleeved top in sweatshirt fabric with striped ribbing in a contrasting colour around the neckline cuffed sleeves and a sweatshirt fabric trim at the hem
-
-8. 3d grey t-shirt in soft jersey with embroidered appliques
-
-9. solid beige ankle-length track pants in sweatshirt fabric made from a cotton blend high waist with covered elastication and a concealed drawstring and discreet pockets in the side seams decorative flatlock seams at the back and tapered legs with covered elastication at the hems
-
-`;
-
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

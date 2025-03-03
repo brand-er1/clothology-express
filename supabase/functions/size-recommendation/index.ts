@@ -1,190 +1,157 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import { sizeCharts, typeMapping, categoryMapping, heightRanges } from "./size-data.ts"
-import { corsHeaders } from "../_shared/cors.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { sizeData } from "./size-data.ts";
 
-// Interface for size recommendation request
-interface SizeRecommendationRequest {
-  gender: string;       // 남성 or 여성
-  height: number;       // in cm
-  type: string;         // 의류 유형 (e.g., 티셔츠, 셔츠, 바지)
-  material?: string;    // 옵션: 소재
-  detail?: string;      // 옵션: 세부 사항
-  prompt?: string;      // 옵션: 생성된 프롬프트
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface RequestParams {
+  gender: 'men' | 'women';
+  height: number;
+  type: string;
+  material: string;
+  detail: string;
+  prompt: string;
 }
 
 serve(async (req) => {
-  console.log("Size recommendation function called")
-  
-  // Handle CORS preflight requests
+  // CORS 요청 처리
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request')
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Parse request body
-    let requestData: SizeRecommendationRequest;
-    
-    try {
-      requestData = await req.json();
-      console.log("Request data:", JSON.stringify(requestData))
-    } catch (err) {
-      console.error("Failed to parse request body:", err)
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON in request body" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      )
-    }
+    const params: RequestParams = await req.json();
+    console.log("Received request params:", params);
 
-    // Validate required fields
-    if (!requestData.gender) {
-      console.error("Missing gender field in request")
-      return new Response(
-        JSON.stringify({ error: "Missing gender field" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      )
-    }
-    
-    if (!requestData.height) {
-      console.error("Missing height field in request")
-      return new Response(
-        JSON.stringify({ error: "Missing height field" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      )
-    }
+    // 1. 성별 기준 필터링
+    const genderData = sizeData.filter(item => item.성별 === (params.gender === 'men' ? '남성' : '여성'));
+    console.log(`Found ${genderData.length} items for gender: ${params.gender}`);
 
-    if (!requestData.type) {
-      console.error("Missing type field in request")
-      return new Response(
-        JSON.stringify({ error: "Missing type field" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      )
-    }
+    // 2. 의류 종류 기준 필터링 (부분 매칭)
+    const baseType = params.type.split('_')[0]; // 예: long_pants -> long
+    const typeData = genderData.filter(item => {
+      // long_pants -> long_pants_regular, long_pants_overfit 등 모두 매칭
+      return item.옷_종류.includes(baseType);
+    });
+    console.log(`Found ${typeData.length} items matching type: ${params.type} (base: ${baseType})`);
 
-    // Transform Korean type to English type
-    const engType = typeMapping[requestData.type] || requestData.type
-    console.log(`Type mapping: ${requestData.type} -> ${engType}`)
-    
-    // Get the category based on the type
-    const category = categoryMapping[engType]
-    console.log(`Category mapping: ${engType} -> ${category}`)
-    
-    if (!category) {
-      console.error("Invalid clothing type:", requestData.type, "mapped to:", engType)
+    if (typeData.length === 0) {
       return new Response(
-        JSON.stringify({ error: `Invalid clothing type: ${requestData.type}` }), 
+        JSON.stringify({ 
+          error: `No data found for type: ${params.type}`,
+          availableTypes: [...new Set(genderData.map(item => item.옷_종류))] 
+        }),
         { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      )
-    }
-
-    // Get appropriate size chart based on gender and category
-    const gender = requestData.gender === "남성" ? "남성" : "여성"
-    const sizeChart = sizeCharts[gender][category]
-    
-    if (!sizeChart) {
-      console.error("Size chart not found for:", gender, category)
-      return new Response(
-        JSON.stringify({ error: `Size chart not found for gender: ${gender}, category: ${category}` }),
-        {
           status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      )
+      );
     }
 
-    // Determine size based on height
-    const heightRangeKey = gender === "남성" ? "men" : "women"
-    const heights = heightRanges[heightRangeKey]
-    
-    if (!heights) {
-      console.error("Height ranges not found for:", heightRangeKey)
-      return new Response(
-        JSON.stringify({ error: `Height ranges not found for: ${heightRangeKey}` }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
-      )
-    }
-    
-    let recommendedSize = "M" // Default to M if no match
-    
-    console.log(`Finding size for height: ${requestData.height}cm in ranges:`, JSON.stringify(heights))
-    
-    for (const [size, range] of Object.entries(heights)) {
-      if (requestData.height >= range.min && requestData.height <= range.max) {
-        recommendedSize = size
-        console.log(`Found matching size: ${size} for height: ${requestData.height}cm`)
-        break
+    // 3. 키 범위 필터링
+    const heightData = typeData.filter(item => {
+      // 키 범위를 확장해서 찾기 (±5cm)
+      return Math.abs(item.키 - params.height) <= 5;
+    });
+
+    // 가장 가까운 키 찾기
+    let closestHeightData = typeData[0];
+    let minHeightDiff = Math.abs(typeData[0].키 - params.height);
+
+    for (const item of typeData) {
+      const diff = Math.abs(item.키 - params.height);
+      if (diff < minHeightDiff) {
+        minHeightDiff = diff;
+        closestHeightData = item;
       }
     }
-    
-    // If height is outside all ranges, pick the closest
-    if (requestData.height < heights.XS.min) {
-      recommendedSize = "XS"
-      console.log(`Height ${requestData.height}cm is below minimum, using XS`)
-    } else if (requestData.height > heights.XXL.max) {
-      recommendedSize = "XXL"
-      console.log(`Height ${requestData.height}cm is above maximum, using XXL`)
+
+    const selectedData = heightData.length > 0 ? heightData[0] : closestHeightData;
+    console.log("Selected size data:", selectedData);
+
+    // 4. GPT로 사이즈 분석 요청
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: `당신은 패션 사이즈 분석 전문가입니다. 
+            사용자의 신체 정보와 옷 정보를 바탕으로 적절한 사이즈를 추천해주세요.
+            응답은 반드시 JSON 형식으로 {"총장": 숫자, "어깨너비": 숫자, ...} 형태로 해주세요.
+            모든 측정치는 cm 단위로 제공해주세요.` 
+          },
+          { 
+            role: 'user', 
+            content: `
+            성별: ${params.gender === 'men' ? '남성' : '여성'}
+            키: ${params.height}cm
+            의류 종류: ${params.type}
+            원단: ${params.material}
+            디테일: ${params.detail}
+            의류 설명: ${params.prompt}
+            
+            기본 사이즈 정보:
+            ${JSON.stringify(selectedData.그에_맞는_사이즈_표, null, 2)}
+            
+            이 정보를 바탕으로 적절한 사이즈 데이터를 JSON 형식으로 제공해주세요.`
+          }
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    const gptResponse = await openaiResponse.json();
+    const sizeSuggestion = gptResponse.choices[0].message.content;
+    console.log("GPT Response:", sizeSuggestion);
+
+    // GPT 응답에서 JSON 추출 (문자열로 반환되었을 가능성이 있음)
+    let sizeJSON;
+    try {
+      // JSON 문자열만 추출
+      const jsonMatch = sizeSuggestion.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : sizeSuggestion;
+      sizeJSON = JSON.parse(jsonString);
+    } catch (e) {
+      console.error("Error parsing GPT JSON:", e);
+      // 실패할 경우 원본 사이즈 데이터 사용
+      sizeJSON = selectedData.그에_맞는_사이즈_표;
     }
-    
-    // Get the measurements for the recommended size
-    const measurements = sizeChart[recommendedSize]
-    
-    if (!measurements) {
-      console.error("Measurements not found for size:", recommendedSize)
-      return new Response(
-        JSON.stringify({ error: `Measurements not found for size: ${recommendedSize}` }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
-      )
-    }
-    
-    // Prepare response data
+
+    // 5. 최종 응답 데이터 구성
     const response = {
-      성별: gender,
-      키: requestData.height,
-      사이즈: recommendedSize,
-      사이즈표: measurements
-    }
-    
-    console.log("Response data:", JSON.stringify(response))
-    
-    // Return successful response
+      성별: params.gender === 'men' ? '남성' : '여성',
+      키: params.height,
+      사이즈: selectedData.사이즈, // XS, S, M, L, XL 등
+      옷_종류: selectedData.옷_종류,
+      그에_맞는_사이즈_표: sizeJSON,
+      원본_사이즈_데이터: selectedData.그에_맞는_사이즈_표,
+      원단: params.material,
+      디테일: params.detail,
+      프롬프트: params.prompt
+    };
+
     return new Response(
       JSON.stringify(response),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    )
-    
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    console.error("Error in size recommendation function:", error.message)
+    console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
+      JSON.stringify({ error: error.message }),
       { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    )
+    );
   }
-})
+});

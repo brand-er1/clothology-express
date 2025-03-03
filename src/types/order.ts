@@ -3,7 +3,7 @@ export type Order = {
   id: string;
   created_at: string;
   user_id: string;
-  status: 'pending' | 'approved' | 'rejected' | 'draft';
+  status: 'pending' | 'approved' | 'rejected';
   cloth_type: string;
   material: string;
   style: string;

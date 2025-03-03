@@ -4,5 +4,4 @@ project_id = "jwmzjszdjlrqrhadbggr"
 verify_jwt = false
 [functions.size-recommendation2]
 verify_jwt = false
-[functions.save-customize-progress]
-verify_jwt = false
+

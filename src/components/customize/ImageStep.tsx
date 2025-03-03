@@ -10,7 +10,6 @@ interface ImageStepProps {
   selectedMaterial: string;
   selectedDetail: string;
   onGenerateImage: () => void;
-  onSaveProgress?: () => void; // Add save progress callback
 }
 
 export const ImageStep = ({
@@ -21,18 +20,9 @@ export const ImageStep = ({
   selectedMaterial,
   selectedDetail,
   onGenerateImage,
-  onSaveProgress,
 }: ImageStepProps) => {
   // Prefer stored image URL if available
   const displayImageUrl = storedImageUrl || generatedImageUrl;
-  
-  // Create a handler that generates image and then saves progress
-  const handleGenerateAndSave = async () => {
-    await onGenerateImage();
-    if (onSaveProgress) {
-      onSaveProgress();
-    }
-  };
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -62,7 +52,7 @@ export const ImageStep = ({
                 />
               ) : (
                 <Button 
-                  onClick={handleGenerateAndSave}
+                  onClick={onGenerateImage}
                   className="bg-brand hover:bg-brand-dark"
                 >
                   이미지 생성하기
@@ -71,7 +61,7 @@ export const ImageStep = ({
             </div>
             {displayImageUrl && !isLoading && (
               <Button 
-                onClick={handleGenerateAndSave}
+                onClick={onGenerateImage}
                 variant="outline"
                 className="w-full max-w-[200px]"
               >

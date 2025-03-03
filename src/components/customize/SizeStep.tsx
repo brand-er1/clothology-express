@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface SizeStepProps {
   selectedType: string;
@@ -42,6 +44,7 @@ export const SizeStep = ({
   const [isLoading, setIsLoading] = useState(true);
   const [recommendation, setRecommendation] = useState<SizeRecommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [requestAttempted, setRequestAttempted] = useState(false);
 
   useEffect(() => {
@@ -111,6 +114,7 @@ export const SizeStep = ({
     try {
       setIsLoading(true);
       setError(null);
+      setErrorDetails(null);
       setRequestAttempted(true);
       
       const payload = {
@@ -131,13 +135,24 @@ export const SizeStep = ({
       
       if (error) {
         console.error("Edge function error:", error);
-        throw new Error(error.message || "Size recommendation request failed");
+        setError("사이즈 추천 요청이 실패했습니다.");
+        setErrorDetails(`오류 상세: ${error.message || "알 수 없는 오류"}`);
+        toast({
+          title: "사이즈 추천 오류",
+          description: error.message || "사이즈 추천 요청 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
       
       console.log("Size recommendation response:", data);
       
       if (!data || !data.사이즈) {
-        throw new Error("Invalid response format from size recommendation service");
+        const errorMsg = "서버에서 올바른 형식의 응답을 받지 못했습니다.";
+        setError(errorMsg);
+        setErrorDetails("응답에 필요한 사이즈 정보가 포함되어 있지 않습니다.");
+        throw new Error(errorMsg);
       }
       
       setRecommendation(data as SizeRecommendation);
@@ -146,12 +161,14 @@ export const SizeStep = ({
       }
     } catch (err: any) {
       console.error("Size recommendation error:", err);
-      setError(err.message || "사이즈 추천 요청 중 오류가 발생했습니다.");
-      toast({
-        title: "사이즈 추천 오류",
-        description: err.message || "사이즈 추천 요청 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
+      if (!error) { // Only set if not already set by the Supabase error handler
+        setError(err.message || "사이즈 추천 요청 중 오류가 발생했습니다.");
+        toast({
+          title: "사이즈 추천 오류",
+          description: err.message || "사이즈 추천 요청 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -217,45 +234,49 @@ export const SizeStep = ({
   // If there's an error, show error message with retry button
   if (error) {
     return (
-      <div className="py-8 px-4">
-        <Card className="border-red-200">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <h3 className="text-lg font-medium text-red-700">사이즈 추천 오류</h3>
-              <p className="text-gray-600">{error}</p>
-              <Button
-                onClick={handleRetry}
-                className="mt-4"
-              >
-                다시 시도
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="py-8 px-4 space-y-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>사이즈 추천 오류</AlertTitle>
+          <AlertDescription>
+            {error}
+            {errorDetails && (
+              <div className="mt-2 text-xs font-mono bg-red-50 p-2 rounded">
+                {errorDetails}
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+        
+        <Button
+          onClick={handleRetry}
+          className="w-full"
+          variant="outline"
+        >
+          다시 시도
+        </Button>
         
         {/* Fallback to manual size selection */}
-        {requestAttempted && (
-          <div className="mt-8">
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="text-lg font-semibold mb-4">수동 사이즈 선택</h3>
-                <p className="text-gray-600 mb-4">사이즈 추천에 실패했습니다. 수동으로 사이즈를 선택해주세요.</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
-                    <Button
-                      key={size}
-                      variant={selectedSize === size ? "default" : "outline"}
-                      onClick={() => handleSizeSelect(size)}
-                      className="w-full"
-                    >
-                      {size}
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <div className="mt-8">
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="text-lg font-semibold mb-4">수동 사이즈 선택</h3>
+              <p className="text-gray-600 mb-4">사이즈 추천에 실패했습니다. 수동으로 사이즈를 선택해주세요.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
+                  <Button
+                    key={size}
+                    variant={selectedSize === size ? "default" : "outline"}
+                    onClick={() => handleSizeSelect(size)}
+                    className="w-full"
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -263,7 +284,7 @@ export const SizeStep = ({
   // If no recommendation data, show message and retry button
   if (!recommendation) {
     return (
-      <div className="text-center py-8">
+      <div className="text-center py-8 space-y-6">
         <p>사이즈 추천 데이터가 없습니다. 다시 시도해주세요.</p>
         <Button
           onClick={handleRetry}

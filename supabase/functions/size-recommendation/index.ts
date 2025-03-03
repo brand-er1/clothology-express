@@ -24,14 +24,49 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const requestData: SizeRecommendationRequest = await req.json()
-    console.log("Request data:", JSON.stringify(requestData))
+    let requestData: SizeRecommendationRequest;
+    
+    try {
+      requestData = await req.json();
+      console.log("Request data:", JSON.stringify(requestData))
+    } catch (err) {
+      console.error("Failed to parse request body:", err)
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      )
+    }
 
     // Validate required fields
-    if (!requestData.gender || !requestData.height || !requestData.type) {
-      console.error("Missing required fields in request")
+    if (!requestData.gender) {
+      console.error("Missing gender field in request")
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({ error: "Missing gender field" }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      )
+    }
+    
+    if (!requestData.height) {
+      console.error("Missing height field in request")
+      return new Response(
+        JSON.stringify({ error: "Missing height field" }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      )
+    }
+
+    if (!requestData.type) {
+      console.error("Missing type field in request")
+      return new Response(
+        JSON.stringify({ error: "Missing type field" }),
         { 
           status: 400, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -41,14 +76,16 @@ serve(async (req) => {
 
     // Transform Korean type to English type
     const engType = typeMapping[requestData.type] || requestData.type
+    console.log(`Type mapping: ${requestData.type} -> ${engType}`)
     
     // Get the category based on the type
     const category = categoryMapping[engType]
+    console.log(`Category mapping: ${engType} -> ${category}`)
     
     if (!category) {
-      console.error("Invalid clothing type:", requestData.type)
+      console.error("Invalid clothing type:", requestData.type, "mapped to:", engType)
       return new Response(
-        JSON.stringify({ error: "Invalid clothing type" }), 
+        JSON.stringify({ error: `Invalid clothing type: ${requestData.type}` }), 
         { 
           status: 400, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -63,7 +100,7 @@ serve(async (req) => {
     if (!sizeChart) {
       console.error("Size chart not found for:", gender, category)
       return new Response(
-        JSON.stringify({ error: "Size chart not found" }),
+        JSON.stringify({ error: `Size chart not found for gender: ${gender}, category: ${category}` }),
         {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -75,11 +112,25 @@ serve(async (req) => {
     const heightRangeKey = gender === "남성" ? "men" : "women"
     const heights = heightRanges[heightRangeKey]
     
+    if (!heights) {
+      console.error("Height ranges not found for:", heightRangeKey)
+      return new Response(
+        JSON.stringify({ error: `Height ranges not found for: ${heightRangeKey}` }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      )
+    }
+    
     let recommendedSize = "M" // Default to M if no match
+    
+    console.log(`Finding size for height: ${requestData.height}cm in ranges:`, JSON.stringify(heights))
     
     for (const [size, range] of Object.entries(heights)) {
       if (requestData.height >= range.min && requestData.height <= range.max) {
         recommendedSize = size
+        console.log(`Found matching size: ${size} for height: ${requestData.height}cm`)
         break
       }
     }
@@ -87,8 +138,10 @@ serve(async (req) => {
     // If height is outside all ranges, pick the closest
     if (requestData.height < heights.XS.min) {
       recommendedSize = "XS"
+      console.log(`Height ${requestData.height}cm is below minimum, using XS`)
     } else if (requestData.height > heights.XXL.max) {
       recommendedSize = "XXL"
+      console.log(`Height ${requestData.height}cm is above maximum, using XXL`)
     }
     
     // Get the measurements for the recommended size
@@ -97,7 +150,7 @@ serve(async (req) => {
     if (!measurements) {
       console.error("Measurements not found for size:", recommendedSize)
       return new Response(
-        JSON.stringify({ error: "Measurements not found" }),
+        JSON.stringify({ error: `Measurements not found for size: ${recommendedSize}` }),
         {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" }

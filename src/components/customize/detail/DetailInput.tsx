@@ -1,0 +1,27 @@
+
+import { Card } from "@/components/ui/card";
+
+interface DetailInputProps {
+  detailInput: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+}
+
+export const DetailInput = ({ detailInput, onChange }: DetailInputProps) => {
+  return (
+    <Card className="p-6">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm text-gray-500">
+            추가적인 디테일을 더 입력하세요. 아래 옵션들을 선택하거나 직접 입력할 수 있습니다.
+          </p>
+          <textarea
+            value={detailInput}
+            onChange={onChange}
+            placeholder="추가 디테일을 자유롭게 입력해주세요"
+            className="w-full h-32 p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-brand/20"
+          />
+        </div>
+      </div>
+    </Card>
+  );
+};

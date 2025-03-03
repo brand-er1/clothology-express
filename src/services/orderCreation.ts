@@ -63,7 +63,7 @@ export const createOrder = async (
     if (imagePath) {
       try {
         const { data: publicUrlData } = await supabase.storage
-          .from('generated-images')
+          .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
           .getPublicUrl(imagePath);
         
         if (publicUrlData && publicUrlData.publicUrl) {

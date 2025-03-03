@@ -46,7 +46,7 @@ export const OrderReviewDialog = ({
       if (order?.image_path) {
         try {
           const { data } = await supabase.storage
-            .from('generated-images')
+            .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
             .getPublicUrl(order.image_path);
           
           if (data && data.publicUrl) {

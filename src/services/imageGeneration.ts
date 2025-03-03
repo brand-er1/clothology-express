@@ -70,7 +70,7 @@ export const generateImage = async (
     let finalImageUrl = generationData.imageUrl;
     if (storageData && storageData.path) {
       const { data: publicUrlData } = await supabase.storage
-        .from('generated-images')
+        .from('generated_images')  // 수정: 하이픈(-) 대신 언더스코어(_) 사용
         .getPublicUrl(storageData.path);
       
       if (publicUrlData && publicUrlData.publicUrl) {

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -125,12 +124,6 @@ export const useCustomizeForm = () => {
     try {
       setIsLoading(true);
       
-      // Convert sizeTableData to a format suitable for storing in the database
-      const measurements: Record<string, string> = {};
-      sizeTableData.forEach(item => {
-        measurements[item.key] = item.value;
-      });
-      
       const success = await createOrder(
         selectedType,
         selectedMaterial,
@@ -143,7 +136,7 @@ export const useCustomizeForm = () => {
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available
         imagePath, // Include the storage path
         materials,
-        measurements // Pass the edited size measurements
+        sizeTableData // Pass the edited size measurements directly
       );
       
       if (success) {

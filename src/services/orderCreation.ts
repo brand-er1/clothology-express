@@ -1,7 +1,8 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions } from "@/lib/customize-constants";
-import { Material, CustomMeasurements } from "@/types/customize";
+import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
 
 export const createOrder = async (
   selectedType: string,
@@ -15,7 +16,7 @@ export const createOrder = async (
   generatedImageUrl: string | null,
   imagePath: string | null,
   materials: Material[],
-  sizeMeasurements?: Record<string, string>
+  sizeTableData?: SizeTableItem[]
 ) => {
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user;
@@ -38,9 +39,12 @@ export const createOrder = async (
   // Prepare measurements data
   let measurementsData = null;
   
-  // If we have size table measurements, use those
-  if (sizeMeasurements && Object.keys(sizeMeasurements).length > 0) {
-    measurementsData = sizeMeasurements;
+  // If we have size table measurements from the editable table, use those
+  if (sizeTableData && sizeTableData.length > 0) {
+    measurementsData = {};
+    sizeTableData.forEach(item => {
+      measurementsData[item.key] = item.value;
+    });
   } 
   // Otherwise, use custom measurements if custom size was selected
   else if (selectedSize === 'custom' && Object.keys(customMeasurements).length > 0) {

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,7 +46,7 @@ const clothingImages: Record<string, string> = {
   'short_sleeve': '/lovable-uploads/94f6a5a8-f57a-4f3c-86c4-95e5dc38c085.png',
   'long_sleeve': '/lovable-uploads/ddefb143-84f8-43b4-8a5c-09c1a178b272.png', 
   'sweatshirt': '/lovable-uploads/56fe7f18-2fc2-48ca-9333-4b1a63fa558d.png', // 새 맨투맨 이미지로 업데이트
-  'jacket': '/lovable-uploads/7c627909-cbcb-4411-b397-aec3e3161660.png',
+  'jacket': '/lovable-uploads/1e26c4d3-8284-4115-aeaf-e4c6ca2930da.png', // 새 자켓 이미지로 업데이트
   'short_pants': '/lovable-uploads/2e70626a-578d-47c6-8fa3-fa7f174447ee.png',
   'long_pants': '/lovable-uploads/876531fa-628e-462b-9bca-48fde0278c91.png'
 };

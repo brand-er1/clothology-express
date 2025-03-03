@@ -22,8 +22,8 @@ export const Header = () => {
     });
 
     // 초기 인증 상태 확인
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(!!data.session);
     });
 
     return () => {

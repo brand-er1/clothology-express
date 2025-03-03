@@ -16,8 +16,8 @@ export const createOrder = async (
   generatedImageUrl: string | null,
   materials: Material[]
 ) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
+  const { data } = await supabase.auth.getSession();
+  const user = data.session?.user;
   
   if (!user) {
     toast({

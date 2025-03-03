@@ -9,15 +9,15 @@ export const useAdmin = () => {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
           setIsAdmin(false);
           return;
         }
 
         const { data: adminData } = await supabase
           .rpc('is_admin', {
-            user_id: session.user.id
+            user_id: data.session.user.id
           });
 
         setIsAdmin(adminData || false);

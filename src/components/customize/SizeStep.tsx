@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,8 +72,8 @@ export const SizeStep = ({
     const loadUserProfile = async () => {
       try {
         setIsLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session?.user;
+        const { data } = await supabase.auth.getSession();
+        const user = data.session?.user;
         
         if (!user) {
           console.log("사용자가 로그인하지 않았습니다.");

@@ -13,9 +13,9 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
       
-      if (!session) {
+      if (!data.session) {
         navigate("/auth");
         return;
       }

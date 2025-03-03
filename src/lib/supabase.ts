@@ -8,9 +8,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Helper function for more consistent user retrieval
 export const getCurrentUser = async () => {
-  const { data, error } = await supabase.auth.getSession();
+  const { data } = await supabase.auth.getSession();
   return { 
     user: data.session?.user || null,
-    error
+    error: null
   };
 }

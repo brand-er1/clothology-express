@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -247,6 +246,10 @@ export const SizeStep = ({
     );
   }
 
+  // console log to debug the image path
+  console.log("Selected Type:", selectedType);
+  console.log("Image Path:", clothingImages[selectedType]);
+
   return (
     <div className="space-y-8 p-4">
       <Card className="border-2 border-gray-100 shadow-sm">
@@ -289,12 +292,13 @@ export const SizeStep = ({
               {/* 옷 이미지 표시 */}
               {clothingImages[selectedType] && (
                 <div className="bg-white rounded-lg p-4 flex items-center justify-center md:w-1/3">
-                  <div className="relative">
+                  <div className="relative w-full">
                     <img 
                       src={clothingImages[selectedType]} 
                       alt={`${selectedType} 사이즈 가이드`}
-                      className="w-full max-w-[280px] h-auto object-contain"
+                      className="w-full max-w-[280px] h-auto object-contain mx-auto"
                     />
+                    <p className="text-center text-xs text-gray-500 mt-2">{selectedType} 이미지</p>
                   </div>
                 </div>
               )}

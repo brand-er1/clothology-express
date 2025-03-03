@@ -54,6 +54,57 @@ serve(async (req) => {
       detail: detailDescription
     });
 
+    // Check if the generated_images table exists, if not create it
+    try {
+      const { data: tableExists, error: tableCheckError } = await supabase.rpc(
+        'check_table_exists',
+        { table_name: 'generated_images' }
+      );
+      
+      if (tableCheckError) {
+        console.log("Error checking if table exists, assuming it doesn't:", tableCheckError);
+        
+        // Create the table if it doesn't exist
+        const createTableQuery = `
+          CREATE TABLE IF NOT EXISTS public.generated_images (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            user_id UUID NOT NULL,
+            original_image_url TEXT NOT NULL,
+            stored_image_url TEXT,
+            image_path TEXT,
+            prompt TEXT NOT NULL,
+            cloth_type TEXT,
+            material TEXT,
+            detail TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+          );
+          
+          -- Add RLS policies
+          ALTER TABLE public.generated_images ENABLE ROW LEVEL SECURITY;
+          
+          -- Allow users to see their own images
+          CREATE POLICY "Users can view their own images" 
+            ON public.generated_images FOR SELECT
+            USING (auth.uid() = user_id);
+            
+          -- Allow users to insert their own images
+          CREATE POLICY "Users can insert their own images" 
+            ON public.generated_images FOR INSERT
+            WITH CHECK (auth.uid() = user_id);
+        `;
+        
+        const { error: createTableError } = await supabase.rpc('run_sql', { sql: createTableQuery });
+        if (createTableError) {
+          console.error("Error creating generated_images table:", createTableError);
+          // Continue anyway, as table might exist already
+        }
+      }
+    } catch (error) {
+      console.log("Error in table check/creation, continuing anyway:", error);
+      // Continue with insert attempt
+    }
+
     // Insert data into generated_images table, prioritizing storage URL
     const { data, error } = await supabase
       .from('generated_images')

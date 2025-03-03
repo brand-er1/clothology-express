@@ -48,21 +48,28 @@ serve(async (req) => {
 
     console.log(`Uploading image with filename: ${fileName}`);
 
-    // Create the bucket if it doesn't exist (first attempt)
+    // Check if bucket exists, create if it doesn't
     try {
-      const { data: bucketData, error: bucketError } = await supabase.storage
-        .createBucket('generated_images', {
-          public: true,
-          fileSizeLimit: 10485760 // 10MB
-        });
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'generated_images');
       
-      if (bucketError && !bucketError.message.includes('already exists')) {
-        console.error('Bucket creation error:', bucketError);
-      } else {
-        console.log('Bucket created or already exists');
+      if (!bucketExists) {
+        console.log('Bucket does not exist, creating...');
+        const { data: bucketData, error: bucketError } = await supabase.storage
+          .createBucket('generated_images', {
+            public: true,
+            fileSizeLimit: 10485760 // 10MB
+          });
+        
+        if (bucketError) {
+          console.error('Bucket creation error:', bucketError);
+          throw bucketError;
+        }
+        console.log('Bucket created successfully:', bucketData);
       }
-    } catch (bucketCreateError) {
-      console.log('Bucket likely already exists:', bucketCreateError);
+    } catch (bucketError) {
+      console.error('Error checking/creating bucket:', bucketError);
+      // Continue anyway, in case the bucket already exists
     }
 
     // Upload to Supabase Storage

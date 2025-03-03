@@ -87,6 +87,8 @@ export const generateImage = async (
 
     // If we have an image URL, store in Supabase Storage
     try {
+      console.log("Starting image storage process with URL:", imageUrl);
+      
       // Store the generated image in Supabase Storage
       const { data: storeData, error: storeError } = await supabase.functions.invoke(
         'store-generated-image',
@@ -111,6 +113,8 @@ export const generateImage = async (
           storedImageUrl = storeData.storedImageUrl;
           console.log("Stored image path:", imagePath);
           console.log("Stored image URL:", storedImageUrl);
+        } else {
+          console.warn("Storage succeeded but no image path or URL returned");
         }
       }
     } catch (storageError) {
@@ -119,6 +123,7 @@ export const generateImage = async (
 
     // Use stored URL if available, fallback to original URL
     const finalImageUrl = storedImageUrl || imageUrl;
+    console.log("Final image URL to use:", finalImageUrl);
 
     // Create a formatted description with the selections
     let detailDesc = '';
@@ -133,6 +138,8 @@ export const generateImage = async (
     // Store image information in the database
     if (imageUrl && user.id) {
       try {
+        console.log("Saving image data to database");
+        
         // Store image information in the generated_images table
         const { data: imageData, error: imageError } = await supabase.functions.invoke(
           'save-generated-image',

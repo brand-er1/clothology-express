@@ -92,21 +92,19 @@ export const OrderReviewDialog = ({
                     <dd>{order.material}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm text-gray-500">스타일</dt>
-                    <dd>{order.style}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-gray-500">포켓</dt>
-                    <dd>{order.pocket_type}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-gray-500">색상</dt>
-                    <dd>{order.color}</dd>
+                    <dt className="text-sm text-gray-500">상세 설명</dt>
+                    <dd>{order.detail_description || '-'}</dd>
                   </div>
                   <div>
                     <dt className="text-sm text-gray-500">사이즈</dt>
                     <dd>{order.size}</dd>
                   </div>
+                  {order.fit && (
+                    <div>
+                      <dt className="text-sm text-gray-500">핏</dt>
+                      <dd>{order.fit}</dd>
+                    </div>
+                  )}
                 </dl>
               </div>
               <div>
@@ -134,11 +132,6 @@ export const OrderReviewDialog = ({
                   )}
                 </div>
               </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-2">상세 설명</h3>
-              <p className="text-sm">{order.detail_description || '-'}</p>
             </div>
 
             <div>

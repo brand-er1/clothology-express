@@ -9,6 +9,57 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      generated_images: {
+        Row: {
+          cloth_type: string | null
+          color: string | null
+          created_at: string
+          detail: string | null
+          fit: string | null
+          id: string
+          image_path: string | null
+          material: string | null
+          original_image_url: string | null
+          pocket: string | null
+          prompt: string
+          stored_image_url: string | null
+          style: string | null
+          user_id: string
+        }
+        Insert: {
+          cloth_type?: string | null
+          color?: string | null
+          created_at?: string
+          detail?: string | null
+          fit?: string | null
+          id?: string
+          image_path?: string | null
+          material?: string | null
+          original_image_url?: string | null
+          pocket?: string | null
+          prompt: string
+          stored_image_url?: string | null
+          style?: string | null
+          user_id: string
+        }
+        Update: {
+          cloth_type?: string | null
+          color?: string | null
+          created_at?: string
+          detail?: string | null
+          fit?: string | null
+          id?: string
+          image_path?: string | null
+          material?: string | null
+          original_image_url?: string | null
+          pocket?: string | null
+          prompt?: string
+          stored_image_url?: string | null
+          style?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           admin_comment: string | null

@@ -39,6 +39,16 @@ interface SizeRecommendation {
   };
 }
 
+// 각 의류 타입별 이미지 매핑
+const clothingImages: Record<string, string> = {
+  'short_sleeve': '/lovable-uploads/94f6a5a8-f57a-4f3c-86c4-95e5dc38c085.png',
+  'long_sleeve': '/lovable-uploads/ddefb143-84f8-43b4-8a5c-09c1a178b272.png', 
+  'sweatshirt': '/lovable-uploads/65272081-7561-4f98-b77d-0d55421d93c9.png',
+  'jacket': '/lovable-uploads/7c627909-cbcb-4411-b397-aec3e3161660.png',
+  'short_pants': '/lovable-uploads/2e70626a-578d-47c6-8fa3-fa7f174447ee.png',
+  'long_pants': '/lovable-uploads/876531fa-628e-462b-9bca-48fde0278c91.png'
+};
+
 export const SizeStep = ({
   selectedSize,
   customMeasurements,
@@ -250,24 +260,40 @@ export const SizeStep = ({
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-4">사이즈 세부 정보</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>측정 부위</TableHead>
-                    <TableHead className="text-right">크기</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(recommendation.사이즈표).map(([key, value]) => (
-                    <TableRow key={key}>
-                      <TableCell className="font-medium">{translateKey(key)}</TableCell>
-                      <TableCell className="text-right">{value}</TableCell>
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* 사이즈 표 정보 */}
+              <div className="bg-gray-50 rounded-lg p-4 flex-1">
+                <h3 className="text-lg font-semibold mb-4">사이즈 세부 정보</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>측정 부위</TableHead>
+                      <TableHead className="text-right">크기</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(recommendation.사이즈표).map(([key, value]) => (
+                      <TableRow key={key}>
+                        <TableCell className="font-medium">{translateKey(key)}</TableCell>
+                        <TableCell className="text-right">{value}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* 옷 이미지 표시 */}
+              {clothingImages[selectedType] && (
+                <div className="bg-white rounded-lg p-4 flex items-center justify-center md:w-1/3">
+                  <div className="relative">
+                    <img 
+                      src={clothingImages[selectedType]} 
+                      alt={`${selectedType} 사이즈 가이드`}
+                      className="w-full max-w-[280px] h-auto object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4">

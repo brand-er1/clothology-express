@@ -98,25 +98,20 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
               <span className="text-gray-500">소재:</span>
               <span>{order.material}</span>
               
-              <span className="text-gray-500">스타일:</span>
-              <span>{order.style}</span>
-              
-              <span className="text-gray-500">주머니 타입:</span>
-              <span>{order.pocket_type}</span>
-              
-              <span className="text-gray-500">색상:</span>
-              <span>{order.color}</span>
-              
               <span className="text-gray-500">사이즈:</span>
               <span>{order.size}</span>
             </div>
 
-            {order.detail_description && (
-              <div className="mt-4">
-                <h4 className="text-md font-medium">추가 디테일</h4>
-                <p className="mt-1 text-sm whitespace-pre-wrap">{order.detail_description}</p>
+            <div className="mt-4">
+              <h4 className="text-md font-medium">상세 정보</h4>
+              <div className="mt-1 text-sm whitespace-pre-wrap p-2 bg-gray-50 rounded border border-gray-200">
+                {order.detail_description || ''}
+                {order.style && <div>스타일: {order.style}</div>}
+                {order.pocket_type && <div>포켓: {order.pocket_type}</div>}
+                {order.color && <div>색상: {order.color}</div>}
+                {order.fit && <div>핏: {order.fit}</div>}
               </div>
-            )}
+            </div>
 
             {/* 측정 정보가 있는 경우에만 표시 */}
             {order.measurements && Object.keys(order.measurements).length > 0 && (

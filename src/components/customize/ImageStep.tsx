@@ -50,7 +50,7 @@ export const ImageStep = ({
   
   // 선택된 스타일 이름 가져오기
   const getSelectedStyleName = (value: string) => {
-    if (!value) return "-";
+    if (!value) return "";
     const styleOptions = [
       { value: "casual", label: "캐주얼" },
       { value: "formal", label: "포멀" },
@@ -62,7 +62,7 @@ export const ImageStep = ({
 
   // 선택된 핏 이름 가져오기
   const getSelectedFitName = (value: string) => {
-    if (!value) return "-";
+    if (!value) return "";
     const fitOptions = [
       { value: "loose", label: "루즈핏" },
       { value: "regular", label: "레귤러핏" },
@@ -74,7 +74,7 @@ export const ImageStep = ({
 
   // 선택된 색상 이름 가져오기
   const getSelectedColorName = (value: string) => {
-    if (!value) return "-";
+    if (!value) return "";
     const colorOptions = [
       { value: "black", label: "검정" },
       { value: "white", label: "흰색" },
@@ -82,6 +82,43 @@ export const ImageStep = ({
       { value: "gray", label: "회색" },
     ];
     return colorOptions.find(color => color.value === value)?.label || value;
+  };
+  
+  // 선택된 주머니 이름 가져오기
+  const getSelectedPocketName = (value: string) => {
+    if (!value) return "";
+    const pocketOptions = [
+      { value: "none", label: "없음" },
+      { value: "patch", label: "패치 포켓" },
+      { value: "welt", label: "웰트 포켓" },
+      { value: "flap", label: "플랩 포켓" },
+    ];
+    return pocketOptions.find(pocket => pocket.value === value)?.label || value;
+  };
+  
+  // 통합된 상세 설명 생성
+  const getDetailedDescription = () => {
+    let description = selectedDetail || "";
+    
+    const styleName = getSelectedStyleName(selectedStyle);
+    const fitName = getSelectedFitName(selectedFit);
+    const colorName = getSelectedColorName(selectedColor);
+    const pocketName = getSelectedPocketName(selectedPocket);
+    
+    const details = [
+      styleName && `스타일: ${styleName}`,
+      fitName && `핏: ${fitName}`,
+      colorName && `색상: ${colorName}`,
+      (pocketName && selectedPocket !== 'none') && `포켓: ${pocketName}`
+    ].filter(Boolean).join('\n');
+    
+    if (details && description) {
+      return `${description}\n\n${details}`;
+    } else if (details) {
+      return details;
+    } else {
+      return description;
+    }
   };
   
   return (
@@ -164,24 +201,11 @@ export const ImageStep = ({
               <span className="text-gray-600">소재:</span>
               <span className="font-medium">{selectedMaterial || "-"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">스타일:</span>
-              <span className="font-medium">{getSelectedStyleName(selectedStyle)}</span>
+            
+            <div className="pt-2 border-t">
+              <span className="text-gray-600">상세 설명:</span>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{getDetailedDescription() || "-"}</p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">핏:</span>
-              <span className="font-medium">{getSelectedFitName(selectedFit)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">색상:</span>
-              <span className="font-medium">{getSelectedColorName(selectedColor)}</span>
-            </div>
-            {selectedDetail && selectedDetail.trim() && (
-              <div className="pt-2 border-t">
-                <span className="text-gray-600">추가 디테일:</span>
-                <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail}</p>
-              </div>
-            )}
           </div>
         </div>
       </Card>

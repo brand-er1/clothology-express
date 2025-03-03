@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -217,11 +216,43 @@ export const SizeStep = ({
     return keyMap[key] || key;
   };
   
-  // Handle size value change
+  // Extract numeric value from measurement string (e.g., "42cm" -> 42)
+  const extractNumericValue = (value: string): number => {
+    const numericValue = parseFloat(value);
+    return isNaN(numericValue) ? 0 : numericValue;
+  };
+
+  // Format measurement value to include "cm" suffix if not already present
+  const formatMeasurementValue = (value: string): string => {
+    if (value.includes("cm")) return value;
+    return `${value}cm`;
+  };
+  
+  // Handle size value change with numeric input validation
   const handleSizeValueChange = (key: string, newValue: string) => {
+    // Extract numeric part only
+    let numericValue = newValue.replace(/[^0-9.]/g, '');
+    
+    // Format with cm suffix
+    const formattedValue = `${numericValue}cm`;
+    
     const updatedItem: SizeTableItem = {
       key,
-      value: newValue,
+      value: formattedValue,
+      editable: true
+    };
+    onSizeTableChange(updatedItem);
+  };
+
+  // Increment/decrement numeric value
+  const adjustSizeValue = (key: string, currentValue: string, adjustment: number) => {
+    const numericValue = extractNumericValue(currentValue);
+    const newValue = Math.max(0, numericValue + adjustment);
+    const formattedValue = `${newValue}cm`;
+    
+    const updatedItem: SizeTableItem = {
+      key,
+      value: formattedValue,
       editable: true
     };
     onSizeTableChange(updatedItem);
@@ -320,12 +351,41 @@ export const SizeStep = ({
                       <TableRow key={item.key}>
                         <TableCell className="font-medium">{translateKey(item.key)}</TableCell>
                         <TableCell className="text-right">
-                          <Input
-                            type="text"
-                            value={item.value}
-                            onChange={(e) => handleSizeValueChange(item.key, e.target.value)}
-                            className="w-24 text-right ml-auto h-8"
-                          />
+                          <div className="flex items-center justify-end">
+                            <div className="relative flex items-center">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-r-none border-r-0"
+                                onClick={() => adjustSizeValue(item.key, item.value, -1)}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 12h14"/>
+                                </svg>
+                                <span className="sr-only">감소</span>
+                              </Button>
+                              <Input
+                                type="text"
+                                value={extractNumericValue(item.value)}
+                                onChange={(e) => handleSizeValueChange(item.key, e.target.value)}
+                                className="w-14 h-8 text-right rounded-none"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-l-none border-l-0"
+                                onClick={() => adjustSizeValue(item.key, item.value, 1)}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                                <span className="sr-only">증가</span>
+                              </Button>
+                              <span className="ml-1 text-gray-500">cm</span>
+                            </div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

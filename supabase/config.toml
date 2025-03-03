@@ -52,12 +52,11 @@ secret = ""
 redirect_uri = ""
 
 [functions]
+# Using correct format for functions section
+# The port is now inside the [functions] table
 port = 54321
 
-[[functions.import_map]]
-path = "react"
-version = "18.2.0"
-
-[[functions.import_map]]
-path = "react-dom"
-version = "18.2.0"
+# Using correct format for import_map
+# Each import_map is now a separate table in an array
+[functions.import_map_source]
+imports = { react = "https://esm.sh/react@18.2.0", "react-dom" = "https://esm.sh/react-dom@18.2.0" }

@@ -2,3 +2,6 @@
 project_id = "jwmzjszdjlrqrhadbggr"
 [functions.size-recommendation]
 verify_jwt = false
+[functions.size-recommendation2]
+verify_jwt = false
+

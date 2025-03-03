@@ -133,7 +133,8 @@ export const SizeStep = ({
       
       console.log("사이즈 추천 요청 데이터:", request);
       
-      const response = await fetch('https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/size-recommendation', {
+      // 여기서 size-recommendation2로 변경
+      const response = await fetch('https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/size-recommendation2', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

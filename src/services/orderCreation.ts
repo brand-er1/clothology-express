@@ -13,7 +13,7 @@ export const createDraftOrder = async (
   selectedColor: string,
   selectedDetail: string,
   selectedFit: string,
-  generatedImageUrl: string | null,
+  storedImageUrl: string | null, // Changed parameter name to reflect its usage
   imagePath: string | null,
   materials: Material[]
 ) => {
@@ -67,6 +67,22 @@ export const createDraftOrder = async (
     
     detailDesc = detailDesc.trim();
 
+    // Get public URL from storage if we have the path but no stored URL
+    if (!storedImageUrl && imagePath) {
+      try {
+        const { data: publicUrlData } = supabase.storage
+          .from('generated_images')
+          .getPublicUrl(imagePath);
+        
+        if (publicUrlData && publicUrlData.publicUrl) {
+          storedImageUrl = publicUrlData.publicUrl;
+          console.log("Retrieved stored image URL from path:", storedImageUrl);
+        }
+      } catch (urlError) {
+        console.error("Failed to get public URL for stored image:", urlError);
+      }
+    }
+
     // Use the edge function to save the draft order
     const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
       body: {
@@ -74,7 +90,7 @@ export const createDraftOrder = async (
         clothType: selectedClothType,
         material: selectedMaterialName,
         detailDescription: detailDesc,
-        generatedImageUrl: generatedImageUrl,
+        generatedImageUrl: storedImageUrl, // Use ONLY the stored image URL
         imagePath: imagePath,
         status: 'draft' // Set as draft initially
       }
@@ -177,10 +193,10 @@ export const createOrder = async (
       measurementsData = customMeasurements;
     }
 
-    // 항상 스토리지 URL 사용
-    let finalImageUrl = generatedImageUrl;
+    // Always try to use storage URL first
+    let finalImageUrl = null;
     
-    // 이미지 경로가 있으면 스토리지에서 공개 URL 가져오기
+    // If we have an image path, get the storage URL
     if (imagePath) {
       try {
         const { data: publicUrlData } = await supabase.storage
@@ -193,8 +209,12 @@ export const createOrder = async (
         }
       } catch (urlError) {
         console.error("Failed to get public URL for stored image:", urlError);
-        // Fall back to the original generated URL
+        // Fall back to the provided URL
+        finalImageUrl = generatedImageUrl;
       }
+    } else {
+      // If no image path, use the provided URL
+      finalImageUrl = generatedImageUrl;
     }
 
     console.log("Creating order with data:", {
@@ -217,7 +237,7 @@ export const createOrder = async (
         detailDescription: detailDesc.trim(),
         size: selectedSize,
         measurements: measurementsData,
-        generatedImageUrl: finalImageUrl,
+        generatedImageUrl: finalImageUrl, // Use the proper storage URL
         imagePath: imagePath,
         status: 'pending' // Set as pending for review
       }

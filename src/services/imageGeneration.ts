@@ -92,16 +92,10 @@ export const generateImage = async (
         } else {
           console.log("Image storage result:", storeData);
           // Get the path and create a public URL for the stored image
-          if (storeData?.path) {
-            imagePath = storeData.path;
-            const { data: publicUrlData } = supabase.storage
-              .from('generated_images')
-              .getPublicUrl(imagePath);
-            
-            if (publicUrlData) {
-              storedImageUrl = publicUrlData.publicUrl;
-              console.log("Stored image public URL:", storedImageUrl);
-            }
+          if (storeData?.imagePath) {
+            imagePath = storeData.imagePath;
+            storedImageUrl = storeData.storedImageUrl;
+            console.log("Stored image public URL:", storedImageUrl);
           }
         }
       } catch (storageError) {
@@ -129,7 +123,7 @@ export const generateImage = async (
             body: {
               userId: user.id,
               originalImageUrl: imageUrl,
-              storedImageUrl: storedImageUrl,
+              storedImageUrl: storedImageUrl, // Use the storage URL
               imagePath: imagePath,
               prompt: prompt,
               clothType: selectedClothType,
@@ -151,7 +145,7 @@ export const generateImage = async (
 
     // Save as draft order if requested
     if (saveAsDraft) {
-      // Use the createDraftOrder function to save the draft
+      // Use the createDraftOrder function to save the draft - always use storage URL
       await createDraftOrder(
         selectedType,
         selectedMaterial,
@@ -160,7 +154,7 @@ export const generateImage = async (
         selectedColor,
         selectedDetail,
         selectedFit,
-        storedImageUrl || imageUrl, // Prefer stored URL if available
+        storedImageUrl, // Always use stored URL from storage
         imagePath,
         materials
       );

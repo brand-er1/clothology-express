@@ -48,7 +48,7 @@ serve(async (req) => {
       .insert({
         user_id: userId,
         original_image_url: originalImageUrl,
-        stored_image_url: storedImageUrl,
+        stored_image_url: storedImageUrl, // Use the storage URL
         image_path: imagePath,
         prompt: prompt,
         cloth_type: clothType,

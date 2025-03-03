@@ -1,4 +1,3 @@
-
 import { Shirt, Scissors } from "lucide-react";
 import React from 'react';
 
@@ -100,6 +99,18 @@ export const colorOptions: ColorOption[] = [
   { value: "white", label: "흰색", hex: "#FFFFFF" },
   { value: "navy", label: "네이비", hex: "#000080" },
   { value: "gray", label: "회색", hex: "#808080" },
+];
+
+export type FitOption = {
+  value: string;
+  label: string;
+};
+
+export const fitOptions: FitOption[] = [
+  { value: "loose", label: "루즈핏" },
+  { value: "regular", label: "레귤러핏" },
+  { value: "slim", label: "슬림핏" },
+  { value: "oversized", label: "오버사이즈" },
 ];
 
 export const TOTAL_STEPS = 5;

@@ -51,17 +51,22 @@ client_id = ""
 secret = ""
 redirect_uri = ""
 
+# Restructured functions section to match expected format
 [functions]
+serve_port = 54321
+
 [functions.serve]
 port = 54321
 
+# Deploy configuration
 [functions.deploy]
-serve_port = 54001
+port = 54001
 
-[[functions.import_map.imports]]
-name = "react"
+# Import map configuration - restructured to match expected format
+[[functions.import_map]]
+path = "react"
 version = "18.2.0"
 
-[[functions.import_map.imports]]
-name = "react-dom"
+[[functions.import_map]]
+path = "react-dom"
 version = "18.2.0"

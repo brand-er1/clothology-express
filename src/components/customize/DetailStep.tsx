@@ -1,18 +1,19 @@
+
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface DetailStepProps {
   detailInput: string;
   selectedStyle: string;
   selectedPocket: string;
   selectedColor: string;
-  selectedFit?: string;  // 새로운 prop 추가
+  selectedFit?: string;
   onDetailInputChange: (value: string) => void;
   onStyleSelect: (value: string) => void;
   onPocketSelect: (value: string) => void;
   onColorSelect: (value: string) => void;
-  onFitSelect?: (value: string) => void;  // 새로운 prop 추가
+  onFitSelect?: (value: string) => void;
 }
 
 type StyleOption = {
@@ -52,7 +53,6 @@ const colorOptions: ColorOption[] = [
   { value: "gray", label: "회색", hex: "#808080" },
 ];
 
-// 새로운 핏 옵션 타입과 옵션들 추가
 type FitOption = {
   value: string;
   label: string;
@@ -70,13 +70,33 @@ export const DetailStep = ({
   selectedStyle,
   selectedPocket,
   selectedColor,
-  selectedFit = "",  // 기본값 추가
+  selectedFit = "",
   onDetailInputChange,
   onStyleSelect,
   onPocketSelect,
   onColorSelect,
-  onFitSelect = () => {},  // 기본값 추가
+  onFitSelect = () => {},
 }: DetailStepProps) => {
+  // 이전에 옵션을 통해 생성된 텍스트를 추적하기 위한 상태
+  const [prevOptionText, setPrevOptionText] = useState<string>("");
+  
+  // 사용자가 직접 추가한 커스텀 텍스트만 추출
+  const extractCustomText = (fullText: string, optionText: string): string => {
+    if (!optionText) return fullText;
+    
+    // 옵션 텍스트 줄들을 배열로 분리
+    const optionLines = optionText.split('\n').filter(Boolean);
+    
+    // 전체 텍스트에서 옵션 텍스트 줄들을 제거
+    let customText = fullText;
+    optionLines.forEach(line => {
+      customText = customText.replace(line, '');
+    });
+    
+    // 빈 줄 정리
+    return customText.split('\n').filter(Boolean).join('\n');
+  };
+  
   // 선택된 옵션들을 문자열로 변환
   const generateDetailText = () => {
     const details = [];
@@ -106,16 +126,17 @@ export const DetailStep = ({
 
   // 옵션이 변경될 때마다 텍스트 업데이트
   useEffect(() => {
-    const newDetails = generateDetailText();
-    // 기존 수동 입력 텍스트를 보존하고 선택된 옵션들을 추가
-    const existingCustomText = detailInput.split('\n').filter(line => 
-      !line.startsWith('스타일:') && 
-      !line.startsWith('포켓:') && 
-      !line.startsWith('색상:') &&
-      !line.startsWith('핏:')
-    ).join('\n');
-
-    const finalText = [newDetails, existingCustomText].filter(Boolean).join('\n\n');
+    const newOptionText = generateDetailText();
+    
+    // 기존 사용자 입력 텍스트만 유지 (옵션 관련 텍스트는 제거)
+    const customText = extractCustomText(detailInput, prevOptionText);
+    
+    // 새 옵션 텍스트와 커스텀 텍스트 결합
+    const finalText = [newOptionText, customText].filter(Boolean).join('\n\n');
+    
+    // 이전 옵션 텍스트 업데이트
+    setPrevOptionText(newOptionText);
+    
     onDetailInputChange(finalText.trim());
   }, [selectedStyle, selectedPocket, selectedColor, selectedFit]);
 
@@ -157,7 +178,7 @@ export const DetailStep = ({
           </Select>
         </Card>
 
-        {/* Fit Selection - 새로 추가된 부분 */}
+        {/* Fit Selection */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">핏</h3>
           <Select value={selectedFit} onValueChange={onFitSelect}>

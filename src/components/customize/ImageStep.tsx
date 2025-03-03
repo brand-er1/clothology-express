@@ -96,31 +96,6 @@ export const ImageStep = ({
     return pocketOptions.find(pocket => pocket.value === value)?.label || value;
   };
   
-  // 통합된 상세 설명 생성
-  const getDetailedDescription = () => {
-    let description = selectedDetail || "";
-    
-    const styleName = getSelectedStyleName(selectedStyle);
-    const fitName = getSelectedFitName(selectedFit);
-    const colorName = getSelectedColorName(selectedColor);
-    const pocketName = getSelectedPocketName(selectedPocket);
-    
-    const details = [
-      styleName && `스타일: ${styleName}`,
-      fitName && `핏: ${fitName}`,
-      colorName && `색상: ${colorName}`,
-      (pocketName && selectedPocket !== 'none') && `포켓: ${pocketName}`
-    ].filter(Boolean).join('\n');
-    
-    if (details && description) {
-      return `${description}\n\n${details}`;
-    } else if (details) {
-      return details;
-    } else {
-      return description;
-    }
-  };
-  
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* 이미지 생성 영역 - 2/3 차지 */}
@@ -204,7 +179,7 @@ export const ImageStep = ({
             
             <div className="pt-2 border-t">
               <span className="text-gray-600">상세 설명:</span>
-              <p className="mt-1 text-sm whitespace-pre-wrap">{getDetailedDescription() || "-"}</p>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{selectedDetail || "-"}</p>
             </div>
           </div>
         </div>

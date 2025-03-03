@@ -106,10 +106,6 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
               <h4 className="text-md font-medium">상세 정보</h4>
               <div className="mt-1 text-sm whitespace-pre-wrap p-2 bg-gray-50 rounded border border-gray-200">
                 {order.detail_description || ''}
-                {order.style && <div>스타일: {order.style}</div>}
-                {order.pocket_type && <div>포켓: {order.pocket_type}</div>}
-                {order.color && <div>색상: {order.color}</div>}
-                {order.fit && <div>핏: {order.fit}</div>}
               </div>
             </div>
 

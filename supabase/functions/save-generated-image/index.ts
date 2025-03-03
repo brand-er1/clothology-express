@@ -36,13 +36,25 @@ serve(async (req) => {
 
     // Validate inputs
     if (!userId || !originalImageUrl || !prompt) {
+      console.error("Missing required fields:", { userId, originalImageUrl, prompt });
       return new Response(
         JSON.stringify({ error: "Missing required fields: userId, originalImageUrl, or prompt" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    // Insert data into generated_images table
+    console.log("Saving image data to database:", {
+      user_id: userId,
+      original_image_url: originalImageUrl,
+      stored_image_url: storedImageUrl,
+      image_path: imagePath,
+      prompt,
+      cloth_type: clothType,
+      material,
+      detail: detailDescription
+    });
+
+    // Insert data into generated_images table, prioritizing storage URL
     const { data, error } = await supabase
       .from('generated_images')
       .insert({
@@ -53,7 +65,7 @@ serve(async (req) => {
         prompt: prompt,
         cloth_type: clothType,
         material: material,
-        detail: detailDescription, // Use only the unified detail description
+        detail: detailDescription
       })
       .select();
 

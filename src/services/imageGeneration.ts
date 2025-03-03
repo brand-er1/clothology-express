@@ -70,12 +70,15 @@ export const generateImage = async (
     console.log("Generation result:", generationData);
 
     const imageUrl = generationData?.imageUrl;
+    
+    // Default values for storage results
     let storedImageUrl = null;
     let imagePath = null;
 
     // If we have an image URL, store in Supabase Storage
     if (imageUrl) {
       try {
+        // Store the generated image in Supabase Storage
         const { data: storeData, error: storeError } = await supabase.functions.invoke(
           'store-generated-image',
           {
@@ -89,19 +92,25 @@ export const generateImage = async (
 
         if (storeError) {
           console.error("Image storage error:", storeError);
+          // Even if storage fails, we still have the original URL
         } else {
           console.log("Image storage result:", storeData);
-          // Get the path and create a public URL for the stored image
+          
+          // Get the storage path and public URL
           if (storeData?.imagePath) {
             imagePath = storeData.imagePath;
             storedImageUrl = storeData.storedImageUrl;
-            console.log("Stored image public URL:", storedImageUrl);
+            console.log("Stored image path:", imagePath);
+            console.log("Stored image URL:", storedImageUrl);
           }
         }
       } catch (storageError) {
         console.error("Failed to store image:", storageError);
       }
     }
+
+    // Use stored URL if available, fallback to original URL
+    const finalImageUrl = storedImageUrl || imageUrl;
 
     // Create a formatted description with the selections
     let detailDesc = '';
@@ -113,7 +122,7 @@ export const generateImage = async (
     
     detailDesc = detailDesc.trim();
 
-    // Store image information in the generated_images table
+    // Store image information in the database
     if (imageUrl && user.id) {
       try {
         // Store image information in the generated_images table
@@ -123,12 +132,12 @@ export const generateImage = async (
             body: {
               userId: user.id,
               originalImageUrl: imageUrl,
-              storedImageUrl: storedImageUrl, // Use the storage URL
+              storedImageUrl: storedImageUrl, // Always use the storage URL if available
               imagePath: imagePath,
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
-              detailDescription: detailDesc // Use a single unified detail description
+              detailDescription: detailDesc
             }
           }
         );
@@ -145,7 +154,7 @@ export const generateImage = async (
 
     // Save as draft order if requested
     if (saveAsDraft) {
-      // Use the createDraftOrder function to save the draft - always use storage URL
+      // Use the createDraftOrder function to save the draft - ALWAYS use storage URL if available
       await createDraftOrder(
         selectedType,
         selectedMaterial,
@@ -154,17 +163,18 @@ export const generateImage = async (
         selectedColor,
         selectedDetail,
         selectedFit,
-        storedImageUrl, // Always use stored URL from storage
-        imagePath,
+        storedImageUrl, // Use the stored URL from storage as primary
+        imagePath, // Also pass the image path for future reference
         materials
       );
     }
 
+    // Return all URLs and path for potential use
     return {
-      imageUrl,
-      storedImageUrl,
-      imagePath,
-      prompt,
+      imageUrl, // Original URL from generation
+      storedImageUrl, // URL from storage (preferred)
+      imagePath, // Path in storage
+      prompt, // The prompt used
     };
   } catch (error: any) {
     console.error("Image generation error:", error);

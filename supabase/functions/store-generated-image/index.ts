@@ -26,6 +26,7 @@ serve(async (req) => {
     const { imageUrl, userId, clothType } = await req.json();
 
     if (!imageUrl) {
+      console.error('No image URL provided');
       return new Response(
         JSON.stringify({ error: 'No image URL provided' }),
         { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
@@ -37,11 +38,15 @@ serve(async (req) => {
     // Download the image
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
-      throw new Error(`Failed to download image: ${imageResponse.statusText}`);
+      const errorMsg = `Failed to download image: ${imageResponse.statusText}`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
     
     const imageBlob = await imageResponse.blob();
     const fileName = `${clothType ? clothType + '_' : ''}${userId ? userId.slice(0, 8) + '_' : ''}${crypto.randomUUID()}.jpg`;
+
+    console.log(`Uploading image with filename: ${fileName}`);
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
@@ -52,8 +57,11 @@ serve(async (req) => {
       });
 
     if (error) {
+      console.error('Storage upload error:', error);
       throw error;
     }
+
+    console.log('Image uploaded successfully to storage, generating public URL');
 
     // Generate a public URL for the stored image
     const { data: publicUrlData } = supabase.storage
@@ -61,6 +69,7 @@ serve(async (req) => {
       .getPublicUrl(fileName);
 
     const storedImageUrl = publicUrlData?.publicUrl;
+    console.log('Generated public URL:', storedImageUrl);
 
     return new Response(
       JSON.stringify({ 

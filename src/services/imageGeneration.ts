@@ -1,14 +1,17 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { clothTypes } from "@/lib/customize-constants";
+import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { Material } from "@/types/customize";
 import { createDraftOrder } from "./orderCreation";
 
 export const generateImage = async (
   selectedType: string,
   selectedMaterial: string,
+  selectedStyle: string,
+  selectedColor: string,
+  selectedPocket: string,
   selectedDetail: string,
+  selectedFit: string,
   materials: Material[],
   saveAsDraft: boolean = true,
 ) => {
@@ -31,9 +34,16 @@ export const generateImage = async (
     // Find material by ID, including handling custom materials
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
+    
+    const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label || selectedStyle;
+    const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || selectedPocket;
+    const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label || selectedColor;
+    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label || selectedFit;
 
     // Construct the generation prompt
-    const prompt = `${selectedClothType}, ${selectedMaterialName}, ${selectedDetail}, ` +
+    const prompt = `${selectedColorName} ${selectedMaterialName} ${selectedClothType}, ${selectedStyleName} 스타일, ${selectedFitName}, ` +
+      (selectedPocket !== 'none' ? `${selectedPocketName}, ` : '') +
+      (selectedDetail ? `${selectedDetail}, ` : '') +
       `인체 없는 의류 사진, 고해상도, 프로덕트 이미지`;
 
     console.log("Generation prompt:", prompt);
@@ -94,7 +104,11 @@ export const generateImage = async (
       await createDraftOrder(
         selectedType,
         selectedMaterial,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
         selectedDetail,
+        selectedFit,
         storedImageUrl || imageUrl,
         imagePath,
         materials

@@ -30,6 +30,14 @@ const Customize = () => {
     newMaterialName,
     setNewMaterialName,
     materials,
+    selectedStyle,
+    setSelectedStyle,
+    selectedPocket,
+    setSelectedPocket,
+    selectedColor,
+    setSelectedColor,
+    selectedFit,
+    setSelectedFit,
     imageLoading,
     generatedImageUrl,
     storedImageUrl,
@@ -119,7 +127,15 @@ const Customize = () => {
           {currentStep === 3 && (
             <DetailStep
               detailInput={selectedDetail}
+              selectedStyle={selectedStyle}
+              selectedPocket={selectedPocket}
+              selectedColor={selectedColor}
+              selectedFit={selectedFit}
               onDetailInputChange={setSelectedDetail}
+              onStyleSelect={setSelectedStyle}
+              onPocketSelect={setSelectedPocket}
+              onColorSelect={setSelectedColor}
+              onFitSelect={setSelectedFit}
             />
           )}
 
@@ -130,6 +146,10 @@ const Customize = () => {
               storedImageUrl={storedImageUrl}
               selectedType={selectedType}
               selectedMaterial={selectedMaterial}
+              selectedStyle={selectedStyle}
+              selectedColor={selectedColor}
+              selectedPocket={selectedPocket}
+              selectedFit={selectedFit}
               selectedDetail={selectedDetail}
               onGenerateImage={handleGenerateImage}
             />

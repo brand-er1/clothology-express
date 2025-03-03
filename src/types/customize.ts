@@ -9,6 +9,12 @@ export interface CustomMeasurements {
   [key: string]: number;
 }
 
+export interface SizeTableItem {
+  key: string;
+  value: string;
+  editable: boolean;
+}
+
 export interface UseCustomizeFormState {
   currentStep: number;
   selectedType: string;
@@ -26,4 +32,5 @@ export interface UseCustomizeFormState {
   imagePath: string | null;
   selectedSize: string;
   customMeasurements: CustomMeasurements;
+  sizeTableData: SizeTableItem[];
 }

@@ -5,12 +5,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { SizeTableItem } from "@/types/customize";
 
 interface SizeStepProps {
   selectedSize: string;
   customMeasurements: Record<string, number>;
+  sizeTableData: SizeTableItem[];
   onSizeChange: (size: string) => void;
   onCustomMeasurementChange: (label: string, value: string) => void;
+  onSizeTableChange: (updatedItem: SizeTableItem) => void;
   selectedType: string;
   selectedMaterial: string;
   selectedDetail: string;
@@ -54,8 +58,10 @@ const clothingImages: Record<string, string> = {
 export const SizeStep = ({
   selectedSize,
   customMeasurements,
+  sizeTableData,
   onSizeChange,
   onCustomMeasurementChange,
+  onSizeTableChange,
   selectedType,
   selectedMaterial,
   selectedDetail,
@@ -169,6 +175,19 @@ export const SizeStep = ({
       // 응답 데이터 형식에 맞게 처리
       setRecommendation(data);
       onSizeChange(data.사이즈);
+      
+      // Create editable size table data from recommendation
+      if (data.사이즈표) {
+        const newSizeTableData: SizeTableItem[] = Object.entries(data.사이즈표).map(([key, value]) => ({
+          key,
+          value: value as string,
+          editable: true
+        }));
+        
+        // Update the parent component with size table data
+        newSizeTableData.forEach(item => onSizeTableChange(item));
+      }
+      
       setError(null);
     } catch (error) {
       console.error("사이즈 추천 요청 중 오류 발생:", error);
@@ -196,6 +215,16 @@ export const SizeStep = ({
     };
     
     return keyMap[key] || key;
+  };
+  
+  // Handle size value change
+  const handleSizeValueChange = (key: string, newValue: string) => {
+    const updatedItem: SizeTableItem = {
+      key,
+      value: newValue,
+      editable: true
+    };
+    onSizeTableChange(updatedItem);
   };
 
   if (isLoading) {
@@ -233,7 +262,7 @@ export const SizeStep = ({
     );
   }
 
-  if (!recommendation) {
+  if (!recommendation && sizeTableData.length === 0) {
     return (
       <div className="text-center py-8">
         <p>사이즈 추천 데이터가 없습니다. 다시 시도해주세요.</p>
@@ -258,18 +287,25 @@ export const SizeStep = ({
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
               <div>
-                <h3 className="text-xl font-semibold">추천 사이즈: <Badge className="ml-2 text-lg">{recommendation.사이즈}</Badge></h3>
+                <h3 className="text-xl font-semibold">추천 사이즈: 
+                  <Badge className="ml-2 text-lg">{selectedSize}</Badge>
+                </h3>
                 <p className="text-gray-500 mt-1">
-                  {recommendation.성별 === '남성' ? '남성' : '여성'}, 키 {recommendation.키}cm, {recommendation.카테고리}
+                  {recommendation?.성별 === '남성' ? '남성' : '여성'}, 
+                  키 {recommendation?.키}cm, 
+                  {recommendation?.카테고리}
                 </p>
+                <p className="text-sm mt-2 text-blue-600">아래 사이즈 정보를 수정하여 맞춤 주문이 가능합니다.</p>
               </div>
               <div>
-                <Badge variant="outline" className="text-sm">{recommendation.핏} 핏</Badge>
+                {recommendation && (
+                  <Badge variant="outline" className="text-sm">{recommendation.핏} 핏</Badge>
+                )}
               </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-6">
-              {/* 사이즈 표 정보 */}
+              {/* 사이즈 표 정보 - 수정 가능하게 변경 */}
               <div className="bg-gray-50 rounded-lg p-4 flex-1">
                 <h3 className="text-lg font-semibold mb-4">사이즈 세부 정보</h3>
                 <Table>
@@ -280,10 +316,17 @@ export const SizeStep = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(recommendation.사이즈표).map(([key, value]) => (
-                      <TableRow key={key}>
-                        <TableCell className="font-medium">{translateKey(key)}</TableCell>
-                        <TableCell className="text-right">{value}</TableCell>
+                    {sizeTableData.map((item) => (
+                      <TableRow key={item.key}>
+                        <TableCell className="font-medium">{translateKey(item.key)}</TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="text"
+                            value={item.value}
+                            onChange={(e) => handleSizeValueChange(item.key, e.target.value)}
+                            className="w-24 text-right ml-auto h-8"
+                          />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -328,26 +371,6 @@ export const SizeStep = ({
       </Card>
     </div>
   );
-};
-
-// 필수 함수 추가
-const translateKey = (key: string): string => {
-  const keyMap: Record<string, string> = {
-    어깨너비: '어깨너비',
-    가슴단면: '가슴단면',
-    허리단면: '허리단면',
-    소매길이: '소매길이',
-    총장: '총장',
-    엉덩이단면: '엉덩이단면',
-    허벅지단면: '허벅지단면',
-    밑단: '밑단',
-    인심: '인심',
-    "추천 키": '추천 키',
-    "바지 길이": '바지 길이',
-    밑위: '밑위'
-  };
-  
-  return keyMap[key] || key;
 };
 
 export default SizeStep;

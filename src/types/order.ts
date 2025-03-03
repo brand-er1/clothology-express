@@ -11,7 +11,7 @@ export type Order = {
   color: string;
   detail_description: string;
   size: string;
-  measurements: Record<string, number> | null;
+  measurements: Record<string, string | number> | null;
   generated_image_url: string;
   image_path?: string | null;
   admin_comment?: string;

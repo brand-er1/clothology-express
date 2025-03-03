@@ -46,6 +46,8 @@ const Customize = () => {
     setSelectedSize,
     customMeasurements,
     setCustomMeasurements,
+    sizeTableData,
+    handleSizeTableChange,
     handleAddMaterial,
     handleGenerateImage,
     handleNext,
@@ -153,6 +155,7 @@ const Customize = () => {
             <SizeStep
               selectedSize={selectedSize}
               customMeasurements={customMeasurements}
+              sizeTableData={sizeTableData}
               onSizeChange={setSelectedSize}
               onCustomMeasurementChange={(label, value) => {
                 const numValue = parseFloat(value);
@@ -163,6 +166,7 @@ const Customize = () => {
                   }));
                 }
               }}
+              onSizeTableChange={handleSizeTableChange}
               selectedType={selectedType}
               selectedMaterial={selectedMaterial}
               selectedDetail={selectedDetail}

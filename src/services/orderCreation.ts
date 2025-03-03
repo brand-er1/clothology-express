@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions } from "@/lib/customize-constants";
@@ -15,7 +14,8 @@ export const createOrder = async (
   customMeasurements: CustomMeasurements,
   generatedImageUrl: string | null,
   imagePath: string | null,
-  materials: Material[]
+  materials: Material[],
+  sizeMeasurements?: Record<string, string>
 ) => {
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user;
@@ -35,6 +35,18 @@ export const createOrder = async (
   const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label;
   const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label;
 
+  // Prepare measurements data
+  let measurementsData = null;
+  
+  // If we have size table measurements, use those
+  if (sizeMeasurements && Object.keys(sizeMeasurements).length > 0) {
+    measurementsData = sizeMeasurements;
+  } 
+  // Otherwise, use custom measurements if custom size was selected
+  else if (selectedSize === 'custom' && Object.keys(customMeasurements).length > 0) {
+    measurementsData = customMeasurements;
+  }
+
   const { error } = await supabase.from('orders').insert({
     user_id: user.id,
     cloth_type: selectedClothType,
@@ -44,7 +56,7 @@ export const createOrder = async (
     color: selectedColorName,
     detail_description: selectedDetail,
     size: selectedSize,
-    measurements: selectedSize === 'custom' ? customMeasurements : null,
+    measurements: measurementsData, // Use the prepared measurements data
     generated_image_url: generatedImageUrl,
     image_path: imagePath, // Store the path in the storage bucket
   });

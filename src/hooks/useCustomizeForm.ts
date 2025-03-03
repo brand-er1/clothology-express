@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
 import { generateImage } from "@/services/imageGeneration";
 import { createOrder } from "@/services/orderCreation";
-import { UseCustomizeFormState, Material } from "@/types/customize";
+import { UseCustomizeFormState, Material, SizeTableItem } from "@/types/customize";
 
 export const useCustomizeForm = () => {
   const navigate = useNavigate();
@@ -34,6 +34,7 @@ export const useCustomizeForm = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
   const [imageLoading, setImageLoading] = useState(false);
+  const [sizeTableData, setSizeTableData] = useState<SizeTableItem[]>([]);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -123,6 +124,13 @@ export const useCustomizeForm = () => {
   const handleCreateOrder = async () => {
     try {
       setIsLoading(true);
+      
+      // Convert sizeTableData to a format suitable for storing in the database
+      const measurements: Record<string, string> = {};
+      sizeTableData.forEach(item => {
+        measurements[item.key] = item.value;
+      });
+      
       const success = await createOrder(
         selectedType,
         selectedMaterial,
@@ -134,7 +142,8 @@ export const useCustomizeForm = () => {
         customMeasurements,
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available
         imagePath, // Include the storage path
-        materials
+        materials,
+        measurements // Pass the edited size measurements
       );
       
       if (success) {
@@ -160,6 +169,23 @@ export const useCustomizeForm = () => {
 
   const handleBack = () => {
     setCurrentStep(prev => prev - 1);
+  };
+  
+  const handleSizeTableChange = (updatedItem: SizeTableItem) => {
+    setSizeTableData(prev => {
+      // Check if the item already exists in the array
+      const itemIndex = prev.findIndex(item => item.key === updatedItem.key);
+      
+      if (itemIndex >= 0) {
+        // Update existing item
+        const newData = [...prev];
+        newData[itemIndex] = updatedItem;
+        return newData;
+      } else {
+        // Add new item
+        return [...prev, updatedItem];
+      }
+    });
   };
 
   return {
@@ -191,6 +217,8 @@ export const useCustomizeForm = () => {
     setSelectedSize,
     customMeasurements,
     setCustomMeasurements,
+    sizeTableData,
+    handleSizeTableChange,
     handleAddMaterial,
     handleGenerateImage,
     handleNext,

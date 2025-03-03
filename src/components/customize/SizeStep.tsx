@@ -42,12 +42,12 @@ interface SizeRecommendation {
 
 // 각 의류 타입별 이미지 매핑
 const clothingImages: Record<string, string> = {
-  'short_sleeve': '/lovable-uploads/반팔티셔츠.png',
-  'long_sleeve': '/lovable-uploads/긴팔티셔츠.png', 
-  'sweatshirt': '/lovable-uploads/맨투맨.png',
-  'jacket': '/lovable-uploads/자켓.png',
-  'short_pants': '/lovable-uploads/짧은바지.png',
-  'long_pants': '/lovable-uploads/긴바지.png'
+  'short_sleeve': '/lovable-uploads/short_sleeve.png',
+  'long_sleeve': '/lovable-uploads/long_sleeve.png', 
+  'sweatshirt': '/lovable-uploads/sweatshirt.png',
+  'jacket': '/lovable-uploads/jacket.png',
+  'short_pants': '/lovable-uploads/short_pants.png',
+  'long_pants': '/lovable-uploads/long_pants.png'
 };
 
 export const SizeStep = ({

@@ -89,7 +89,7 @@ export const generateImage = async (
     try {
       console.log("Starting image storage process with URL:", imageUrl);
       
-      // Store the generated image in Supabase Storage
+      // Store the generated image in Supabase Storage with sanitized filename
       const { data: storeData, error: storeError } = await supabase.functions.invoke(
         'store-generated-image',
         {

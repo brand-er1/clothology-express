@@ -44,9 +44,17 @@ serve(async (req) => {
     }
     
     const imageBlob = await imageResponse.blob();
-    const fileName = `${clothType ? clothType + '_' : ''}${userId ? userId.slice(0, 8) + '_' : ''}${crypto.randomUUID()}.jpg`;
+    
+    // Generate a sanitized filename using date, time and user id
+    const now = new Date();
+    const dateStr = now.toISOString().replace(/[^\w]/g, '').slice(0, 14); // YYYYMMDDHHMMSS format
+    const userIdPart = userId ? userId.slice(0, 8) : 'anonymous';
+    const fileId = crypto.randomUUID().split('-')[0]; // First part of a UUID for uniqueness
+    
+    // Create a safe filename without any non-ASCII characters
+    const fileName = `image_${userIdPart}_${dateStr}_${fileId}.jpg`;
 
-    console.log(`Uploading image with filename: ${fileName}`);
+    console.log(`Uploading image with sanitized filename: ${fileName}`);
 
     // Check if bucket exists, create if it doesn't
     try {
@@ -95,12 +103,14 @@ serve(async (req) => {
     const storedImageUrl = publicUrlData?.publicUrl;
     console.log('Generated public URL:', storedImageUrl);
 
+    // Return success response with image information
     return new Response(
       JSON.stringify({ 
         success: true, 
         imagePath: fileName,
         storedImageUrl: storedImageUrl,
-        message: 'Image stored successfully'
+        message: 'Image stored successfully',
+        originalName: clothType ? clothType : 'unknown'
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );

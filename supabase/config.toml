@@ -54,5 +54,5 @@ redirect_uri = ""
 [functions]
 port = 54321
 
-[functions.import_map_source]
-imports = { react = "https://esm.sh/react@18.2.0", "react-dom" = "https://esm.sh/react-dom@18.2.0" }
+[functions.import_map]
+source = "import_map.json"

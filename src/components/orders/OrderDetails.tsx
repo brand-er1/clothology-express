@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Order } from "@/types/order";
-import { CheckCircle, XCircle, Clock, ImageOff } from "lucide-react";
+import { CheckCircle, XCircle, Clock, ImageOff, FileEdit } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface OrderDetailsProps {
@@ -39,7 +39,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
       case 'rejected':
         return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" /> 거부됨</Badge>;
       case 'draft':
-        return <Badge className="bg-blue-500">임시저장</Badge>;
+        return <Badge className="bg-blue-500"><FileEdit className="h-3 w-3 mr-1" /> 임시저장</Badge>;
       default:
         return <Badge className="bg-yellow-500"><Clock className="h-3 w-3 mr-1" /> 검토중</Badge>;
     }

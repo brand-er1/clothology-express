@@ -162,6 +162,19 @@ const Customize = () => {
     }
   };
 
+  // Create a wrapper for handleGenerateImage that also saves progress
+  const handleGenerateAndSave = async () => {
+    try {
+      // First generate the image
+      await handleGenerateImage();
+      
+      // After image generation, save progress
+      await saveProgress();
+    } catch (error) {
+      console.error("Error in generate and save:", error);
+    }
+  };
+
   // Enhanced handleNext to save progress before advancing
   const handleNextWithSave = async () => {
     await saveProgress();
@@ -264,6 +277,7 @@ const Customize = () => {
               selectedMaterial={selectedMaterial}
               selectedDetail={selectedDetail}
               onGenerateImage={handleGenerateImage}
+              onSaveProgress={saveProgress} // Pass the save callback
             />
           )}
 

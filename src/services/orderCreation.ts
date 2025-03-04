@@ -13,13 +13,13 @@ export const createDraftOrder = async (
   selectedColor: string,
   selectedDetail: string,
   selectedFit: string,
-  storedImageUrl: string | null, // Changed parameter name to reflect its usage
+  generatedImageUrl: string | null,
   imagePath: string | null,
   materials: Material[]
 ) => {
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData.session?.user;
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
     
     if (!user) {
       console.log("User not logged in, can't save draft");
@@ -67,22 +67,6 @@ export const createDraftOrder = async (
     
     detailDesc = detailDesc.trim();
 
-    // Get public URL from storage if we have the path but no stored URL
-    if (!storedImageUrl && imagePath) {
-      try {
-        const { data: publicUrlData } = supabase.storage
-          .from('generated_images')
-          .getPublicUrl(imagePath);
-        
-        if (publicUrlData && publicUrlData.publicUrl) {
-          storedImageUrl = publicUrlData.publicUrl;
-          console.log("Retrieved stored image URL from path:", storedImageUrl);
-        }
-      } catch (urlError) {
-        console.error("Failed to get public URL for stored image:", urlError);
-      }
-    }
-
     // Use the edge function to save the draft order
     const { data: orderData, error: orderError } = await supabase.functions.invoke('save-order', {
       body: {
@@ -90,7 +74,7 @@ export const createDraftOrder = async (
         clothType: selectedClothType,
         material: selectedMaterialName,
         detailDescription: detailDesc,
-        generatedImageUrl: storedImageUrl, // Use ONLY the stored image URL
+        generatedImageUrl: generatedImageUrl,
         imagePath: imagePath,
         status: 'draft' // Set as draft initially
       }
@@ -125,8 +109,8 @@ export const createOrder = async (
   sizeTableData?: SizeTableItem[]
 ) => {
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData.session?.user;
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
     
     if (!user) {
       toast({
@@ -193,10 +177,10 @@ export const createOrder = async (
       measurementsData = customMeasurements;
     }
 
-    // Always try to use storage URL first
-    let finalImageUrl = null;
+    // 항상 스토리지 URL 사용
+    let finalImageUrl = generatedImageUrl;
     
-    // If we have an image path, get the storage URL
+    // 이미지 경로가 있으면 스토리지에서 공개 URL 가져오기
     if (imagePath) {
       try {
         const { data: publicUrlData } = await supabase.storage
@@ -209,12 +193,8 @@ export const createOrder = async (
         }
       } catch (urlError) {
         console.error("Failed to get public URL for stored image:", urlError);
-        // Fall back to the provided URL
-        finalImageUrl = generatedImageUrl;
+        // Fall back to the original generated URL
       }
-    } else {
-      // If no image path, use the provided URL
-      finalImageUrl = generatedImageUrl;
     }
 
     console.log("Creating order with data:", {
@@ -237,7 +217,7 @@ export const createOrder = async (
         detailDescription: detailDesc.trim(),
         size: selectedSize,
         measurements: measurementsData,
-        generatedImageUrl: finalImageUrl, // Use the proper storage URL
+        generatedImageUrl: finalImageUrl,
         imagePath: imagePath,
         status: 'pending' // Set as pending for review
       }

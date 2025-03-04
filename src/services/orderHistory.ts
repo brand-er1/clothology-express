@@ -5,8 +5,8 @@ import { Order } from "@/types/order";
 
 export const fetchUserOrders = async (): Promise<Order[] | null> => {
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData.session?.user;
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
     
     if (!user) {
       toast({
@@ -40,7 +40,6 @@ export const fetchUserOrders = async (): Promise<Order[] | null> => {
       title: "주문 내역 로드 실패",
       description: "주문 내역을 불러오는데 예상치 못한 오류가 발생했습니다.",
       variant: "destructive",
-      
     });
     return null;
   }

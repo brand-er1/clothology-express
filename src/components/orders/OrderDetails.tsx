@@ -46,12 +46,11 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
   };
 
   const [imageError, setImageError] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(order.generated_image_url);
 
-  // Always try to get the storage URL first
+  // 이미지 경로가 있으면 스토리지에서 이미지 URL 가져오기
   useEffect(() => {
     const fetchImageUrl = async () => {
-      // Always try to use the image path first to get the storage URL
       if (order.image_path) {
         try {
           const { data } = await supabase.storage
@@ -62,17 +61,14 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
             console.log("Using storage URL for image:", data.publicUrl);
             setImageUrl(data.publicUrl);
             setImageError(false);
-          } else {
-            // Fall back to the original URL if storage URL fails
-            setImageUrl(order.generated_image_url);
           }
         } catch (error) {
           console.error("Failed to get public URL:", error);
-          // Fall back to the generated image URL
+          // 원래 URL 사용
           setImageUrl(order.generated_image_url);
         }
       } else {
-        // If no image path, use the generated image URL
+        // 이미지 경로가 없으면 원래 URL 사용
         setImageUrl(order.generated_image_url);
       }
     };

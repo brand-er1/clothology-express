@@ -2,35 +2,42 @@
 project_id = "jwmzjszdjlrqrhadbggr"
 
 [api]
+enabled = true
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
-extra_search_path = ["public", "extensions"]
-max_rows = 1000
 
 [db]
 port = 54322
-shadow_port = 54320
-major_version = 15
 
 [studio]
 port = 54323
 
 [inbucket]
 port = 54324
-smtp_port = 54325
-pop3_port = 54326
 
 [auth]
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
-jwt_expiry = 3600
-enable_signup = true
+enabled = true
 
 [storage]
-file_size_limit = "10MiB"
+enabled = true
+
+[realtime]
+enabled = true
 
 [functions]
-port = 8000
-
-[functions.import_map]
-path = "supabase/functions/import_map.json"
+[functions.generate-optimized-image]
+verify_jwt = true
+[functions.save-order]
+verify_jwt = true
+[functions.store-generated-image]
+verify_jwt = true
+[functions.check-availability]
+verify_jwt = true
+[functions.size-recommendation]
+verify_jwt = true
+[functions.size-recommendation2]
+verify_jwt = true
+[functions.update-system-prompt]
+verify_jwt = true
+[functions.save-generated-image]
+verify_jwt = true

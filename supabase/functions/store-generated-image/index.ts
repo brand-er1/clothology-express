@@ -26,7 +26,6 @@ serve(async (req) => {
     const { imageUrl, userId, clothType } = await req.json();
 
     if (!imageUrl) {
-      console.error('No image URL provided');
       return new Response(
         JSON.stringify({ error: 'No image URL provided' }),
         { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
@@ -38,47 +37,11 @@ serve(async (req) => {
     // Download the image
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
-      const errorMsg = `Failed to download image: ${imageResponse.statusText}`;
-      console.error(errorMsg);
-      throw new Error(errorMsg);
+      throw new Error(`Failed to download image: ${imageResponse.statusText}`);
     }
     
     const imageBlob = await imageResponse.blob();
-    
-    // Generate a sanitized filename using date, time and user id
-    const now = new Date();
-    const dateStr = now.toISOString().replace(/[^\w]/g, '').slice(0, 14); // YYYYMMDDHHMMSS format
-    const userIdPart = userId ? userId.slice(0, 8) : 'anonymous';
-    const fileId = crypto.randomUUID().split('-')[0]; // First part of a UUID for uniqueness
-    
-    // Create a safe filename without any non-ASCII characters
-    const fileName = `image_${userIdPart}_${dateStr}_${fileId}.jpg`;
-
-    console.log(`Uploading image with sanitized filename: ${fileName}`);
-
-    // Check if bucket exists, create if it doesn't
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'generated_images');
-      
-      if (!bucketExists) {
-        console.log('Bucket does not exist, creating...');
-        const { data: bucketData, error: bucketError } = await supabase.storage
-          .createBucket('generated_images', {
-            public: true,
-            fileSizeLimit: 10485760 // 10MB
-          });
-        
-        if (bucketError) {
-          console.error('Bucket creation error:', bucketError);
-          throw bucketError;
-        }
-        console.log('Bucket created successfully:', bucketData);
-      }
-    } catch (bucketError) {
-      console.error('Error checking/creating bucket:', bucketError);
-      // Continue anyway, in case the bucket already exists
-    }
+    const fileName = `${clothType ? clothType + '_' : ''}${userId ? userId.slice(0, 8) + '_' : ''}${crypto.randomUUID()}.jpg`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
@@ -89,11 +52,8 @@ serve(async (req) => {
       });
 
     if (error) {
-      console.error('Storage upload error:', error);
       throw error;
     }
-
-    console.log('Image uploaded successfully to storage, generating public URL');
 
     // Generate a public URL for the stored image
     const { data: publicUrlData } = supabase.storage
@@ -101,16 +61,13 @@ serve(async (req) => {
       .getPublicUrl(fileName);
 
     const storedImageUrl = publicUrlData?.publicUrl;
-    console.log('Generated public URL:', storedImageUrl);
 
-    // Return success response with image information
     return new Response(
       JSON.stringify({ 
         success: true, 
         imagePath: fileName,
         storedImageUrl: storedImageUrl,
-        message: 'Image stored successfully',
-        originalName: clothType ? clothType : 'unknown'
+        message: 'Image stored successfully'
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );

@@ -54,6 +54,7 @@ serve(async (req) => {
         cloth_type: clothType,
         material: material,
         detail: detailDescription, // Use only the unified detail description
+        created_at: new Date().toISOString() // Explicitly set the creation timestamp
       })
       .select();
 

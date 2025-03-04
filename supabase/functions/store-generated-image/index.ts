@@ -41,7 +41,11 @@ serve(async (req) => {
     }
     
     const imageBlob = await imageResponse.blob();
-    const fileName = `${clothType ? clothType + '_' : ''}${userId ? userId.slice(0, 8) + '_' : ''}${crypto.randomUUID()}.jpg`;
+    
+    // New file naming pattern: userId_timestamp_uuid.jpg
+    // Avoid using clothType since it might contain Korean characters
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `${userId ? userId.slice(0, 8) + '_' : ''}${timestamp}_${crypto.randomUUID()}.jpg`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage

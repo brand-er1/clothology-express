@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ interface SignUpFormProps {
   checkUserId: () => Promise<void>;
   checkEmail: () => Promise<void>;
   isEmailAvailable: boolean | null;
+  isUsernameAvailable: boolean | null;
+  checkUsername: () => Promise<void>;
   handleGenderChange: (value: string) => void;
 }
 
@@ -33,6 +36,8 @@ export const SignUpForm = ({
   checkUserId,
   checkEmail,
   isEmailAvailable,
+  isUsernameAvailable,
+  checkUsername,
   handleGenderChange,
 }: SignUpFormProps) => {
   return (
@@ -106,14 +111,23 @@ export const SignUpForm = ({
       </div>
       <div className="space-y-2">
         <Label htmlFor="username">닉네임</Label>
-        <Input
-          id="username"
-          name="username"
-          type="text"
-          value={formData.username}
-          onChange={handleChange}
-          required
-        />
+        <div className="flex gap-2">
+          <Input
+            id="username"
+            name="username"
+            type="text"
+            value={formData.username}
+            onChange={handleChange}
+            required
+          />
+          <Button
+            type="button"
+            onClick={checkUsername}
+            className="whitespace-nowrap"
+          >
+            중복 확인
+          </Button>
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="fullName">이름</Label>

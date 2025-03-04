@@ -18,11 +18,13 @@ const Auth = () => {
     isCheckingId,
     isIdAvailable,
     isEmailAvailable,
+    isUsernameAvailable,
     formData,
     handleChange,
     handleGenderChange,
     checkUserId,
     checkEmail,
+    checkUsername,
     handleAuth,
     resetForm,
     setPasswordMatch
@@ -84,6 +86,8 @@ const Auth = () => {
                   checkUserId={checkUserId}
                   checkEmail={checkEmail}
                   isEmailAvailable={isEmailAvailable}
+                  isUsernameAvailable={isUsernameAvailable}
+                  checkUsername={checkUsername}
                 />
               ) : (
                 <LoginForm

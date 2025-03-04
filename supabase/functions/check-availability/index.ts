@@ -69,6 +69,28 @@ serve(async (req) => {
           status: 200 
         }
       );
+    } else if (type === 'username') {
+      // 닉네임 중복 체크
+      const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles')
+        .select('username')
+        .eq('username', value)
+        .maybeSingle();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          available: !profile,
+          message: profile ? "이미 사용 중인 닉네임입니다" : "사용 가능한 닉네임입니다"
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
     }
 
     throw new Error('Invalid check type');

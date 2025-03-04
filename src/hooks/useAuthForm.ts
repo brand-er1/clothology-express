@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
-import { checkUserIdAvailability, checkEmailAvailability, validateSignUpForm } from "@/utils/authUtils";
+import { checkUserIdAvailability, checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 
 export const useAuthForm = () => {
@@ -14,6 +14,7 @@ export const useAuthForm = () => {
   const [isCheckingId, setIsCheckingId] = useState(false);
   const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
   const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
   const [formData, setFormData] = useState<AuthFormData>({
     userId: "",
     email: "",
@@ -44,6 +45,9 @@ export const useAuthForm = () => {
     if (name === 'email') {
       setIsEmailAvailable(null);
     }
+    if (name === 'username') {
+      setIsUsernameAvailable(null);
+    }
   };
 
   const handleGenderChange = (value: string) => {
@@ -65,6 +69,11 @@ export const useAuthForm = () => {
     setIsEmailAvailable(result);
   };
 
+  const checkUsername = async () => {
+    const result = await checkUsernameAvailability(formData.username);
+    setIsUsernameAvailable(result);
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -76,6 +85,7 @@ export const useAuthForm = () => {
           formData.password, 
           isIdAvailable, 
           isEmailAvailable,
+          isUsernameAvailable,
           formData.height,
           formData.weight
         );
@@ -153,6 +163,7 @@ export const useAuthForm = () => {
     setPasswordMatch(true);
     setIsIdAvailable(null);
     setIsEmailAvailable(null);
+    setIsUsernameAvailable(null);
   };
 
   return {
@@ -162,11 +173,13 @@ export const useAuthForm = () => {
     isCheckingId,
     isIdAvailable,
     isEmailAvailable,
+    isUsernameAvailable,
     formData,
     handleChange,
     handleGenderChange,
     checkUserId,
     checkEmail,
+    checkUsername,
     handleAuth,
     resetForm,
     setPasswordMatch

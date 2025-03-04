@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { StyleOption, PocketOption, ColorOption, FitOption } from "@/lib/customize-constants";
 
@@ -104,6 +103,97 @@ export const useDetailText = ({
     }
     
     return "";
+  };
+
+  // 옵션 선택 시 텍스트 영역에 해당 내용 업데이트하는 함수
+  const handleOptionSelect = (optionType: 'style' | 'pocket' | 'color' | 'fit', value: string) => {
+    // 옵션에 맞는 세터 함수와 옵션 배열 선택
+    let optionsArray: any[] = [];
+    let setterFunc: (value: string) => void;
+    
+    switch (optionType) {
+      case 'style':
+        optionsArray = styleOptions;
+        setterFunc = onStyleSelect;
+        break;
+      case 'pocket':
+        optionsArray = pocketOptions;
+        setterFunc = onPocketSelect;
+        break;
+      case 'color':
+        optionsArray = colorOptions;
+        setterFunc = onColorSelect;
+        break;
+      case 'fit':
+        optionsArray = fitOptions;
+        setterFunc = onFitSelect;
+        break;
+      default:
+        return;
+    }
+    
+    // 선택한 값 업데이트
+    setterFunc(value);
+    
+    // 현재 모든 옵션 텍스트 구성
+    const prevOptionText = generateOptionsText();
+    
+    // 이전에 선택한 옵션의 텍스트를 제거하고 새로운 옵션 텍스트 추가
+    let newText = detailInput;
+    const typeLabel = {
+      'style': '스타일',
+      'pocket': '포켓',
+      'color': '색상',
+      'fit': '핏'
+    }[optionType];
+    
+    // 기존 옵션 텍스트를 제거
+    optionsArray.forEach(option => {
+      newText = removeOptionText(newText, typeLabel, option.label);
+    });
+    
+    // 새로운 옵션이 선택된 경우에만 텍스트 추가
+    if (value) {
+      const selectedOption = optionsArray.find(option => option.value === value);
+      if (selectedOption) {
+        const newOptionText = `${typeLabel}: ${selectedOption.label}`;
+        
+        // 커스텀 텍스트 추출 (모든 옵션 제거 후)
+        let userOnlyText = newText;
+        styleOptions.forEach(style => {
+          userOnlyText = removeOptionText(userOnlyText, "스타일", style.label);
+        });
+        pocketOptions.forEach(pocket => {
+          userOnlyText = removeOptionText(userOnlyText, "포켓", pocket.label);
+        });
+        colorOptions.forEach(color => {
+          userOnlyText = removeOptionText(userOnlyText, "색상", color.label);
+        });
+        fitOptions.forEach(fit => {
+          userOnlyText = removeOptionText(userOnlyText, "핏", fit.label);
+        });
+        
+        // 사용자 텍스트와 모든 옵션 합치기
+        const allOptionsText = generateOptionsText().replace(
+          `${typeLabel}: ${selectedOption.label}`, ''
+        ).trim();
+        
+        // 최종 텍스트 구성
+        newText = [
+          userOnlyText.trim(),
+          newOptionText,
+          allOptionsText
+        ].filter(Boolean).join('\n');
+      }
+    }
+    
+    // 중복 줄바꿈 제거 및 정리
+    newText = newText.split('\n')
+      .filter(line => line.trim() !== '')
+      .join('\n');
+    
+    // 텍스트 영역 업데이트
+    onDetailInputChange(newText);
   };
 
   // 컴포넌트 마운트 시 커스텀 사용자 텍스트 초기화
@@ -222,6 +312,7 @@ export const useDetailText = ({
   };
 
   return {
-    handleTextAreaChange
+    handleTextAreaChange,
+    handleOptionSelect
   };
 };

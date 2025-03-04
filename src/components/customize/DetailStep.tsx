@@ -32,7 +32,7 @@ export const DetailStep = ({
   onColorSelect,
   onFitSelect = () => {},
 }: DetailStepProps) => {
-  const { handleTextAreaChange } = useDetailText({
+  const { handleTextAreaChange, handleOptionSelect } = useDetailText({
     detailInput,
     selectedStyle,
     selectedPocket,
@@ -63,28 +63,28 @@ export const DetailStep = ({
         <StyleSelect 
           selectedStyle={selectedStyle} 
           styleOptions={styleOptions} 
-          onStyleSelect={onStyleSelect} 
+          onStyleSelect={(value) => handleOptionSelect('style', value)} 
         />
 
         {/* Fit Selection */}
         <FitSelect 
           selectedFit={selectedFit} 
           fitOptions={fitOptions} 
-          onFitSelect={onFitSelect} 
+          onFitSelect={(value) => handleOptionSelect('fit', value)} 
         />
 
         {/* Pocket Selection */}
         <PocketSelect 
           selectedPocket={selectedPocket} 
           pocketOptions={pocketOptions} 
-          onPocketSelect={onPocketSelect} 
+          onPocketSelect={(value) => handleOptionSelect('pocket', value)} 
         />
 
         {/* Color Selection */}
         <ColorSelect 
           selectedColor={selectedColor} 
           colorOptions={colorOptions} 
-          onColorSelect={onColorSelect} 
+          onColorSelect={(value) => handleOptionSelect('color', value)} 
         />
       </div>
     </div>

@@ -110,7 +110,8 @@ export const generateImage = async (
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
-              detail: selectedDetail
+              detailDescription: selectedDetail,
+              generationPrompt: prompt // Store the actual GPT generation prompt
             }
           }
         );

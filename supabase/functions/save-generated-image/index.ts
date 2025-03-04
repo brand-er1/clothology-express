@@ -31,7 +31,8 @@ serve(async (req) => {
       prompt,
       clothType,
       material,
-      detailDescription
+      detailDescription,
+      generationPrompt  // Add generationPrompt to store the GPT prompt
     } = requestData;
 
     // Validate inputs
@@ -54,7 +55,8 @@ serve(async (req) => {
         cloth_type: clothType,
         material: material,
         detail: detailDescription, // Use only the unified detail description
-        created_at: new Date().toISOString() // Explicitly set the creation timestamp
+        created_at: new Date().toISOString(), // Explicitly set the creation timestamp
+        generation_prompt: generationPrompt // Save the GPT generation prompt
       })
       .select();
 

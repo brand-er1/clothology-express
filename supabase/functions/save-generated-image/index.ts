@@ -31,7 +31,11 @@ serve(async (req) => {
       prompt,
       clothType,
       material,
-      detailDescription
+      detail, // 디테일을 우선시
+      style,
+      pocket,
+      color,
+      fit
     } = requestData;
 
     // Validate inputs
@@ -40,6 +44,18 @@ serve(async (req) => {
         JSON.stringify({ error: "Missing required fields: userId, originalImageUrl, or prompt" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
+    }
+
+    // 디테일 텍스트 우선시, 디테일이 없는 경우에만 개별 옵션으로 설명 구성
+    let detailDescription = detail;
+    if (!detailDescription || detailDescription.trim() === '') {
+      let optionDetails = [];
+      if (style) optionDetails.push(`스타일: ${style}`);
+      if (pocket) optionDetails.push(`포켓: ${pocket}`);
+      if (color) optionDetails.push(`색상: ${color}`);
+      if (fit) optionDetails.push(`핏: ${fit}`);
+      
+      detailDescription = optionDetails.join(', ');
     }
 
     // Insert data into generated_images table
@@ -53,8 +69,8 @@ serve(async (req) => {
         prompt: prompt,
         cloth_type: clothType,
         material: material,
-        detail: detailDescription, // Use only the unified detail description
-        created_at: new Date().toISOString() // Explicitly set the creation timestamp
+        detail: detailDescription, // 통합된 설명 사용
+        created_at: new Date().toISOString() // 생성 타임스탬프 명시적 설정
       })
       .select();
 

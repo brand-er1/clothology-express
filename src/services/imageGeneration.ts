@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { clothTypes } from "@/lib/customize-constants";
@@ -36,14 +35,22 @@ export const generateImage = async (
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
     
-    // Construct the generation prompt
-    const prompt = `${selectedMaterialName} ${selectedClothType}, ` +
-      (selectedDetail ? `${selectedDetail}, ` : '') +
-      (selectedStyle ? `${selectedStyle} 스타일, ` : '') +
-      (selectedPocket ? `${selectedPocket} 포켓, ` : '') +
-      (selectedColor ? `${selectedColor} 색상, ` : '') +
-      (selectedFit ? `${selectedFit} 핏, ` : '') +
-      `고해상도, 프로덕트 이미지`;
+    // Construct the generation prompt using only the detail text
+    // 이 부분이 중요합니다: selectedDetail을 우선시함
+    let prompt;
+    
+    if (selectedDetail && selectedDetail.trim() !== '') {
+      // 상세 설명이 있을 경우 그것을 기반으로 프롬프트 생성
+      prompt = `${selectedMaterialName} ${selectedClothType}, ${selectedDetail}, 고해상도, 프로덕트 이미지`;
+    } else {
+      // 상세 설명이 없을 경우에만 개별 옵션 사용
+      prompt = `${selectedMaterialName} ${selectedClothType}, ` +
+        (selectedStyle ? `${selectedStyle} 스타일, ` : '') +
+        (selectedPocket ? `${selectedPocket} 포켓, ` : '') +
+        (selectedColor ? `${selectedColor} 색상, ` : '') +
+        (selectedFit ? `${selectedFit} 핏, ` : '') +
+        `고해상도, 프로덕트 이미지`;
+    }
 
     console.log("Generation prompt:", prompt);
 

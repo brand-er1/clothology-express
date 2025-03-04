@@ -43,6 +43,10 @@ export const DetailStep = ({
     colorOptions,
     fitOptions,
     onDetailInputChange,
+    onStyleSelect,
+    onPocketSelect,
+    onColorSelect,
+    onFitSelect,
   });
 
   return (

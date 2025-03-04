@@ -106,11 +106,7 @@ export const useCustomizeForm = () => {
       const result = await generateImage(
         selectedType,
         selectedMaterial,
-        selectedStyle,
-        selectedColor,
-        selectedPocket,
         selectedDetail,
-        selectedFit, // 추가: 핏 정보 전달
         materials,
         true // 항상 true로 설정하여 항상 진행 상태 저장
       );
@@ -135,10 +131,6 @@ export const useCustomizeForm = () => {
       console.log("Order data:", {
         selectedType,
         selectedMaterial,
-        selectedStyle,
-        selectedPocket,
-        selectedColor,
-        selectedFit, // 추가: 핏 정보 포함
         selectedDetail,
         selectedSize,
         customMeasurements,
@@ -155,11 +147,7 @@ export const useCustomizeForm = () => {
       const success = await createOrder(
         selectedType,
         selectedMaterial,
-        selectedStyle,
-        selectedPocket,
-        selectedColor,
         selectedDetail,
-        selectedFit, // 추가: 핏 정보 전달
         finalSize,
         customMeasurements,
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available

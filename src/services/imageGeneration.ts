@@ -8,11 +8,7 @@ import { createDraftOrder } from "./orderCreation";
 export const generateImage = async (
   selectedType: string,
   selectedMaterial: string,
-  selectedStyle: string,
-  selectedColor: string,
-  selectedPocket: string,
   selectedDetail: string,
-  selectedFit: string,
   materials: Material[],
   saveAsDraft: boolean = true,
 ) => {
@@ -36,16 +32,11 @@ export const generateImage = async (
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
     
-    const selectedStyleName = styleOptions.find(style => style.value === selectedStyle)?.label || selectedStyle;
-    const selectedPocketName = pocketOptions.find(pocket => pocket.value === selectedPocket)?.label || selectedPocket;
-    const selectedColorName = colorOptions.find(color => color.value === selectedColor)?.label || selectedColor;
-    const selectedFitName = fitOptions.find(fit => fit.value === selectedFit)?.label || selectedFit;
 
     // Construct the generation prompt
-    const prompt = `${selectedColorName} ${selectedMaterialName} ${selectedClothType}, ${selectedStyleName} 스타일, ${selectedFitName}, ` +
-      (selectedPocket !== 'none' ? `${selectedPocketName}, ` : '') +
+    const prompt = `${selectedMaterialName} ${selectedClothType}, ` +
       (selectedDetail ? `${selectedDetail}, ` : '') +
-      `인체 없는 의류 사진, 고해상도, 프로덕트 이미지`;
+      `고해상도, 프로덕트 이미지`;
 
     console.log("Generation prompt:", prompt);
 
@@ -104,10 +95,7 @@ export const generateImage = async (
     // Create a formatted description with the selections
     let detailDesc = '';
     if (selectedDetail) detailDesc += selectedDetail + '\n';
-    if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
-    if (selectedPocketName && selectedPocket !== 'none') detailDesc += `포켓: ${selectedPocketName}\n`;
-    if (selectedColorName) detailDesc += `색상: ${selectedColorName}\n`;
-    if (selectedFitName) detailDesc += `핏: ${selectedFitName}`;
+
     
     detailDesc = detailDesc.trim();
 
@@ -147,11 +135,7 @@ export const generateImage = async (
       await createDraftOrder(
         selectedType,
         selectedMaterial,
-        selectedStyle,
-        selectedPocket,
-        selectedColor,
         selectedDetail,
-        selectedFit,
         storedImageUrl || imageUrl, // Prefer stored URL if available
         imagePath,
         materials

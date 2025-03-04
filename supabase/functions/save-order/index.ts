@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
         throw error;
       }
       
-      result = { id: existingOrder.id, updated: true, data };
+      result = { id: existingOrder.id, updated: true, data, success: true };
       console.log('Updated existing order:', existingOrder.id);
     } else {
       // Insert new order
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
         throw error;
       }
       
-      result = { id: data?.[0]?.id, created: true, data };
+      result = { id: data?.[0]?.id, created: true, data, success: true };
       console.log('Created new order:', data?.[0]?.id);
     }
 
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error processing order:', error);
     
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error.message, success: false }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

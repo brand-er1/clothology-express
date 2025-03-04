@@ -199,7 +199,10 @@ export const createOrder = async (
       description: "주문이 성공적으로 접수되었습니다.",
     });
     
-    return true;
+    return {
+      success: true,
+      redirectToConfirmation: true
+    };
   } catch (error: any) {
     console.error("Order creation error:", error);
     toast({

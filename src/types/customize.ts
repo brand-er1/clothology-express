@@ -39,3 +39,8 @@ export interface UseCustomizeFormState {
   customMeasurements: CustomMeasurements;
   sizeTableData: SizeTableItem[];
 }
+
+export interface OrderCreationResult {
+  success: boolean;
+  redirectToConfirmation?: boolean;
+}

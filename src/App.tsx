@@ -7,6 +7,7 @@ import Auth from "@/pages/Auth";
 import Admin from "@/pages/Admin";
 import Orders from "@/pages/Orders";
 import Customize from "@/pages/Customize";
+import OrderConfirmation from "@/pages/OrderConfirmation";
 import NotFound from "@/pages/NotFound";
 import Profile from "@/pages/Profile";
 
@@ -37,6 +38,14 @@ function App() {
           element={
             <AuthGuard>
               <Customize />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/order-confirmation"
+          element={
+            <AuthGuard>
+              <OrderConfirmation />
             </AuthGuard>
           }
         />

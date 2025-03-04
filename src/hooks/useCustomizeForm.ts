@@ -153,35 +153,37 @@ export const useCustomizeForm = () => {
         sizeTableData
       });
 
-      // If no size is selected, use default size 'M'
-      const finalSize = selectedSize || "M";
-      
-      const success = await createOrder(
-        selectedType,
-        selectedMaterial,
-        selectedDetail,
-        finalSize,
-        customMeasurements,
-        storedImageUrl || generatedImageUrl, // Prefer stored URL if available
-        imagePath, // Include the storage path
-        materials,
-        sizeTableData // Pass the edited size measurements directly
-      );
-      
-      if (success) {
-        navigate("/orders");
-      }
-    } catch (error) {
-      console.error("Error creating order:", error);
-      toast({
-        title: "주문 실패",
-        description: "주문 생성 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    // If no size is selected, use default size 'M'
+    const finalSize = selectedSize || "M";
+    
+    const result = await createOrder(
+      selectedType,
+      selectedMaterial,
+      selectedDetail,
+      finalSize,
+      customMeasurements,
+      storedImageUrl || generatedImageUrl, // Prefer stored URL if available
+      imagePath, // Include the storage path
+      materials,
+      sizeTableData // Pass the edited size measurements directly
+    );
+    
+    if (result && result.redirectToConfirmation) {
+      navigate("/order-confirmation");
+    } else if (result && result.success) {
+      navigate("/orders");
     }
-  };
+  } catch (error) {
+    console.error("Error creating order:", error);
+    toast({
+      title: "주문 실패",
+      description: "주문 생성 중 오류가 발생했습니다.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleNext = () => {
     if (!validateCurrentStep()) {

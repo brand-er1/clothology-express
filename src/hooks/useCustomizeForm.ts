@@ -155,10 +155,6 @@ export const useCustomizeForm = () => {
         selectedType,
         selectedMaterial,
         selectedDetail,
-        selectedStyle,
-        selectedPocket,
-        selectedColor,
-        selectedFit,
         finalSize,
         customMeasurements,
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available

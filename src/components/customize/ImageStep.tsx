@@ -11,6 +11,10 @@ interface ImageStepProps {
   selectedType: string;
   selectedMaterial: string;
   selectedDetail: string;
+  selectedStyle?: string;
+  selectedColor?: string;
+  selectedPocket?: string;
+  selectedFit?: string;
   onGenerateImage: () => void;
 }
 
@@ -21,6 +25,10 @@ export const ImageStep = ({
   selectedType,
   selectedMaterial,
   selectedDetail,
+  selectedStyle,
+  selectedColor,
+  selectedPocket,
+  selectedFit,
   onGenerateImage,
 }: ImageStepProps) => {
   // Prefer stored image URL if available

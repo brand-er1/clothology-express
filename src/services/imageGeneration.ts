@@ -106,7 +106,7 @@ export const generateImage = async (
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
-              detail: selectedDetail // Use the detail field
+              detail: selectedDetail
             }
           }
         );
@@ -128,7 +128,7 @@ export const generateImage = async (
         selectedType,
         selectedMaterial,
         selectedDetail,
-        storedImageUrl || imageUrl, // Prefer stored URL if available
+        storedImageUrl || imageUrl,
         imagePath,
         materials
       );

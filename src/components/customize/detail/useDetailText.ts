@@ -76,7 +76,7 @@ export const useDetailText = ({
     return result.replace(pattern, '').trim();
   };
   
-  // 선택된 옵션에 대한 텍스트 생성 (중복 없이)
+  // 선택된 옵션에 대한 텍스트 생성
   const generateOptionsText = () => {
     const optionLines = [];
     
@@ -111,29 +111,6 @@ export const useDetailText = ({
     return optionLines.join('\n');
   };
 
-  // 모든 옵션을 한번에 업데이트하는 함수
-  const updateDetailTextWithAllOptions = () => {
-    // 사용자 텍스트에서 모든 옵션 관련 텍스트 제거
-    const userTextOnly = removeAllOptionKeywords(detailInput);
-    setCustomUserText(userTextOnly);
-    
-    // 옵션 텍스트 생성
-    const optionsText = generateOptionsText();
-    
-    // 사용자 텍스트와 옵션 텍스트 조합
-    let finalText = "";
-    if (userTextOnly.trim() && optionsText) {
-      finalText = `${userTextOnly.trim()}\n${optionsText}`;
-    } else if (optionsText) {
-      finalText = optionsText;
-    } else {
-      finalText = userTextOnly.trim();
-    }
-    
-    // 텍스트 업데이트
-    onDetailInputChange(finalText);
-  };
-
   // 텍스트에서 옵션 값 추출하는 함수
   const extractOptionFromText = (text: string, optionType: string, options: any[]): string => {
     // "옵션유형: 값" 형식의 패턴 찾기
@@ -152,21 +129,31 @@ export const useDetailText = ({
 
   // 옵션 선택 시 텍스트 영역에 해당 내용 업데이트하는 함수
   const handleOptionSelect = (optionType: 'style' | 'pocket' | 'color' | 'fit', value: string) => {
-    // 옵션에 맞는 세터 함수 선택
+    // 옵션에 맞는 세터 함수와 옵션 배열 선택
+    let optionsArray: any[] = [];
     let setterFunc: (value: string) => void;
+    let typeLabel = "";
     
     switch (optionType) {
       case 'style':
+        optionsArray = styleOptions;
         setterFunc = onStyleSelect;
+        typeLabel = '스타일';
         break;
       case 'pocket':
+        optionsArray = pocketOptions;
         setterFunc = onPocketSelect;
+        typeLabel = '포켓';
         break;
       case 'color':
+        optionsArray = colorOptions;
         setterFunc = onColorSelect;
+        typeLabel = '색상';
         break;
       case 'fit':
+        optionsArray = fitOptions;
         setterFunc = onFitSelect;
+        typeLabel = '핏';
         break;
       default:
         return;
@@ -175,19 +162,58 @@ export const useDetailText = ({
     // 선택한 값 업데이트
     setterFunc(value);
     
-    // 모든 옵션을 포함한 텍스트로 업데이트
-    updateDetailTextWithAllOptions();
+    // 사용자 텍스트에서 해당 옵션 타입 키워드 제거
+    let cleanedText = removeOptionTypeKeywords(detailInput, typeLabel);
+    
+    // 사용자 커스텀 텍스트 추출 (사용자가 입력한 옵션 관련 내용 외의 텍스트)
+    let userOnlyText = customUserText;
+    
+    // 새로운 옵션이 선택된 경우에만 텍스트 추가
+    if (value) {
+      const selectedOption = optionsArray.find(option => option.value === value);
+      if (selectedOption) {
+        const newOptionText = `${typeLabel}: ${selectedOption.label}`;
+        
+        // 옵션 텍스트와 사용자 텍스트 조합
+        const allOptionsText = removeOptionTypeKeywords(generateOptionsText(), typeLabel);
+        
+        // 최종 텍스트 구성
+        cleanedText = [
+          userOnlyText.trim(),
+          newOptionText,
+          allOptionsText
+        ].filter(Boolean).join('\n');
+      }
+    } else {
+      // 옵션이 선택 해제된 경우 해당 옵션을 제외한 나머지 옵션 텍스트만 유지
+      cleanedText = [
+        userOnlyText.trim(),
+        generateOptionsText().replace(new RegExp(`${typeLabel}\\s*:[^\\n]*`, 'g'), '').trim()
+      ].filter(Boolean).join('\n');
+    }
+    
+    // 중복 줄바꿈 제거 및 정리
+    cleanedText = cleanedText.split('\n')
+      .filter(line => line.trim() !== '')
+      .join('\n');
+    
+    // 텍스트 영역 업데이트
+    onDetailInputChange(cleanedText);
   };
 
-  // 컴포넌트 마운트 시 초기화
+  // 컴포넌트 마운트 시 커스텀 사용자 텍스트 초기화
   useEffect(() => {
+    // 모든 옵션 텍스트를 제거하여 커스텀 텍스트 추출
+    const userText = removeAllOptionKeywords(detailInput);
+    setCustomUserText(userText);
+    
     // 텍스트에서 옵션 값 추출하여 선택기 업데이트
     const styleFromText = extractOptionFromText(detailInput, "스타일", styleOptions);
     const pocketFromText = extractOptionFromText(detailInput, "포켓", pocketOptions);
     const colorFromText = extractOptionFromText(detailInput, "색상", colorOptions);
     const fitFromText = extractOptionFromText(detailInput, "핏", fitOptions);
     
-    // 텍스트에서 추출한 값으로 선택기 업데이트 (값이 있을 때만)
+    // 텍스트에서 추출한 값으로 선택기 업데이트
     if (styleFromText && styleFromText !== selectedStyle) {
       onStyleSelect(styleFromText);
     }
@@ -203,10 +229,6 @@ export const useDetailText = ({
     if (fitFromText && fitFromText !== selectedFit) {
       onFitSelect(fitFromText);
     }
-    
-    // 모든 옵션 키워드를 제거한 사용자 텍스트 추출
-    const userText = removeAllOptionKeywords(detailInput);
-    setCustomUserText(userText);
   }, []);
 
   // 수동 텍스트 영역 변경 처리
@@ -222,7 +244,7 @@ export const useDetailText = ({
     
     // 텍스트에서 추출한 값으로 선택기 업데이트
     if (styleFromText !== selectedStyle) {
-      onStyleSelect(styleFromText || "");
+      onStyleSelect(styleFromText || ""); // 텍스트에서 옵션이 제거되면 선택도 제거
     }
     
     if (pocketFromText !== selectedPocket) {

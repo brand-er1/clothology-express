@@ -1,66 +1,58 @@
 
-import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/components/ui/use-toast";
 
 /**
- * Stores a generated image in Supabase storage via the edge function
+ * Stores a generated image in Supabase storage
  */
 export const storeGeneratedImage = async (
-  imageUrl: string,
-  userId: string | undefined,
-  clothType: string
+  imageUrl: string, 
+  userId: string,
+  clothType?: string
 ): Promise<{
-  storedImageUrl: string | null;
-  imagePath: string | null;
   success: boolean;
+  storedImageUrl?: string;
+  imagePath?: string;
+  message?: string;
 }> => {
-  if (!userId || !imageUrl) {
-    console.error("Missing user ID or image URL for storage");
-    return { storedImageUrl: null, imagePath: null, success: false };
-  }
-
   try {
-    console.log("Starting image storage process with URL:", imageUrl);
-    
-    // Store the generated image in Supabase Storage with sanitized filename
-    const { data: storeData, error: storeError } = await supabase.functions.invoke(
-      'store-generated-image',
+    // Call the new Edge Function to store the image
+    const { data, error } = await supabase.functions.invoke(
+      'store-generated-image2',  // Using the new Edge Function
       {
         body: { 
-          imageUrl,
+          imageUrl, 
           userId,
           clothType
         }
       }
     );
-
-    if (storeError) {
-      console.error("Image storage error:", storeError);
-      return { storedImageUrl: null, imagePath: null, success: false };
+    
+    if (error) {
+      console.error("Error storing image:", error);
+      return { 
+        success: false, 
+        message: `Failed to store image: ${error.message}`
+      };
     }
     
-    console.log("Image storage result:", storeData);
-    
-    // Get the storage path and public URL
-    const imagePath = storeData?.imagePath || null;
-    const storedImageUrl = storeData?.storedImageUrl || null;
-    
-    if (imagePath) {
-      console.log("Stored image path:", imagePath);
-      console.log("Stored image URL:", storedImageUrl);
-      return { storedImageUrl, imagePath, success: true };
-    } else {
-      console.warn("Storage succeeded but no image path or URL returned");
-      return { storedImageUrl: null, imagePath: null, success: false };
-    }
-  } catch (storageError) {
-    console.error("Failed to store image:", storageError);
-    return { storedImageUrl: null, imagePath: null, success: false };
+    return {
+      success: true,
+      storedImageUrl: data.storedImageUrl,
+      imagePath: data.imagePath,
+      message: data.message
+    };
+  } catch (error: any) {
+    console.error("Error in storeGeneratedImage:", error);
+    return { 
+      success: false, 
+      message: `Failed to store image: ${error.message}`
+    };
   }
 };
 
 /**
- * Saves image metadata to the database via the edge function
+ * Saves metadata about a generated image to the database
  */
 export const saveImageMetadata = async (
   userId: string,
@@ -68,13 +60,13 @@ export const saveImageMetadata = async (
   storedImageUrl: string | null,
   imagePath: string | null,
   prompt: string,
-  clothType: string,
-  material: string,
-  detailDescription: string
+  clothType?: string,
+  material?: string,
+  detailDescription?: string
 ): Promise<boolean> => {
   try {
-    // Store image information in the generated_images table
-    const { data: imageData, error: imageError } = await supabase.functions.invoke(
+    // Call the Edge Function to save the metadata
+    const { error } = await supabase.functions.invoke(
       'save-generated-image',
       {
         body: {
@@ -89,16 +81,20 @@ export const saveImageMetadata = async (
         }
       }
     );
-
-    if (imageError) {
-      console.error("Failed to save image data:", imageError);
+    
+    if (error) {
+      console.error("Error saving image metadata:", error);
+      toast({
+        title: "저장 실패",
+        description: "이미지 메타데이터를 저장하는데 실패했습니다.",
+        variant: "destructive",
+      });
       return false;
     }
     
-    console.log("Image data saved:", imageData);
     return true;
-  } catch (saveError) {
-    console.error("Error saving image data:", saveError);
+  } catch (error: any) {
+    console.error("Error in saveImageMetadata:", error);
     return false;
   }
 };

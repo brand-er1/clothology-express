@@ -46,7 +46,7 @@ serve(async (req) => {
     // Avoid using clothType since it might contain Korean characters
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `${userId ? userId.slice(0, 8) + '_' : ''}${timestamp}_${crypto.randomUUID()}.jpg`;
-
+    console.log(fileName);
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from('generated_images')

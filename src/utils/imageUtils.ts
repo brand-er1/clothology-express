@@ -36,6 +36,15 @@ export const storeGeneratedImage = async (
       };
     }
     
+    // Make sure we have a proper data object
+    if (!data) {
+      console.error("No data returned from store-generated-image2");
+      return {
+        success: false,
+        message: "No data returned from image storage function"
+      };
+    }
+    
     return {
       success: true,
       storedImageUrl: data.storedImageUrl,

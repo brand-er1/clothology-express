@@ -59,11 +59,15 @@ serve(async (req) => {
     // Check if bucket exists, create if it doesn't
     try {
       const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'generated_images');
+      if (!buckets) {
+        throw new Error('Failed to list buckets');
+      }
+      
+      const bucketExists = buckets.some(bucket => bucket.name === 'generated_images');
       
       if (!bucketExists) {
         console.log('Bucket does not exist, creating...');
-        const { data: bucketData, error: bucketError } = await supabase.storage
+        const { error: bucketError } = await supabase.storage
           .createBucket('generated_images', {
             public: true,
             fileSizeLimit: 10485760 // 10MB
@@ -73,7 +77,7 @@ serve(async (req) => {
           console.error('Bucket creation error:', bucketError);
           throw bucketError;
         }
-        console.log('Bucket created successfully:', bucketData);
+        console.log('Bucket created successfully');
       }
     } catch (bucketError) {
       console.error('Error checking/creating bucket:', bucketError);
@@ -120,7 +124,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to store image',
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error)
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 500 }
     );

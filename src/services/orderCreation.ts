@@ -18,8 +18,8 @@ export const createDraftOrder = async (
   materials: Material[]
 ) => {
   try {
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user;
     
     if (!user) {
       console.log("User not logged in, can't save draft");
@@ -125,8 +125,8 @@ export const createOrder = async (
   sizeTableData?: SizeTableItem[]
 ) => {
   try {
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user;
     
     if (!user) {
       toast({

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { clothTypes } from "@/lib/customize-constants";
@@ -24,8 +25,8 @@ export const generateClothingImage = async (
   prompt: string;
 } | null> => {
   try {
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user;
     
     if (!user) {
       toast({

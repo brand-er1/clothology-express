@@ -39,8 +39,8 @@ export const useProfileForm = () => {
 
   const loadUserProfile = async () => {
     try {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
       
       if (!user) {
         navigate("/auth");
@@ -94,8 +94,8 @@ export const useProfileForm = () => {
     setIsLoading(true);
 
     try {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
       if (!user) throw new Error("로그인이 필요합니다.");
 
       const fullAddress = formData.addressDetail 

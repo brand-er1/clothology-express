@@ -91,18 +91,10 @@ export const generateImage = async (
           console.error("Image storage error:", storeError);
         } else {
           console.log("Image storage result:", storeData);
-          // Get the path and create a public URL for the stored image
-          if (storeData?.path) {
-            imagePath = storeData.path;
-            const { data: publicUrlData } = supabase.storage
-              .from('generated_images')
-              .getPublicUrl(imagePath);
-            
-            if (publicUrlData) {
-              storedImageUrl = publicUrlData.publicUrl;
-              console.log("Stored image public URL:", storedImageUrl);
-            }
-          }
+          // Get the storage URL and path from the response
+          storedImageUrl = storeData?.storedImageUrl || null;
+          imagePath = storeData?.imagePath || null;
+          console.log("Stored image public URL:", storedImageUrl);
         }
       } catch (storageError) {
         console.error("Failed to store image:", storageError);

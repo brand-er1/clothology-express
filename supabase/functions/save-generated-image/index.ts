@@ -31,7 +31,7 @@ serve(async (req) => {
       prompt,
       clothType,
       material,
-      detail, // 디테일을 우선시
+      detailDescription
     } = requestData;
 
     // Validate inputs
@@ -41,11 +41,6 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-
-    // 디테일 텍스트 우선시, 디테일이 없는 경우에만 개별 옵션으로 설명 구성
-    let detailDescription = detail;
-
-      
 
     // Insert data into generated_images table
     const { data, error } = await supabase
@@ -58,8 +53,8 @@ serve(async (req) => {
         prompt: prompt,
         cloth_type: clothType,
         material: material,
-        detail: detailDescription, // 통합된 설명 사용
-        created_at: new Date().toISOString() // 생성 타임스탬프 명시적 설정
+        detail: detailDescription, // Use only the unified detail description
+        created_at: new Date().toISOString() // Explicitly set the creation timestamp
       })
       .select();
 

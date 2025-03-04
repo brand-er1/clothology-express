@@ -9,6 +9,10 @@ export const createDraftOrder = async (
   selectedType: string,
   selectedMaterial: string,
   selectedDetail: string,
+  selectedStyle: string,
+  selectedPocket: string,
+  selectedColor: string,
+  selectedFit: string,
   generatedImageUrl: string | null,
   imagePath: string | null,
   materials: Material[]
@@ -37,6 +41,30 @@ export const createDraftOrder = async (
     // Create a formatted description with the selections
     let detailDesc = '';
 
+    // Add style if selected
+    if (selectedStyle) {
+      const styleLabel = styleOptions.find(opt => opt.value === selectedStyle)?.label || selectedStyle;
+      detailDesc += `스타일: ${styleLabel}, `;
+    }
+
+    // Add pocket if selected
+    if (selectedPocket) {
+      const pocketLabel = pocketOptions.find(opt => opt.value === selectedPocket)?.label || selectedPocket;
+      detailDesc += `포켓: ${pocketLabel}, `;
+    }
+
+    // Add color if selected
+    if (selectedColor) {
+      const colorLabel = colorOptions.find(opt => opt.value === selectedColor)?.label || selectedColor;
+      detailDesc += `색상: ${colorLabel}, `;
+    }
+
+    // Add fit if selected
+    if (selectedFit) {
+      const fitLabel = fitOptions.find(opt => opt.value === selectedFit)?.label || selectedFit;
+      detailDesc += `핏: ${fitLabel}, `;
+    }
+
     // Add custom details
     if (customDetailText) {
       detailDesc += `상세: ${customDetailText}`;
@@ -54,6 +82,10 @@ export const createDraftOrder = async (
         clothType: selectedClothType,
         material: selectedMaterialName,
         detailDescription: detailDesc,
+        style: selectedStyle,
+        pocket: selectedPocket,
+        color: selectedColor,
+        fit: selectedFit,
         generatedImageUrl: generatedImageUrl,
         imagePath: imagePath,
         status: 'draft' // Set as draft initially
@@ -77,6 +109,10 @@ export const createOrder = async (
   selectedType: string,
   selectedMaterial: string,
   selectedDetail: string,
+  selectedStyle: string,
+  selectedPocket: string,
+  selectedColor: string,
+  selectedFit: string,
   selectedSize: string,
   customMeasurements: CustomMeasurements,
   generatedImageUrl: string | null,
@@ -112,6 +148,29 @@ export const createOrder = async (
     // Create a formatted description with the selections
     let detailDesc = '';
 
+    // Add style if selected
+    if (selectedStyle) {
+      const styleLabel = styleOptions.find(opt => opt.value === selectedStyle)?.label || selectedStyle;
+      detailDesc += `스타일: ${styleLabel}, `;
+    }
+
+    // Add pocket if selected
+    if (selectedPocket) {
+      const pocketLabel = pocketOptions.find(opt => opt.value === selectedPocket)?.label || selectedPocket;
+      detailDesc += `포켓: ${pocketLabel}, `;
+    }
+
+    // Add color if selected
+    if (selectedColor) {
+      const colorLabel = colorOptions.find(opt => opt.value === selectedColor)?.label || selectedColor;
+      detailDesc += `색상: ${colorLabel}, `;
+    }
+
+    // Add fit if selected
+    if (selectedFit) {
+      const fitLabel = fitOptions.find(opt => opt.value === selectedFit)?.label || selectedFit;
+      detailDesc += `핏: ${fitLabel}, `;
+    }
 
     // Add custom details
     if (customDetailText) {
@@ -163,6 +222,10 @@ export const createOrder = async (
       cloth_type: selectedClothType,
       material: selectedMaterialName,
       detail_description: detailDesc.trim(),
+      style: selectedStyle,
+      pocket: selectedPocket,
+      color: selectedColor,
+      fit: selectedFit,
       size: selectedSize,
       measurements: measurementsData,
       generated_image_url: finalImageUrl,
@@ -176,6 +239,10 @@ export const createOrder = async (
         clothType: selectedClothType,
         material: selectedMaterialName,
         detailDescription: detailDesc.trim(),
+        style: selectedStyle,
+        pocket: selectedPocket,
+        color: selectedColor,
+        fit: selectedFit,
         size: selectedSize,
         measurements: measurementsData,
         generatedImageUrl: finalImageUrl,

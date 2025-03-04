@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Table, 
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Order } from "@/types/order";
 import { OrderDetails } from "./OrderDetails";
-import { ShoppingBag, Clock, CheckCircle, XCircle, Trash2, AlertTriangle } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, XCircle, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 
 interface OrderListProps {
   orders: Order[];

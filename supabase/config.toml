@@ -29,12 +29,6 @@ enable_signup = true
 [storage]
 file_size_limit = "10MiB"
 
-[vector]
-enable = true
-
-[edge_functions]
-port = 54326
-
 [functions]
 port = 8000
 

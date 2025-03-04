@@ -57,7 +57,7 @@ export const createDraftOrder = async (
     // Clean up any extra commas, line breaks or whitespace
     customDetailText = customDetailText.replace(/,+/g, ',').replace(/\n+/g, '\n').trim();
     
-    // Create a formatted description with the selections
+    // Create a formatted description with the selections for display purposes
     let detailDesc = '';
     if (customDetailText) detailDesc += customDetailText + '\n';
     if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
@@ -74,6 +74,11 @@ export const createDraftOrder = async (
         clothType: selectedClothType,
         material: selectedMaterialName,
         detailDescription: detailDesc,
+        style: selectedStyleName,        // Store style separately
+        pocket: selectedPocketName,      // Store pocket separately 
+        color: selectedColorName,        // Store color separately
+        fit: selectedFitName,            // Store fit separately
+        customDetail: customDetailText,  // Store only the custom text
         generatedImageUrl: generatedImageUrl,
         imagePath: imagePath,
         status: 'draft' // Set as draft initially
@@ -152,7 +157,7 @@ export const createOrder = async (
     // Clean up any extra commas, line breaks or whitespace
     customDetailText = customDetailText.replace(/,+/g, ',').replace(/\n+/g, '\n').trim();
     
-    // Create a formatted description with the selections
+    // Create a formatted description with the selections for display purposes
     let detailDesc = '';
     if (customDetailText) detailDesc += customDetailText + '\n';
     if (selectedStyleName) detailDesc += `스타일: ${selectedStyleName}\n`;
@@ -202,6 +207,11 @@ export const createOrder = async (
       cloth_type: selectedClothType,
       material: selectedMaterialName,
       detail_description: detailDesc.trim(),
+      style: selectedStyleName,
+      pocket: selectedPocketName,
+      color: selectedColorName,
+      fit: selectedFitName,
+      custom_detail: customDetailText,
       size: selectedSize,
       measurements: measurementsData,
       generated_image_url: finalImageUrl,
@@ -215,6 +225,11 @@ export const createOrder = async (
         clothType: selectedClothType,
         material: selectedMaterialName,
         detailDescription: detailDesc.trim(),
+        style: selectedStyleName,        // Store style separately
+        pocket: selectedPocketName,      // Store pocket separately 
+        color: selectedColorName,        // Store color separately
+        fit: selectedFitName,            // Store fit separately
+        customDetail: customDetailText,  // Store only the custom text
         size: selectedSize,
         measurements: measurementsData,
         generatedImageUrl: finalImageUrl,

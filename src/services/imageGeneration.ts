@@ -126,7 +126,11 @@ export const generateImage = async (
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
-              detailDescription: detailDesc // Use a single unified detail description
+              style: selectedStyleName,        // Store style separately
+              pocket: selectedPocketName,      // Store pocket separately 
+              color: selectedColorName,        // Store color separately
+              fit: selectedFitName,            // Store fit separately
+              detail: selectedDetail           // Store custom detail text only
             }
           }
         );

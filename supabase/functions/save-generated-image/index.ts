@@ -31,7 +31,11 @@ serve(async (req) => {
       prompt,
       clothType,
       material,
-      detailDescription
+      style,           // Get style separately
+      pocket,          // Get pocket separately
+      color,           // Get color separately
+      fit,             // Get fit separately
+      detail           // Get only the custom detail
     } = requestData;
 
     // Validate inputs
@@ -53,7 +57,11 @@ serve(async (req) => {
         prompt: prompt,
         cloth_type: clothType,
         material: material,
-        detail: detailDescription, // Use only the unified detail description
+        style: style,           // Store style separately
+        pocket: pocket,         // Store pocket separately
+        color: color,           // Store color separately
+        fit: fit,               // Store fit separately
+        detail: detail,         // Store only the custom detail text
         created_at: new Date().toISOString() // Explicitly set the creation timestamp
       })
       .select();

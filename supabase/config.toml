@@ -52,10 +52,5 @@ secret = ""
 redirect_uri = ""
 
 [functions]
-# Port must be defined inside a proper TOML table/section
 port = 54321
-
-# The import_map should also be properly structured according to TOML format
-# Using a simple string value for the source instead of a nested table with invalid keys
 import_map = "import_map.json"
-

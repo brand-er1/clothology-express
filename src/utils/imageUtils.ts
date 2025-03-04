@@ -18,7 +18,7 @@ export const storeGeneratedImage = async (
   try {
     // Call the new Edge Function to store the image
     const { data, error } = await supabase.functions.invoke(
-      'store-generated-image',  // Using the new Edge Function
+      'store-generated-image2',  // Using the new Edge Function
       {
         body: { 
           imageUrl, 

@@ -24,7 +24,6 @@ serve(async (req) => {
 
     // Get request data
     const { imageUrl, userId, clothType } = await req.json();
-    console.log(await req.json())
 
     if (!imageUrl) {
       console.error('No image URL provided');

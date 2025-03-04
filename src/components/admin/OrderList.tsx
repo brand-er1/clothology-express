@@ -41,10 +41,12 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                 <span className={
                   order.status === 'approved' ? 'text-green-600' :
                   order.status === 'rejected' ? 'text-red-600' :
+                  order.status === 'deleted' ? 'text-gray-600' :
                   'text-yellow-600'
                 }>
                   {order.status === 'approved' ? '승인됨' :
                    order.status === 'rejected' ? '거부됨' :
+                   order.status === 'deleted' ? '삭제됨' :
                    '대기 중'}
                 </span>
               </TableCell>

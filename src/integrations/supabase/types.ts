@@ -199,7 +199,7 @@ export type Database = {
       }
     }
     Enums: {
-      order_status: "pending" | "approved" | "rejected"
+      order_status: "pending" | "approved" | "rejected" | "deleted"
       user_role: "admin" | "user"
     }
     CompositeTypes: {

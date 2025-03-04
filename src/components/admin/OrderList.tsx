@@ -54,13 +54,21 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                 {order.detail_description || '-'}
               </TableCell>
               <TableCell>
-                {order.status === 'pending' && (
+                {order.status === 'pending' ? (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => onReviewOrder(order)}
                   >
                     검토하기
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onReviewOrder(order)}
+                  >
+                    상세보기
                   </Button>
                 )}
               </TableCell>

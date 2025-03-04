@@ -122,10 +122,6 @@ export const generateImage = async (
               clothType: selectedClothType,
               material: selectedMaterialName,
               detail: selectedDetail,
-              style: selectedStyle,
-              pocket: selectedPocket,
-              color: selectedColor,
-              fit: selectedFit
             }
           }
         );
@@ -147,10 +143,6 @@ export const generateImage = async (
         selectedType,
         selectedMaterial,
         selectedDetail,
-        selectedStyle,
-        selectedPocket,
-        selectedColor,
-        selectedFit,
         storedImageUrl || imageUrl,
         imagePath,
         materials

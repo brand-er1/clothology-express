@@ -32,10 +32,6 @@ serve(async (req) => {
       clothType,
       material,
       detail, // 디테일을 우선시
-      style,
-      pocket,
-      color,
-      fit
     } = requestData;
 
     // Validate inputs
@@ -48,15 +44,8 @@ serve(async (req) => {
 
     // 디테일 텍스트 우선시, 디테일이 없는 경우에만 개별 옵션으로 설명 구성
     let detailDescription = detail;
-    if (!detailDescription || detailDescription.trim() === '') {
-      let optionDetails = [];
-      if (style) optionDetails.push(`스타일: ${style}`);
-      if (pocket) optionDetails.push(`포켓: ${pocket}`);
-      if (color) optionDetails.push(`색상: ${color}`);
-      if (fit) optionDetails.push(`핏: ${fit}`);
+
       
-      detailDescription = optionDetails.join(', ');
-    }
 
     // Insert data into generated_images table
     const { data, error } = await supabase

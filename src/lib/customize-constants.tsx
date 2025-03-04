@@ -35,6 +35,20 @@ export const clothTypes: ClothType[] = [
     category: "tops",
   },
   {
+    id: "hoodie",
+    name: "후드티",
+    icon: <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7c0-1 .9-2 2-2h14c1.1 0 2 1 2 2v12c0 1-.9 2-2 2H5c-1.1 0-2-1-2-2V7z"/>
+      <path d="M7.5 2h9l-.9 5H8.4L7.5 2z"/>
+      <path d="M8.4 7c-.3 2.5-2.4 3-2.4 3"/>
+      <path d="M15.6 7c.3 2.5 2.4 3 2.4 3"/>
+      <path d="M12 11v4"/>
+      <path d="M10 13h4"/>
+    </svg>,
+    description: "편안하고 따뜻한 후드티",
+    category: "tops",
+  },
+  {
     id: "sweatshirt",
     name: "맨투맨",
     icon: <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

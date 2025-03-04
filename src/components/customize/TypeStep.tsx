@@ -13,6 +13,7 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
   const getTypeValue = (typeId: string): string => {
     const typeMapping: { [key: string]: string } = {
       'jacket': 'outer_jacket',
+      'hoodie': 'hoodie',
       'long_pants': 'long_pants',
       'short_pants': 'short_pants',
       'short_sleeve': 'short_sleeve',

@@ -11,16 +11,27 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Order } from "@/types/order";
 import { OrderDetails } from "./OrderDetails";
-import { ShoppingBag, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, XCircle, Trash2, AlertTriangle } from "lucide-react";
 
 interface OrderListProps {
   orders: Order[];
+  onDeleteOrder?: (orderId: string) => Promise<void>;
 }
 
-export const OrderList = ({ orders }: OrderListProps) => {
+export const OrderList = ({ orders, onDeleteOrder }: OrderListProps) => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -44,6 +55,22 @@ export const OrderList = ({ orders }: OrderListProps) => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleDelete = async () => {
+    if (!orderToDelete || !onDeleteOrder) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDeleteOrder(orderToDelete.id);
+      setOrderToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const canDelete = (status: string) => {
+    return status === 'pending' || status === 'rejected' || status === 'draft';
   };
 
   if (orders.length === 0) {
@@ -77,6 +104,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
                   <TableHead>의류 종류</TableHead>
                   <TableHead>상태</TableHead>
                   <TableHead>상세정보</TableHead>
+                  <TableHead>관리</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -94,6 +122,17 @@ export const OrderList = ({ orders }: OrderListProps) => {
                         상세보기
                       </Button>
                     </TableCell>
+                    <TableCell>
+                      {canDelete(order.status) && onDeleteOrder && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => setOrderToDelete(order)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> 삭제
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -108,6 +147,45 @@ export const OrderList = ({ orders }: OrderListProps) => {
           onClose={() => setSelectedOrder(null)} 
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>주문 삭제 확인</DialogTitle>
+            <DialogDescription>
+              정말로 이 주문을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {orderToDelete && (
+            <div className="py-4">
+              <div className="flex items-center justify-center text-amber-500 mb-4">
+                <AlertTriangle className="h-12 w-12" />
+              </div>
+              <div className="space-y-2">
+                <p><span className="font-medium">주문일시:</span> {formatDate(orderToDelete.created_at)}</p>
+                <p><span className="font-medium">의류 종류:</span> {orderToDelete.cloth_type}</p>
+                <p><span className="font-medium">상태:</span> {getStatusBadge(orderToDelete.status)}</p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrderToDelete(null)}>
+              취소
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              삭제하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

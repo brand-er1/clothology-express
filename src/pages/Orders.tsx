@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { OrderList } from "@/components/orders/OrderList";
 import { Button } from "@/components/ui/button";
-import { fetchUserOrders } from "@/services/orderHistory";
+import { fetchUserOrders, deleteOrder } from "@/services/orderHistory";
 import { Order } from "@/types/order";
 import { ShoppingBag, Loader2 } from "lucide-react";
 
@@ -13,21 +13,29 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadOrders = async () => {
-      setLoading(true);
-      const fetchedOrders = await fetchUserOrders();
-      if (fetchedOrders) {
-        setOrders(fetchedOrders);
-      }
-      setLoading(false);
-    };
+  const loadOrders = async () => {
+    setLoading(true);
+    const fetchedOrders = await fetchUserOrders();
+    if (fetchedOrders) {
+      setOrders(fetchedOrders);
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     loadOrders();
   }, []);
 
   const handleNewOrder = () => {
     navigate('/customize');
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    const success = await deleteOrder(orderId);
+    if (success) {
+      // Refresh orders list after successful deletion
+      loadOrders();
+    }
   };
 
   return (
@@ -51,7 +59,7 @@ const Orders = () => {
             <span className="ml-2">주문 내역을 불러오는 중...</span>
           </div>
         ) : (
-          <OrderList orders={orders} />
+          <OrderList orders={orders} onDeleteOrder={handleDeleteOrder} />
         )}
       </main>
     </div>

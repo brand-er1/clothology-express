@@ -1,4 +1,5 @@
-import { Shirt, Scissors } from "lucide-react";
+
+import { Shirt, Scissors, PanelBottomClose } from "lucide-react";
 import React from 'react';
 
 export type ClothType = {
@@ -14,28 +15,28 @@ export const clothTypes: ClothType[] = [
   {
     id: "short_sleeve",
     name: "반팔 티셔츠",
-    icon: React.createElement(Shirt, { className: "w-8 h-8" }),
+    icon: <img src="/lovable-uploads/short_sleeve.png" alt="반팔 티셔츠" className="w-10 h-10" />,
     description: "시원하고 캐주얼한 반팔 티셔츠",
     category: "tops",
   },
   {
     id: "long_sleeve",
     name: "긴소매 티셔츠",
-    icon: React.createElement(Shirt, { className: "w-8 h-8" }),
+    icon: <img src="/lovable-uploads/long_sleeve.png" alt="긴소매 티셔츠" className="w-10 h-10" />,
     description: "편안하고 실용적인 긴소매 티셔츠",
     category: "tops",
   },
   {
     id: "sweatshirt",
     name: "맨투맨",
-    icon: React.createElement(Shirt, { className: "w-8 h-8" }),
+    icon: <img src="/lovable-uploads/sweatshirt.png" alt="맨투맨" className="w-10 h-10" />,
     description: "포근하고 세련된 맨투맨",
     category: "tops",
   },
   {
     id: "jacket",
     name: "자켓",
-    icon: React.createElement(Shirt, { className: "w-8 h-8" }),
+    icon: <img src="/lovable-uploads/jacket.png" alt="자켓" className="w-10 h-10" />,
     description: "스타일리시한 자켓",
     category: "tops",
   },
@@ -43,14 +44,14 @@ export const clothTypes: ClothType[] = [
   {
     id: "short_pants",
     name: "반바지",
-    icon: React.createElement(Shirt, { className: "w-8 h-8" }),
+    icon: <img src="/lovable-uploads/short_pants.png" alt="반바지" className="w-10 h-10" />,
     description: "시원하고 활동적인 반바지",
     category: "bottoms",
   },
   {
     id: "long_pants",
     name: "긴바지",
-    icon: React.createElement(Shirt, { className: "w-8 h-8" }),
+    icon: <img src="/lovable-uploads/long_pants.png" alt="긴바지" className="w-10 h-10" />,
     description: "편안하고 세련된 긴바지",
     category: "bottoms",
   },

@@ -42,7 +42,7 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
                 onClick={() => onSelectType(type.id)}
               >
                 <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="p-4 bg-brand/5 rounded-full">
+                  <div className="p-4 bg-brand/5 rounded-full flex items-center justify-center">
                     {type.icon}
                   </div>
                   <h3 className="text-lg font-semibold">{type.name}</h3>
@@ -70,7 +70,7 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
                 onClick={() => onSelectType(type.id)}
               >
                 <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="p-4 bg-brand/5 rounded-full">
+                  <div className="p-4 bg-brand/5 rounded-full flex items-center justify-center">
                     {type.icon}
                   </div>
                   <h3 className="text-lg font-semibold">{type.name}</h3>

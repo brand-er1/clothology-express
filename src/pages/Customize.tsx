@@ -38,6 +38,16 @@ const Customize = () => {
     setSelectedColor,
     selectedFit,
     setSelectedFit,
+    selectedTexture,
+    setSelectedTexture,
+    selectedElasticity,
+    setSelectedElasticity,
+    selectedTransparency,
+    setSelectedTransparency,
+    selectedThickness,
+    setSelectedThickness,
+    selectedSeason,
+    setSelectedSeason,
     imageLoading,
     generatedImageUrl,
     storedImageUrl,
@@ -131,11 +141,21 @@ const Customize = () => {
               selectedPocket={selectedPocket}
               selectedColor={selectedColor}
               selectedFit={selectedFit}
+              selectedTexture={selectedTexture}
+              selectedElasticity={selectedElasticity}
+              selectedTransparency={selectedTransparency}
+              selectedThickness={selectedThickness}
+              selectedSeason={selectedSeason}
               onDetailInputChange={setSelectedDetail}
               onStyleSelect={setSelectedStyle}
               onPocketSelect={setSelectedPocket}
               onColorSelect={setSelectedColor}
               onFitSelect={setSelectedFit}
+              onTextureSelect={setSelectedTexture}
+              onElasticitySelect={setSelectedElasticity}
+              onTransparencySelect={setSelectedTransparency}
+              onThicknessSelect={setSelectedThickness}
+              onSeasonSelect={setSelectedSeason}
             />
           )}
 

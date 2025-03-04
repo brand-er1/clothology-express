@@ -1,6 +1,16 @@
 
 import { useEffect, useState } from "react";
-import { StyleOption, PocketOption, ColorOption, FitOption } from "@/lib/customize-constants";
+import { 
+  StyleOption, 
+  PocketOption, 
+  ColorOption, 
+  FitOption,
+  TextureOption,
+  ElasticityOption,
+  TransparencyOption,
+  ThicknessOption,
+  SeasonOption
+} from "@/lib/customize-constants";
 
 interface UseDetailTextProps {
   detailInput: string;
@@ -8,10 +18,20 @@ interface UseDetailTextProps {
   selectedPocket: string;
   selectedColor: string;
   selectedFit: string;
+  selectedTexture?: string;
+  selectedElasticity?: string;
+  selectedTransparency?: string;
+  selectedThickness?: string;
+  selectedSeason?: string;
   styleOptions: StyleOption[];
   pocketOptions: PocketOption[];
   colorOptions: ColorOption[];
   fitOptions: FitOption[];
+  textureOptions?: TextureOption[];
+  elasticityOptions?: ElasticityOption[];
+  transparencyOptions?: TransparencyOption[];
+  thicknessOptions?: ThicknessOption[];
+  seasonOptions?: SeasonOption[];
   onDetailInputChange: (value: string) => void;
 }
 
@@ -21,10 +41,20 @@ export const useDetailText = ({
   selectedPocket,
   selectedColor,
   selectedFit,
+  selectedTexture = "",
+  selectedElasticity = "",
+  selectedTransparency = "",
+  selectedThickness = "",
+  selectedSeason = "",
   styleOptions,
   pocketOptions,
   colorOptions,
   fitOptions,
+  textureOptions = [],
+  elasticityOptions = [],
+  transparencyOptions = [],
+  thicknessOptions = [],
+  seasonOptions = [],
   onDetailInputChange,
 }: UseDetailTextProps) => {
   // Track previous option values to detect changes
@@ -32,7 +62,12 @@ export const useDetailText = ({
     style: "",
     pocket: "",
     color: "",
-    fit: ""
+    fit: "",
+    texture: "",
+    elasticity: "",
+    transparency: "",
+    thickness: "",
+    season: ""
   });
   
   // Store user's custom text separately from options
@@ -85,6 +120,41 @@ export const useDetailText = ({
       }
     }
 
+    if (selectedTexture) {
+      const texture = textureOptions.find(t => t.value === selectedTexture);
+      if (texture) {
+        optionLines.push(`촉감: ${texture.label}`);
+      }
+    }
+
+    if (selectedElasticity) {
+      const elasticity = elasticityOptions.find(e => e.value === selectedElasticity);
+      if (elasticity) {
+        optionLines.push(`신축성: ${elasticity.label}`);
+      }
+    }
+
+    if (selectedTransparency) {
+      const transparency = transparencyOptions.find(t => t.value === selectedTransparency);
+      if (transparency) {
+        optionLines.push(`비침: ${transparency.label}`);
+      }
+    }
+
+    if (selectedThickness) {
+      const thickness = thicknessOptions.find(t => t.value === selectedThickness);
+      if (thickness) {
+        optionLines.push(`두께: ${thickness.label}`);
+      }
+    }
+
+    if (selectedSeason) {
+      const season = seasonOptions.find(s => s.value === selectedSeason);
+      if (season) {
+        optionLines.push(`계절: ${season.label}`);
+      }
+    }
+
     return optionLines.join('\n');
   };
 
@@ -97,6 +167,11 @@ export const useDetailText = ({
     cleanedText = removeOptionTypeKeywords(cleanedText, "포켓");
     cleanedText = removeOptionTypeKeywords(cleanedText, "색상");
     cleanedText = removeOptionTypeKeywords(cleanedText, "핏");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "촉감");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "신축성");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "비침");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "두께");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "계절");
     
     // Clean up line breaks and spaces
     cleanedText = cleanedText.split('\n')
@@ -124,6 +199,11 @@ export const useDetailText = ({
     userText = removeOptionTypeKeywords(userText, "포켓");
     userText = removeOptionTypeKeywords(userText, "색상");
     userText = removeOptionTypeKeywords(userText, "핏");
+    userText = removeOptionTypeKeywords(userText, "촉감");
+    userText = removeOptionTypeKeywords(userText, "신축성");
+    userText = removeOptionTypeKeywords(userText, "비침");
+    userText = removeOptionTypeKeywords(userText, "두께");
+    userText = removeOptionTypeKeywords(userText, "계절");
     
     // Clean up line breaks
     userText = userText.split('\n')
@@ -137,7 +217,12 @@ export const useDetailText = ({
       style: styleOptions.find(s => s.value === selectedStyle)?.label || "",
       pocket: pocketOptions.find(p => p.value === selectedPocket)?.label || "",
       color: colorOptions.find(c => c.value === selectedColor)?.label || "",
-      fit: fitOptions.find(f => f.value === selectedFit)?.label || ""
+      fit: fitOptions.find(f => f.value === selectedFit)?.label || "",
+      texture: textureOptions.find(t => t.value === selectedTexture)?.label || "",
+      elasticity: elasticityOptions.find(e => e.value === selectedElasticity)?.label || "",
+      transparency: transparencyOptions.find(t => t.value === selectedTransparency)?.label || "",
+      thickness: thicknessOptions.find(t => t.value === selectedThickness)?.label || "",
+      season: seasonOptions.find(s => s.value === selectedSeason)?.label || ""
     });
   }, []);
 
@@ -148,13 +233,23 @@ export const useDetailText = ({
     const currentPocket = pocketOptions.find(p => p.value === selectedPocket)?.label || "";
     const currentColor = colorOptions.find(c => c.value === selectedColor)?.label || "";
     const currentFit = fitOptions.find(f => f.value === selectedFit)?.label || "";
+    const currentTexture = textureOptions.find(t => t.value === selectedTexture)?.label || "";
+    const currentElasticity = elasticityOptions.find(e => e.value === selectedElasticity)?.label || "";
+    const currentTransparency = transparencyOptions.find(t => t.value === selectedTransparency)?.label || "";
+    const currentThickness = thicknessOptions.find(t => t.value === selectedThickness)?.label || "";
+    const currentSeason = seasonOptions.find(s => s.value === selectedSeason)?.label || "";
     
     // Skip processing if nothing has changed
     if (
       prevOptions.style === currentStyle && 
       prevOptions.pocket === currentPocket && 
       prevOptions.color === currentColor && 
-      prevOptions.fit === currentFit
+      prevOptions.fit === currentFit &&
+      prevOptions.texture === currentTexture &&
+      prevOptions.elasticity === currentElasticity &&
+      prevOptions.transparency === currentTransparency &&
+      prevOptions.thickness === currentThickness &&
+      prevOptions.season === currentSeason
     ) {
       return;
     }
@@ -167,9 +262,14 @@ export const useDetailText = ({
       style: currentStyle,
       pocket: currentPocket,
       color: currentColor,
-      fit: currentFit
+      fit: currentFit,
+      texture: currentTexture,
+      elasticity: currentElasticity,
+      transparency: currentTransparency,
+      thickness: currentThickness,
+      season: currentSeason
     });
-  }, [selectedStyle, selectedPocket, selectedColor, selectedFit]);
+  }, [selectedStyle, selectedPocket, selectedColor, selectedFit, selectedTexture, selectedElasticity, selectedTransparency, selectedThickness, selectedSeason]);
 
   // Handle manual text area changes
   const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -184,6 +284,11 @@ export const useDetailText = ({
     userText = removeOptionTypeKeywords(userText, "포켓");
     userText = removeOptionTypeKeywords(userText, "색상");
     userText = removeOptionTypeKeywords(userText, "핏");
+    userText = removeOptionTypeKeywords(userText, "촉감");
+    userText = removeOptionTypeKeywords(userText, "신축성");
+    userText = removeOptionTypeKeywords(userText, "비침");
+    userText = removeOptionTypeKeywords(userText, "두께");
+    userText = removeOptionTypeKeywords(userText, "계절");
     
     // Clean up and store user's custom text
     userText = userText.split('\n')

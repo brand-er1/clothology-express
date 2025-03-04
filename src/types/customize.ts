@@ -26,6 +26,11 @@ export interface UseCustomizeFormState {
   selectedPocket: string;
   selectedColor: string;
   selectedFit: string;
+  selectedTexture: string;
+  selectedElasticity: string;
+  selectedTransparency: string;
+  selectedThickness: string;
+  selectedSeason: string;
   isLoading: boolean;
   generatedImageUrl: string | null;
   storedImageUrl: string | null;

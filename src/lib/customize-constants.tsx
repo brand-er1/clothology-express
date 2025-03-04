@@ -113,4 +113,68 @@ export const fitOptions: FitOption[] = [
   { value: "oversized", label: "오버사이즈" },
 ];
 
+export type TextureOption = {
+  value: string;
+  label: string;
+};
+
+export const textureOptions: TextureOption[] = [
+  { value: "soft", label: "부드러움" },
+  { value: "slightly_soft", label: "약간 부드러움" },
+  { value: "medium", label: "보통" },
+  { value: "slightly_stiff", label: "약간 뻣뻣함" },
+  { value: "stiff", label: "뻣뻣함" },
+];
+
+export type ElasticityOption = {
+  value: string;
+  label: string;
+};
+
+export const elasticityOptions: ElasticityOption[] = [
+  { value: "none", label: "없음" },
+  { value: "minimal", label: "거의 없음" },
+  { value: "medium", label: "보통" },
+  { value: "moderate", label: "약간 있음" },
+  { value: "high", label: "있음" },
+];
+
+export type TransparencyOption = {
+  value: string;
+  label: string;
+};
+
+export const transparencyOptions: TransparencyOption[] = [
+  { value: "high", label: "있음" },
+  { value: "moderate", label: "약간 있음" },
+  { value: "medium", label: "보통" },
+  { value: "minimal", label: "거의 없음" },
+  { value: "none", label: "없음" },
+];
+
+export type ThicknessOption = {
+  value: string;
+  label: string;
+};
+
+export const thicknessOptions: ThicknessOption[] = [
+  { value: "thin", label: "얇음" },
+  { value: "slightly_thin", label: "약간 얇음" },
+  { value: "medium", label: "보통" },
+  { value: "slightly_thick", label: "약간 두꺼움" },
+  { value: "thick", label: "두꺼움" },
+];
+
+export type SeasonOption = {
+  value: string;
+  label: string;
+};
+
+export const seasonOptions: SeasonOption[] = [
+  { value: "spring", label: "봄" },
+  { value: "summer", label: "여름" },
+  { value: "fall", label: "가을" },
+  { value: "winter", label: "겨울" },
+];
+
 export const TOTAL_STEPS = 5;

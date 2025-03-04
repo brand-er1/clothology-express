@@ -25,6 +25,11 @@ export const useCustomizeForm = () => {
   const [selectedPocket, setSelectedPocket] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedFit, setSelectedFit] = useState("");
+  const [selectedTexture, setSelectedTexture] = useState("");
+  const [selectedElasticity, setSelectedElasticity] = useState("");
+  const [selectedTransparency, setSelectedTransparency] = useState("");
+  const [selectedThickness, setSelectedThickness] = useState("");
+  const [selectedSeason, setSelectedSeason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [storedImageUrl, setStoredImageUrl] = useState<string | null>(null);
@@ -231,6 +236,16 @@ export const useCustomizeForm = () => {
     setSelectedColor,
     selectedFit,
     setSelectedFit,
+    selectedTexture,
+    setSelectedTexture,
+    selectedElasticity,
+    setSelectedElasticity,
+    selectedTransparency,
+    setSelectedTransparency,
+    selectedThickness,
+    setSelectedThickness,
+    selectedSeason,
+    setSelectedSeason,
     isLoading,
     imageLoading,
     generatedImageUrl,

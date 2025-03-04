@@ -24,7 +24,7 @@ export const generateClothingImage = async (
   imagePath: string | null;
   prompt: string;
 } | null> => {
-  try {
+  try {s
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData.session?.user;
     

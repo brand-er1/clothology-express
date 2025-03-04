@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { StyleOption, PocketOption, ColorOption, FitOption } from "@/lib/customize-constants";
 
@@ -34,24 +35,45 @@ export const useDetailText = ({
   onColorSelect,
   onFitSelect,
 }: UseDetailTextProps) => {
-  // 이전 옵션 값을 추적하여 변경 사항 감지
-  const [prevOptions, setPrevOptions] = useState({
-    style: "",
-    pocket: "",
-    color: "",
-    fit: ""
-  });
-  
   // 사용자의 커스텀 텍스트와 옵션 텍스트를 분리하여 저장
   const [customUserText, setCustomUserText] = useState("");
   
-  // 옵션 텍스트를 전체 텍스트에서 제거하는 함수
-  const removeOptionText = (fullText: string, optionType: string, optionValue: string): string => {
-    if (!optionValue) return fullText;
+  // 모든 옵션 키워드를 제거하는 함수
+  const removeAllOptionKeywords = (text: string): string => {
+    let result = text;
     
-    // 패턴 매칭: 텍스트 어디에나 있는 "옵션유형: 값"
-    const pattern = new RegExp(`${optionType}\\s*:\\s*${optionValue}(\\s*|$)`, 'g');
-    return fullText.replace(pattern, '').trim();
+    // 모든 "스타일: XXX" 패턴 제거
+    styleOptions.forEach(style => {
+      result = result.replace(new RegExp(`스타일\\s*:\\s*${style.label}(\\s*|$)`, 'g'), '');
+    });
+    
+    // 모든 "포켓: XXX" 패턴 제거
+    pocketOptions.forEach(pocket => {
+      result = result.replace(new RegExp(`포켓\\s*:\\s*${pocket.label}(\\s*|$)`, 'g'), '');
+    });
+    
+    // 모든 "색상: XXX" 패턴 제거
+    colorOptions.forEach(color => {
+      result = result.replace(new RegExp(`색상\\s*:\\s*${color.label}(\\s*|$)`, 'g'), '');
+    });
+    
+    // 모든 "핏: XXX" 패턴 제거
+    fitOptions.forEach(fit => {
+      result = result.replace(new RegExp(`핏\\s*:\\s*${fit.label}(\\s*|$)`, 'g'), '');
+    });
+    
+    // 중복 줄바꿈과 공백 정리
+    return result.split('\n')
+      .map(line => line.trim())
+      .filter(line => line !== '')
+      .join('\n');
+  };
+  
+  // 특정 옵션 유형에 대한 모든 키워드 제거
+  const removeOptionTypeKeywords = (text: string, optionType: string): string => {
+    let result = text;
+    const pattern = new RegExp(`${optionType}\\s*:\\s*[^\\n,]+(\\s*|$)`, 'g');
+    return result.replace(pattern, '').trim();
   };
   
   // 선택된 옵션에 대한 텍스트 생성
@@ -110,23 +132,28 @@ export const useDetailText = ({
     // 옵션에 맞는 세터 함수와 옵션 배열 선택
     let optionsArray: any[] = [];
     let setterFunc: (value: string) => void;
+    let typeLabel = "";
     
     switch (optionType) {
       case 'style':
         optionsArray = styleOptions;
         setterFunc = onStyleSelect;
+        typeLabel = '스타일';
         break;
       case 'pocket':
         optionsArray = pocketOptions;
         setterFunc = onPocketSelect;
+        typeLabel = '포켓';
         break;
       case 'color':
         optionsArray = colorOptions;
         setterFunc = onColorSelect;
+        typeLabel = '색상';
         break;
       case 'fit':
         optionsArray = fitOptions;
         setterFunc = onFitSelect;
+        typeLabel = '핏';
         break;
       default:
         return;
@@ -135,22 +162,11 @@ export const useDetailText = ({
     // 선택한 값 업데이트
     setterFunc(value);
     
-    // 현재 모든 옵션 텍스트 구성
-    const prevOptionText = generateOptionsText();
+    // 사용자 텍스트에서 해당 옵션 타입 키워드 제거
+    let cleanedText = removeOptionTypeKeywords(detailInput, typeLabel);
     
-    // 이전에 선택한 옵션의 텍스트를 제거하고 새로운 옵션 텍스트 추가
-    let newText = detailInput;
-    const typeLabel = {
-      'style': '스타일',
-      'pocket': '포켓',
-      'color': '색상',
-      'fit': '핏'
-    }[optionType];
-    
-    // 기존 옵션 텍스트를 제거
-    optionsArray.forEach(option => {
-      newText = removeOptionText(newText, typeLabel, option.label);
-    });
+    // 사용자 커스텀 텍스트 추출 (사용자가 입력한 옵션 관련 내용 외의 텍스트)
+    let userOnlyText = customUserText;
     
     // 새로운 옵션이 선택된 경우에만 텍스트 추가
     if (value) {
@@ -158,79 +174,38 @@ export const useDetailText = ({
       if (selectedOption) {
         const newOptionText = `${typeLabel}: ${selectedOption.label}`;
         
-        // 커스텀 텍스트 추출 (모든 옵션 제거 후)
-        let userOnlyText = newText;
-        styleOptions.forEach(style => {
-          userOnlyText = removeOptionText(userOnlyText, "스타일", style.label);
-        });
-        pocketOptions.forEach(pocket => {
-          userOnlyText = removeOptionText(userOnlyText, "포켓", pocket.label);
-        });
-        colorOptions.forEach(color => {
-          userOnlyText = removeOptionText(userOnlyText, "색상", color.label);
-        });
-        fitOptions.forEach(fit => {
-          userOnlyText = removeOptionText(userOnlyText, "핏", fit.label);
-        });
-        
-        // 사용자 텍스트와 모든 옵션 합치기
-        const allOptionsText = generateOptionsText().replace(
-          `${typeLabel}: ${selectedOption.label}`, ''
-        ).trim();
+        // 옵션 텍스트와 사용자 텍스트 조합
+        const allOptionsText = removeOptionTypeKeywords(generateOptionsText(), typeLabel);
         
         // 최종 텍스트 구성
-        newText = [
+        cleanedText = [
           userOnlyText.trim(),
           newOptionText,
           allOptionsText
         ].filter(Boolean).join('\n');
       }
+    } else {
+      // 옵션이 선택 해제된 경우 해당 옵션을 제외한 나머지 옵션 텍스트만 유지
+      cleanedText = [
+        userOnlyText.trim(),
+        generateOptionsText().replace(new RegExp(`${typeLabel}\\s*:[^\\n]*`, 'g'), '').trim()
+      ].filter(Boolean).join('\n');
     }
     
     // 중복 줄바꿈 제거 및 정리
-    newText = newText.split('\n')
+    cleanedText = cleanedText.split('\n')
       .filter(line => line.trim() !== '')
       .join('\n');
     
     // 텍스트 영역 업데이트
-    onDetailInputChange(newText);
+    onDetailInputChange(cleanedText);
   };
 
   // 컴포넌트 마운트 시 커스텀 사용자 텍스트 초기화
   useEffect(() => {
-    let userText = detailInput;
-    
     // 모든 옵션 텍스트를 제거하여 커스텀 텍스트 추출
-    styleOptions.forEach(style => {
-      userText = removeOptionText(userText, "스타일", style.label);
-    });
-    
-    pocketOptions.forEach(pocket => {
-      userText = removeOptionText(userText, "포켓", pocket.label);
-    });
-    
-    colorOptions.forEach(color => {
-      userText = removeOptionText(userText, "색상", color.label);
-    });
-    
-    fitOptions.forEach(fit => {
-      userText = removeOptionText(userText, "핏", fit.label);
-    });
-    
-    // 줄바꿈 정리
-    userText = userText.split('\n')
-      .filter(line => line.trim() !== '')
-      .join('\n');
-    
+    const userText = removeAllOptionKeywords(detailInput);
     setCustomUserText(userText);
-    
-    // 초기 옵션 값 저장
-    setPrevOptions({
-      style: styleOptions.find(s => s.value === selectedStyle)?.label || "",
-      pocket: pocketOptions.find(p => p.value === selectedPocket)?.label || "",
-      color: colorOptions.find(c => c.value === selectedColor)?.label || "",
-      fit: fitOptions.find(f => f.value === selectedFit)?.label || ""
-    });
     
     // 텍스트에서 옵션 값 추출하여 선택기 업데이트
     const styleFromText = extractOptionFromText(detailInput, "스타일", styleOptions);
@@ -285,29 +260,7 @@ export const useDetailText = ({
     }
     
     // 옵션 텍스트를 제외한 사용자 텍스트 추출
-    let userText = newText;
-    
-    styleOptions.forEach(style => {
-      userText = removeOptionText(userText, "스타일", style.label);
-    });
-    
-    pocketOptions.forEach(pocket => {
-      userText = removeOptionText(userText, "포켓", pocket.label);
-    });
-    
-    colorOptions.forEach(color => {
-      userText = removeOptionText(userText, "색상", color.label);
-    });
-    
-    fitOptions.forEach(fit => {
-      userText = removeOptionText(userText, "핏", fit.label);
-    });
-    
-    // 줄바꿈 정리 및 사용자 커스텀 텍스트 저장
-    userText = userText.split('\n')
-      .filter(line => line.trim() !== '')
-      .join('\n');
-    
+    const userText = removeAllOptionKeywords(newText);
     setCustomUserText(userText);
   };
 

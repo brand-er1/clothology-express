@@ -53,4 +53,6 @@ redirect_uri = ""
 
 [functions]
 port = 54321
-import_map = "import_map.json"
+
+[functions.import_map]
+path = "import_map.json"

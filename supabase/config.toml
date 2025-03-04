@@ -20,39 +20,23 @@ port = 54324
 smtp_port = 54325
 pop3_port = 54326
 
-[storage]
-file_size_limit = "50MiB"
-
 [auth]
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
-enable_refresh_token_rotation = true
+enable_signup = true
 
-[auth.email]
-double_confirm_changes = true
-enable_confirmations = false
+[storage]
+file_size_limit = "10MiB"
 
-[auth.external.apple]
-enabled = false
-client_id = ""
-secret = ""
-redirect_uri = ""
+[vector]
+enable = true
 
-[auth.external.github]
-enabled = false
-client_id = ""
-secret = ""
-redirect_uri = ""
-
-[auth.external.google]
-enabled = false
-client_id = ""
-secret = ""
-redirect_uri = ""
+[edge_functions]
+port = 54326
 
 [functions]
-port = 54321
+port = 8000
 
 [functions.import_map]
-path = "import_map.json"
+path = "supabase/functions/import_map.json"

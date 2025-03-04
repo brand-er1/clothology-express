@@ -46,6 +46,12 @@ export const useDetailText = ({
     const pattern = new RegExp(`${optionType}\\s*:\\s*${optionValue}(\\s*|$)`, 'g');
     return fullText.replace(pattern, '').trim();
   };
+
+  // Remove all instances of a specific option type (e.g., all "스타일: xyz" entries)
+  const removeOptionTypeKeywords = (fullText: string, optionType: string): string => {
+    const pattern = new RegExp(`${optionType}\\s*:.*?($|\\n)`, 'g');
+    return fullText.replace(pattern, '').trim();
+  };
   
   // Generate text for selected options
   const generateOptionsText = () => {
@@ -82,26 +88,42 @@ export const useDetailText = ({
     return optionLines.join('\n');
   };
 
+  // Update detail text with current options, removing any old options
+  const updateDetailTextWithAllOptions = () => {
+    let cleanedText = customUserText;
+    
+    // Remove all option types from the text
+    cleanedText = removeOptionTypeKeywords(cleanedText, "스타일");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "포켓");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "색상");
+    cleanedText = removeOptionTypeKeywords(cleanedText, "핏");
+    
+    // Clean up line breaks and spaces
+    cleanedText = cleanedText.split('\n')
+      .filter(line => line.trim() !== '')
+      .join('\n');
+    
+    // Generate new options text
+    const optionsText = generateOptionsText();
+    
+    // Combine options with cleaned custom text
+    let finalText = optionsText;
+    if (cleanedText) {
+      finalText = optionsText ? `${optionsText}\n\n${cleanedText}` : cleanedText;
+    }
+    
+    return finalText;
+  };
+
   // Initialize custom user text on component mount
   useEffect(() => {
     let userText = detailInput;
     
     // Extract any custom text by removing all option texts
-    styleOptions.forEach(style => {
-      userText = removeOptionText(userText, "스타일", style.label);
-    });
-    
-    pocketOptions.forEach(pocket => {
-      userText = removeOptionText(userText, "포켓", pocket.label);
-    });
-    
-    colorOptions.forEach(color => {
-      userText = removeOptionText(userText, "색상", color.label);
-    });
-    
-    fitOptions.forEach(fit => {
-      userText = removeOptionText(userText, "핏", fit.label);
-    });
+    userText = removeOptionTypeKeywords(userText, "스타일");
+    userText = removeOptionTypeKeywords(userText, "포켓");
+    userText = removeOptionTypeKeywords(userText, "색상");
+    userText = removeOptionTypeKeywords(userText, "핏");
     
     // Clean up line breaks
     userText = userText.split('\n')
@@ -137,17 +159,8 @@ export const useDetailText = ({
       return;
     }
     
-    // Generate the new options text
-    const optionsText = generateOptionsText();
-    
-    // Combine options with custom text
-    let finalText = optionsText;
-    if (customUserText) {
-      finalText = optionsText ? `${optionsText}\n\n${customUserText}` : customUserText;
-    }
-    
-    // Update the detail input
-    onDetailInputChange(finalText);
+    // Update the detail input with all current options
+    onDetailInputChange(updateDetailTextWithAllOptions());
     
     // Update previous option values
     setPrevOptions({
@@ -166,21 +179,11 @@ export const useDetailText = ({
     // Extract custom text excluding option texts
     let userText = newText;
     
-    styleOptions.forEach(style => {
-      userText = removeOptionText(userText, "스타일", style.label);
-    });
-    
-    pocketOptions.forEach(pocket => {
-      userText = removeOptionText(userText, "포켓", pocket.label);
-    });
-    
-    colorOptions.forEach(color => {
-      userText = removeOptionText(userText, "색상", color.label);
-    });
-    
-    fitOptions.forEach(fit => {
-      userText = removeOptionText(userText, "핏", fit.label);
-    });
+    // Remove all options systematically
+    userText = removeOptionTypeKeywords(userText, "스타일");
+    userText = removeOptionTypeKeywords(userText, "포켓");
+    userText = removeOptionTypeKeywords(userText, "색상");
+    userText = removeOptionTypeKeywords(userText, "핏");
     
     // Clean up and store user's custom text
     userText = userText.split('\n')

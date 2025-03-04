@@ -27,6 +27,7 @@ const synonymMap: Record<string, string> = {
   long_sleeve: "긴팔티셔츠",
   long_pants: "긴바지",
   short_pants: "반바지",
+  hoodie: "후드티"
 };
 
 serve(async (req) => {

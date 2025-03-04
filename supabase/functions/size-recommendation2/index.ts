@@ -1,4 +1,3 @@
-
 // size-recommendation2.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -28,6 +27,7 @@ const synonymMap: Record<string, string> = {
   long_sleeve: "긴팔티셔츠",
   long_pants: "긴바지",
   short_pants: "반바지",
+  hoodie: "후드티"
 };
 
 serve(async (req) => {

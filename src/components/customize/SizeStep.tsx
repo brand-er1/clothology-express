@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +51,7 @@ const clothingImages: Record<string, string> = {
   'long_sleeve': '/lovable-uploads/long_sleeve.png', 
   'sweatshirt': '/lovable-uploads/sweatshirt.png',
   'jacket': '/lovable-uploads/jacket.png',
+  'hoodie': '/lovable-uploads/hoodie.png',
   'short_pants': '/lovable-uploads/short_pants.png',
   'long_pants': '/lovable-uploads/long_pants.png'
 };
@@ -144,7 +144,8 @@ export const SizeStep = ({
         'short_pants': '반바지',
         'short_sleeve': '반팔티셔츠',
         'long_sleeve': '긴팔티셔츠',
-        'sweatshirt': '맨투맨'
+        'sweatshirt': '맨투맨',
+        'hoodie': '후드티'
       };
 
       const mappedType = typeMapping[type] || type;

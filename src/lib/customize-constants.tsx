@@ -1,4 +1,3 @@
-
 import { Shirt, Scissors, PanelBottomClose } from "lucide-react";
 import React from 'react';
 
@@ -144,7 +143,6 @@ export const fitOptions: FitOption[] = [
   { value: "loose", label: "루즈핏" },
   { value: "regular", label: "레귤러핏" },
   { value: "slim", label: "슬림핏" },
-  { value: "oversized", label: "오버사이즈" },
 ];
 
 export type TextureOption = {

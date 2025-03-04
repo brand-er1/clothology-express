@@ -80,34 +80,6 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
             ))}
         </div>
       </div>
-
-      {/* Custom Section */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">커스텀</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {clothTypes
-            .filter((type) => type.category === "custom")
-            .map((type) => (
-              <Card
-                key={type.id}
-                className={`p-6 cursor-pointer transition-all ${
-                  selectedType === type.id
-                    ? "border-brand ring-2 ring-brand/20"
-                    : "hover:border-brand/20"
-                }`}
-                onClick={() => onSelectType(type.id)}
-              >
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="p-4 bg-brand/5 rounded-full">
-                    {type.icon}
-                  </div>
-                  <h3 className="text-lg font-semibold">{type.name}</h3>
-                  <p className="text-sm text-gray-500">{type.description}</p>
-                </div>
-              </Card>
-            ))}
-        </div>
-      </div>
     </div>
   );
 };

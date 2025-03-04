@@ -54,14 +54,6 @@ export const clothTypes: ClothType[] = [
     description: "편안하고 세련된 긴바지",
     category: "bottoms",
   },
-  // Custom
-  {
-    id: "custom",
-    name: "커스텀",
-    icon: React.createElement(Scissors, { className: "w-8 h-8" }),
-    description: "나만의 특별한 의상을 제작해보세요 (※ 상황에 따라 주문이 반려될 수 있습니다)",
-    category: "custom",
-  },
 ];
 
 export type StyleOption = {

@@ -11,11 +11,6 @@ interface OrderData {
   clothType: string; 
   material: string;
   detailDescription?: string;
-  style?: string;           // Add style
-  pocket?: string;          // Add pocket
-  color?: string;           // Add color
-  fit?: string;             // Add fit
-  customDetail?: string;    // Add custom detail
   size?: string | null;
   measurements?: Record<string, any> | null;
   generatedImageUrl?: string | null;
@@ -122,11 +117,6 @@ Deno.serve(async (req) => {
       cloth_type: orderData.clothType,
       material: orderData.material,
       detail_description: orderData.detailDescription || null,
-      style: orderData.style || null,            // Store style separately
-      pocket: orderData.pocket || null,          // Store pocket separately
-      color: orderData.color || null,            // Store color separately
-      fit: orderData.fit || null,                // Store fit separately
-      custom_detail: orderData.customDetail || null,  // Store only custom text
       size: orderData.size || null,
       measurements: orderData.measurements || null,
       generated_image_url: orderData.generatedImageUrl || null,

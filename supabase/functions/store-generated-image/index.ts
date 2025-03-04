@@ -46,15 +46,16 @@ serve(async (req) => {
     const imageBlob = await imageResponse.blob();
     
     // Generate a sanitized filename using date, time and user id
+    // DO NOT use any user-provided strings in the filename directly
     const now = new Date();
     const dateStr = now.toISOString().replace(/[^\w]/g, '').slice(0, 14); // YYYYMMDDHHMMSS format
     const userIdPart = userId ? userId.slice(0, 8) : 'anonymous';
     const fileId = crypto.randomUUID().split('-')[0]; // First part of a UUID for uniqueness
     
-    // Create a safe filename without any non-ASCII characters
+    // Create a completely ASCII-only filename
     const fileName = `image_${userIdPart}_${dateStr}_${fileId}.jpg`;
 
-    console.log(`Uploading image with sanitized filename: ${fileName}`);
+    console.log(`Uploading image with fully sanitized filename: ${fileName}`);
 
     // Check if bucket exists, create if it doesn't
     try {
@@ -80,7 +81,7 @@ serve(async (req) => {
       // Continue anyway, in case the bucket already exists
     }
 
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage with fully sanitized filename
     const { data, error } = await supabase.storage
       .from('generated_images')
       .upload(fileName, imageBlob, {
@@ -103,6 +104,9 @@ serve(async (req) => {
     const storedImageUrl = publicUrlData?.publicUrl;
     console.log('Generated public URL:', storedImageUrl);
 
+    // Store the original cloth type name for reference, but don't use it in the filename
+    const originalClothName = clothType || 'unknown';
+
     // Return success response with image information
     return new Response(
       JSON.stringify({ 
@@ -110,7 +114,7 @@ serve(async (req) => {
         imagePath: fileName,
         storedImageUrl: storedImageUrl,
         message: 'Image stored successfully',
-        originalName: clothType ? clothType : 'unknown'
+        originalName: originalClothName
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );

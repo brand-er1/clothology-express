@@ -14,17 +14,17 @@ const Index = () => {
         <section className="relative h-[90vh] flex items-center justify-center bg-gradient-to-b from-white to-gray-50">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 animate-fadeIn">
-              Custom Clothing, <span className="text-brand">Tailored for You</span>
+              맞춤형 의류, <span className="text-brand">당신을 위한 디자인</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto animate-fadeIn">
-              Design your perfect outfit with our intuitive customization tool. Choose your style, material, and get it crafted just for you.
+              직관적인 맞춤 도구로 완벽한 의상을 디자인하세요. 스타일과 소재를 선택하고 나만을 위한 맞춤 제작을 경험하세요.
             </p>
             <Link to="/customize">
               <Button
                 size="lg"
                 className="bg-brand hover:bg-brand-dark text-white rounded-full px-8 animate-slideUp"
               >
-                Start Designing <ArrowRight className="ml-2 h-5 w-5" />
+                디자인 시작하기 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>
@@ -50,9 +50,9 @@ const Index = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Custom Design</h3>
+                <h3 className="text-xl font-semibold mb-2">맞춤 디자인</h3>
                 <p className="text-gray-600">
-                  Create your perfect outfit with our easy-to-use design tool
+                  쉽게 사용할 수 있는 디자인 도구로 완벽한 의상을 만들어보세요
                 </p>
               </div>
 
@@ -72,9 +72,9 @@ const Index = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Premium Materials</h3>
+                <h3 className="text-xl font-semibold mb-2">프리미엄 소재</h3>
                 <p className="text-gray-600">
-                  Choose from a wide selection of high-quality fabrics
+                  다양한 고품질 원단 중에서 선택하세요
                 </p>
               </div>
 
@@ -94,9 +94,9 @@ const Index = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Perfect Fit</h3>
+                <h3 className="text-xl font-semibold mb-2">완벽한 핏</h3>
                 <p className="text-gray-600">
-                  Get your clothes tailored to your exact measurements
+                  정확한 치수에 맞게 제작된 의류를 만나보세요
                 </p>
               </div>
             </div>

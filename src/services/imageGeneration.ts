@@ -10,6 +10,10 @@ export const generateImage = async (
   selectedMaterial: string,
   selectedDetail: string,
   materials: Material[],
+  selectedStyle: string = "",
+  selectedPocket: string = "",
+  selectedColor: string = "",
+  selectedFit: string = "",
   saveAsDraft: boolean = true,
 ) => {
   try {
@@ -35,6 +39,10 @@ export const generateImage = async (
     // Construct the generation prompt
     const prompt = `${selectedMaterialName} ${selectedClothType}, ` +
       (selectedDetail ? `${selectedDetail}, ` : '') +
+      (selectedStyle ? `${selectedStyle} 스타일, ` : '') +
+      (selectedPocket ? `${selectedPocket} 포켓, ` : '') +
+      (selectedColor ? `${selectedColor} 색상, ` : '') +
+      (selectedFit ? `${selectedFit} 핏, ` : '') +
       `고해상도, 프로덕트 이미지`;
 
     console.log("Generation prompt:", prompt);
@@ -106,7 +114,11 @@ export const generateImage = async (
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
-              detail: selectedDetail
+              detail: selectedDetail,
+              style: selectedStyle,
+              pocket: selectedPocket,
+              color: selectedColor,
+              fit: selectedFit
             }
           }
         );
@@ -128,6 +140,10 @@ export const generateImage = async (
         selectedType,
         selectedMaterial,
         selectedDetail,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
+        selectedFit,
         storedImageUrl || imageUrl,
         imagePath,
         materials

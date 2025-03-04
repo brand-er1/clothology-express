@@ -107,6 +107,10 @@ export const useCustomizeForm = () => {
         selectedMaterial,
         selectedDetail,
         materials,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
+        selectedFit,
         true // 항상 true로 설정하여 항상 진행 상태 저장
       );
       
@@ -131,6 +135,10 @@ export const useCustomizeForm = () => {
         selectedType,
         selectedMaterial,
         selectedDetail,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
+        selectedFit,
         selectedSize,
         customMeasurements,
         storedImageUrl,
@@ -147,6 +155,10 @@ export const useCustomizeForm = () => {
         selectedType,
         selectedMaterial,
         selectedDetail,
+        selectedStyle,
+        selectedPocket,
+        selectedColor,
+        selectedFit,
         finalSize,
         customMeasurements,
         storedImageUrl || generatedImageUrl, // Prefer stored URL if available

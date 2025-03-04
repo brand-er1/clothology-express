@@ -14,6 +14,7 @@ export type Database = {
           cloth_type: string | null
           created_at: string
           detail: string | null
+          generation_prompt: string | null
           id: string
           image_path: string | null
           material: string | null
@@ -26,6 +27,7 @@ export type Database = {
           cloth_type?: string | null
           created_at?: string
           detail?: string | null
+          generation_prompt?: string | null
           id?: string
           image_path?: string | null
           material?: string | null
@@ -38,6 +40,7 @@ export type Database = {
           cloth_type?: string | null
           created_at?: string
           detail?: string | null
+          generation_prompt?: string | null
           id?: string
           image_path?: string | null
           material?: string | null

@@ -64,6 +64,7 @@ export const generateImage = async (
     console.log("Generation result:", generationData);
 
     const imageUrl = generationData?.imageUrl;
+    const optimizedPrompt = generationData?.optimizedPrompt || prompt; // Get the optimized prompt from GPT
     let storedImageUrl = null;
     let imagePath = null;
 
@@ -111,7 +112,7 @@ export const generateImage = async (
               clothType: selectedClothType,
               material: selectedMaterialName,
               detailDescription: selectedDetail,
-              generationPrompt: prompt // Store the actual GPT generation prompt
+              generationPrompt: optimizedPrompt // Store the actual GPT-optimized prompt
             }
           }
         );
@@ -144,6 +145,7 @@ export const generateImage = async (
       storedImageUrl,
       imagePath,
       prompt,
+      optimizedPrompt, // Also return the optimized prompt
     };
   } catch (error: any) {
     console.error("Image generation error:", error);

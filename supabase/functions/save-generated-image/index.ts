@@ -32,7 +32,7 @@ serve(async (req) => {
       clothType,
       material,
       detailDescription,
-      generationPrompt  // Add generationPrompt to store the GPT prompt
+      generationPrompt  // This should be the optimized prompt from GPT
     } = requestData;
 
     // Validate inputs
@@ -42,6 +42,9 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
+
+    // Log the generation prompt for debugging
+    console.log("Storing generation prompt:", generationPrompt);
 
     // Insert data into generated_images table
     const { data, error } = await supabase
@@ -54,9 +57,9 @@ serve(async (req) => {
         prompt: prompt,
         cloth_type: clothType,
         material: material,
-        detail: detailDescription, // Use only the unified detail description
-        created_at: new Date().toISOString(), // Explicitly set the creation timestamp
-        generation_prompt: generationPrompt // Save the GPT generation prompt
+        detail: detailDescription,
+        created_at: new Date().toISOString(),
+        generation_prompt: generationPrompt || prompt // Fallback to original prompt if optimized isn't provided
       })
       .select();
 

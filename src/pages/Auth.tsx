@@ -7,6 +7,8 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { useAuthForm } from "@/hooks/useAuthForm";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 const Auth = () => {
   const {
@@ -62,6 +64,12 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <Alert className="mb-4 bg-brand/10 border-brand/20">
+              <Info className="h-4 w-4 text-brand" />
+              <AlertDescription className="text-sm">
+                의류 맞춤 제작을 위해서는 BRAND-ER 쇼핑몰과 별개로 회원가입이 필요합니다.
+              </AlertDescription>
+            </Alert>
             <form onSubmit={handleAuth} className="space-y-4">
               {isSignUp ? (
                 <SignUpForm

@@ -1,7 +1,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
+import { clothTypes } from "@/lib/customize-constants";
 import { Material } from "@/types/customize";
 import { createDraftOrder } from "./orderCreation";
 
@@ -32,7 +32,6 @@ export const generateImage = async (
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
     
-
     // Construct the generation prompt
     const prompt = `${selectedMaterialName} ${selectedClothType}, ` +
       (selectedDetail ? `${selectedDetail}, ` : '') +
@@ -92,13 +91,6 @@ export const generateImage = async (
       }
     }
 
-    // Create a formatted description with the selections
-    let detailDesc = '';
-    if (selectedDetail) detailDesc += selectedDetail + '\n';
-
-    
-    detailDesc = detailDesc.trim();
-
     // Store image information in the generated_images table
     if (imageUrl && user.id) {
       try {
@@ -114,7 +106,7 @@ export const generateImage = async (
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
-              detailDescription: detailDesc // Use a single unified detail description
+              detail: selectedDetail // Use the detail field
             }
           }
         );

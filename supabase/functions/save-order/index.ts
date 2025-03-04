@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
@@ -15,7 +14,7 @@ interface OrderData {
   measurements?: Record<string, any> | null;
   generatedImageUrl?: string | null;
   imagePath?: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'draft';
+  status: 'pending' | 'approved' | 'rejected' | 'draft' | 'deleted';
 }
 
 Deno.serve(async (req) => {

@@ -21,6 +21,7 @@ export const fetchUserOrders = async (): Promise<Order[] | null> => {
       .from('orders')
       .select('*')
       .eq('user_id', user.id)
+      .neq('status', 'deleted') // Exclude deleted orders
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -96,14 +97,14 @@ export const deleteOrder = async (orderId: string): Promise<boolean> => {
       return false;
     }
 
-    // Delete the order
-    const { error: deleteError } = await supabase
+    // Update the order status to 'deleted' instead of removing it
+    const { error: updateError } = await supabase
       .from('orders')
-      .delete()
+      .update({ status: 'deleted' })
       .eq('id', orderId);
 
-    if (deleteError) {
-      console.error("Error deleting order:", deleteError);
+    if (updateError) {
+      console.error("Error marking order as deleted:", updateError);
       toast({
         title: "주문 삭제 실패",
         description: "주문을 삭제하는데 실패했습니다.",

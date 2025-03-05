@@ -22,8 +22,16 @@ serve(async (req) => {
     const { userId, userInfo } = await req.json();
     
     // 필수 필드 검증
-    if (!userId || !userInfo.username || !userInfo.height || !userInfo.weight) {
+    if (!userId || !userInfo.username) {
       throw new Error("Required fields are missing");
+    }
+
+    // 높이와 무게 기본값 설정
+    const height = parseFloat(userInfo.height || "170");
+    const weight = parseFloat(userInfo.weight || "70");
+    
+    if (isNaN(height) || isNaN(weight)) {
+      throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
     }
 
     // userId 중복 확인
@@ -48,9 +56,13 @@ serve(async (req) => {
     if (usernameError) throw usernameError;
     if (usernameCheck) throw new Error("이미 사용 중인 닉네임입니다.");
 
-    const fullAddress = userInfo.addressDetail 
-      ? `${userInfo.address} ${userInfo.addressDetail} (${userInfo.postcode})`
-      : `${userInfo.address} (${userInfo.postcode})`;
+    // 주소 처리 (비어있을 수 있음)
+    let fullAddress = null;
+    if (userInfo.address) {
+      fullAddress = userInfo.addressDetail 
+        ? `${userInfo.address} ${userInfo.addressDetail} (${userInfo.postcode})`
+        : `${userInfo.address} (${userInfo.postcode})`;
+    }
     
     // 프로필 업데이트
     const { data, error } = await supabaseClient
@@ -61,8 +73,8 @@ serve(async (req) => {
         full_name: userInfo.fullName || null,
         phone_number: userInfo.phoneNumber || null,
         address: fullAddress,
-        height: parseFloat(userInfo.height),
-        weight: parseFloat(userInfo.weight),
+        height: height,
+        weight: weight,
         gender: userInfo.gender || '남성',
       })
       .eq('id', userId);

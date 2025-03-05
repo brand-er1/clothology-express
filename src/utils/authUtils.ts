@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -176,8 +175,6 @@ export const sendMessageToParentWindow = (message: AuthMessage) => {
 // Check if user profile is complete
 export const isProfileComplete = (profile: any): boolean => {
   return !(!profile || 
-    !profile.username || 
-    !profile.user_id || 
     !profile.phone_number || 
     profile.height === null || 
     profile.weight === null);

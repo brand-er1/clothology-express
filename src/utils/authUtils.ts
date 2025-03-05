@@ -104,5 +104,9 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
 export const getSocialLoginUrl = (provider: string): string => {
   const redirectTo = `${window.location.origin}/auth/callback`;
   
-  return `${supabase.auth.getUrl()}/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
+  // Use the correct way to build the authorization URL for the provider
+  return `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
 };
+
+// Add the supabaseUrl constant at the top level
+const supabaseUrl = 'https://jwmzjszdjlrqrhadbggr.supabase.co';

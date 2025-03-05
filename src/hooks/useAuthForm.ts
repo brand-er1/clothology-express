@@ -200,8 +200,8 @@ export const useAuthForm = () => {
       
       if (message && typeof message === 'object') {
         if (message.type === 'SOCIAL_LOGIN_SUCCESS') {
-          // Refresh the session to ensure we have the latest auth state
-          await refreshSessionAfterSocialLogin();
+          // Refresh the session using the session data from the popup
+          await refreshSessionAfterSocialLogin(message.data?.session);
           
           toast({
             title: "로그인 성공!",
@@ -216,8 +216,8 @@ export const useAuthForm = () => {
             variant: "destructive",
           });
         } else if (message.type === 'PROFILE_INCOMPLETE') {
-          // Refresh the session to ensure we have the latest auth state
-          await refreshSessionAfterSocialLogin();
+          // Refresh the session using the session data from the popup
+          await refreshSessionAfterSocialLogin(message.data?.session);
           
           toast({
             title: "프로필 정보가 필요합니다",

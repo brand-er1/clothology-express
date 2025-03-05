@@ -185,9 +185,29 @@ export const isProfileComplete = (profile: any): boolean => {
 };
 
 // Refresh the session in the main window after the popup login
-export const refreshSessionAfterSocialLogin = async (): Promise<void> => {
+export const refreshSessionAfterSocialLogin = async (sessionData?: any): Promise<void> => {
   try {
-    // Get the current session and force refresh
+    console.log("Refreshing session after social login");
+    
+    // If we received session data from the popup, use it to set the session
+    if (sessionData && sessionData.access_token && sessionData.refresh_token) {
+      console.log("Setting session from received session data");
+      const { error } = await supabase.auth.setSession({
+        access_token: sessionData.access_token,
+        refresh_token: sessionData.refresh_token
+      });
+      
+      if (error) {
+        console.error("Error setting session from popup data:", error);
+        return;
+      }
+      
+      console.log("Session set successfully from popup data");
+      return;
+    }
+    
+    // Fallback: Get the current session and force refresh
+    console.log("No session data received, getting current session");
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {

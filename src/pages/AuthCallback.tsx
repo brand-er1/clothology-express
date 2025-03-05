@@ -97,6 +97,14 @@ const AuthCallback = () => {
         
         // Get user profile to check if it's complete
         if (window.opener && data.session) {
+          // Store the session in localStorage before sending the success message
+          // This helps ensure the session is available to the parent window
+          localStorage.setItem('supabase.auth.token', JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_at: Math.floor(Date.now() / 1000) + data.session.expires_in
+          }));
+          
           const { data: userData } = await supabase.auth.getUser();
           
           if (userData && userData.user) {
@@ -110,7 +118,15 @@ const AuthCallback = () => {
               // Check if profile is complete
               if (!isProfileComplete(profileData)) {
                 console.log("Profile is incomplete, notifying parent window");
-                sendMessageToParentWindow({ type: 'PROFILE_INCOMPLETE' });
+                sendMessageToParentWindow({ 
+                  type: 'PROFILE_INCOMPLETE',
+                  data: { 
+                    session: {
+                      access_token: data.session.access_token,
+                      refresh_token: data.session.refresh_token
+                    }
+                  }
+                });
                 
                 // A longer delay for Kakao login to ensure the message is sent before closing
                 setTimeout(() => window.close(), 500);
@@ -120,7 +136,15 @@ const AuthCallback = () => {
             
             // Profile check passed, send success message and close popup
             console.log("Authentication successful, notifying parent window");
-            sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
+            sendMessageToParentWindow({ 
+              type: 'SOCIAL_LOGIN_SUCCESS',
+              data: { 
+                session: {
+                  access_token: data.session.access_token,
+                  refresh_token: data.session.refresh_token
+                }
+              }
+            });
             
             // A longer delay for Kakao login to ensure the message is sent before closing
             const isKakao = userData.user.app_metadata?.provider === 'kakao';

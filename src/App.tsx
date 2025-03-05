@@ -12,7 +12,6 @@ import Orders from './pages/Orders';
 import Admin from './pages/Admin';
 import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
-import { WelcomeNotification } from './components/WelcomeNotification';
 
 // Kakao 타입 선언
 declare global {
@@ -71,12 +70,6 @@ function App() {
               console.log("Session set successfully from hash parameters");
               // 세션 설정 후 URL hash 제거 및 홈으로 리다이렉트
               window.history.replaceState(null, '', '/');
-              
-              // 부모 창이 있으면 부모 창에 로그인 성공 알림 (팝업에서 호출된 경우)
-              if (window.opener) {
-                window.opener.postMessage({ type: 'AUTH_COMPLETE', success: true }, window.location.origin);
-                window.close();
-              }
             }
           }
         } catch (error) {
@@ -110,42 +103,13 @@ function App() {
         
         // 에러 파라미터 제거 (URL 정리)
         window.history.replaceState(null, '', window.location.pathname);
-        
-        // 부모 창이 있으면 부모 창에 로그인 실패 알림 (팝업에서 호출된 경우)
-        if (window.opener) {
-          window.opener.postMessage({ type: 'AUTH_COMPLETE', success: false }, window.location.origin);
-          window.close();
-        }
       }
     };
     
     checkForErrors();
-    
-    // 소셜 로그인 팝업에서 메시지 수신 처리
-    const handleMessage = async (event: MessageEvent) => {
-      // 같은 출처(origin)에서 온 메시지만 처리
-      if (event.origin !== window.location.origin) return;
-      
-      // AUTH_COMPLETE 메시지 처리
-      if (event.data.type === 'AUTH_COMPLETE') {
-        if (event.data.success) {
-          // 로그인 성공 처리
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session) {
-            toast({
-              title: "로그인 성공!",
-              description: "환영합니다.",
-            });
-          }
-        }
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
 
     return () => {
       document.body.removeChild(script);
-      window.removeEventListener('message', handleMessage);
     };
   }, [isKakaoInitialized]);
 
@@ -163,7 +127,6 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-      <WelcomeNotification />
       <Toaster />
     </>
   );

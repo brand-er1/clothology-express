@@ -1,9 +1,78 @@
 
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/components/ui/use-toast";
+
+export const checkEmailAvailability = async (email: string) => {
+  const trimmedEmail = email.trim().replace(/\n/g, '');
+  
+  if (!trimmedEmail) {
+    toast({
+      title: "이메일을 입력해주세요",
+      variant: "destructive",
+    });
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('check-availability', {
+      body: { type: 'email', value: trimmedEmail }
+    });
+
+    if (error) throw error;
+
+    toast({
+      title: data.message,
+      variant: data.available ? "default" : "destructive",
+    });
+    
+    return data.available;
+  } catch (error) {
+    console.error("Email check error:", error);
+    toast({
+      title: "이메일 확인 중 오류가 발생했습니다",
+      variant: "destructive",
+    });
+    return null;
+  }
+};
+
+export const checkUsernameAvailability = async (username: string) => {
+  const trimmedUsername = username.trim().replace(/\n/g, '');
+  
+  if (!trimmedUsername) {
+    toast({
+      title: "닉네임을 입력해주세요",
+      variant: "destructive",
+    });
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('check-availability', {
+      body: { type: 'username', value: trimmedUsername }
+    });
+
+    if (error) throw error;
+
+    toast({
+      title: data.message,
+      variant: data.available ? "default" : "destructive",
+    });
+    
+    return data.available;
+  } catch (error) {
+    console.error("Username check error:", error);
+    toast({
+      title: "닉네임 확인 중 오류가 발생했습니다",
+      variant: "destructive",
+    });
+    return null;
+  }
+};
 
 export const validateSignUpForm = async (
-  passwordMatch: boolean,
-  password: string,
+  passwordMatch: boolean, 
+  password: string, 
   isEmailAvailable: boolean | null,
   isUsernameAvailable: boolean | null,
   height: string,
@@ -17,60 +86,19 @@ export const validateSignUpForm = async (
     throw new Error("비밀번호는 최소 6자 이상이어야 합니다.");
   }
 
-  if (isEmailAvailable === false) {
-    throw new Error("이미 사용 중인 이메일입니다.");
+  if (!isEmailAvailable) {
+    throw new Error("이메일 중복 확인이 필요합니다.");
+  }
+  
+  if (!isUsernameAvailable) {
+    throw new Error("닉네임 중복 확인이 필요합니다.");
   }
 
-  if (isUsernameAvailable === false) {
-    throw new Error("이미 사용 중인 닉네임입니다.");
+  if (!height) {
+    throw new Error("키를 입력해주세요.");
   }
-  
-  // 키와 몸무게가 입력된 경우에만 유효성 검증
-  if (height && isNaN(parseFloat(height))) {
-    throw new Error("키는 유효한 숫자여야 합니다.");
-  }
-  
-  if (weight && isNaN(parseFloat(weight))) {
-    throw new Error("몸무게는 유효한 숫자여야 합니다.");
-  }
-};
 
-export const checkEmailAvailability = async (email: string): Promise<boolean> => {
-  if (!email) return false;
-  
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .maybeSingle();
-      
-    if (error) throw error;
-    
-    // 데이터가 없으면 (null) 사용 가능
-    return data === null;
-  } catch (error) {
-    console.error("Email availability check error:", error);
-    return false;
-  }
-};
-
-export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
-  if (!username) return false;
-  
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle();
-      
-    if (error) throw error;
-    
-    // 데이터가 없으면 (null) 사용 가능
-    return data === null;
-  } catch (error) {
-    console.error("Username availability check error:", error);
-    return false;
+  if (!weight) {
+    throw new Error("몸무게를 입력해주세요.");
   }
 };

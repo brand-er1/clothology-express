@@ -156,6 +156,15 @@ const AuthCallback = () => {
         if (!profile || !profile.height || !profile.weight || !profile.address) {
           setNeedsProfile(true);
           
+          // 카카오 소셜 로그인 정보에서 닉네임 추출
+          let initialUsername = "";
+          
+          if (data.session.user.app_metadata.provider === 'kakao') {
+            // Kakao 사용자 메타데이터에서 닉네임 추출
+            const userMeta = data.session.user.user_metadata || {};
+            initialUsername = userMeta.preferred_username || userMeta.name || userMeta.nickname || "";
+          }
+          
           // 일부 기존 정보가 있으면 폼에 미리 채우기
           if (profile) {
             const addressMatch = profile.address?.match(/^(.*?)\s*(?:\((.*?)\))?$/);
@@ -169,7 +178,7 @@ const AuthCallback = () => {
             setFormData(prev => ({
               ...prev,
               userId: profile.user_id || "",
-              username: profile.username || "",
+              username: profile.username || initialUsername,
               fullName: profile.full_name || "",
               phoneNumber: profile.phone_number || "",
               address: baseAddress || "",
@@ -178,6 +187,12 @@ const AuthCallback = () => {
               height: profile.height?.toString() || "",
               weight: profile.weight?.toString() || "",
               gender: profile.gender || "남성",
+            }));
+          } else {
+            // 프로필이 없는 경우 카카오 닉네임만 설정
+            setFormData(prev => ({
+              ...prev,
+              username: initialUsername
             }));
           }
         } else {

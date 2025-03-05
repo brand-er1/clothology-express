@@ -73,7 +73,6 @@ export const checkUsernameAvailability = async (username: string) => {
 export const validateSignUpForm = async (
   passwordMatch: boolean, 
   password: string, 
-  isIdAvailable: boolean | null,
   isEmailAvailable: boolean | null,
   isUsernameAvailable: boolean | null,
   height: string,

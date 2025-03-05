@@ -16,14 +16,11 @@ const Auth = () => {
     isLoading,
     isSignUp,
     passwordMatch,
-    isCheckingId,
-    isIdAvailable,
     isEmailAvailable,
     isUsernameAvailable,
     formData,
     handleChange,
     handleGenderChange,
-    checkUserId,
     checkEmail,
     checkUsername,
     handleAuth,
@@ -81,11 +78,8 @@ const Auth = () => {
                   handleChange={handleChange}
                   handleGenderChange={handleGenderChange}
                   isLoading={isLoading}
-                  isIdAvailable={isIdAvailable}
-                  isCheckingId={isCheckingId}
                   passwordMatch={passwordMatch}
                   handleAddressSearch={handleAddressSearch}
-                  checkUserId={checkUserId}
                   checkEmail={checkEmail}
                   isEmailAvailable={isEmailAvailable}
                   isUsernameAvailable={isUsernameAvailable}

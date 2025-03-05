@@ -103,8 +103,7 @@ export const useAuthForm = () => {
       if (isSignUp) {
         await validateSignUpForm(
           passwordMatch, 
-          formData.password, 
-          true, // No user_id check needed anymore
+          formData.password,
           isEmailAvailable,
           isUsernameAvailable,
           formData.height,

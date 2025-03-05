@@ -35,23 +35,16 @@ serve(async (req) => {
     // 기본값 설정
     const userMeta = user.user_metadata || {};
     let username = '';
-    let userId = '';
+    
+    // Fallback user_id - 항상 값이 있도록 보장
+    // 이메일이 없는 경우 UUID를 사용
+    let userId = user.email || `user_${user.id.replace(/-/g, '')}`;
     
     // 로그인 제공자에 따른 처리
     if (provider === 'kakao') {
-      username = userMeta.preferred_username || userMeta.name || userMeta.nickname || '';
-      // 카카오 로그인에서는 이메일을 user_id로 사용
-      userId = user.email || '';
+      username = userMeta.preferred_username || userMeta.name || userMeta.nickname || '사용자';
     } else {
-      // 다른 로그인 방법인 경우도 이메일을 user_id로 사용
-      userId = user.email || '';
-      username = userMeta.username || userMeta.name || userMeta.preferred_username || '';
-    }
-    
-    // 필수 필드 검증
-    if (!userId) {
-      console.error("Error: Could not determine userId", { user, provider });
-      throw new Error("사용자 ID를 생성할 수 없습니다. 이메일이 필요합니다.");
+      username = userMeta.username || userMeta.name || userMeta.preferred_username || '사용자';
     }
     
     console.log("Creating profile with:", { 

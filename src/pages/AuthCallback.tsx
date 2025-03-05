@@ -131,42 +131,51 @@ const AuthCallback = () => {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        console.log("AuthCallback: Starting authentication check with location:", location.pathname, location.hash);
+        console.log("AuthCallback: Starting authentication check");
         
-        // URL에서 해시 파라미터 처리
-        if (location.hash && location.hash.includes('access_token')) {
-          console.log("AuthCallback: Found access_token in hash");
+        // 1. Check for code parameter (pkce flow)
+        const searchParams = new URLSearchParams(location.search);
+        const code = searchParams.get('code');
+        
+        if (code) {
+          console.log("AuthCallback: Found code parameter, exchanging for session");
           
-          // 이미 세션을 가지고 있는지 확인
-          const { data: existingSession } = await supabase.auth.getSession();
+          // Exchange the code for a session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           
-          if (!existingSession.session) {
-            // 해시에서 액세스 토큰 추출
-            const hashParams = new URLSearchParams(location.hash.substring(1));
-            const accessToken = hashParams.get('access_token');
-            const refreshToken = hashParams.get('refresh_token');
+          if (error) {
+            console.error("AuthCallback: Error exchanging code for session:", error);
+            throw error;
+          }
+          
+          console.log("AuthCallback: Code successfully exchanged for session");
+        } 
+        // 2. Fallback for hash parameters (legacy implicit flow)
+        else if (location.hash && location.hash.includes('access_token')) {
+          console.log("AuthCallback: Found access_token in hash (legacy flow)");
+          
+          // Handle the legacy flow with hash parameters
+          const hashParams = new URLSearchParams(location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            console.log("AuthCallback: Setting session from hash parameters");
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
             
-            console.log("AuthCallback: Extracted tokens, setting session");
-            
-            if (accessToken && refreshToken) {
-              // Supabase 세션 설정
-              const { data, error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-              });
-              
-              if (error) {
-                console.error("AuthCallback: Error setting session:", error);
-                throw error;
-              }
-              
-              console.log("AuthCallback: Session set successfully");
+            if (error) {
+              console.error("AuthCallback: Error setting session:", error);
+              throw error;
             }
-          } else {
-            console.log("AuthCallback: User already has a session");
+            
+            console.log("AuthCallback: Session set successfully from hash parameters");
           }
         }
         
+        // 3. Check if we have a session
         const { data, error } = await supabase.auth.getSession();
         
         if (error) throw error;
@@ -179,7 +188,7 @@ const AuthCallback = () => {
         
         setUser(data.session.user);
         
-        // 사용자 프로필 정보 확인
+        // 4. Get user profile information
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -193,7 +202,6 @@ const AuthCallback = () => {
           console.log("AuthCallback: User needs to complete profile");
           setNeedsProfile(true);
           
-          // 카카오 소셜 로그인 정보에서 닉네임 추출
           let initialUsername = "";
           
           if (data.session.user.app_metadata.provider === 'kakao') {
@@ -203,7 +211,6 @@ const AuthCallback = () => {
             console.log("AuthCallback: Extracted Kakao username:", initialUsername);
           }
           
-          // 일부 기존 정보가 있으면 폼에 미리 채우기
           if (profile) {
             const addressMatch = profile.address?.match(/^(.*?)\s*(?:\((.*?)\))?$/);
             const mainAddress = addressMatch?.[1] || "";

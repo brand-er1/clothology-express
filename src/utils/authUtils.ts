@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 
 export const validateSignUpForm = async (
@@ -101,7 +102,6 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
 };
 
 export const getSocialLoginUrl = (provider: string): string => {
-  // Always use the current window origin for the redirect URL to ensure consistency
   const redirectTo = `${window.location.origin}/auth/callback`;
   
   // Use the correct way to build the authorization URL for the provider

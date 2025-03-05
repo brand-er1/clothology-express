@@ -45,3 +45,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.handle-new-user]
 verify_jwt = true
+[functions.add-admin]
+verify_jwt = true

@@ -1,5 +1,4 @@
-<lov-codelov-code>
-import { supabase, redirectUrl } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export const validateSignUpForm = async (
   passwordMatch: boolean,
@@ -102,10 +101,12 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
 };
 
 export const getSocialLoginUrl = (provider: string): string => {
-  // Use the imported redirectUrl instead of recalculating it
-  return `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectUrl)}`;
+  // Always use the current window origin for the redirect URL to ensure consistency
+  const redirectTo = `${window.location.origin}/auth/callback`;
+  
+  // Use the correct way to build the authorization URL for the provider
+  return `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
 };
 
 // Add the supabaseUrl constant at the top level
 const supabaseUrl = 'https://jwmzjszdjlrqrhadbggr.supabase.co';
-</lov-code>

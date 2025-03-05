@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { supabase, redirectUrl } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
 import { checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
@@ -65,13 +65,18 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
-      console.log(`Using redirect URL: ${redirectUrl}`);
+      // Get origin for safer redirects - use the current origin consistently
+      const origin = window.location.origin;
+      
+      // Create a more reliable redirect URL (to auth/callback)
+      const redirectTo = `${origin}/auth/callback`;
+      console.log(`Using redirect URL: ${redirectTo}`);
       
       // Get the OAuth URL from Supabase
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: redirectUrl,
+          redirectTo,
           scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
           skipBrowserRedirect: true, // Prevent auto redirect to handle with popup
         },
@@ -194,7 +199,7 @@ export const useAuthForm = () => {
               weight: formData.weight ? weight : null,
               gender: formData.gender,
             },
-            emailRedirectTo: redirectUrl,
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
         if (error) throw error;

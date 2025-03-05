@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -66,7 +65,7 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
-      // Get origin for safer redirects
+      // Get origin for safer redirects - use the current origin consistently
       const origin = window.location.origin;
       
       // Create a more reliable redirect URL (to auth/callback)

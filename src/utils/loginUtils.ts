@@ -17,10 +17,11 @@ export const handleLogin = async (loginIdentifier: string, password: string) => 
         console.log(`Looking up user with user_id: "${loginIdentifier}"`);
         
         // First, try to find the profile with the given user_id
+        // Using ilike for case-insensitive matching
         const { data: userData, error: userError } = await supabase
           .from('profiles')
-          .select('id, user_id')
-          .eq('user_id', loginIdentifier)
+          .select('id')
+          .ilike('user_id', loginIdentifier)
           .maybeSingle();
         
         if (userError) {

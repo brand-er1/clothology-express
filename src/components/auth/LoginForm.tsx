@@ -19,6 +19,7 @@ export const LoginForm = ({ formData, handleChange, isLoading }: LoginFormProps)
           id="email"
           name="email"
           type="text"
+          placeholder="아이디 또는 이메일 주소"
           value={formData.email}
           onChange={handleChange}
           required
@@ -30,6 +31,7 @@ export const LoginForm = ({ formData, handleChange, isLoading }: LoginFormProps)
           id="password"
           name="password"
           type="password"
+          placeholder="비밀번호"
           value={formData.password}
           onChange={handleChange}
           required

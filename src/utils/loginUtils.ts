@@ -25,7 +25,13 @@ export const handleLogin = async (loginIdentifier: string, password: string) => 
         
         if (userError) {
           console.error("User ID lookup failed:", userError);
-          throw new Error("입력하신 아이디를 찾을 수 없습니다.");
+          
+          // Check for the specific error about no rows
+          if (userError.code === 'PGRST116') {
+            throw new Error("입력하신 아이디를 찾을 수 없습니다.");
+          }
+          
+          throw new Error("사용자 ID 조회 중 오류가 발생했습니다.");
         }
         
         if (!userData) {
@@ -47,10 +53,18 @@ export const handleLogin = async (loginIdentifier: string, password: string) => 
         console.log(`Found email ${email} for user_id ${loginIdentifier}`);
       } catch (error: any) {
         console.error("Error during user ID lookup:", error);
-        if (error.message.includes("single row")) {
-          throw new Error("입력하신 아이디를 찾을 수 없습니다.");
+        
+        // Already formatted error messages should be passed through
+        if (error.message && (
+          error.message.includes("입력하신 아이디를") || 
+          error.message.includes("해당 아이디에 연결된") || 
+          error.message.includes("해당 아이디의 인증 정보")
+        )) {
+          throw error;
         }
-        throw error;
+        
+        // For all other unexpected errors
+        throw new Error("로그인 처리 중 오류가 발생했습니다.");
       }
     }
   }

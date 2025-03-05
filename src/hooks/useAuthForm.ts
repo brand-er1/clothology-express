@@ -61,47 +61,62 @@ export const useAuthForm = () => {
     setIsUsernameAvailable(result);
   };
 
-  // Social login with popup window
+  // Social login with popup window - improved implementation
   const handleSocialLogin = async (provider: 'kakao' | 'google') => {
     try {
       setIsLoading(true);
       
-      // 현재 호스트 기반 리다이렉트 URL 생성
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      // Get origin for safer redirects
+      const origin = window.location.origin;
+      
+      // Create a more reliable redirect URL (to auth/callback)
+      const redirectTo = `${origin}/auth/callback`;
       console.log(`Using redirect URL: ${redirectTo}`);
       
-      // 소셜 로그인 URL 가져오기
+      // Get the OAuth URL from Supabase
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: redirectTo,
+          redirectTo,
           scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
-          skipBrowserRedirect: true, // 브라우저 자동 리다이렉트 방지
+          skipBrowserRedirect: true, // Prevent auto redirect to handle with popup
         },
       });
       
       if (error) throw error;
       
       if (data?.url) {
-        // 팝업 창 열기
+        // Define popup dimensions and position
         const width = 600;
-        const height = 600;
-        const left = window.innerWidth / 2 - width / 2;
-        const top = window.innerHeight / 2 - height / 2;
+        const height = 700; // Slightly larger to accommodate OAuth screens
+        const left = (window.innerWidth / 2) - (width / 2);
+        const top = (window.innerHeight / 2) - (height / 2);
         
-        const popup = window.open(
+        // Open the popup window with proper settings
+        const popupWindow = window.open(
           data.url,
           `${provider}Login`,
-          `width=${width},height=${height},left=${left},top=${top},popup=1`
+          `width=${width},height=${height},left=${left},top=${top},popup=1,toolbar=0,location=0,menubar=0`
         );
         
-        // 팝업 창이 닫히면 세션 확인
-        const checkPopup = setInterval(async () => {
-          try {
-            if (!popup || popup.closed) {
-              clearInterval(checkPopup);
-              
-              // 세션 새로고침
+        if (!popupWindow) {
+          // Handle popup blocked case
+          toast({
+            title: "팝업 차단됨",
+            description: "팝업 창이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Set up interval to check for popup closure
+        const checkPopupInterval = setInterval(async () => {
+          if (!popupWindow || popupWindow.closed) {
+            clearInterval(checkPopupInterval);
+            
+            try {
+              // Refresh the session to check if authentication succeeded
               const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
               
               if (sessionError) throw sessionError;
@@ -114,17 +129,21 @@ export const useAuthForm = () => {
                 });
                 navigate("/");
               } else {
-                // 로그인이 취소되었거나 실패한 경우
+                // Login was cancelled or failed
                 console.log("Social login cancelled or failed");
                 setIsLoading(false);
               }
+            } catch (checkError) {
+              console.error("Error checking session after popup:", checkError);
+              toast({
+                title: "세션 확인 오류",
+                description: "로그인 상태를 확인할 수 없습니다. 다시 시도해주세요.",
+                variant: "destructive",
+              });
+              setIsLoading(false);
             }
-          } catch (checkError) {
-            clearInterval(checkPopup);
-            console.error("Error checking popup:", checkError);
-            setIsLoading(false);
           }
-        }, 1000); // 1초마다 확인
+        }, 500); // Check every 500ms
       }
     } catch (error: any) {
       console.error("Social login error:", error);
@@ -181,7 +200,6 @@ export const useAuthForm = () => {
               weight: formData.weight ? weight : null,
               gender: formData.gender,
             },
-            // emailRedirectTo 사용 (redirectTo 대신)
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });

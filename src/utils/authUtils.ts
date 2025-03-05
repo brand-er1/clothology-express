@@ -74,3 +74,29 @@ export const checkUsernameAvailability = async (username: string): Promise<boole
     return false;
   }
 };
+
+// 소셜 로그인 창이 이미 열려있는지 추적하는 변수
+let socialLoginPopup: Window | null = null;
+
+// 소셜 로그인 팝업 열기 함수
+export const openSocialLoginPopup = (url: string, provider: string): Window | null => {
+  // 이미 열린 팝업이 있으면 닫기
+  if (socialLoginPopup && !socialLoginPopup.closed) {
+    socialLoginPopup.close();
+  }
+  
+  // 팝업 창 크기 및 위치 설정
+  const width = 600;
+  const height = 700;
+  const left = window.innerWidth / 2 - width / 2;
+  const top = window.innerHeight / 2 - height / 2;
+  
+  // 팝업 창 열기
+  socialLoginPopup = window.open(
+    url,
+    `${provider}Login`,
+    `width=${width},height=${height},left=${left},top=${top},popup=1,toolbar=0,location=0,menubar=0`
+  );
+  
+  return socialLoginPopup;
+};

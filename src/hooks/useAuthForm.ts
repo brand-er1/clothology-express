@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase, redirectUrl } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
 import { checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
@@ -64,12 +64,6 @@ export const useAuthForm = () => {
   const handleSocialLogin = async (provider: 'kakao' | 'google') => {
     try {
       setIsLoading(true);
-      
-      // Support both development and production environments
-      const isProd = window.location.hostname === 'clothology-express.lovable.app'
-      const redirectUrl = isProd 
-        ? 'https://clothology-express.lovable.app/auth/callback'
-        : `${window.location.origin}/auth/callback`
       
       console.log(`Using redirect URL: ${redirectUrl}`);
       
@@ -200,7 +194,7 @@ export const useAuthForm = () => {
               weight: formData.weight ? weight : null,
               gender: formData.gender,
             },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: redirectUrl,
           },
         });
         if (error) throw error;

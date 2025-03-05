@@ -15,8 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true, // Enable auto detection for handling hash fragments
-    flowType: 'pkce', // Use PKCE flow for more secure auth
-    redirectTo: redirectUrl // Set the redirect URL for OAuth flows directly in the config
+    flowType: 'pkce' // Use PKCE flow for more secure auth
   },
   global: {
     headers: {
@@ -33,3 +32,6 @@ export const getCurrentUser = async () => {
     error: null
   };
 }
+
+// Make the redirectUrl available for use in auth calls
+export { redirectUrl }

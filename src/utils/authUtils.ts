@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 
 export const validateSignUpForm = async (
@@ -102,12 +101,14 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
 };
 
 export const getSocialLoginUrl = (provider: string): string => {
-  // Get the current host consistently
-  const currentHost = window.location.origin;
-  const redirectTo = `${currentHost}/auth/callback`;
+  // Support both development and production environments
+  const isProd = window.location.hostname === 'clothology-express.lovable.app'
+  const redirectUrl = isProd 
+    ? 'https://clothology-express.lovable.app/auth/callback'
+    : `${window.location.origin}/auth/callback`
   
   // Use the correct way to build the authorization URL for the provider
-  return `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
+  return `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectUrl)}`;
 };
 
 // Add the supabaseUrl constant at the top level

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -66,18 +65,19 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
-      // Get the exact current origin
-      const currentHost = window.location.origin;
+      // Support both development and production environments
+      const isProd = window.location.hostname === 'clothology-express.lovable.app'
+      const redirectUrl = isProd 
+        ? 'https://clothology-express.lovable.app/auth/callback'
+        : `${window.location.origin}/auth/callback`
       
-      // Create a consistent redirect URL
-      const redirectTo = `${currentHost}/auth/callback`;
-      console.log(`Using redirect URL: ${redirectTo}`);
+      console.log(`Using redirect URL: ${redirectUrl}`);
       
       // Get the OAuth URL from Supabase
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo,
+          redirectTo: redirectUrl,
           scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
           skipBrowserRedirect: true, // Prevent auto redirect to handle with popup
         },

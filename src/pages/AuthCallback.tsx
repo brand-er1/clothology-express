@@ -137,6 +137,7 @@ const AuthCallback = () => {
     const checkUser = async () => {
       try {
         console.log("AuthCallback: Starting authentication check");
+        console.log("Current location:", window.location.href);
         
         // 1. Check for code parameter (pkce flow)
         const searchParams = new URLSearchParams(location.search);

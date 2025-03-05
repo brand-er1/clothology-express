@@ -24,11 +24,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// Set redirect URL for OAuth flows
-supabase.auth.setSession({
-  access_token: '',
-  refresh_token: '',
-}, {
+// Configure redirect URL for OAuth flows
+supabase.auth.setAutoConfirmSignUp({
   redirectTo: redirectUrl
 })
 

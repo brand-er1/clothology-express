@@ -106,6 +106,7 @@ export const useProfileForm = () => {
         .from('profiles')
         .update({
           username: formData.username,
+          phone_number: formData.phoneNumber,
           address: fullAddress,
           height: formData.height ? Number(formData.height) : null,
           weight: formData.weight ? Number(formData.weight) : null,

@@ -6,14 +6,12 @@ interface ReadOnlyFieldsProps {
   userId: string;
   email: string;
   fullName: string;
-  phoneNumber: string;
 }
 
 export const ReadOnlyFields = ({
   userId,
   email,
   fullName,
-  phoneNumber,
 }: ReadOnlyFieldsProps) => {
   return (
     <>
@@ -43,17 +41,6 @@ export const ReadOnlyFields = ({
           id="fullName"
           name="fullName"
           value={fullName}
-          readOnly
-          className="bg-gray-100"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="phoneNumber">전화번호</Label>
-        <Input
-          id="phoneNumber"
-          name="phoneNumber"
-          value={phoneNumber}
           readOnly
           className="bg-gray-100"
         />

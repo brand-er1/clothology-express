@@ -42,11 +42,11 @@ const Profile = () => {
                 userId={userId}
                 email={email}
                 fullName={formData.fullName || ""}
-                phoneNumber={formData.phoneNumber || ""}
               />
 
               <EditableFields 
                 username={formData.username || ""}
+                phoneNumber={formData.phoneNumber || ""}
                 height={formData.height || ""}
                 weight={formData.weight || ""}
                 gender={formData.gender || "남성"}

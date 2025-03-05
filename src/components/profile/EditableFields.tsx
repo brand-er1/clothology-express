@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface EditableFieldsProps {
   username: string;
+  phoneNumber: string;
   height: string;
   weight: string;
   gender: string;
@@ -14,6 +15,7 @@ interface EditableFieldsProps {
 
 export const EditableFields = ({
   username,
+  phoneNumber,
   height,
   weight,
   gender,
@@ -30,6 +32,17 @@ export const EditableFields = ({
           value={username}
           onChange={onChange}
           required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="phoneNumber">전화번호</Label>
+        <Input
+          id="phoneNumber"
+          name="phoneNumber"
+          value={phoneNumber}
+          onChange={onChange}
+          placeholder="전화번호를 입력하세요"
         />
       </div>
 

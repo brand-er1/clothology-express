@@ -265,8 +265,21 @@ const AuthCallback = () => {
           }
         } else {
           // 필요한 정보가 모두 있으면 홈으로 이동
-          console.log("AuthCallback: User profile complete, redirecting to home");
-          navigate("/");
+          console.log("AuthCallback: User profile complete");
+          
+          // Check if this window is a popup
+          if (window.opener && window.opener !== window) {
+            console.log("AuthCallback: This is a popup, sending success message to parent");
+            // Send message to parent window
+            window.opener.postMessage('SOCIAL_LOGIN_SUCCESS', window.location.origin);
+            // Close this popup after a short delay
+            setTimeout(() => {
+              window.close();
+            }, 1000);
+          } else {
+            // If not a popup, simply navigate to home
+            navigate("/");
+          }
         }
       } catch (error) {
         console.error("Auth callback error:", error);

@@ -11,6 +11,7 @@ const Index = () => {
       <Header />
       <WelcomeNotification />
       
+      {/* Hero Section */}
       <main className="pt-16">
         {/* Hero Section */}
         <section className="relative h-[90vh] flex items-center justify-center bg-gradient-to-b from-white to-gray-50">

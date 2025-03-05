@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
+import { SOCIAL_LOGIN_SUCCESS, SOCIAL_LOGIN_ERROR } from "@/utils/authUtils";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -133,6 +133,9 @@ const AuthCallback = () => {
     }
   };
 
+  // Check if this is a popup window
+  const isPopup = window.opener && window.opener !== window;
+
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -187,7 +190,14 @@ const AuthCallback = () => {
         
         if (!data.session) {
           console.log("AuthCallback: No session found, redirecting to auth");
-          navigate("/auth");
+          
+          // If this is a popup window, send error message to parent
+          if (isPopup) {
+            window.opener.postMessage({ type: SOCIAL_LOGIN_ERROR }, window.location.origin);
+            window.close();
+          } else {
+            navigate("/auth");
+          }
           return;
         }
         
@@ -265,8 +275,19 @@ const AuthCallback = () => {
           }
         } else {
           // 필요한 정보가 모두 있으면 홈으로 이동
-          console.log("AuthCallback: User profile complete, redirecting to home");
-          navigate("/");
+          console.log("AuthCallback: User profile complete");
+          
+          // If this is a popup window, notify the parent and close
+          if (isPopup) {
+            console.log("AuthCallback: Sending success message to parent window");
+            window.opener.postMessage({ 
+              type: SOCIAL_LOGIN_SUCCESS,
+              user: data.session.user
+            }, window.location.origin);
+            window.close();
+          } else {
+            navigate("/");
+          }
         }
       } catch (error) {
         console.error("Auth callback error:", error);
@@ -275,14 +296,21 @@ const AuthCallback = () => {
           description: "로그인 과정에서 오류가 발생했습니다. 다시 시도해주세요.",
           variant: "destructive",
         });
-        navigate("/auth");
+        
+        // If this is a popup window, send error message and close
+        if (isPopup) {
+          window.opener.postMessage({ type: SOCIAL_LOGIN_ERROR }, window.location.origin);
+          window.close();
+        } else {
+          navigate("/auth");
+        }
       } finally {
         setIsLoading(false);
       }
     };
     
     checkUser();
-  }, [navigate, location]);
+  }, [navigate, location, isPopup]);
 
   if (isLoading) {
     return (

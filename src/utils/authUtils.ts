@@ -79,7 +79,7 @@ export const checkUsernameAvailability = async (username: string): Promise<boole
 let socialLoginPopup: Window | null = null;
 
 // 소셜 로그인 팝업 열기 함수
-export const openSocialLoginPopup = (url: string, provider: string): Window | null => {
+export const openSocialLoginPopup = (provider: string): Window | null => {
   // 이미 열린 팝업이 있으면 닫기
   if (socialLoginPopup && !socialLoginPopup.closed) {
     socialLoginPopup.close();
@@ -91,6 +91,10 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
   const left = window.innerWidth / 2 - width / 2;
   const top = window.innerHeight / 2 - height / 2;
   
+  // URL 생성
+  const redirectTo = `${window.location.origin}/auth/callback`;
+  const url = getSocialLoginUrl(provider, redirectTo);
+  
   // 팝업 창 열기
   socialLoginPopup = window.open(
     url,
@@ -101,12 +105,14 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
   return socialLoginPopup;
 };
 
-export const getSocialLoginUrl = (provider: string): string => {
-  const redirectTo = `${window.location.origin}/auth/callback`;
-  
-  // Use the correct way to build the authorization URL for the provider
+export const getSocialLoginUrl = (provider: string, redirectTo: string): string => {
+  // Supabase URL로 OAuth URL 생성
   return `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
 };
 
 // Add the supabaseUrl constant at the top level
 const supabaseUrl = 'https://jwmzjszdjlrqrhadbggr.supabase.co';
+
+// 소셜 로그인 메시지 전송을 위한 이벤트 타입
+export const SOCIAL_LOGIN_SUCCESS = 'SOCIAL_LOGIN_SUCCESS';
+export const SOCIAL_LOGIN_ERROR = 'SOCIAL_LOGIN_ERROR';

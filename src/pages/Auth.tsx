@@ -10,8 +10,10 @@ import { useAddressSearch } from "@/hooks/useAddressSearch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Info } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 const Auth = () => {
+  const location = useLocation();
   const {
     isLoading,
     isSignUp,
@@ -50,6 +52,12 @@ const Auth = () => {
       setPasswordMatch(formData.password === formData.confirmPassword);
     }
   }, [formData.password, formData.confirmPassword]);
+
+  // Prevent default form submission to avoid page refresh
+  const handleSocialLoginClick = (provider: 'kakao' | 'google') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleSocialLogin(provider);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">

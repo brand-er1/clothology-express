@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { sendMessageToParentWindow } from "@/utils/authUtils";
+import { sendMessageToParentWindow, isProfileComplete } from "@/utils/authUtils";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -93,6 +93,29 @@ const AuthCallback = () => {
             navigate("/auth");
           }
           return;
+        }
+        
+        // Get user profile to check if it's complete
+        if (window.opener && data.session) {
+          const { data: userData } = await supabase.auth.getUser();
+          
+          if (userData && userData.user) {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userData.user.id)
+              .single();
+              
+            if (!profileError && profileData) {
+              // Check if profile is complete
+              if (!isProfileComplete(profileData)) {
+                console.log("Profile is incomplete, notifying parent window");
+                sendMessageToParentWindow({ type: 'PROFILE_INCOMPLETE' });
+                window.close();
+                return;
+              }
+            }
+          }
         }
         
         // Send success message to parent window and close popup

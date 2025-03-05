@@ -209,6 +209,13 @@ export const useAuthForm = () => {
             description: message.data?.message || "로그인 중 오류가 발생했습니다.",
             variant: "destructive",
           });
+        } else if (message.type === 'PROFILE_INCOMPLETE') {
+          toast({
+            title: "프로필 정보가 필요합니다",
+            description: "서비스 이용을 위해 추가 정보를 입력해주세요.",
+            variant: "destructive",
+          });
+          navigate("/profile");
         }
       }
     };

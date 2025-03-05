@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -111,19 +112,31 @@ export interface AuthMessage {
 
 // Get social login URL for popup window
 export const getSocialLoginUrl = async (provider: 'google' | 'kakao'): Promise<string> => {
-  // Use the proper Supabase URL format for social authentication
-  const { data } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-      queryParams: provider === 'google' ? {
-        access_type: 'offline',
-        prompt: 'consent',
-      } : undefined
+  try {
+    // Use the proper Supabase URL format for social authentication
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true, // This is the key change to prevent automatic redirection
+        queryParams: provider === 'google' ? {
+          access_type: 'offline',
+          prompt: 'consent',
+        } : undefined
+      }
+    });
+    
+    if (error) throw error;
+    
+    if (!data.url) {
+      throw new Error("소셜 로그인 URL을 가져오는데 실패했습니다.");
     }
-  });
-  
-  return data.url;
+    
+    return data.url;
+  } catch (error) {
+    console.error("Error getting social login URL:", error);
+    throw error;
+  }
 };
 
 // Helper function to open a social login popup

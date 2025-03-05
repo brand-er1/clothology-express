@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -106,7 +107,6 @@ const Admin = () => {
         description: "시스템 프롬프트 저장에 실패했습니다.",
         variant: "destructive",
       });
-      throw error;
     } finally {
       setIsSaving(false);
     }

@@ -9,6 +9,7 @@ import { AuthGuard } from './components/auth/AuthGuard';
 import AuthCallback from './pages/AuthCallback';
 import Customize from './pages/Customize';
 import Orders from './pages/Orders';
+import Admin from './pages/Admin';
 import { toast } from './components/ui/use-toast';
 
 // Kakao 타입 선언
@@ -85,7 +86,7 @@ function App() {
           <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
           <Route path="/customize" element={<AuthGuard><Customize /></AuthGuard>} />
           <Route path="/orders" element={<AuthGuard><Orders /></AuthGuard>} />
-          <Route path="/admin" element={<AuthGuard><Navigate to="/admin" /></AuthGuard>} />
+          <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

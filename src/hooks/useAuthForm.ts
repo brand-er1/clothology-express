@@ -74,6 +74,32 @@ export const useAuthForm = () => {
     setIsUsernameAvailable(result);
   };
 
+  const handleSocialLogin = async (provider: 'kakao' | 'google') => {
+    try {
+      setIsLoading(true);
+      
+      // 소셜 로그인 시도
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) throw error;
+      
+    } catch (error: any) {
+      console.error("Social login error:", error);
+      toast({
+        title: "로그인 오류",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -182,6 +208,7 @@ export const useAuthForm = () => {
     checkUsername,
     handleAuth,
     resetForm,
-    setPasswordMatch
+    setPasswordMatch,
+    handleSocialLogin
   };
 };

@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
@@ -8,6 +8,7 @@ import { SignUpForm } from "@/components/auth/SignUpForm";
 import { useAuthForm } from "@/hooks/useAuthForm";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import { Info } from "lucide-react";
 
 const Auth = () => {
@@ -27,7 +28,8 @@ const Auth = () => {
     checkUsername,
     handleAuth,
     resetForm,
-    setPasswordMatch
+    setPasswordMatch,
+    handleSocialLogin
   } = useAuthForm();
 
   const handleAddressSearch = useAddressSearch((data) => {
@@ -107,6 +109,39 @@ const Auth = () => {
                   : "계정이 없으신가요? 회원가입하기"}
               </Button>
             </form>
+            
+            {!isSignUp && (
+              <>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-white px-2 text-sm text-muted-foreground">소셜 로그인</span>
+                  </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
+                    onClick={() => handleSocialLogin('kakao')}
+                    disabled={isLoading}
+                  >
+                    <svg 
+                      className="w-5 h-5 mr-2" 
+                      viewBox="0 0 24 24" 
+                      fill="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path d="M12 3C6.48 3 2 6.48 2 10.8c0 2.76 1.84 5.16 4.56 6.48-.16.48-.36 1.68-.4 2.16-.08.52.2.52.48.36.2-.12 2.72-1.88 3.84-2.64.48.08.96.12 1.52.12 5.52 0 10-3.48 10-7.8S17.52 3 12 3z" />
+                    </svg>
+                    카카오로 시작하기
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </main>

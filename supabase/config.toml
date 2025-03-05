@@ -41,3 +41,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.save-generated-image]
 verify_jwt = true
+[functions.update-social-profile]
+verify_jwt = true

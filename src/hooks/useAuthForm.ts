@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -81,21 +82,20 @@ export const useAuthForm = () => {
       const redirectTo = `${window.location.origin}/auth/callback`;
       console.log(`Using redirect URL: ${redirectTo}`);
       
-      // 소셜 로그인 시도 - PKCE 흐름 사용
+      // 소셜 로그인 시도
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: redirectTo,
           scopes: provider === 'kakao' ? 'account_email profile_nickname' : undefined, // 카카오의 경우 이메일과 닉네임 요청
-          // PKCE를 위한 설정
           skipBrowserRedirect: false, // 브라우저는 자동 리다이렉트 허용
-          flowType: 'pkce' // PKCE 인증 흐름 사용 (더 안전함)
+          // 'flowType' 속성은 현재 버전에서 지원되지 않아 제거
         },
       });
       
       if (error) throw error;
       
-      // PKCE 흐름에서는 여기에 도달하지 않습니다 (브라우저가 이미 리다이렉트됨)
+      // 브라우저가 리다이렉트됨
       
     } catch (error: any) {
       console.error("Social login error:", error);
@@ -151,8 +151,8 @@ export const useAuthForm = () => {
               weight: weight,
               gender: formData.gender,
             },
-            // Auth callbacks가 올바르게 작동하도록 redirectTo 설정
-            redirectTo: `${window.location.origin}/auth/callback`,
+            // emailRedirectTo 사용 (redirectTo 대신)
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
         if (error) throw error;

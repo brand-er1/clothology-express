@@ -34,39 +34,46 @@ export const handleLogin = async (loginIdentifier: string, password: string) => 
 
   console.log(`Attempting to log in with email: ${email} (from identifier: ${loginIdentifier})`);
   
-  // Try to sign in with the email (or the original loginIdentifier if it's an email)
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password,
-  });
+  try {
+    // Try to sign in with the email (or the original loginIdentifier if it's an email)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
 
-  if (error) {
-    console.error("Login error:", error);
-    
-    // If this failed and we tried with user_id, try one more time with the identifier directly as email
-    if (identifierType === 'user_id' && error.message === 'Invalid login credentials') {
-      console.log("Trying again with identifier as direct email");
-      const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-        email: loginIdentifier,
-        password: password,
-      });
+    if (error) {
+      console.error("Login error:", error);
       
-      if (retryError) {
-        console.error("Retry login error:", retryError);
-        throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
+      // If this failed and we tried with user_id, try one more time with the identifier directly as email
+      if (identifierType === 'user_id' && error.message === 'Invalid login credentials') {
+        console.log("Trying again with identifier as direct email");
+        const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+          email: loginIdentifier,
+          password: password,
+        });
+        
+        if (retryError) {
+          console.error("Retry login error:", retryError);
+          throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
+        }
+        
+        return retryData;
       }
       
-      return retryData;
+      if (error.message === 'Invalid login credentials') {
+        throw new Error(identifierType === 'email' ? 
+          "이메일 또는 비밀번호가 올바르지 않습니다." : 
+          "아이디 또는 비밀번호가 올바르지 않습니다."
+        );
+      }
+      throw error;
     }
     
-    if (error.message === 'Invalid login credentials') {
-      throw new Error(identifierType === 'email' ? 
-        "이메일 또는 비밀번호가 올바르지 않습니다." : 
-        "아이디 또는 비밀번호가 올바르지 않습니다."
-      );
+    return data;
+  } catch (error: any) {
+    if (error.message) {
+      throw error;
     }
-    throw error;
+    throw new Error("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
   }
-  
-  return data;
 };

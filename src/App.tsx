@@ -6,6 +6,7 @@ import Profile from "@/pages/Profile";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import AuthCallback from "@/pages/AuthCallback";
 import { WelcomeNotification } from "@/components/WelcomeNotification";
+import { Header } from "@/components/Header";
 
 const queryClient = new QueryClient();
 
@@ -29,7 +30,19 @@ function App() {
             path="/"
             element={
               <AuthGuard>
-                <div>Home</div>
+                <div className="min-h-screen bg-gray-50">
+                  <Header />
+                  <main className="container mx-auto px-4 pt-20">
+                    <div className="grid gap-8 mt-8">
+                      <div className="bg-white rounded-lg shadow-md p-6">
+                        <h1 className="text-2xl font-bold mb-4">환영합니다!</h1>
+                        <p className="text-gray-600 mb-4">
+                          BRAND-ER 맞춤 의류 플랫폼에 오신 것을 환영합니다. 좌측 메뉴에서 원하는 서비스를 선택해주세요.
+                        </p>
+                      </div>
+                    </div>
+                  </main>
+                </div>
               </AuthGuard>
             }
           />

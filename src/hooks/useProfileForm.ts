@@ -9,7 +9,6 @@ export const useProfileForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState("");
   const [formData, setFormData] = useState<Partial<AuthFormData>>({
     username: "",
     fullName: "",
@@ -66,7 +65,6 @@ export const useProfileForm = () => {
         const addressDetail = addressParts.length > 1 ? addressParts.pop() : "";
         const baseAddress = addressParts.join(" ");
 
-        setUserId(profile.user_id || "");
         setFormData({
           username: profile.username || "",
           fullName: profile.full_name || "",
@@ -139,7 +137,6 @@ export const useProfileForm = () => {
   return {
     isLoading,
     email,
-    userId,
     formData,
     handleChange,
     handleGenderChange,

@@ -12,7 +12,6 @@ const Profile = () => {
   const {
     isLoading,
     email,
-    userId,
     formData,
     handleChange,
     handleGenderChange,
@@ -39,7 +38,6 @@ const Profile = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <ReadOnlyFields 
-                userId={userId}
                 email={email}
                 fullName={formData.fullName || ""}
               />

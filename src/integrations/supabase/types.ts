@@ -115,7 +115,6 @@ export type Database = {
           id: string
           phone_number: string | null
           updated_at: string
-          user_id: string
           username: string | null
           weight: number
         }
@@ -128,7 +127,6 @@ export type Database = {
           id: string
           phone_number?: string | null
           updated_at?: string
-          user_id: string
           username?: string | null
           weight: number
         }
@@ -141,7 +139,6 @@ export type Database = {
           id?: string
           phone_number?: string | null
           updated_at?: string
-          user_id?: string
           username?: string | null
           weight?: number
         }

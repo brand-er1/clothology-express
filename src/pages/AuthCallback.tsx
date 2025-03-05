@@ -213,6 +213,7 @@ const AuthCallback = () => {
             // Kakao 사용자 메타데이터에서 닉네임과 이메일 추출
             const userMeta = data.session.user.user_metadata || {};
             initialUsername = userMeta.preferred_username || userMeta.name || userMeta.nickname || "";
+            // 카카오 로그인에서는 이메일을 user_id로 사용
             initialUserId = data.session.user.email || "";
             console.log("AuthCallback: Extracted Kakao username:", initialUsername);
             console.log("AuthCallback: Using email as userId:", initialUserId);

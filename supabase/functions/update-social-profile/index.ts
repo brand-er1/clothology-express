@@ -34,11 +34,27 @@ serve(async (req) => {
       throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
     }
 
+    // 사용자 이메일 조회 (userId를 이메일로 사용하기 위함)
+    const { data: userData, error: userError } = await supabaseClient
+      .auth
+      .admin
+      .getUserById(userId);
+
+    if (userError) throw userError;
+    if (!userData.user) throw new Error("사용자 정보를 찾을 수 없습니다.");
+
+    // userId를 이메일로 설정 (카카오 로그인 등의 경우)
+    const userEmail = userData.user.email || "";
+    if (!userEmail) throw new Error("사용자 이메일을 찾을 수 없습니다.");
+    
+    // userId를 이메일로 설정하되, 사용자가 입력한 값이 있으면 그 값을 우선함
+    const finalUserId = userInfo.userId || userEmail;
+
     // userId 중복 확인 (본인 제외)
     const { data: userIdCheck, error: userIdError } = await supabaseClient
       .from('profiles')
       .select('user_id')
-      .eq('user_id', userInfo.userId)
+      .eq('user_id', finalUserId)
       .not('id', 'eq', userId)
       .maybeSingle();
       
@@ -68,7 +84,7 @@ serve(async (req) => {
     const { data, error } = await supabaseClient
       .from('profiles')
       .update({
-        user_id: userInfo.userId,
+        user_id: finalUserId,
         username: userInfo.username,
         full_name: userInfo.fullName || null,
         phone_number: userInfo.phoneNumber || null,

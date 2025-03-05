@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 
 export const validateSignUpForm = async (
@@ -79,7 +78,7 @@ export const checkUsernameAvailability = async (username: string): Promise<boole
 let socialLoginPopup: Window | null = null;
 
 // 소셜 로그인 팝업 열기 함수
-export const openSocialLoginPopup = (provider: 'kakao' | 'google'): Window | null => {
+export const openSocialLoginPopup = (url: string, provider: string): Window | null => {
   // 이미 열린 팝업이 있으면 닫기
   if (socialLoginPopup && !socialLoginPopup.closed) {
     socialLoginPopup.close();
@@ -91,55 +90,23 @@ export const openSocialLoginPopup = (provider: 'kakao' | 'google'): Window | nul
   const left = window.innerWidth / 2 - width / 2;
   const top = window.innerHeight / 2 - height / 2;
   
-  // Get origin for safer redirects
-  const origin = window.location.origin;
-  
-  // Create redirect URL (to auth/callback)
-  const redirectTo = `${origin}/auth/callback`;
-  
-  // Get the OAuth URL from Supabase
-  supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo,
-      scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
-      skipBrowserRedirect: true, // Prevent auto redirect to handle with popup
-    },
-  }).then(({ data, error }) => {
-    if (error) {
-      console.error("Social login error:", error);
-      return;
-    }
-    
-    if (data?.url) {
-      // 팝업 창 열기
-      socialLoginPopup = window.open(
-        data.url,
-        `${provider}Login`,
-        `width=${width},height=${height},left=${left},top=${top},popup=1,toolbar=0,location=0,menubar=0`
-      );
-    }
-  });
+  // 팝업 창 열기
+  socialLoginPopup = window.open(
+    url,
+    `${provider}Login`,
+    `width=${width},height=${height},left=${left},top=${top},popup=1,toolbar=0,location=0,menubar=0`
+  );
   
   return socialLoginPopup;
 };
 
-// Add event listeners for messages from popup
-export const listenForSocialLoginSuccess = (callback: () => void) => {
-  const messageHandler = (event: MessageEvent) => {
-    // Make sure the message is from our domain
-    if (event.origin !== window.location.origin) return;
-    
-    if (event.data === 'SOCIAL_LOGIN_SUCCESS') {
-      // Remove the event listener once we get the success message
-      window.removeEventListener('message', messageHandler);
-      callback();
-    }
-  };
+export const getSocialLoginUrl = (provider: string): string => {
+  // Always use the current window origin for the redirect URL to ensure consistency
+  const redirectTo = `${window.location.origin}/auth/callback`;
   
-  window.addEventListener('message', messageHandler);
-  
-  return () => {
-    window.removeEventListener('message', messageHandler);
-  };
+  // Use the correct way to build the authorization URL for the provider
+  return `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
 };
+
+// Add the supabaseUrl constant at the top level
+const supabaseUrl = 'https://jwmzjszdjlrqrhadbggr.supabase.co';

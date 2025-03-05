@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
-import { checkEmailAvailability, checkUsernameAvailability, validateSignUpForm, openSocialLoginPopup, listenForSocialLoginSuccess } from "@/utils/authUtils";
+import { checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 
 export const useAuthForm = () => {
@@ -26,27 +26,7 @@ export const useAuthForm = () => {
     weight: "",
     gender: "남성",
   });
-  
   const navigate = useNavigate();
-
-  // Listen for social login success messages
-  useEffect(() => {
-    const cleanup = listenForSocialLoginSuccess(() => {
-      console.log("Social login successful, refreshing session");
-      // Refresh the session to check if authentication succeeded
-      supabase.auth.getSession().then(({ data }) => {
-        if (data?.session) {
-          toast({
-            title: "로그인 성공!",
-            description: "환영합니다.",
-          });
-          navigate("/");
-        }
-      });
-    });
-    
-    return cleanup;
-  }, [navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -85,19 +65,85 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
-      // Open the social login popup
-      const popupWindow = openSocialLoginPopup(provider);
+      // Get origin for safer redirects - use the current origin consistently
+      const origin = window.location.origin;
       
-      if (!popupWindow) {
-        // Handle popup blocked case
-        toast({
-          title: "팝업 차단됨",
-          description: "팝업 창이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.",
-          variant: "destructive",
-        });
+      // Create a more reliable redirect URL (to auth/callback)
+      const redirectTo = `${origin}/auth/callback`;
+      console.log(`Using redirect URL: ${redirectTo}`);
+      
+      // Get the OAuth URL from Supabase
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
+          skipBrowserRedirect: true, // Prevent auto redirect to handle with popup
+        },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        // Define popup dimensions and position
+        const width = 600;
+        const height = 700; // Slightly larger to accommodate OAuth screens
+        const left = (window.innerWidth / 2) - (width / 2);
+        const top = (window.innerHeight / 2) - (height / 2);
+        
+        // Open the popup window with proper settings
+        const popupWindow = window.open(
+          data.url,
+          `${provider}Login`,
+          `width=${width},height=${height},left=${left},top=${top},popup=1,toolbar=0,location=0,menubar=0`
+        );
+        
+        if (!popupWindow) {
+          // Handle popup blocked case
+          toast({
+            title: "팝업 차단됨",
+            description: "팝업 창이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Set up interval to check for popup closure
+        const checkPopupInterval = setInterval(async () => {
+          if (!popupWindow || popupWindow.closed) {
+            clearInterval(checkPopupInterval);
+            
+            try {
+              // Refresh the session to check if authentication succeeded
+              const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+              
+              if (sessionError) throw sessionError;
+              
+              if (sessionData?.session) {
+                console.log("Social login successful, session established");
+                toast({
+                  title: "로그인 성공!",
+                  description: "환영합니다.",
+                });
+                navigate("/");
+              } else {
+                // Login was cancelled or failed
+                console.log("Social login cancelled or failed");
+                setIsLoading(false);
+              }
+            } catch (checkError) {
+              console.error("Error checking session after popup:", checkError);
+              toast({
+                title: "세션 확인 오류",
+                description: "로그인 상태를 확인할 수 없습니다. 다시 시도해주세요.",
+                variant: "destructive",
+              });
+              setIsLoading(false);
+            }
+          }
+        }, 500); // Check every 500ms
       }
-      
-      // We'll handle the rest through the message event listeners
     } catch (error: any) {
       console.error("Social login error:", error);
       toast({
@@ -105,7 +151,6 @@ export const useAuthForm = () => {
         description: error.message,
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };

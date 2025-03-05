@@ -16,17 +16,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true, // Enable auto detection for handling hash fragments
     flowType: 'pkce', // Use PKCE flow for more secure auth
+    redirectTo: redirectUrl // Set the redirect URL for OAuth flows directly in the config
   },
   global: {
     headers: {
       'x-application-name': 'brand-er-customize',
     },
   },
-})
-
-// Configure redirect URL for OAuth flows
-supabase.auth.setAutoConfirmSignUp({
-  redirectTo: redirectUrl
 })
 
 // Helper function for more consistent user retrieval

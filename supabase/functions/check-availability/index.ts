@@ -25,16 +25,16 @@ serve(async (req) => {
     
     if (type === 'email') {
       // 이메일 중복 체크 - auth.users 테이블에서 확인
-      const { data: user, error: userError } = await supabaseClient
+      const { data, error } = await supabaseClient
         .auth
         .admin
         .listUsers();
 
-      if (userError) {
-        throw userError;
+      if (error) {
+        throw error;
       }
 
-      const emailExists = user.users.some(user => user.email === value);
+      const emailExists = data.users.some(user => user.email === value);
 
       return new Response(
         JSON.stringify({ 
@@ -49,6 +49,7 @@ serve(async (req) => {
 
     } else if (type === 'userId') {
       // 아이디 중복 체크
+      console.log("Checking userId availability in profiles table");
       const { data: profile, error: profileError } = await supabaseClient
         .from('profiles')
         .select('user_id')
@@ -56,9 +57,12 @@ serve(async (req) => {
         .maybeSingle();
 
       if (profileError) {
+        console.error("Error checking userId:", profileError);
         throw profileError;
       }
 
+      console.log("Profile check result:", profile);
+      
       return new Response(
         JSON.stringify({ 
           available: !profile,
@@ -71,6 +75,7 @@ serve(async (req) => {
       );
     } else if (type === 'username') {
       // 닉네임 중복 체크
+      console.log("Checking username availability in profiles table");
       const { data: profile, error: profileError } = await supabaseClient
         .from('profiles')
         .select('username')
@@ -78,8 +83,11 @@ serve(async (req) => {
         .maybeSingle();
 
       if (profileError) {
+        console.error("Error checking username:", profileError);
         throw profileError;
       }
+
+      console.log("Username check result:", profile);
 
       return new Response(
         JSON.stringify({ 

@@ -14,12 +14,18 @@ export const checkUserIdAvailability = async (userId: string) => {
   }
 
   try {
+    console.log("Checking userId availability:", trimmedUserId);
     const { data, error } = await supabase.functions.invoke('check-availability', {
       body: { type: 'userId', value: trimmedUserId }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error from function:", error);
+      throw error;
+    }
 
+    console.log("Response from function:", data);
+    
     toast({
       title: data.message,
       variant: data.available ? "default" : "destructive",

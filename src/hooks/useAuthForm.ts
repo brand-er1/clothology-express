@@ -58,19 +58,47 @@ export const useAuthForm = () => {
 
   const checkUserId = async () => {
     setIsCheckingId(true);
-    const result = await checkUserIdAvailability(formData.userId);
-    setIsIdAvailable(result);
-    setIsCheckingId(false);
+    try {
+      console.log("Starting userId check for:", formData.userId);
+      const result = await checkUserIdAvailability(formData.userId);
+      console.log("ID check result:", result);
+      setIsIdAvailable(result);
+    } catch (error) {
+      console.error("Error in checkUserId:", error);
+      toast({
+        title: "ID 확인 중 오류가 발생했습니다",
+        description: error instanceof Error ? error.message : "알 수 없는 오류",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCheckingId(false);
+    }
   };
 
   const checkEmail = async () => {
-    const result = await checkEmailAvailability(formData.email);
-    setIsEmailAvailable(result);
+    try {
+      const result = await checkEmailAvailability(formData.email);
+      setIsEmailAvailable(result);
+    } catch (error) {
+      console.error("Error in checkEmail:", error);
+      toast({
+        title: "이메일 확인 중 오류가 발생했습니다",
+        variant: "destructive",
+      });
+    }
   };
 
   const checkUsername = async () => {
-    const result = await checkUsernameAvailability(formData.username);
-    setIsUsernameAvailable(result);
+    try {
+      const result = await checkUsernameAvailability(formData.username);
+      setIsUsernameAvailable(result);
+    } catch (error) {
+      console.error("Error in checkUsername:", error);
+      toast({
+        title: "닉네임 확인 중 오류가 발생했습니다",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSocialLogin = async (provider: 'kakao' | 'google') => {

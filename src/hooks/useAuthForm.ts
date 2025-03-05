@@ -83,6 +83,7 @@ export const useAuthForm = () => {
         provider,
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: provider === 'kakao' ? 'account_email' : undefined, // 카카오의 경우 프로필 사진을 요청하지 않고 이메일만 요청
         },
       });
       

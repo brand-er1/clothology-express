@@ -14,13 +14,14 @@ export const handleLogin = async (loginIdentifier: string, password: string) => 
       email = 'admin@example.com';
     } else {
       try {
-        // The profiles table doesn't have an email column
-        // Instead, we need to get the user's email from auth.users through their user_id
+        console.log(`Looking up user with user_id: "${loginIdentifier}"`);
+        
+        // First, try to find the profile with the given user_id
         const { data: userData, error: userError } = await supabase
           .from('profiles')
-          .select('id')
+          .select('id, user_id')
           .eq('user_id', loginIdentifier)
-          .single();
+          .maybeSingle();
         
         if (userError) {
           console.error("User ID lookup failed:", userError);
@@ -32,9 +33,9 @@ export const handleLogin = async (loginIdentifier: string, password: string) => 
           throw new Error("해당 아이디에 연결된 사용자를 찾을 수 없습니다.");
         }
         
+        console.log("Found user profile:", userData);
+        
         // Now we have the UUID (id) that maps to the auth.users table
-        // We'll use this UUID directly with signInWithPassword using the user_id option
-        // Supabase will handle the lookup from the UUID to the email for us
         const { data: authUser, error: authError } = await supabase.auth.getUser(userData.id);
         
         if (authError || !authUser?.user?.email) {
@@ -45,6 +46,7 @@ export const handleLogin = async (loginIdentifier: string, password: string) => 
         email = authUser.user.email;
         console.log(`Found email ${email} for user_id ${loginIdentifier}`);
       } catch (error: any) {
+        console.error("Error during user ID lookup:", error);
         if (error.message.includes("single row")) {
           throw new Error("입력하신 아이디를 찾을 수 없습니다.");
         }

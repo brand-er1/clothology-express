@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
 import Auth from './pages/Auth';
@@ -13,6 +13,21 @@ declare global {
   interface Window {
     Kakao: any;
   }
+}
+
+// Hash 파라미터 처리를 위한 컴포넌트
+function AuthRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // 해시 파라미터가 있는 경우 callback 페이지로 리다이렉트
+    if (location.hash && location.hash.includes('access_token')) {
+      navigate('/auth/callback' + location.hash);
+    }
+  }, [location, navigate]);
+
+  return null;
 }
 
 function App() {
@@ -47,6 +62,7 @@ function App() {
   return (
     <>
       <BrowserRouter>
+        <AuthRedirect />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />

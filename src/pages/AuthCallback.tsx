@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { useAddressSearch } from "@/hooks/useAddressSearch";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [needsProfile, setNeedsProfile] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -132,6 +132,28 @@ const AuthCallback = () => {
     const checkUser = async () => {
       try {
         // URL에서 해시 파라미터 처리
+        if (location.hash && location.hash.includes('access_token')) {
+          // 이미 세션을 가지고 있는지 확인
+          const { data: existingSession } = await supabase.auth.getSession();
+          
+          if (!existingSession.session) {
+            // 해시에서 액세스 토큰 추출
+            const hashParams = new URLSearchParams(location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            const refreshToken = hashParams.get('refresh_token');
+            
+            if (accessToken && refreshToken) {
+              // Supabase 세션 설정
+              const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              });
+              
+              if (error) throw error;
+            }
+          }
+        }
+        
         const { data, error } = await supabase.auth.getSession();
         
         if (error) throw error;
@@ -213,7 +235,7 @@ const AuthCallback = () => {
     };
     
     checkUser();
-  }, [navigate]);
+  }, [navigate, location]);
 
   if (isLoading) {
     return (

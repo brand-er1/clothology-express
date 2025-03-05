@@ -111,18 +111,22 @@ const AuthCallback = () => {
               if (!isProfileComplete(profileData)) {
                 console.log("Profile is incomplete, notifying parent window");
                 sendMessageToParentWindow({ type: 'PROFILE_INCOMPLETE' });
-                window.close();
+                
+                // A short delay to ensure the message is sent before closing
+                setTimeout(() => window.close(), 300);
                 return;
               }
             }
+            
+            // Profile check passed, send success message and close popup
+            console.log("Authentication successful, notifying parent window");
+            sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
+            
+            // A short delay to ensure the message is sent before closing
+            setTimeout(() => window.close(), 300);
           }
-        }
-        
-        // Send success message to parent window and close popup
-        if (window.opener) {
-          sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
-          window.close();
         } else {
+          // If not in popup, navigate to home
           navigate("/");
         }
       } catch (error: any) {
@@ -134,7 +138,9 @@ const AuthCallback = () => {
             type: 'SOCIAL_LOGIN_ERROR', 
             data: { message: error.message || "로그인 과정에서 오류가 발생했습니다" } 
           });
-          window.close();
+          
+          // A short delay to ensure the message is sent before closing
+          setTimeout(() => window.close(), 300);
         } else {
           toast({
             title: "인증 오류",

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -169,6 +170,9 @@ export const openSocialLoginPopup = async (provider: 'google' | 'kakao'): Promis
 export const sendMessageToParentWindow = (message: AuthMessage) => {
   if (window.opener) {
     window.opener.postMessage(message, window.location.origin);
+    console.log("Sent message to parent window:", message);
+  } else {
+    console.warn("No parent window found for message:", message);
   }
 };
 
@@ -178,4 +182,25 @@ export const isProfileComplete = (profile: any): boolean => {
     !profile.phone_number || 
     profile.height === null || 
     profile.weight === null);
+};
+
+// Refresh the session in the main window after the popup login
+export const refreshSessionAfterSocialLogin = async (): Promise<void> => {
+  try {
+    // Get the current session and force refresh
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error("Error refreshing session:", error);
+      return;
+    }
+    
+    if (data.session) {
+      console.log("Session refreshed successfully after social login");
+    } else {
+      console.warn("No session found after social login refresh attempt");
+    }
+  } catch (error) {
+    console.error("Error in refreshSessionAfterSocialLogin:", error);
+  }
 };

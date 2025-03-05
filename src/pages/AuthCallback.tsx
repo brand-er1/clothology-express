@@ -154,28 +154,6 @@ const AuthCallback = () => {
           }
           
           console.log("AuthCallback: Code successfully exchanged for session");
-          
-          // 팝업 창인 경우 부모 창에 메시지 전달 후 창 닫기
-          if (window.opener) {
-            try {
-              // 동일 출처(Same Origin)의 부모 창에 메시지 보내기
-              window.opener.postMessage({
-                type: 'AUTH_COMPLETE',
-                success: true
-              }, window.location.origin);
-              
-              console.log("AuthCallback: Message sent to parent window");
-              
-              // 잠시 후 창 닫기 (메시지가 전달될 시간을 주기 위해)
-              setTimeout(() => {
-                window.close();
-              }, 500);
-              
-              return; // 창을 닫을 것이므로 더 이상 처리하지 않음
-            } catch (msgError) {
-              console.error("AuthCallback: Error sending message to parent:", msgError);
-            }
-          }
         } 
         // 2. Fallback for hash parameters (legacy implicit flow)
         else if (location.hash && location.hash.includes('access_token')) {
@@ -199,26 +177,6 @@ const AuthCallback = () => {
             }
             
             console.log("AuthCallback: Session set successfully from hash parameters");
-            
-            // 팝업 창인 경우 부모 창에 메시지 전달 후 창 닫기
-            if (window.opener) {
-              try {
-                window.opener.postMessage({
-                  type: 'AUTH_COMPLETE',
-                  success: true
-                }, window.location.origin);
-                
-                console.log("AuthCallback: Message sent to parent window (hash flow)");
-                
-                setTimeout(() => {
-                  window.close();
-                }, 500);
-                
-                return;
-              } catch (msgError) {
-                console.error("AuthCallback: Error sending message to parent:", msgError);
-              }
-            }
           }
         }
         
@@ -317,26 +275,6 @@ const AuthCallback = () => {
           description: "로그인 과정에서 오류가 발생했습니다. 다시 시도해주세요.",
           variant: "destructive",
         });
-        
-        // 팝업 창인 경우 오류 메시지를 부모에게 전달하고 창 닫기
-        if (window.opener) {
-          try {
-            window.opener.postMessage({
-              type: 'AUTH_COMPLETE',
-              success: false,
-              error: "인증 오류가 발생했습니다."
-            }, window.location.origin);
-            
-            setTimeout(() => {
-              window.close();
-            }, 500);
-            
-            return;
-          } catch (msgError) {
-            console.error("AuthCallback: Error sending error message to parent:", msgError);
-          }
-        }
-        
         navigate("/auth");
       } finally {
         setIsLoading(false);

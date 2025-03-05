@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 
 export const validateSignUpForm = async (
@@ -97,27 +96,6 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
     `${provider}Login`,
     `width=${width},height=${height},left=${left},top=${top},popup=1,toolbar=0,location=0,menubar=0`
   );
-  
-  // 부모 창에서 자식 창(팝업)의 인증 완료 여부를 확인하는 함수
-  if (socialLoginPopup) {
-    const checkAuthStatus = setInterval(async () => {
-      // 팝업이 닫혔는지 확인
-      if (!socialLoginPopup || socialLoginPopup.closed) {
-        clearInterval(checkAuthStatus);
-        
-        // 세션 확인하여 로그인 성공 여부 확인
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          console.log("소셜 로그인 성공! 세션 정보:", data.session);
-          
-          // 필요한 경우 부모 창에 메시지 전달
-          window.dispatchEvent(new CustomEvent('SOCIAL_AUTH_SUCCESS', { 
-            detail: { provider } 
-          }));
-        }
-      }
-    }, 1000);
-  }
   
   return socialLoginPopup;
 };

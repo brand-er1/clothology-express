@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -89,7 +88,6 @@ export const useAuthForm = () => {
           redirectTo: redirectTo,
           scopes: provider === 'kakao' ? 'account_email profile_nickname' : undefined, // 카카오의 경우 이메일과 닉네임 요청
           skipBrowserRedirect: false, // 브라우저는 자동 리다이렉트 허용
-          // 'flowType' 속성은 현재 버전에서 지원되지 않아 제거
         },
       });
       

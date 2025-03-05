@@ -78,11 +78,15 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
+      // 현재 호스트 기반 리다이렉트 URL 생성
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      console.log(`Using redirect URL: ${redirectTo}`);
+      
       // 소셜 로그인 시도
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectTo,
           scopes: provider === 'kakao' ? 'account_email profile_nickname' : undefined, // 카카오의 경우 이메일과 닉네임 요청
         },
       });

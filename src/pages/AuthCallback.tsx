@@ -131,8 +131,12 @@ const AuthCallback = () => {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        console.log("AuthCallback: Starting authentication check with location:", location.pathname, location.hash);
+        
         // URL에서 해시 파라미터 처리
         if (location.hash && location.hash.includes('access_token')) {
+          console.log("AuthCallback: Found access_token in hash");
+          
           // 이미 세션을 가지고 있는지 확인
           const { data: existingSession } = await supabase.auth.getSession();
           
@@ -142,6 +146,8 @@ const AuthCallback = () => {
             const accessToken = hashParams.get('access_token');
             const refreshToken = hashParams.get('refresh_token');
             
+            console.log("AuthCallback: Extracted tokens, setting session");
+            
             if (accessToken && refreshToken) {
               // Supabase 세션 설정
               const { data, error } = await supabase.auth.setSession({
@@ -149,8 +155,15 @@ const AuthCallback = () => {
                 refresh_token: refreshToken
               });
               
-              if (error) throw error;
+              if (error) {
+                console.error("AuthCallback: Error setting session:", error);
+                throw error;
+              }
+              
+              console.log("AuthCallback: Session set successfully");
             }
+          } else {
+            console.log("AuthCallback: User already has a session");
           }
         }
         
@@ -159,6 +172,7 @@ const AuthCallback = () => {
         if (error) throw error;
         
         if (!data.session) {
+          console.log("AuthCallback: No session found, redirecting to auth");
           navigate("/auth");
           return;
         }
@@ -176,6 +190,7 @@ const AuthCallback = () => {
         
         // 필수 정보가 없으면 프로필 작성 요청
         if (!profile || !profile.height || !profile.weight || !profile.address) {
+          console.log("AuthCallback: User needs to complete profile");
           setNeedsProfile(true);
           
           // 카카오 소셜 로그인 정보에서 닉네임 추출
@@ -185,6 +200,7 @@ const AuthCallback = () => {
             // Kakao 사용자 메타데이터에서 닉네임 추출
             const userMeta = data.session.user.user_metadata || {};
             initialUsername = userMeta.preferred_username || userMeta.name || userMeta.nickname || "";
+            console.log("AuthCallback: Extracted Kakao username:", initialUsername);
           }
           
           // 일부 기존 정보가 있으면 폼에 미리 채우기
@@ -219,6 +235,7 @@ const AuthCallback = () => {
           }
         } else {
           // 필요한 정보가 모두 있으면 홈으로 이동
+          console.log("AuthCallback: User profile complete, redirecting to home");
           navigate("/");
         }
       } catch (error) {

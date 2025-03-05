@@ -21,9 +21,10 @@ function AuthRedirect() {
   const location = useLocation();
 
   useEffect(() => {
-    // 해시 파라미터가 있는 경우 callback 페이지로 리다이렉트
-    if (location.hash && location.hash.includes('access_token')) {
-      navigate('/auth/callback' + location.hash);
+    // 해시 파라미터가 있고 현재 path가 root인 경우에만 리다이렉트
+    if (location.pathname === '/' && location.hash && location.hash.includes('access_token')) {
+      console.log('Redirecting hash parameters to auth callback');
+      navigate('/auth/callback' + location.hash, { replace: true });
     }
   }, [location, navigate]);
 

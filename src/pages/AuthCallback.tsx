@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -74,6 +75,7 @@ const AuthCallback = () => {
         .from('profiles')
         .select('user_id')
         .eq('user_id', formData.userId)
+        .not('id', 'eq', user.id)
         .maybeSingle();
         
       if (userIdError) throw userIdError;
@@ -84,6 +86,7 @@ const AuthCallback = () => {
         .from('profiles')
         .select('username')
         .eq('username', formData.username)
+        .not('id', 'eq', user.id)
         .maybeSingle();
         
       if (usernameError) throw usernameError;
@@ -203,12 +206,19 @@ const AuthCallback = () => {
           setNeedsProfile(true);
           
           let initialUsername = "";
+          let initialUserId = "";
           
+          // 로그인 제공자에 따른 정보 추출
           if (data.session.user.app_metadata.provider === 'kakao') {
-            // Kakao 사용자 메타데이터에서 닉네임 추출
+            // Kakao 사용자 메타데이터에서 닉네임과 이메일 추출
             const userMeta = data.session.user.user_metadata || {};
             initialUsername = userMeta.preferred_username || userMeta.name || userMeta.nickname || "";
+            initialUserId = data.session.user.email || "";
             console.log("AuthCallback: Extracted Kakao username:", initialUsername);
+            console.log("AuthCallback: Using email as userId:", initialUserId);
+          } else {
+            // 다른 로그인 방법에서의 정보 추출 로직
+            initialUserId = data.session.user.email || "";
           }
           
           if (profile) {
@@ -222,7 +232,7 @@ const AuthCallback = () => {
             
             setFormData(prev => ({
               ...prev,
-              userId: profile.user_id || "",
+              userId: profile.user_id || initialUserId,
               username: profile.username || initialUsername,
               fullName: profile.full_name || "",
               phoneNumber: profile.phone_number || "",
@@ -234,9 +244,10 @@ const AuthCallback = () => {
               gender: profile.gender || "남성",
             }));
           } else {
-            // 프로필이 없는 경우 카카오 닉네임만 설정
+            // 프로필이 없는 경우 카카오 닉네임과 이메일 설정
             setFormData(prev => ({
               ...prev,
+              userId: initialUserId,
               username: initialUsername
             }));
           }

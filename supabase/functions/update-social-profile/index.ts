@@ -34,7 +34,7 @@ serve(async (req) => {
       throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
     }
 
-    // userId 중복 확인
+    // userId 중복 확인 (본인 제외)
     const { data: userIdCheck, error: userIdError } = await supabaseClient
       .from('profiles')
       .select('user_id')
@@ -45,7 +45,7 @@ serve(async (req) => {
     if (userIdError) throw userIdError;
     if (userIdCheck) throw new Error("이미 사용 중인 아이디입니다.");
     
-    // username 중복 확인
+    // username 중복 확인 (본인 제외)
     const { data: usernameCheck, error: usernameError } = await supabaseClient
       .from('profiles')
       .select('username')

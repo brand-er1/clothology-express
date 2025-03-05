@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -103,8 +102,7 @@ export const validateSignUpForm = async (
   }
 };
 
-// Define message types for cross-window communication
-export type AuthMessageType = 'SOCIAL_LOGIN_SUCCESS' | 'SOCIAL_LOGIN_ERROR';
+export type AuthMessageType = 'SOCIAL_LOGIN_SUCCESS' | 'SOCIAL_LOGIN_ERROR' | 'PROFILE_INCOMPLETE';
 
 export interface AuthMessage {
   type: AuthMessageType;
@@ -160,4 +158,14 @@ export const sendMessageToParentWindow = (message: AuthMessage) => {
   if (window.opener) {
     window.opener.postMessage(message, window.location.origin);
   }
+};
+
+// Check if user profile is complete
+export const isProfileComplete = (profile: any): boolean => {
+  return !(!profile || 
+    !profile.username || 
+    !profile.user_id || 
+    !profile.phone_number || 
+    profile.height === null || 
+    profile.weight === null);
 };

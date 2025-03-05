@@ -1,16 +1,10 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
-import { 
-  checkEmailAvailability, 
-  checkUsernameAvailability, 
-  validateSignUpForm, 
-  openSocialLoginPopup,
-  SOCIAL_LOGIN_SUCCESS,
-  SOCIAL_LOGIN_ERROR
-} from "@/utils/authUtils";
+import { checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 
 export const useAuthForm = () => {
@@ -72,28 +66,66 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
-      // 소셜 로그인 팝업 열기
-      const popup = openSocialLoginPopup(provider);
+      // 현재 호스트 기반 리다이렉트 URL 생성
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      console.log(`Using redirect URL: ${redirectTo}`);
       
-      if (!popup) {
-        // Handle popup blocked case
-        toast({
-          title: "팝업 차단됨",
-          description: "팝업 창이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+      // 소셜 로그인 URL 가져오기
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: redirectTo,
+          scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
+          skipBrowserRedirect: true, // 브라우저 자동 리다이렉트 방지
+        },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        // 팝업 창 열기
+        const width = 600;
+        const height = 600;
+        const left = window.innerWidth / 2 - width / 2;
+        const top = window.innerHeight / 2 - height / 2;
+        
+        const popup = window.open(
+          data.url,
+          `${provider}Login`,
+          `width=${width},height=${height},left=${left},top=${top},popup=1`
+        );
+        
+        // 팝업 창이 닫히면 세션 확인
+        const checkPopup = setInterval(async () => {
+          try {
+            if (!popup || popup.closed) {
+              clearInterval(checkPopup);
+              
+              // 세션 새로고침
+              const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+              
+              if (sessionError) throw sessionError;
+              
+              if (sessionData?.session) {
+                console.log("Social login successful, session established");
+                toast({
+                  title: "로그인 성공!",
+                  description: "환영합니다.",
+                });
+                navigate("/");
+              } else {
+                // 로그인이 취소되었거나 실패한 경우
+                console.log("Social login cancelled or failed");
+                setIsLoading(false);
+              }
+            }
+          } catch (checkError) {
+            clearInterval(checkPopup);
+            console.error("Error checking popup:", checkError);
+            setIsLoading(false);
+          }
+        }, 1000); // 1초마다 확인
       }
-      
-      // 팝업이 닫히는지 확인하는 인터벌 설정 (차선책)
-      const checkPopupInterval = setInterval(() => {
-        if (!popup || popup.closed) {
-          clearInterval(checkPopupInterval);
-          setIsLoading(false);
-        }
-      }, 1000);
-      
     } catch (error: any) {
       console.error("Social login error:", error);
       toast({
@@ -104,42 +136,6 @@ export const useAuthForm = () => {
       setIsLoading(false);
     }
   };
-  
-  // 소셜 로그인 메시지 이벤트 리스너
-  useEffect(() => {
-    const handleSocialLoginMessage = async (event: MessageEvent) => {
-      // Same origin 메시지만 처리
-      if (event.origin !== window.location.origin) return;
-      
-      // 소셜 로그인 성공 처리
-      if (event.data.type === SOCIAL_LOGIN_SUCCESS) {
-        console.log("Social login success message received", event.data);
-        setIsLoading(false);
-        toast({
-          title: "로그인 성공!",
-          description: "환영합니다.",
-        });
-        navigate("/");
-      }
-      
-      // 소셜 로그인 실패 처리
-      if (event.data.type === SOCIAL_LOGIN_ERROR) {
-        console.log("Social login error message received");
-        setIsLoading(false);
-        toast({
-          title: "로그인 실패",
-          description: "로그인 과정에서 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-      }
-    };
-    
-    window.addEventListener('message', handleSocialLoginMessage);
-    
-    return () => {
-      window.removeEventListener('message', handleSocialLoginMessage);
-    };
-  }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,6 +181,7 @@ export const useAuthForm = () => {
               weight: formData.weight ? weight : null,
               gender: formData.gender,
             },
+            // emailRedirectTo 사용 (redirectTo 대신)
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });

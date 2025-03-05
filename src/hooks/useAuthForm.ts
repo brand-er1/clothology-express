@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -71,7 +72,7 @@ export const useAuthForm = () => {
       setIsLoading(true);
       
       // Open popup window for social login
-      const popup = openSocialLoginPopup(provider);
+      const popup = await openSocialLoginPopup(provider);
       
       if (!popup) {
         throw new Error("팝업 창을 열 수 없습니다. 팝업 차단을 확인해주세요.");

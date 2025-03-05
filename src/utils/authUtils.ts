@@ -112,9 +112,9 @@ export interface AuthMessage {
 }
 
 // Get social login URL for popup window
-export const getSocialLoginUrl = (provider: 'google' | 'kakao'): string => {
+export const getSocialLoginUrl = async (provider: 'google' | 'kakao'): Promise<string> => {
   // Use the proper Supabase URL format for social authentication
-  return supabase.auth.signInWithOAuth({
+  const { data } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
@@ -123,24 +123,36 @@ export const getSocialLoginUrl = (provider: 'google' | 'kakao'): string => {
         prompt: 'consent',
       } : undefined
     }
-  }).data.url;
+  });
+  
+  return data.url;
 };
 
 // Helper function to open a social login popup
-export const openSocialLoginPopup = (provider: 'google' | 'kakao'): Window | null => {
-  const url = getSocialLoginUrl(provider);
-  console.log("Opening social login popup with URL:", url);
-  
-  const width = 600;
-  const height = 600;
-  const left = window.innerWidth / 2 - width / 2;
-  const top = window.innerHeight / 2 - height / 2;
-  
-  return window.open(
-    url,
-    `${provider}Auth`,
-    `width=${width},height=${height},left=${left},top=${top}`
-  );
+export const openSocialLoginPopup = async (provider: 'google' | 'kakao'): Promise<Window | null> => {
+  try {
+    const url = await getSocialLoginUrl(provider);
+    console.log("Opening social login popup with URL:", url);
+    
+    const width = 600;
+    const height = 600;
+    const left = window.innerWidth / 2 - width / 2;
+    const top = window.innerHeight / 2 - height / 2;
+    
+    return window.open(
+      url,
+      `${provider}Auth`,
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+  } catch (error) {
+    console.error("Error opening social login popup:", error);
+    toast({
+      title: "소셜 로그인 오류",
+      description: "로그인 창을 열 수 없습니다. 잠시 후 다시 시도해주세요.",
+      variant: "destructive",
+    });
+    return null;
+  }
 };
 
 // Post a message to the parent window

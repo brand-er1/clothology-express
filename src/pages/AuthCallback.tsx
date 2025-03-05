@@ -152,9 +152,26 @@ const AuthCallback = () => {
       try {
         console.log("AuthCallback: Starting authentication check");
         
+        // Get the URL fragments
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        const errorDescriptionFromHash = hashParams.get('error_description');
+        
+        // If there's an error in the hash, handle it
+        if (errorDescriptionFromHash) {
+          console.error("Auth Error in URL:", errorDescriptionFromHash);
+          throw new Error(errorDescriptionFromHash);
+        }
+        
         // 1. Check for code parameter (pkce flow)
         const searchParams = new URLSearchParams(location.search);
         const code = searchParams.get('code');
+        const errorDescription = searchParams.get('error_description');
+        
+        // If there's an error in the query parameters, handle it
+        if (errorDescription) {
+          console.error("Auth Error in Query:", errorDescription);
+          throw new Error(errorDescription);
+        }
         
         if (code) {
           console.log("AuthCallback: Found code parameter, exchanging for session");

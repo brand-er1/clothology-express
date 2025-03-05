@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -112,25 +113,24 @@ export interface AuthMessage {
 
 // Get social login URL for popup window
 export const getSocialLoginUrl = (provider: 'google' | 'kakao'): string => {
-  const redirectTo = `${window.location.origin}/auth/callback`;
-  const currentUrl = new URL(`${window.location.origin}/.supabase/auth/v1/authorize`);
-  
-  currentUrl.searchParams.append('provider', provider);
-  currentUrl.searchParams.append('redirect_to', redirectTo);
-  
-  // Add additional scopes based on provider
-  if (provider === 'kakao') {
-    currentUrl.searchParams.append('scopes', 'account_email,profile_nickname');
-  } else if (provider === 'google') {
-    currentUrl.searchParams.append('scopes', 'email,profile');
-  }
-  
-  return currentUrl.toString();
+  // Use the proper Supabase URL format for social authentication
+  return supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: provider === 'google' ? {
+        access_type: 'offline',
+        prompt: 'consent',
+      } : undefined
+    }
+  }).data.url;
 };
 
 // Helper function to open a social login popup
 export const openSocialLoginPopup = (provider: 'google' | 'kakao'): Window | null => {
   const url = getSocialLoginUrl(provider);
+  console.log("Opening social login popup with URL:", url);
+  
   const width = 600;
   const height = 600;
   const left = window.innerWidth / 2 - width / 2;

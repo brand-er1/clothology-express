@@ -25,22 +25,40 @@ serve(async (req) => {
       throw new Error("사용자 정보가 없습니다");
     }
 
+    console.log("Handle new user function triggered:", { 
+      userId: user.id, 
+      email: user.email,
+      provider: provider,
+      metadata: user.user_metadata 
+    });
+
     // 기본값 설정
     const userMeta = user.user_metadata || {};
     let username = '';
-    let userId = user.email || '';
+    let userId = '';
     
     // 로그인 제공자에 따른 처리
     if (provider === 'kakao') {
       username = userMeta.preferred_username || userMeta.name || userMeta.nickname || '';
       // 카카오 로그인에서는 이메일을 user_id로 사용
       userId = user.email || '';
+    } else {
+      // 다른 로그인 방법인 경우도 이메일을 user_id로 사용
+      userId = user.email || '';
+      username = userMeta.username || userMeta.name || userMeta.preferred_username || '';
     }
     
     // 필수 필드 검증
     if (!userId) {
-      throw new Error("사용자 ID를 생성할 수 없습니다");
+      console.error("Error: Could not determine userId", { user, provider });
+      throw new Error("사용자 ID를 생성할 수 없습니다. 이메일이 필요합니다.");
     }
+    
+    console.log("Creating profile with:", { 
+      userId: user.id, 
+      username, 
+      user_id: userId 
+    });
     
     // 프로필 업데이트
     const { data, error } = await supabaseClient
@@ -56,7 +74,12 @@ serve(async (req) => {
         gender: '남성', // 기본값
       });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Profile creation error:", error);
+      throw error;
+    }
+
+    console.log("Profile created successfully");
 
     return new Response(
       JSON.stringify({ success: true, message: "Profile created successfully" }),

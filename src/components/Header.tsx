@@ -3,17 +3,33 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/providers/AuthProvider";
+import { useEffect, useState } from "react";
 
 export const Header = () => {
   const { isAdmin } = useAdmin();
-  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
   };
+
+  useEffect(() => {
+    // 인증 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // 초기 인증 상태 확인
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(!!data.session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b">

@@ -1,13 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import { AuthGuard } from './components/auth/AuthGuard';
 import AuthCallback from './pages/AuthCallback';
-import { AuthProvider } from './providers/AuthProvider';
 import { toast } from './components/ui/use-toast';
 
 // Kakao 타입 선언
@@ -29,17 +28,13 @@ function App() {
       // Kakao SDK 초기화 (JavaScript 키 사용)
       const kakaoApiKey = '65949909b86a9401ca9559ea3c184659';
       if (kakaoApiKey && !isKakaoInitialized && window.Kakao) {
-        try {
-          // Kakao SDK 초기화는 한 번만 실행되도록
-          if (!window.Kakao.isInitialized()) {
-            window.Kakao.init(kakaoApiKey);
-            setIsKakaoInitialized(true);
-            console.log('Kakao SDK initialized.');
-          } else {
-            console.log('Kakao SDK already initialized.');
-          }
-        } catch (error) {
-          console.error('Kakao SDK initialization error:', error);
+        // Kakao SDK 초기화는 한 번만 실행되도록
+        if (!window.Kakao.isInitialized()) {
+          window.Kakao.init(kakaoApiKey);
+          setIsKakaoInitialized(true);
+          console.log('Kakao SDK initialized.');
+        } else {
+          console.log('Kakao SDK already initialized.');
         }
       }
     };
@@ -74,14 +69,12 @@ function App() {
     checkForErrors();
 
     return () => {
-      if (script.parentNode) {
-        document.body.removeChild(script);
-      }
+      document.body.removeChild(script);
     };
   }, [isKakaoInitialized]);
 
   return (
-    <AuthProvider>
+    <>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
@@ -91,7 +84,7 @@ function App() {
         </Routes>
       </BrowserRouter>
       <Toaster />
-    </AuthProvider>
+    </>
   );
 }
 

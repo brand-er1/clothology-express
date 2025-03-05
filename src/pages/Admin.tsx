@@ -9,8 +9,6 @@ import { SystemPromptEditor } from "@/components/admin/SystemPromptEditor";
 import { OrderList } from "@/components/admin/OrderList";
 import { OrderReviewDialog } from "@/components/admin/OrderReviewDialog";
 import { type Order } from "@/types/order";
-import { Button } from "@/components/ui/button";
-import { addAdminRoles } from "@/utils/adminUtils";
 
 const Admin = () => {
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -171,28 +169,12 @@ const Admin = () => {
     return null;
   }
 
-  const handleAssignAdminRoles = async () => {
-    await addAdminRoles();
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <main className="container mx-auto px-4 pt-24 pb-12">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">관리자 설정</h1>
-          
-          <div className="mb-8">
-            <Button 
-              onClick={handleAssignAdminRoles}
-              className="mb-4"
-            >
-              지정된 사용자에게 관리자 권한 부여
-            </Button>
-            <p className="text-sm text-gray-500">
-              설정된 사용자 ID에 관리자 권한을 부여합니다.
-            </p>
-          </div>
           
           <SystemPromptEditor
             systemPrompt={systemPrompt}

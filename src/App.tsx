@@ -8,6 +8,8 @@ import Profile from './pages/Profile';
 import { AuthGuard } from './components/auth/AuthGuard';
 import AuthCallback from './pages/AuthCallback';
 import { toast } from './components/ui/use-toast';
+import { supabase } from "@/lib/supabase";
+import { ProfileInfoModal } from './components/auth/ProfileInfoModal';
 
 // Kakao 타입 선언
 declare global {
@@ -18,6 +20,56 @@ declare global {
 
 function App() {
   const [isKakaoInitialized, setIsKakaoInitialized] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // 사용자 프로필 정보 확인 함수
+  const checkUserProfileInfo = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('height, weight, gender, phone_number')
+      .eq('id', userId)
+      .single();
+    
+    if (error) {
+      console.error("프로필 정보 확인 오류:", error);
+      return false;
+    }
+    
+    // 키와 몸무게가 있으면 정보가 충분하다고 판단
+    return !!(data.height && data.weight);
+  };
+
+  useEffect(() => {
+    // 로그인 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // 로그인 이벤트 발생 시
+        if (event === 'SIGNED_IN' && session?.user) {
+          const userId = session.user.id;
+          setCurrentUserId(userId);
+          
+          // 프로필 정보 확인
+          const hasProfileInfo = await checkUserProfileInfo(userId);
+          
+          // 소셜 로그인이고 프로필 정보가 없을 경우 모달 표시
+          if (
+            session.user.app_metadata.provider &&
+            ['google', 'kakao', 'linkedin_oidc'].includes(session.user.app_metadata.provider) &&
+            !hasProfileInfo
+          ) {
+            setIsProfileModalOpen(true);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setCurrentUserId(null);
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // Kakao SDK 스크립트 동적 로딩
@@ -73,6 +125,10 @@ function App() {
     };
   }, [isKakaoInitialized]);
 
+  const handleCloseProfileModal = () => {
+    setIsProfileModalOpen(false);
+  };
+
   return (
     <>
       <BrowserRouter>
@@ -84,6 +140,14 @@ function App() {
         </Routes>
       </BrowserRouter>
       <Toaster />
+      
+      {isProfileModalOpen && currentUserId && (
+        <ProfileInfoModal 
+          isOpen={isProfileModalOpen} 
+          onClose={handleCloseProfileModal} 
+          userId={currentUserId}
+        />
+      )}
     </>
   );
 }

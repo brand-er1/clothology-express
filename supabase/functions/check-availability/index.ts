@@ -47,28 +47,6 @@ serve(async (req) => {
         }
       );
 
-    } else if (type === 'userId') {
-      // 아이디 중복 체크
-      const { data: profile, error: profileError } = await supabaseClient
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', value)
-        .maybeSingle();
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          available: !profile,
-          message: profile ? "이미 사용 중인 아이디입니다" : "사용 가능한 아이디입니다"
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      );
     } else if (type === 'username') {
       // 닉네임 중복 체크
       const { data: profile, error: profileError } = await supabaseClient

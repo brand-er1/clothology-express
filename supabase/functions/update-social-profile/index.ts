@@ -34,34 +34,6 @@ serve(async (req) => {
       throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
     }
 
-    // 사용자 이메일 조회 (userId를 이메일로 사용하기 위함)
-    const { data: userData, error: userError } = await supabaseClient
-      .auth
-      .admin
-      .getUserById(userId);
-
-    if (userError) throw userError;
-    if (!userData.user) throw new Error("사용자 정보를 찾을 수 없습니다.");
-
-    // Fallback user_id - 이메일이 없는 경우 UUID 기반 ID 사용
-    const userEmail = userData.user.email || "";
-    const fallbackUserId = `user_${userId.replace(/-/g, '')}`;
-    
-    // userId를 이메일 또는 사용자가 입력한 값으로 설정
-    // 모두 없으면 UUID 기반 fallback ID 사용
-    const finalUserId = userInfo.userId || userEmail || fallbackUserId;
-
-    // userId 중복 확인 (본인 제외)
-    const { data: userIdCheck, error: userIdError } = await supabaseClient
-      .from('profiles')
-      .select('user_id')
-      .eq('user_id', finalUserId)
-      .not('id', 'eq', userId)
-      .maybeSingle();
-      
-    if (userIdError) throw userIdError;
-    if (userIdCheck) throw new Error("이미 사용 중인 아이디입니다.");
-    
     // username 중복 확인 (본인 제외)
     const { data: usernameCheck, error: usernameError } = await supabaseClient
       .from('profiles')
@@ -85,7 +57,6 @@ serve(async (req) => {
     const { data, error } = await supabaseClient
       .from('profiles')
       .update({
-        user_id: finalUserId,
         username: userInfo.username,
         full_name: userInfo.fullName || null,
         phone_number: userInfo.phoneNumber || null,

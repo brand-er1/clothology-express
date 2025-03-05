@@ -13,11 +13,8 @@ interface SignUpFormProps {
   formData: AuthFormData;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isLoading: boolean;
-  isIdAvailable: boolean | null;
-  isCheckingId: boolean;
   passwordMatch: boolean;
   handleAddressSearch: () => void;
-  checkUserId: () => Promise<void>;
   checkEmail: () => Promise<void>;
   isEmailAvailable: boolean | null;
   isUsernameAvailable: boolean | null;
@@ -29,11 +26,8 @@ export const SignUpForm = ({
   formData,
   handleChange,
   isLoading,
-  isIdAvailable,
-  isCheckingId,
   passwordMatch,
   handleAddressSearch,
-  checkUserId,
   checkEmail,
   isEmailAvailable,
   isUsernameAvailable,
@@ -42,27 +36,6 @@ export const SignUpForm = ({
 }: SignUpFormProps) => {
   return (
     <>
-      <div className="space-y-2">
-        <Label htmlFor="userId">아이디</Label>
-        <div className="flex gap-2">
-          <Input
-            id="userId"
-            name="userId"
-            type="text"
-            value={formData.userId}
-            onChange={handleChange}
-            required
-          />
-          <Button
-            type="button"
-            onClick={checkUserId}
-            disabled={isCheckingId}
-            className="whitespace-nowrap"
-          >
-            {isCheckingId ? "확인 중..." : "중복 확인"}
-          </Button>
-        </div>
-      </div>
       <div className="space-y-2">
         <Label htmlFor="email">이메일</Label>
         <div className="flex gap-2">

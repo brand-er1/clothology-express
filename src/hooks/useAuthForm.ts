@@ -1,21 +1,19 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
-import { checkUserIdAvailability, checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
+import { checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 
 export const useAuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [passwordMatch, setPasswordMatch] = useState(true);
-  const [isCheckingId, setIsCheckingId] = useState(false);
-  const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
   const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
   const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
   const [formData, setFormData] = useState<AuthFormData>({
-    userId: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -38,9 +36,6 @@ export const useAuthForm = () => {
       [name]: value
     }));
 
-    if (name === 'userId') {
-      setIsIdAvailable(null);
-    }
     if (name === 'email') {
       setIsEmailAvailable(null);
     }
@@ -54,13 +49,6 @@ export const useAuthForm = () => {
       ...prev,
       gender: value
     }));
-  };
-
-  const checkUserId = async () => {
-    setIsCheckingId(true);
-    const result = await checkUserIdAvailability(formData.userId);
-    setIsIdAvailable(result);
-    setIsCheckingId(false);
   };
 
   const checkEmail = async () => {
@@ -116,7 +104,7 @@ export const useAuthForm = () => {
         await validateSignUpForm(
           passwordMatch, 
           formData.password, 
-          isIdAvailable, 
+          true, // No user_id check needed anymore
           isEmailAvailable,
           isUsernameAvailable,
           formData.height,
@@ -140,7 +128,6 @@ export const useAuthForm = () => {
           password: formData.password,
           options: {
             data: {
-              user_id: formData.userId,
               username: formData.username,
               full_name: formData.fullName,
               phone_number: formData.phoneNumber,
@@ -160,7 +147,7 @@ export const useAuthForm = () => {
         });
         setIsSignUp(false);
       } else {
-        await handleLogin(formData.email || formData.userId, formData.password);
+        await handleLogin(formData.email, formData.password);
         navigate("/");
         toast({
           title: "로그인 성공!",
@@ -181,7 +168,6 @@ export const useAuthForm = () => {
   const resetForm = () => {
     setIsSignUp(!isSignUp);
     setFormData({
-      userId: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -196,7 +182,6 @@ export const useAuthForm = () => {
       gender: "남성",
     });
     setPasswordMatch(true);
-    setIsIdAvailable(null);
     setIsEmailAvailable(null);
     setIsUsernameAvailable(null);
   };
@@ -205,14 +190,11 @@ export const useAuthForm = () => {
     isLoading,
     isSignUp,
     passwordMatch,
-    isCheckingId,
-    isIdAvailable,
     isEmailAvailable,
     isUsernameAvailable,
     formData,
     handleChange,
     handleGenderChange,
-    checkUserId,
     checkEmail,
     checkUsername,
     handleAuth,

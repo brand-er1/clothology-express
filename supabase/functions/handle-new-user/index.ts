@@ -36,10 +36,6 @@ serve(async (req) => {
     const userMeta = user.user_metadata || {};
     let username = '';
     
-    // Fallback user_id - 항상 값이 있도록 보장
-    // 이메일이 없는 경우 UUID를 사용
-    let userId = user.email || `user_${user.id.replace(/-/g, '')}`;
-    
     // 로그인 제공자에 따른 처리
     if (provider === 'kakao') {
       username = userMeta.preferred_username || userMeta.name || userMeta.nickname || '사용자';
@@ -49,8 +45,7 @@ serve(async (req) => {
     
     console.log("Creating profile with:", { 
       userId: user.id, 
-      username, 
-      user_id: userId 
+      username
     });
     
     // 프로필 업데이트
@@ -58,7 +53,6 @@ serve(async (req) => {
       .from('profiles')
       .upsert({
         id: user.id,
-        user_id: userId,
         username: username,
         full_name: userMeta.full_name || null,
         phone_number: userMeta.phone_number || null,

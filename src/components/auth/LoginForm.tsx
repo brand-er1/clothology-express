@@ -14,12 +14,12 @@ export const LoginForm = ({ formData, handleChange, isLoading }: LoginFormProps)
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="email">아이디 또는 이메일</Label>
+        <Label htmlFor="email">이메일</Label>
         <Input
           id="email"
           name="email"
-          type="text"
-          placeholder="아이디 또는 이메일 주소"
+          type="email"
+          placeholder="이메일 주소"
           value={formData.email}
           onChange={handleChange}
           required

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
+import { sendMessageToParentWindow } from "@/utils/authUtils";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -120,7 +120,13 @@ const AuthCallback = () => {
         description: "필요한 모든 정보가 저장되었습니다.",
       });
       
-      navigate("/");
+      // If this is in a popup window, send success message to parent
+      if (window.opener) {
+        sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
+        window.close();
+      } else {
+        navigate("/");
+      }
     } catch (error: any) {
       console.error("Profile update error:", error);
       toast({
@@ -128,6 +134,14 @@ const AuthCallback = () => {
         description: error.message,
         variant: "destructive",
       });
+      
+      // If this is in a popup window, send error message to parent
+      if (window.opener) {
+        sendMessageToParentWindow({ 
+          type: 'SOCIAL_LOGIN_ERROR',
+          data: { message: error.message }
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -187,7 +201,17 @@ const AuthCallback = () => {
         
         if (!data.session) {
           console.log("AuthCallback: No session found, redirecting to auth");
-          navigate("/auth");
+          
+          // If this is in a popup window, send error message to parent
+          if (window.opener) {
+            sendMessageToParentWindow({ 
+              type: 'SOCIAL_LOGIN_ERROR', 
+              data: { message: "인증 세션을 찾을 수 없습니다" } 
+            });
+            window.close();
+          } else {
+            navigate("/auth");
+          }
           return;
         }
         
@@ -264,18 +288,35 @@ const AuthCallback = () => {
             }));
           }
         } else {
-          // 필요한 정보가 모두 있으면 홈으로 이동
-          console.log("AuthCallback: User profile complete, redirecting to home");
-          navigate("/");
+          // 필요한 정보가 모두 있으면 홈으로 이동 또는 팝업 창 닫기
+          console.log("AuthCallback: User profile complete");
+          
+          if (window.opener) {
+            // Send success message to parent window and close popup
+            sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
+            window.close();
+          } else {
+            navigate("/");
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Auth callback error:", error);
-        toast({
-          title: "인증 오류",
-          description: "로그인 과정에서 오류가 발생했습니다. 다시 시도해주세요.",
-          variant: "destructive",
-        });
-        navigate("/auth");
+        
+        // If this is in a popup window, send error message to parent and close
+        if (window.opener) {
+          sendMessageToParentWindow({ 
+            type: 'SOCIAL_LOGIN_ERROR', 
+            data: { message: error.message || "로그인 과정에서 오류가 발생했습니다" } 
+          });
+          window.close();
+        } else {
+          toast({
+            title: "인증 오류",
+            description: "로그인 과정에서 오류가 발생했습니다. 다시 시도해주세요.",
+            variant: "destructive",
+          });
+          navigate("/auth");
+        }
       } finally {
         setIsLoading(false);
       }

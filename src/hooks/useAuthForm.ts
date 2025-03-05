@@ -1,10 +1,15 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
-import { checkEmailAvailability, checkUsernameAvailability, validateSignUpForm } from "@/utils/authUtils";
+import { 
+  checkEmailAvailability, 
+  checkUsernameAvailability, 
+  validateSignUpForm, 
+  openSocialLoginPopup,
+  AuthMessage
+} from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 
 export const useAuthForm = () => {
@@ -65,23 +70,20 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
-      // 현재 호스트 기반 리다이렉트 URL 생성
-      const redirectTo = `${window.location.origin}/auth/callback`;
-      console.log(`Using redirect URL: ${redirectTo}`);
+      // Open popup window for social login
+      const popup = openSocialLoginPopup(provider);
       
-      // 소셜 로그인 시도
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: redirectTo,
-          scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
-          skipBrowserRedirect: false, // 브라우저는 자동 리다이렉트 허용
-        },
+      if (!popup) {
+        throw new Error("팝업 창을 열 수 없습니다. 팝업 차단을 확인해주세요.");
+      }
+      
+      // We don't need to do anything else here as the popup will handle the login
+      // and communicate back via postMessage
+      
+      toast({
+        title: `${provider === 'kakao' ? '카카오' : 'Google'} 로그인`,
+        description: "로그인 창이 열렸습니다. 진행해주세요.",
       });
-      
-      if (error) throw error;
-      
-      // 브라우저가 리다이렉트됨
       
     } catch (error: any) {
       console.error("Social login error:", error);
@@ -184,6 +186,38 @@ export const useAuthForm = () => {
     setIsEmailAvailable(null);
     setIsUsernameAvailable(null);
   };
+
+  // Listen for messages from the popup window
+  useEffect(() => {
+    const handleAuthMessage = async (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) return;
+      
+      const message = event.data as AuthMessage;
+      
+      if (message && typeof message === 'object') {
+        if (message.type === 'SOCIAL_LOGIN_SUCCESS') {
+          toast({
+            title: "로그인 성공!",
+            description: "환영합니다.",
+          });
+          navigate("/");
+        } else if (message.type === 'SOCIAL_LOGIN_ERROR') {
+          toast({
+            title: "로그인 오류",
+            description: message.data?.message || "로그인 중 오류가 발생했습니다.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleAuthMessage);
+    
+    return () => {
+      window.removeEventListener('message', handleAuthMessage);
+    };
+  }, [navigate]);
 
   return {
     isLoading,

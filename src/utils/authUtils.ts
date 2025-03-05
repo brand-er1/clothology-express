@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -100,5 +99,53 @@ export const validateSignUpForm = async (
 
   if (!weight) {
     throw new Error("몸무게를 입력해주세요.");
+  }
+};
+
+// Define message types for cross-window communication
+export type AuthMessageType = 'SOCIAL_LOGIN_SUCCESS' | 'SOCIAL_LOGIN_ERROR';
+
+export interface AuthMessage {
+  type: AuthMessageType;
+  data?: any;
+}
+
+// Get social login URL for popup window
+export const getSocialLoginUrl = (provider: 'google' | 'kakao'): string => {
+  const redirectTo = `${window.location.origin}/auth/callback`;
+  const currentUrl = new URL(`${window.location.origin}/.supabase/auth/v1/authorize`);
+  
+  currentUrl.searchParams.append('provider', provider);
+  currentUrl.searchParams.append('redirect_to', redirectTo);
+  
+  // Add additional scopes based on provider
+  if (provider === 'kakao') {
+    currentUrl.searchParams.append('scopes', 'account_email,profile_nickname');
+  } else if (provider === 'google') {
+    currentUrl.searchParams.append('scopes', 'email,profile');
+  }
+  
+  return currentUrl.toString();
+};
+
+// Helper function to open a social login popup
+export const openSocialLoginPopup = (provider: 'google' | 'kakao'): Window | null => {
+  const url = getSocialLoginUrl(provider);
+  const width = 600;
+  const height = 600;
+  const left = window.innerWidth / 2 - width / 2;
+  const top = window.innerHeight / 2 - height / 2;
+  
+  return window.open(
+    url,
+    `${provider}Auth`,
+    `width=${width},height=${height},left=${left},top=${top}`
+  );
+};
+
+// Post a message to the parent window
+export const sendMessageToParentWindow = (message: AuthMessage) => {
+  if (window.opener) {
+    window.opener.postMessage(message, window.location.origin);
   }
 };

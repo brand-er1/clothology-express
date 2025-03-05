@@ -100,3 +100,9 @@ export const openSocialLoginPopup = (url: string, provider: string): Window | nu
   
   return socialLoginPopup;
 };
+
+export const getSocialLoginUrl = (provider: string): string => {
+  const redirectTo = `${window.location.origin}/auth/callback`;
+  
+  return `${supabase.auth.getUrl()}/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
+};

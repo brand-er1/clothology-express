@@ -13,8 +13,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true, // Enable auto detection for handling hash fragments
     flowType: 'pkce', // Use PKCE flow for more secure auth
-    redirectTo: `${currentHost}/auth/callback`, // Dynamic redirect based on current host
-  }
+  },
+  global: {
+    headers: {
+      'x-application-name': 'brand-er-customize',
+    },
+  },
 })
 
 // Helper function for more consistent user retrieval

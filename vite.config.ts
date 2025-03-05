@@ -7,9 +7,9 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "localhost", // Explicitly set to localhost instead of ::
-    port: 8080,
-    strictPort: true, // Will not try another port if 8080 is in use
+    host: "0.0.0.0", // Allow connections from all network interfaces
+    port: 3000, // Use port 3000 to match the URL in your error message
+    strictPort: false, // Allow fallback to another port if 3000 is in use
   },
   plugins: [
     react(),

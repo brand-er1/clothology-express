@@ -168,13 +168,34 @@ export const openSocialLoginPopup = async (provider: 'google' | 'kakao'): Promis
 // Post a message to the parent window
 export const sendMessageToParentWindow = (message: AuthMessage) => {
   if (window.opener) {
-    window.opener.postMessage(message, window.location.origin);
+    try {
+      // Try to send message to the same origin first (most secure)
+      window.opener.postMessage(message, window.location.origin);
+      console.log("Sent message to parent on same origin");
+    } catch (e) {
+      console.warn("Failed to send message to parent on same origin:", e);
+      
+      try {
+        // Fallback: try with wildcard origin (less secure but works cross-domain)
+        window.opener.postMessage(message, "*");
+        console.log("Sent message to parent with wildcard origin");
+      } catch (e2) {
+        console.error("Failed to send message to parent with wildcard origin:", e2);
+      }
+    }
+  } else {
+    console.warn("No opener window found to send message to");
   }
 };
 
 // Store session data in localStorage for the main window to use
 export const storeSessionData = (session: any) => {
-  localStorage.setItem('tempSessionData', JSON.stringify(session));
+  try {
+    localStorage.setItem('tempSessionData', JSON.stringify(session));
+    console.log("Session data stored in localStorage");
+  } catch (e) {
+    console.error("Failed to store session data in localStorage:", e);
+  }
 };
 
 // Check if user profile is complete
@@ -225,4 +246,25 @@ export const refreshSessionAfterSocialLogin = async (): Promise<boolean> => {
     console.error("Error refreshing session:", error);
     return false;
   }
+};
+
+// New helper function to check iframe context
+export const isInIframe = (): boolean => {
+  try {
+    return window.self !== window.top;
+  } catch (e) {
+    // If we can't access parent, we're likely in an iframe with different origin
+    return true;
+  }
+};
+
+// New helper to create a shared key for cross-domain auth
+export const getSharedAuthKey = (): string => {
+  // Create a key if it doesn't exist
+  let key = localStorage.getItem('sharedAuthKey');
+  if (!key) {
+    key = `auth_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    localStorage.setItem('sharedAuthKey', key);
+  }
+  return key;
 };

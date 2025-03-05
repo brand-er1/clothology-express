@@ -55,18 +55,33 @@ const AuthCallback = () => {
           
           // If in popup window, send session data to parent window and store locally
           if (window.opener && data.session) {
+            // Store session data regardless of domain
             storeSessionData({
               access_token: data.session.access_token,
               refresh_token: data.session.refresh_token
             });
             
-            sendMessageToParentWindow({ 
-              type: 'SESSION_DATA',
-              data: {
-                access_token: data.session.access_token,
-                refresh_token: data.session.refresh_token
-              }
-            });
+            // Attempt to send to all parent windows, regardless of origin
+            try {
+              sendMessageToParentWindow({ 
+                type: 'SESSION_DATA',
+                data: {
+                  access_token: data.session.access_token,
+                  refresh_token: data.session.refresh_token
+                }
+              });
+              console.log("Successfully sent session data to parent window");
+            } catch (e) {
+              console.error("Error sending session data to parent:", e);
+              // Even if postMessage fails, the localStorage approach will work
+            }
+            
+            // Try to close the window automatically
+            try {
+              window.close();
+            } catch (e) {
+              console.error("Could not close window:", e);
+            }
           }
         } 
         // 2. Fallback for hash parameters (legacy implicit flow)
@@ -94,18 +109,33 @@ const AuthCallback = () => {
             
             // If in popup window, send session data to parent window and store locally
             if (window.opener) {
+              // Store session data regardless of domain
               storeSessionData({
                 access_token: accessToken,
                 refresh_token: refreshToken
               });
               
-              sendMessageToParentWindow({ 
-                type: 'SESSION_DATA',
-                data: {
-                  access_token: accessToken,
-                  refresh_token: refreshToken
-                }
-              });
+              // Attempt to send to all parent windows, regardless of origin
+              try {
+                sendMessageToParentWindow({ 
+                  type: 'SESSION_DATA',
+                  data: {
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                  }
+                });
+                console.log("Successfully sent session data to parent window");
+              } catch (e) {
+                console.error("Error sending session data to parent:", e);
+                // Even if postMessage fails, the localStorage approach will work
+              }
+              
+              // Try to close the window automatically
+              try {
+                window.close();
+              } catch (e) {
+                console.error("Could not close window:", e);
+              }
             }
           }
         }
@@ -124,7 +154,13 @@ const AuthCallback = () => {
               type: 'SOCIAL_LOGIN_ERROR', 
               data: { message: "인증 세션을 찾을 수 없습니다" } 
             });
-            window.close();
+            
+            // Try to close the window automatically
+            try {
+              window.close();
+            } catch (e) {
+              console.error("Could not close window:", e);
+            }
           } else {
             navigate("/auth");
           }
@@ -147,7 +183,13 @@ const AuthCallback = () => {
               if (!isProfileComplete(profileData)) {
                 console.log("Profile is incomplete, notifying parent window");
                 sendMessageToParentWindow({ type: 'PROFILE_INCOMPLETE' });
-                window.close();
+                
+                // Try to close the window automatically
+                try {
+                  window.close();
+                } catch (e) {
+                  console.error("Could not close window:", e);
+                }
                 return;
               }
             }
@@ -157,7 +199,13 @@ const AuthCallback = () => {
         // Send success message to parent window and close popup
         if (window.opener) {
           sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
-          window.close();
+          
+          // Try to close the window automatically
+          try {
+            window.close();
+          } catch (e) {
+            console.error("Could not close window:", e);
+          }
         } else {
           navigate("/");
         }
@@ -170,7 +218,13 @@ const AuthCallback = () => {
             type: 'SOCIAL_LOGIN_ERROR', 
             data: { message: error.message || "로그인 과정에서 오류가 발생했습니다" } 
           });
-          window.close();
+          
+          // Try to close the window automatically
+          try {
+            window.close();
+          } catch (e) {
+            console.error("Could not close window:", e);
+          }
         } else {
           toast({
             title: "인증 오류",
@@ -197,7 +251,14 @@ const AuthCallback = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-lg">로그인 처리 중...</p>
+      <p className="text-lg">로그인 처리 중입니다...</p>
+      <p className="text-sm mt-4">로그인이 완료되면 자동으로 창이 닫힙니다. 창이 닫히지 않으면 수동으로 닫아주세요.</p>
+      <button 
+        onClick={() => window.close()} 
+        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        창 닫기
+      </button>
     </div>
   );
 };

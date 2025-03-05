@@ -13,7 +13,7 @@ import Admin from './pages/Admin';
 import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
-import { refreshSessionAfterSocialLogin } from './utils/authUtils';
+import { refreshSessionAfterSocialLogin, isInIframe } from './utils/authUtils';
 
 // Kakao 타입 선언
 declare global {
@@ -24,8 +24,12 @@ declare global {
 
 function App() {
   const [isKakaoInitialized, setIsKakaoInitialized] = useState(false);
+  const [isInIframeContext, setIsInIframeContext] = useState(false);
 
   useEffect(() => {
+    // Check if we're in an iframe
+    setIsInIframeContext(isInIframe());
+    
     // Kakao SDK 스크립트 동적 로딩
     const script = document.createElement('script');
     script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
@@ -81,8 +85,40 @@ function App() {
     
     checkForErrors();
 
+    // Set up message listener for cross-domain iframe communication
+    const handleMessage = async (event: MessageEvent) => {
+      // Accept messages from any origin when in iframe
+      if (isInIframeContext) {
+        try {
+          const message = event.data;
+          if (message && message.type === 'SESSION_DATA' && message.data) {
+            console.log("Received session data in iframe:", message.data);
+            
+            // Set the session using the received data
+            const { error } = await supabase.auth.setSession({
+              access_token: message.data.access_token,
+              refresh_token: message.data.refresh_token
+            });
+            
+            if (error) {
+              console.error("Error setting session in iframe:", error);
+            } else {
+              console.log("Successfully set session in iframe");
+              // Force a reload if needed
+              window.location.href = window.location.origin;
+            }
+          }
+        } catch (e) {
+          console.error("Error processing message in iframe:", e);
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+
     return () => {
       document.body.removeChild(script);
+      window.removeEventListener('message', handleMessage);
     };
   }, [isKakaoInitialized]);
 

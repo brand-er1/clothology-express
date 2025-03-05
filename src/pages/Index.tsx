@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { ArrowRight } from "lucide-react";
+import { WelcomeNotification } from "@/components/WelcomeNotification";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      <WelcomeNotification />
       
       <main className="pt-16">
         {/* Hero Section */}

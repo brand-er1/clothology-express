@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -65,11 +66,11 @@ export const useAuthForm = () => {
     try {
       setIsLoading(true);
       
-      // Get origin for safer redirects - use the current origin consistently
-      const origin = window.location.origin;
+      // Get the exact current origin
+      const currentHost = window.location.origin;
       
-      // Create a more reliable redirect URL (to auth/callback)
-      const redirectTo = `${origin}/auth/callback`;
+      // Create a consistent redirect URL
+      const redirectTo = `${currentHost}/auth/callback`;
       console.log(`Using redirect URL: ${redirectTo}`);
       
       // Get the OAuth URL from Supabase

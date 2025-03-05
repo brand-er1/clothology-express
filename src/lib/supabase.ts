@@ -13,6 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true, // Enable auto detection for handling hash fragments
     flowType: 'pkce', // Use PKCE flow for more secure auth
+    redirectTo: `${currentHost}/auth/callback`, // Set the redirect URL explicitly
   },
   global: {
     headers: {

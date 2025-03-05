@@ -9,8 +9,7 @@ import {
   checkUsernameAvailability, 
   validateSignUpForm, 
   openSocialLoginPopup,
-  AuthMessage,
-  refreshSessionAfterSocialLogin
+  AuthMessage
 } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 
@@ -78,6 +77,9 @@ export const useAuthForm = () => {
       if (!popup) {
         throw new Error("팝업 창을 열 수 없습니다. 팝업 차단을 확인해주세요.");
       }
+      
+      // We don't need to do anything else here as the popup will handle the login
+      // and communicate back via postMessage
       
       toast({
         title: `${provider === 'kakao' ? '카카오' : 'Google'} 로그인`,
@@ -190,35 +192,24 @@ export const useAuthForm = () => {
   useEffect(() => {
     const handleAuthMessage = async (event: MessageEvent) => {
       // Verify origin for security
-      if (event.origin !== window.location.origin) {
-        console.warn("Received message from unknown origin:", event.origin);
-        return;
-      }
+      if (event.origin !== window.location.origin) return;
       
       const message = event.data as AuthMessage;
-      console.log("Received message from popup:", message);
       
       if (message && typeof message === 'object') {
         if (message.type === 'SOCIAL_LOGIN_SUCCESS') {
-          // Refresh the session using the session data from the popup
-          await refreshSessionAfterSocialLogin(message.data?.session);
-          
           toast({
             title: "로그인 성공!",
             description: "환영합니다.",
           });
           navigate("/");
         } else if (message.type === 'SOCIAL_LOGIN_ERROR') {
-          setIsLoading(false);
           toast({
             title: "로그인 오류",
             description: message.data?.message || "로그인 중 오류가 발생했습니다.",
             variant: "destructive",
           });
         } else if (message.type === 'PROFILE_INCOMPLETE') {
-          // Refresh the session using the session data from the popup
-          await refreshSessionAfterSocialLogin(message.data?.session);
-          
           toast({
             title: "프로필 정보가 필요합니다",
             description: "서비스 이용을 위해 추가 정보를 입력해주세요.",

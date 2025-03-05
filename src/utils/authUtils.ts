@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -170,9 +169,6 @@ export const openSocialLoginPopup = async (provider: 'google' | 'kakao'): Promis
 export const sendMessageToParentWindow = (message: AuthMessage) => {
   if (window.opener) {
     window.opener.postMessage(message, window.location.origin);
-    console.log("Sent message to parent window:", message);
-  } else {
-    console.warn("No parent window found for message:", message);
   }
 };
 
@@ -182,45 +178,4 @@ export const isProfileComplete = (profile: any): boolean => {
     !profile.phone_number || 
     profile.height === null || 
     profile.weight === null);
-};
-
-// Refresh the session in the main window after the popup login
-export const refreshSessionAfterSocialLogin = async (sessionData?: any): Promise<void> => {
-  try {
-    console.log("Refreshing session after social login");
-    
-    // If we received session data from the popup, use it to set the session
-    if (sessionData && sessionData.access_token && sessionData.refresh_token) {
-      console.log("Setting session from received session data");
-      const { error } = await supabase.auth.setSession({
-        access_token: sessionData.access_token,
-        refresh_token: sessionData.refresh_token
-      });
-      
-      if (error) {
-        console.error("Error setting session from popup data:", error);
-        return;
-      }
-      
-      console.log("Session set successfully from popup data");
-      return;
-    }
-    
-    // Fallback: Get the current session and force refresh
-    console.log("No session data received, getting current session");
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.error("Error refreshing session:", error);
-      return;
-    }
-    
-    if (data.session) {
-      console.log("Session refreshed successfully after social login");
-    } else {
-      console.warn("No session found after social login refresh attempt");
-    }
-  } catch (error) {
-    console.error("Error in refreshSessionAfterSocialLogin:", error);
-  }
 };

@@ -97,14 +97,6 @@ const AuthCallback = () => {
         
         // Get user profile to check if it's complete
         if (window.opener && data.session) {
-          // Store the session in localStorage before sending the success message
-          // This helps ensure the session is available to the parent window
-          localStorage.setItem('supabase.auth.token', JSON.stringify({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-            expires_at: Math.floor(Date.now() / 1000) + data.session.expires_in
-          }));
-          
           const { data: userData } = await supabase.auth.getUser();
           
           if (userData && userData.user) {
@@ -118,40 +110,19 @@ const AuthCallback = () => {
               // Check if profile is complete
               if (!isProfileComplete(profileData)) {
                 console.log("Profile is incomplete, notifying parent window");
-                sendMessageToParentWindow({ 
-                  type: 'PROFILE_INCOMPLETE',
-                  data: { 
-                    session: {
-                      access_token: data.session.access_token,
-                      refresh_token: data.session.refresh_token
-                    }
-                  }
-                });
-                
-                // A longer delay for Kakao login to ensure the message is sent before closing
-                setTimeout(() => window.close(), 500);
+                sendMessageToParentWindow({ type: 'PROFILE_INCOMPLETE' });
+                window.close();
                 return;
               }
             }
-            
-            // Profile check passed, send success message and close popup
-            console.log("Authentication successful, notifying parent window");
-            sendMessageToParentWindow({ 
-              type: 'SOCIAL_LOGIN_SUCCESS',
-              data: { 
-                session: {
-                  access_token: data.session.access_token,
-                  refresh_token: data.session.refresh_token
-                }
-              }
-            });
-            
-            // A longer delay for Kakao login to ensure the message is sent before closing
-            const isKakao = userData.user.app_metadata?.provider === 'kakao';
-            setTimeout(() => window.close(), isKakao ? 800 : 500);
           }
+        }
+        
+        // Send success message to parent window and close popup
+        if (window.opener) {
+          sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
+          window.close();
         } else {
-          // If not in popup, navigate to home
           navigate("/");
         }
       } catch (error: any) {
@@ -163,9 +134,7 @@ const AuthCallback = () => {
             type: 'SOCIAL_LOGIN_ERROR', 
             data: { message: error.message || "로그인 과정에서 오류가 발생했습니다" } 
           });
-          
-          // A longer delay for Kakao login to ensure the message is sent before closing
-          setTimeout(() => window.close(), 800);
+          window.close();
         } else {
           toast({
             title: "인증 오류",

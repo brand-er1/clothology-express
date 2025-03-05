@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -57,16 +58,18 @@ const AuthCallback = () => {
     
     try {
       // 필수 필드 검증
-      if (!formData.userId || !formData.username || !formData.height || !formData.weight) {
+      if (!formData.userId || !formData.username) {
         throw new Error("필수 정보를 모두 입력해주세요.");
       }
       
-      // 수치 데이터 유효성 검증
-      const height = parseFloat(formData.height);
-      const weight = parseFloat(formData.weight);
-      
-      if (isNaN(height) || isNaN(weight)) {
-        throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
+      // 수치 데이터 유효성 검증 - 입력되었을 경우에만 검증
+      if (formData.height && formData.weight) {
+        const height = parseFloat(formData.height);
+        const weight = parseFloat(formData.weight);
+        
+        if (isNaN(height) || isNaN(weight)) {
+          throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
+        }
       }
 
       // userId 중복 확인
@@ -93,7 +96,7 @@ const AuthCallback = () => {
 
       const fullAddress = formData.addressDetail 
         ? `${formData.address} ${formData.addressDetail} (${formData.postcode})`
-        : `${formData.address} (${formData.postcode})`;
+        : formData.address ? `${formData.address} (${formData.postcode})` : null;
 
       // 프로필 업데이트
       const { error: updateError } = await supabase
@@ -104,8 +107,8 @@ const AuthCallback = () => {
           full_name: formData.fullName,
           phone_number: formData.phoneNumber,
           address: fullAddress,
-          height: height,
-          weight: weight,
+          height: formData.height ? parseFloat(formData.height) : null,
+          weight: formData.weight ? parseFloat(formData.weight) : null,
           gender: formData.gender,
         })
         .eq('id', user.id);
@@ -199,9 +202,11 @@ const AuthCallback = () => {
         
         if (profileError && profileError.code !== 'PGRST116') throw profileError;
         
-        // 필수 정보가 없으면 프로필 작성 요청
-        if (!profile || !profile.height || !profile.weight || !profile.address) {
-          console.log("AuthCallback: User needs to complete profile");
+        // 기본 정보만 요구 (아이디, 닉네임)
+        const needsBasicProfile = !profile || !profile.user_id || !profile.username;
+        
+        if (needsBasicProfile) {
+          console.log("AuthCallback: User needs to complete basic profile");
           setNeedsProfile(true);
           
           let initialUsername = "";
@@ -251,7 +256,7 @@ const AuthCallback = () => {
               gender: profile.gender || "남성",
             }));
           } else {
-            // 프로필이 없는 경우 카카오 닉네임과 이메일 설정
+            // 프로필이 없는 경우 소셜 닉네임과 이메일 설정
             setFormData(prev => ({
               ...prev,
               userId: initialUserId,
@@ -294,7 +299,7 @@ const AuthCallback = () => {
           <CardHeader>
             <CardTitle>프로필 완성하기</CardTitle>
             <CardDescription>
-              맞춤 의류 제작을 위해 추가 정보를 입력해주세요.
+              서비스 이용을 위해 필수 정보를 입력해주세요.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -351,7 +356,6 @@ const AuthCallback = () => {
                     value={formData.postcode}
                     placeholder="우편번호"
                     readOnly
-                    required
                   />
                   <Button
                     type="button"
@@ -367,7 +371,6 @@ const AuthCallback = () => {
                   value={formData.address}
                   placeholder="기본주소"
                   readOnly
-                  required
                 />
                 <Input
                   id="addressDetail"
@@ -392,26 +395,24 @@ const AuthCallback = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="height">키 (cm) (필수)</Label>
+                <Label htmlFor="height">키 (cm)</Label>
                 <Input
                   id="height"
                   name="height"
                   type="number"
                   value={formData.height}
                   onChange={handleChange}
-                  required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="weight">몸무게 (kg) (필수)</Label>
+                <Label htmlFor="weight">몸무게 (kg)</Label>
                 <Input
                   id="weight"
                   name="weight"
                   type="number"
                   value={formData.weight}
                   onChange={handleChange}
-                  required
                 />
               </div>
               

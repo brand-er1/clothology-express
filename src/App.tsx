@@ -11,6 +11,7 @@ import Customize from './pages/Customize';
 import Orders from './pages/Orders';
 import Admin from './pages/Admin';
 import { toast } from './components/ui/use-toast';
+import { supabase } from './lib/supabase';
 
 // Kakao 타입 선언
 declare global {
@@ -42,6 +43,42 @@ function App() {
       }
     };
     document.body.appendChild(script);
+
+    // URL hash parameters에서 세션 정보 추출 (OAuth 리다이렉트 처리)
+    const handleHashParams = async () => {
+      if (window.location.hash && window.location.hash.includes('access_token')) {
+        try {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            console.log("Hash parameters found, setting session");
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (error) {
+              console.error("Error setting session from hash params:", error);
+              toast({
+                title: "인증 오류",
+                description: error.message,
+                variant: "destructive",
+              });
+            } else {
+              console.log("Session set successfully from hash parameters");
+              // 세션 설정 후 URL hash 제거 및 홈으로 리다이렉트
+              window.history.replaceState(null, '', '/');
+            }
+          }
+        } catch (error) {
+          console.error("Error handling hash params:", error);
+        }
+      }
+    };
+    
+    handleHashParams();
 
     // URL의 해시 파라미터 체크하여 에러 메시지 표시
     const checkForErrors = () => {

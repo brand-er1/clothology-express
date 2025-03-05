@@ -9,7 +9,6 @@ import { toast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export const WelcomeNotification = () => {
-  const [showNotification, setShowNotification] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [dontShowToday, setDontShowToday] = useState(false);
   
@@ -50,29 +49,17 @@ export const WelcomeNotification = () => {
         
         console.log("프로필 정보:", profile);
         
-        // 프로필이 없거나 키, 몸무게, 전화번호 중 하나라도 비어있는지 확인
-        const isProfileIncomplete = !profile || 
+        // 전화번호, 키, 몸무게 중 하나라도 비어있는지 확인
+        const isMissingInfo = !profile || 
+          !profile.phone_number || 
           profile.height === null || 
-          profile.weight === null || 
-          !profile.phone_number;
+          profile.weight === null;
         
-        console.log("프로필 불완전 여부:", isProfileIncomplete);
+        console.log("정보 누락 여부:", isMissingInfo);
         
-        // 프로필이 방금 생성되었는지 확인 (소셜 로그인으로 첫 로그인)
-        const isNewUser = sessionData.session.user.app_metadata?.provider === 'google' || 
-                          sessionData.session.user.app_metadata?.provider === 'kakao';
-        
-        const isFirstLogin = isNewUser && 
-                            (!profile.created_at || 
-                             (profile.created_at && profile.updated_at && 
-                              Math.abs(new Date(profile.created_at).getTime() - new Date(profile.updated_at).getTime()) < 60000));
-                              
-        console.log("소셜 로그인 여부:", isNewUser);
-        console.log("첫 로그인 여부:", isFirstLogin);
-        
-        // 프로필이 불완전하면 대화상자 표시
-        if (isProfileIncomplete) {
-          console.log("프로필 불완전: 대화상자 표시");
+        // 정보가 누락되었으면 대화상자 표시
+        if (isMissingInfo) {
+          console.log("프로필 정보 누락: 대화상자 표시");
           setIsOpen(true);
         }
         
@@ -90,7 +77,6 @@ export const WelcomeNotification = () => {
       if (event === 'SIGNED_IN') {
         checkProfileCompletion();
       } else if (event === 'SIGNED_OUT') {
-        setShowNotification(false);
         setIsOpen(false);
       }
     });
@@ -99,10 +85,6 @@ export const WelcomeNotification = () => {
       authListener.subscription.unsubscribe();
     };
   }, []);
-  
-  const handleClose = () => {
-    setShowNotification(false);
-  };
 
   const handleHideToday = () => {
     if (dontShowToday) {
@@ -128,9 +110,9 @@ export const WelcomeNotification = () => {
         <div className="py-4">
           <p className="mb-4">원활한 서비스 이용을 위해 다음 정보가 필요합니다:</p>
           <ul className="list-disc pl-5 mb-4 space-y-1">
+            <li>전화번호</li>
             <li>키 (cm)</li>
             <li>몸무게 (kg)</li>
-            <li>전화번호</li>
           </ul>
           <p>이 정보는 맞춤형 의류 제작 및 배송에 사용됩니다.</p>
           

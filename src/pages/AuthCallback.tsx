@@ -112,8 +112,8 @@ const AuthCallback = () => {
                 console.log("Profile is incomplete, notifying parent window");
                 sendMessageToParentWindow({ type: 'PROFILE_INCOMPLETE' });
                 
-                // A short delay to ensure the message is sent before closing
-                setTimeout(() => window.close(), 300);
+                // A longer delay for Kakao login to ensure the message is sent before closing
+                setTimeout(() => window.close(), 500);
                 return;
               }
             }
@@ -122,8 +122,9 @@ const AuthCallback = () => {
             console.log("Authentication successful, notifying parent window");
             sendMessageToParentWindow({ type: 'SOCIAL_LOGIN_SUCCESS' });
             
-            // A short delay to ensure the message is sent before closing
-            setTimeout(() => window.close(), 300);
+            // A longer delay for Kakao login to ensure the message is sent before closing
+            const isKakao = userData.user.app_metadata?.provider === 'kakao';
+            setTimeout(() => window.close(), isKakao ? 800 : 500);
           }
         } else {
           // If not in popup, navigate to home
@@ -139,8 +140,8 @@ const AuthCallback = () => {
             data: { message: error.message || "로그인 과정에서 오류가 발생했습니다" } 
           });
           
-          // A short delay to ensure the message is sent before closing
-          setTimeout(() => window.close(), 300);
+          // A longer delay for Kakao login to ensure the message is sent before closing
+          setTimeout(() => window.close(), 800);
         } else {
           toast({
             title: "인증 오류",

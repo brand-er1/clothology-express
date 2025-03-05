@@ -1,9 +1,10 @@
+
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Auth } from "@/pages/Auth";
-import { Profile } from "@/pages/Profile";
+import Auth from "@/pages/Auth";
+import Profile from "@/pages/Profile";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { AuthCallback } from "@/pages/AuthCallback";
+import AuthCallback from "@/pages/AuthCallback";
 import { WelcomeNotification } from "@/components/WelcomeNotification";
 
 const queryClient = new QueryClient();

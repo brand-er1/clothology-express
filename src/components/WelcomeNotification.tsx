@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { isProfileComplete } from "@/utils/authUtils";
 
 export const WelcomeNotification = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,10 +51,7 @@ export const WelcomeNotification = () => {
         console.log("프로필 정보:", profile);
         
         // 전화번호, 키, 몸무게 중 하나라도 비어있는지 확인
-        const isMissingInfo = !profile || 
-          !profile.phone_number || 
-          profile.height === null || 
-          profile.weight === null;
+        const isMissingInfo = !isProfileComplete(profile);
         
         console.log("정보 누락 여부:", isMissingInfo);
         

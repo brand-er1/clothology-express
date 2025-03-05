@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { sendMessageToParentWindow, isProfileComplete } from "@/utils/authUtils";
+import { 
+  sendMessageToParentWindow, 
+  isProfileComplete, 
+  storeSessionData 
+} from "@/utils/authUtils";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -48,6 +52,22 @@ const AuthCallback = () => {
           }
           
           console.log("AuthCallback: Code successfully exchanged for session");
+          
+          // If in popup window, send session data to parent window and store locally
+          if (window.opener && data.session) {
+            storeSessionData({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token
+            });
+            
+            sendMessageToParentWindow({ 
+              type: 'SESSION_DATA',
+              data: {
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token
+              }
+            });
+          }
         } 
         // 2. Fallback for hash parameters (legacy implicit flow)
         else if (location.hash && location.hash.includes('access_token')) {
@@ -71,6 +91,22 @@ const AuthCallback = () => {
             }
             
             console.log("AuthCallback: Session set successfully from hash parameters");
+            
+            // If in popup window, send session data to parent window and store locally
+            if (window.opener) {
+              storeSessionData({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              });
+              
+              sendMessageToParentWindow({ 
+                type: 'SESSION_DATA',
+                data: {
+                  access_token: accessToken,
+                  refresh_token: refreshToken
+                }
+              });
+            }
           }
         }
         

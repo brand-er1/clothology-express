@@ -102,7 +102,7 @@ export const validateSignUpForm = async (
   }
 };
 
-export type AuthMessageType = 'SOCIAL_LOGIN_SUCCESS' | 'SOCIAL_LOGIN_ERROR' | 'PROFILE_INCOMPLETE';
+export type AuthMessageType = 'SOCIAL_LOGIN_SUCCESS' | 'SOCIAL_LOGIN_ERROR' | 'PROFILE_INCOMPLETE' | 'SESSION_DATA';
 
 export interface AuthMessage {
   type: AuthMessageType;
@@ -172,10 +172,57 @@ export const sendMessageToParentWindow = (message: AuthMessage) => {
   }
 };
 
+// Store session data in localStorage for the main window to use
+export const storeSessionData = (session: any) => {
+  localStorage.setItem('tempSessionData', JSON.stringify(session));
+};
+
 // Check if user profile is complete
 export const isProfileComplete = (profile: any): boolean => {
   return !(!profile || 
     !profile.phone_number || 
     profile.height === null || 
     profile.weight === null);
+};
+
+// Function to refresh session in main window after social login
+export const refreshSessionAfterSocialLogin = async (): Promise<boolean> => {
+  try {
+    // First check if we have temp session data in localStorage
+    const tempSessionData = localStorage.getItem('tempSessionData');
+    
+    if (tempSessionData) {
+      console.log("Found stored session data, attempting to set session");
+      const sessionData = JSON.parse(tempSessionData);
+      
+      const { error } = await supabase.auth.setSession({
+        access_token: sessionData.access_token,
+        refresh_token: sessionData.refresh_token
+      });
+      
+      // Clear the temp session data regardless of outcome
+      localStorage.removeItem('tempSessionData');
+      
+      if (error) {
+        console.error("Error setting session from stored data:", error);
+        return false;
+      }
+      
+      console.log("Successfully set session from stored data");
+      return true;
+    }
+    
+    // If no temp session data, try to get the current session
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error("Error getting session:", error);
+      return false;
+    }
+    
+    return !!data.session;
+  } catch (error) {
+    console.error("Error refreshing session:", error);
+    return false;
+  }
 };

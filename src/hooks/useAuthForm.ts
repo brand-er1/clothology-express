@@ -9,6 +9,7 @@ import {
   checkUsernameAvailability, 
   validateSignUpForm, 
   openSocialLoginPopup,
+  refreshSessionAfterSocialLogin,
   AuthMessage
 } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
@@ -77,9 +78,6 @@ export const useAuthForm = () => {
       if (!popup) {
         throw new Error("팝업 창을 열 수 없습니다. 팝업 차단을 확인해주세요.");
       }
-      
-      // We don't need to do anything else here as the popup will handle the login
-      // and communicate back via postMessage
       
       toast({
         title: `${provider === 'kakao' ? '카카오' : 'Google'} 로그인`,
@@ -197,12 +195,56 @@ export const useAuthForm = () => {
       const message = event.data as AuthMessage;
       
       if (message && typeof message === 'object') {
-        if (message.type === 'SOCIAL_LOGIN_SUCCESS') {
-          toast({
-            title: "로그인 성공!",
-            description: "환영합니다.",
-          });
-          navigate("/");
+        if (message.type === 'SESSION_DATA') {
+          console.log("Received session data from popup", message.data);
+          
+          try {
+            const { error } = await supabase.auth.setSession({
+              access_token: message.data.access_token,
+              refresh_token: message.data.refresh_token
+            });
+            
+            if (error) {
+              console.error("Error setting session from popup data:", error);
+              toast({
+                title: "로그인 오류",
+                description: "세션 설정 중 오류가 발생했습니다.",
+                variant: "destructive",
+              });
+              return;
+            }
+            
+            console.log("Successfully set session from popup data");
+            
+            // Check if session refresh was successful
+            const success = await refreshSessionAfterSocialLogin();
+            if (success) {
+              navigate("/");
+              toast({
+                title: "로그인 성공!",
+                description: "환영합니다.",
+              });
+            }
+          } catch (error) {
+            console.error("Error processing session data:", error);
+          }
+        } else if (message.type === 'SOCIAL_LOGIN_SUCCESS') {
+          // Check if we need to refresh the session
+          const success = await refreshSessionAfterSocialLogin();
+          
+          if (success) {
+            toast({
+              title: "로그인 성공!",
+              description: "환영합니다.",
+            });
+            navigate("/");
+          } else {
+            toast({
+              title: "로그인 오류",
+              description: "세션을 갱신할 수 없습니다. 다시 시도해주세요.",
+              variant: "destructive",
+            });
+          }
         } else if (message.type === 'SOCIAL_LOGIN_ERROR') {
           toast({
             title: "로그인 오류",
@@ -210,12 +252,23 @@ export const useAuthForm = () => {
             variant: "destructive",
           });
         } else if (message.type === 'PROFILE_INCOMPLETE') {
-          toast({
-            title: "프로필 정보가 필요합니다",
-            description: "서비스 이용을 위해 추가 정보를 입력해주세요.",
-            variant: "destructive",
-          });
-          navigate("/profile");
+          // Check if we need to refresh the session first
+          const success = await refreshSessionAfterSocialLogin();
+          
+          if (success) {
+            toast({
+              title: "프로필 정보가 필요합니다",
+              description: "서비스 이용을 위해 추가 정보를 입력해주세요.",
+              variant: "destructive",
+            });
+            navigate("/profile");
+          } else {
+            toast({
+              title: "로그인 오류",
+              description: "세션을 갱신할 수 없습니다. 다시 시도해주세요.",
+              variant: "destructive",
+            });
+          }
         }
       }
     };

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -216,6 +215,13 @@ const AuthCallback = () => {
             // 카카오 로그인에서는 이메일을 user_id로 사용
             initialUserId = data.session.user.email || "";
             console.log("AuthCallback: Extracted Kakao username:", initialUsername);
+            console.log("AuthCallback: Using email as userId:", initialUserId);
+          } else if (data.session.user.app_metadata.provider === 'google') {
+            // Google 사용자 메타데이터에서 이름과 이메일 추출
+            const userMeta = data.session.user.user_metadata || {};
+            initialUsername = userMeta.name || userMeta.full_name || "";
+            initialUserId = data.session.user.email || "";
+            console.log("AuthCallback: Extracted Google username:", initialUsername);
             console.log("AuthCallback: Using email as userId:", initialUserId);
           } else {
             // 다른 로그인 방법에서의 정보 추출 로직

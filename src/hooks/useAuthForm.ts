@@ -74,7 +74,7 @@ export const useAuthForm = () => {
         provider,
         options: {
           redirectTo: redirectTo,
-          scopes: provider === 'kakao' ? 'account_email profile_nickname' : undefined, // 카카오의 경우 이메일과 닉네임 요청
+          scopes: provider === 'kakao' ? 'account_email profile_nickname' : 'email profile',
           skipBrowserRedirect: false, // 브라우저는 자동 리다이렉트 허용
         },
       });

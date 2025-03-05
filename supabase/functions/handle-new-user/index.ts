@@ -39,6 +39,8 @@ serve(async (req) => {
     // 로그인 제공자에 따른 처리
     if (provider === 'kakao') {
       username = userMeta.preferred_username || userMeta.name || userMeta.nickname || '사용자';
+    } else if (provider === 'google') {
+      username = userMeta.name || userMeta.full_name || userMeta.preferred_username || '사용자';
     } else {
       username = userMeta.username || userMeta.name || userMeta.preferred_username || '사용자';
     }
@@ -54,7 +56,7 @@ serve(async (req) => {
       .upsert({
         id: user.id,
         username: username,
-        full_name: userMeta.full_name || null,
+        full_name: userMeta.full_name || userMeta.name || null,
         phone_number: userMeta.phone_number || null,
         height: 170, // 기본값
         weight: 70,  // 기본값

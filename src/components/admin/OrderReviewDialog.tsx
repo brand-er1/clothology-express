@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,7 +49,7 @@ export const OrderReviewDialog = ({
     }
   }, [order]);
 
-  // 사용자 프로필 정보 가져오기 - 수정된 방식
+  // 사용자 프로필 정보 가져오기 - API 형식 수정
   const fetchUserProfile = async (userId: string) => {
     if (!userId) {
       console.warn('No user ID provided for profile fetch');
@@ -64,28 +63,23 @@ export const OrderReviewDialog = ({
     try {
       console.log('Fetching user profile for ID:', userId);
       
-      // 명확하게 id 열을 기준으로 프로필 조회
+      // 올바른 쿼리 형식으로 수정
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('id', userId);
       
       console.log('Profile query result:', { data, error });
       
       if (error) {
         console.error('Error fetching user profile:', error);
-        // 에러 메시지 확인하여 "not found" 에러인 경우 특별 처리
-        if (error.message.includes('not found')) {
-          console.warn(`No profile found for user ID: ${userId}`);
-          setUserProfile(null);
-        } else {
-          console.error('Database error:', error);
-          setUserProfile(null);
-        }
+        setUserProfile(null);
+      } else if (data && data.length > 0) {
+        console.log('Successfully fetched user profile:', data[0]);
+        setUserProfile(data[0]);
       } else {
-        console.log('Successfully fetched user profile:', data);
-        setUserProfile(data);
+        console.warn(`No profile found for user ID: ${userId}`);
+        setUserProfile(null);
       }
     } catch (error) {
       console.error('Exception in fetchUserProfile:', error);

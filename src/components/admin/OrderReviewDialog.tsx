@@ -41,7 +41,9 @@ export const OrderReviewDialog = ({
     if (order) {
       setAdminComment(order.admin_comment || "");
       setImageError(false);
-      fetchUserProfile(order.user_id);
+      if (order.user_id) {
+        fetchUserProfile(order.user_id);
+      }
     }
   }, [order]);
 
@@ -51,16 +53,22 @@ export const OrderReviewDialog = ({
     
     setIsLoadingProfile(true);
     try {
+      // profiles 테이블에서 사용자 정보 조회
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        throw error;
+      }
+      
+      console.log('Fetched user profile:', data);
       setUserProfile(data);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error in fetchUserProfile:', error);
       setUserProfile(null);
     } finally {
       setIsLoadingProfile(false);

@@ -53,12 +53,14 @@ export const OrderReviewDialog = ({
     
     setIsLoadingProfile(true);
     try {
-      // profiles 테이블에서 사용자 정보 조회
+      console.log('Fetching user profile for ID:', userId);
+      
+      // profiles 테이블에서 사용자 정보 조회 - maybeSingle 사용
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error('Error fetching user profile:', error);
@@ -66,6 +68,13 @@ export const OrderReviewDialog = ({
       }
       
       console.log('Fetched user profile:', data);
+      
+      if (!data) {
+        console.warn('No profile found for user:', userId);
+        setUserProfile(null);
+        return;
+      }
+      
       setUserProfile(data);
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);

@@ -50,7 +50,7 @@ export const OrderReviewDialog = ({
     }
   }, [order]);
 
-  // 사용자 프로필 정보 가져오기 - 개선된 방식
+  // 사용자 프로필 정보 가져오기 - 수정된 방식
   const fetchUserProfile = async (userId: string) => {
     if (!userId) {
       console.warn('No user ID provided for profile fetch');
@@ -64,22 +64,25 @@ export const OrderReviewDialog = ({
     try {
       console.log('Fetching user profile for ID:', userId);
       
-      // 직접 RPC 호출하지 않고 테이블에서 조회
+      // 명확하게 id 열을 기준으로 프로필 조회
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .limit(1)
-        .maybeSingle();
+        .single();
       
       console.log('Profile query result:', { data, error });
       
       if (error) {
         console.error('Error fetching user profile:', error);
-        setUserProfile(null);
-      } else if (!data) {
-        console.warn('No profile found for user:', userId);
-        setUserProfile(null);
+        // 에러 메시지 확인하여 "not found" 에러인 경우 특별 처리
+        if (error.message.includes('not found')) {
+          console.warn(`No profile found for user ID: ${userId}`);
+          setUserProfile(null);
+        } else {
+          console.error('Database error:', error);
+          setUserProfile(null);
+        }
       } else {
         console.log('Successfully fetched user profile:', data);
         setUserProfile(data);

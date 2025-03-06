@@ -41,43 +41,51 @@ export const OrderReviewDialog = ({
     if (order) {
       setAdminComment(order.admin_comment || "");
       setImageError(false);
+      setImageUrl(null); // Reset image URL
+      setUserProfile(null); // Reset user profile
+      
       if (order.user_id) {
         fetchUserProfile(order.user_id);
       }
     }
   }, [order]);
 
-  // 사용자 프로필 정보 가져오기
+  // 사용자 프로필 정보 가져오기 - 개선된 방식
   const fetchUserProfile = async (userId: string) => {
-    if (!userId) return;
+    if (!userId) {
+      console.warn('No user ID provided for profile fetch');
+      setUserProfile(null);
+      setIsLoadingProfile(false);
+      return;
+    }
     
     setIsLoadingProfile(true);
+    
     try {
       console.log('Fetching user profile for ID:', userId);
       
-      // profiles 테이블에서 사용자 정보 조회 - maybeSingle 사용
+      // 직접 RPC 호출하지 않고 테이블에서 조회
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
+        .limit(1)
         .maybeSingle();
+      
+      console.log('Profile query result:', { data, error });
       
       if (error) {
         console.error('Error fetching user profile:', error);
-        throw error;
-      }
-      
-      console.log('Fetched user profile:', data);
-      
-      if (!data) {
+        setUserProfile(null);
+      } else if (!data) {
         console.warn('No profile found for user:', userId);
         setUserProfile(null);
-        return;
+      } else {
+        console.log('Successfully fetched user profile:', data);
+        setUserProfile(data);
       }
-      
-      setUserProfile(data);
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      console.error('Exception in fetchUserProfile:', error);
       setUserProfile(null);
     } finally {
       setIsLoadingProfile(false);
@@ -197,7 +205,7 @@ export const OrderReviewDialog = ({
 
             <Separator />
 
-            {/* 사용자 정보 섹션 */}
+            {/* 사용자 정보 섹션 - 개선된 표시 방식 */}
             <div>
               <h3 className="font-semibold mb-2">고객 정보</h3>
               {isLoadingProfile ? (
@@ -231,8 +239,10 @@ export const OrderReviewDialog = ({
                     </div>
                   </div>
                 </div>
+              ) : order.user_id ? (
+                <p className="text-sm text-gray-500">고객 정보를 불러올 수 없습니다. (ID: {order.user_id})</p>
               ) : (
-                <p className="text-sm text-gray-500">고객 정보를 불러올 수 없습니다.</p>
+                <p className="text-sm text-gray-500">고객 ID 정보가 없습니다.</p>
               )}
             </div>
 

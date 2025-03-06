@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,7 +49,7 @@ export const OrderReviewDialog = ({
     }
   }, [order]);
 
-  // 사용자 프로필 정보 가져오기 - 수정된 방식
+  // 사용자 프로필 정보 가져오기 - 엣지 함수 사용
   const fetchUserProfile = async (userId: string) => {
     if (!userId) {
       console.warn('No user ID provided for profile fetch');
@@ -64,28 +63,22 @@ export const OrderReviewDialog = ({
     try {
       console.log('Fetching user profile for ID:', userId);
       
-      // 명확하게 id 열을 기준으로 프로필 조회
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // 엣지 함수를 사용하여 프로필 정보 가져오기
+      const { data, error } = await supabase.functions.invoke('get-user-profile', {
+        body: { userId }
+      });
       
-      console.log('Profile query result:', { data, error });
+      console.log('Profile response:', { data, error });
       
       if (error) {
         console.error('Error fetching user profile:', error);
-        // 에러 메시지 확인하여 "not found" 에러인 경우 특별 처리
-        if (error.message.includes('not found')) {
-          console.warn(`No profile found for user ID: ${userId}`);
-          setUserProfile(null);
-        } else {
-          console.error('Database error:', error);
-          setUserProfile(null);
-        }
+        setUserProfile(null);
+      } else if (!data || data.error) {
+        console.warn(`No profile found for user ID: ${userId}`, data?.error);
+        setUserProfile(null);
       } else {
         console.log('Successfully fetched user profile:', data);
-        setUserProfile(data);
+        setUserProfile(data.data);
       }
     } catch (error) {
       console.error('Exception in fetchUserProfile:', error);
@@ -208,7 +201,7 @@ export const OrderReviewDialog = ({
 
             <Separator />
 
-            {/* 사용자 정보 섹션 - 개선된 표시 방식 */}
+            {/* 사용자 정보 섹션 - 엣지 함수 사용으로 개선 */}
             <div>
               <h3 className="font-semibold mb-2">고객 정보</h3>
               {isLoadingProfile ? (

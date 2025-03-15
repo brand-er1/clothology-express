@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
@@ -29,6 +28,35 @@ function App() {
   useEffect(() => {
     // Check if we're in an iframe
     setIsInIframeContext(isInIframe());
+    
+    // If we're in an iframe, send a message to the parent with our viewport details
+    // and set up a listener to receive parent window size
+    if (isInIframeContext) {
+      // Setup a listener for incoming parent size messages
+      const handleParentSizeRequest = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'REQUEST_PARENT_SIZE') {
+          // The iframe content is requesting the parent window size
+          try {
+            event.source?.postMessage({
+              type: 'PARENT_WINDOW_SIZE',
+              width: window.innerWidth,
+              height: window.innerHeight,
+              isMobile: window.innerWidth < 768 // Using same mobile breakpoint
+            }, { targetOrigin: event.origin });
+          } catch (e) {
+            console.error('Error sending parent size to iframe:', e);
+          }
+        }
+      };
+      
+      // Listen for size requests from any iframe content
+      window.addEventListener('message', handleParentSizeRequest);
+      
+      // Clean up
+      return () => {
+        window.removeEventListener('message', handleParentSizeRequest);
+      };
+    }
     
     // Kakao SDK 스크립트 동적 로딩
     const script = document.createElement('script');

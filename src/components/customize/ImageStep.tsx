@@ -37,7 +37,7 @@ export const ImageStep = ({
 }: ImageStepProps) => {
   const [imageErrors, setImageErrors] = useState<boolean[]>([]);
   
-  // 이미지 URL 배열이 변경될 때마다 에러 상태 초기화
+  // Reset error state when image URLs array changes
   useEffect(() => {
     if (generatedImageUrls) {
       setImageErrors(new Array(generatedImageUrls.length).fill(false));
@@ -48,7 +48,7 @@ export const ImageStep = ({
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {/* 이미지 생성 영역 - 2/3 차지 */}
+      {/* Image generation area - occupies 2/3 of the space */}
       <Card className="p-6 md:col-span-2">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">이미지 생성</h3>
@@ -92,13 +92,6 @@ export const ImageStep = ({
                         {selectedImageIndex === index && (
                           <div className="absolute top-2 right-2 bg-brand text-white text-xs px-2 py-1 rounded">
                             선택됨
-                          </div>
-                        )}
-                        {isLoading && selectedImageIndex === index && (
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                            <div className="bg-white/90 rounded-full p-2">
-                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand"></div>
-                            </div>
                           </div>
                         )}
                       </div>
@@ -147,7 +140,7 @@ export const ImageStep = ({
         </div>
       </Card>
 
-      {/* 선택한 옵션 요약 - 1/3 차지 */}
+      {/* Selected options summary - occupies 1/3 of the space */}
       <Card className="p-6">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">선택한 옵션</h3>

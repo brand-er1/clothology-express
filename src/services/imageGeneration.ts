@@ -14,7 +14,7 @@ export const generateImage = async (
   selectedPocket: string = "",
   selectedColor: string = "",
   selectedFit: string = "",
-  saveAsDraft: boolean = false, // Changed default to false since we'll save later after selection
+  saveAsDraft: boolean = false,
 ) => {
   try {
     const { data } = await supabase.auth.getSession();
@@ -75,13 +75,11 @@ export const generateImage = async (
       return null;
     }
 
-    // By default, we haven't saved any images to storage yet
-    // Only after the user selects an image will we store it
-
-    // Store all image information in the generated_images table
-    if (imageUrls && imageUrls.length > 0 && user.id) {
+    // Only save images to DB when saveAsDraft is true
+    // This is set to false in our new implementation until order creation
+    if (saveAsDraft && imageUrls && imageUrls.length > 0 && user.id) {
       try {
-        // Store image information in the generated_images table without selecting any yet
+        // Store image information in the generated_images table
         const { data: imageData, error: imageError } = await supabase.functions.invoke(
           'save-generated-image',
           {
@@ -128,7 +126,7 @@ export const generateImage = async (
   }
 };
 
-// Function to store a selected image
+// Function to store a selected image - now called at order creation time
 export const storeSelectedImage = async (
   selectedType: string,
   selectedMaterial: string,
@@ -153,7 +151,7 @@ export const storeSelectedImage = async (
       return null;
     }
 
-    // 선택한 이미지를 스토리지에 저장
+    // Prepare metadata for the selected image
     const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || selectedType;
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
@@ -181,7 +179,7 @@ export const storeSelectedImage = async (
     const imagePath = storeData?.imagePath || null;
     console.log("Stored image public URL:", storedImageUrl);
 
-    // Update the generated_images entries to mark which one was selected and add storage info
+    // Now save to DB with the selected image information
     const { data: imageData, error: imageError } = await supabase.functions.invoke(
       'save-generated-image',
       {
@@ -231,6 +229,6 @@ export const storeSelectedImage = async (
     };
   } catch (error: any) {
     console.error("Image selection error:", error);
-    throw error; // 더 나은 오류 처리를 위해 상위 함수에서 처리하도록 오류 전파
+    throw error;
   }
 };

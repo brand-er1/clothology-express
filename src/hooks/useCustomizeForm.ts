@@ -16,7 +16,7 @@ export const useCustomizeForm = () => {
   const [selectedDetail, setSelectedDetail] = useState("");
   const [newMaterialName, setNewMaterialName] = useState("");
   const [materials, setMaterials] = useState<Material[]>([
-    { id: "cotton", name: "면", description: "부드럽고 통기성이 좋은 천연 소재" },
+    { id: "cotton", name: "면", description: "부드럽고 통기성이 ��은 천연 소재" },
     { id: "denim", name: "데님", description: "튼튼하고 클래식한 청바지 소재" },
     { id: "poly", name: "폴리", description: "구김이 적고 관리가 쉬운 소재" },
     { id: "linen", name: "린넨", description: "시원하고 자연스러운 질감의 소재" },
@@ -40,7 +40,6 @@ export const useCustomizeForm = () => {
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
   const [imageLoading, setImageLoading] = useState(false);
   const [sizeTableData, setSizeTableData] = useState<SizeTableItem[]>([]);
-  const [storingImageInProgress, setStoringImageInProgress] = useState(false);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -98,7 +97,6 @@ export const useCustomizeForm = () => {
 
   const handleAddMaterial = () => {
     if (newMaterialName.trim()) {
-      // Create a readable ID based on the material name
       const newId = `custom-${newMaterialName.trim().toLowerCase().replace(/\s+/g, '-')}`;
       
       const newMaterial = {
@@ -117,7 +115,6 @@ export const useCustomizeForm = () => {
   const handleGenerateImage = async () => {
     try {
       setImageLoading(true);
-      // Reset selection when generating new images
       setSelectedImageIndex(-1);
       setStoredImageUrl(null);
       setImagePath(null);
@@ -131,7 +128,7 @@ export const useCustomizeForm = () => {
         selectedPocket,
         selectedColor,
         selectedFit,
-        false // Don't save as draft yet until user selects an image
+        false
       );
       
       if (result) {
@@ -139,56 +136,17 @@ export const useCustomizeForm = () => {
         setGeneratedPrompt(result.optimizedPrompt || "");
       }
     } catch (err) {
-      // Error is already handled in generateImage
     } finally {
       setImageLoading(false);
     }
   };
 
-  const handleSelectImage = async (index: number) => {
+  const handleSelectImage = (index: number) => {
     if (!generatedImageUrls || index >= generatedImageUrls.length) return;
     
-    // 이미 선택된 이미지를 다시 클릭하는 경우 또는 현재 저장 작업이 진행 중인 경우 무시
-    if (index === selectedImageIndex && storedImageUrl) return;
-    if (storingImageInProgress) return;
-    
-    // 즉시 UI에 선택 상태 반영
     setSelectedImageIndex(index);
-    
-    try {
-      // 이미지 저장 작업 시작 표시
-      setStoringImageInProgress(true);
-      
-      const selectedImageUrl = generatedImageUrls[index];
-      
-      // 백그라운드에서 저장 작업 진행 (사용자는 UI 차단없이 계속 사용 가능)
-      const result = await storeSelectedImage(
-        selectedType,
-        selectedMaterial,
-        selectedDetail,
-        selectedImageUrl,
-        generatedImageUrls,
-        index,
-        generatedPrompt,
-        materials,
-        true // Save as draft when user selects an image
-      );
-      
-      if (result) {
-        setStoredImageUrl(result.storedImageUrl);
-        setImagePath(result.imagePath);
-      }
-    } catch (err) {
-      console.error("Error selecting image:", err);
-      // UI에는 선택이 반영되어 있으므로 오류 메시지만 표시
-      toast({
-        title: "이미지 저장 실패",
-        description: "백그라운드에서 이미지 저장 중 오류가 발생했습니다. 다음 단계에서 다시 시도하거나 도움을 요청하세요.",
-        variant: "destructive",
-      });
-    } finally {
-      setStoringImageInProgress(false);
-    }
+    setStoredImageUrl(null);
+    setImagePath(null);
   };
 
   const handleCreateOrder = async () => {
@@ -206,6 +164,37 @@ export const useCustomizeForm = () => {
       
       const selectedImageUrl = generatedImageUrls[selectedImageIndex];
       
+      let finalImageUrl = selectedImageUrl;
+      let finalImagePath = null;
+      
+      try {
+        console.log("Storing selected image before creating order...");
+        
+        const imageResult = await storeSelectedImage(
+          selectedType,
+          selectedMaterial,
+          selectedDetail,
+          selectedImageUrl,
+          generatedImageUrls,
+          selectedImageIndex,
+          generatedPrompt,
+          materials,
+          true
+        );
+        
+        if (imageResult) {
+          finalImageUrl = imageResult.storedImageUrl || selectedImageUrl;
+          finalImagePath = imageResult.imagePath;
+          
+          console.log("Image stored successfully:", {
+            url: finalImageUrl,
+            path: finalImagePath
+          });
+        }
+      } catch (imageError) {
+        console.error("Error storing selected image:", imageError);
+      }
+      
       console.log("Order data:", {
         selectedType,
         selectedMaterial,
@@ -216,14 +205,12 @@ export const useCustomizeForm = () => {
         selectedFit,
         selectedSize,
         customMeasurements,
-        storedImageUrl,
-        selectedImageUrl,
-        imagePath,
+        finalImageUrl,
+        finalImagePath,
         materials,
         sizeTableData
       });
 
-      // If no size is selected, use default size 'M'
       const finalSize = selectedSize || "M";
       
       const result = await createOrder(
@@ -232,10 +219,10 @@ export const useCustomizeForm = () => {
         selectedDetail,
         finalSize,
         customMeasurements,
-        storedImageUrl || selectedImageUrl, // Prefer stored URL if available
-        imagePath, // Include the storage path
+        finalImageUrl,
+        finalImagePath,
         materials,
-        sizeTableData // Pass the edited size measurements directly
+        sizeTableData
       );
       
       if (result && result.redirectToConfirmation) {
@@ -274,16 +261,13 @@ export const useCustomizeForm = () => {
   
   const handleSizeTableChange = (updatedItem: SizeTableItem) => {
     setSizeTableData(prev => {
-      // Check if the item already exists in the array
       const itemIndex = prev.findIndex(item => item.key === updatedItem.key);
       
       if (itemIndex >= 0) {
-        // Update existing item
         const newData = [...prev];
         newData[itemIndex] = updatedItem;
         return newData;
       } else {
-        // Add new item
         return [...prev, updatedItem];
       }
     });

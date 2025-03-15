@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
@@ -14,6 +13,7 @@ import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
 import { refreshSessionAfterSocialLogin, isInIframe } from './utils/authUtils';
+import { useIsMobile } from './hooks/use-mobile';
 
 // Kakao 타입 선언
 declare global {
@@ -25,10 +25,23 @@ declare global {
 function App() {
   const [isKakaoInitialized, setIsKakaoInitialized] = useState(false);
   const [isInIframeContext, setIsInIframeContext] = useState(false);
+  
+  // 모바일 상태 확인
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Check if we're in an iframe
-    setIsInIframeContext(isInIframe());
+    const inIframe = isInIframe();
+    setIsInIframeContext(inIframe);
+    
+    // iframe 상태를 콘솔에 기록
+    console.log("App mounted in iframe:", inIframe, "Mobile:", isMobile);
+    
+    // iframe 내에서 실행 중인 경우 스타일 조정
+    if (inIframe) {
+      // iframe용 최적화 스타일 적용 (선택 사항)
+      document.body.classList.add('in-iframe');
+    }
     
     // Kakao SDK 스크립트 동적 로딩
     const script = document.createElement('script');
@@ -49,48 +62,25 @@ function App() {
       }
     };
     document.body.appendChild(script);
-
-    // Check for stored session data on app load
-    const checkStoredSession = async () => {
-      await refreshSessionAfterSocialLogin();
-    };
     
-    checkStoredSession();
-
-    // URL의 해시 파라미터 체크하여 에러 메시지 표시
-    const checkForErrors = () => {
-      // URL의 해시(#) 또는 쿼리 파라미터(?) 확인
-      const url = new URL(window.location.href);
-      const errorHashParams = new URLSearchParams(window.location.hash.substring(1));
-      const errorQueryParams = url.searchParams;
-      
-      // 에러 파라미터 추출
-      const errorHash = errorHashParams.get('error');
-      const errorQuery = errorQueryParams.get('error');
-      const errorDescriptionHash = errorHashParams.get('error_description');
-      const errorDescriptionQuery = errorQueryParams.get('error_description');
-      
-      if (errorHash || errorQuery) {
-        const errorDescription = errorDescriptionHash || errorDescriptionQuery || '알 수 없는 오류가 발생했습니다.';
-        toast({
-          title: "인증 오류",
-          description: decodeURIComponent(errorDescription),
-          variant: "destructive",
-        });
-        
-        // 에러 파라미터 제거 (URL 정리)
-        window.history.replaceState(null, '', window.location.pathname);
-      }
-    };
+    // URL 파라미터 체크
+    const urlParams = new URLSearchParams(window.location.search);
+    const isMobileParam = urlParams.get('isMobile');
     
-    checkForErrors();
+    if (isMobileParam === 'true') {
+      // URL 파라미터로 모바일 모드가 명시되었을 경우 처리
+      document.body.classList.add('force-mobile');
+      console.log("Forced mobile mode by URL parameter");
+    }
 
-    // Set up message listener for cross-domain iframe communication
-    const handleMessage = async (event: MessageEvent) => {
-      // Accept messages from any origin when in iframe
-      if (isInIframeContext) {
+    // 부모 창으로부터 메시지 수신 핸들러
+    const handleParentMessage = async (event: MessageEvent) => {
+      // iframe 내에서만 처리
+      if (inIframe) {
         try {
           const message = event.data;
+          
+          // 인증 관련 메시지
           if (message && message.type === 'SESSION_DATA' && message.data) {
             console.log("Received session data in iframe:", message.data);
             
@@ -108,22 +98,49 @@ function App() {
               window.location.href = window.location.origin;
             }
           }
+          
+          // 부모 창 크기 정보 메시지
+          else if (message && message.type === 'PARENT_WINDOW_SIZE') {
+            console.log("Received parent window size:", message);
+            
+            // 부모 창이 모바일 크기라면 모바일 최적화를 위한 클래스 추가
+            if (message.isMobile) {
+              document.body.classList.add('parent-is-mobile');
+            } else {
+              document.body.classList.remove('parent-is-mobile');
+            }
+          }
         } catch (e) {
           console.error("Error processing message in iframe:", e);
         }
       }
     };
     
-    window.addEventListener('message', handleMessage);
+    window.addEventListener('message', handleParentMessage);
+
+    // 부모 창에 현재 상태 알림
+    if (inIframe) {
+      try {
+        window.parent.postMessage({
+          type: 'IFRAME_READY',
+          isMobile: isMobile,
+          userAgent: navigator.userAgent,
+          windowWidth: window.innerWidth,
+          windowHeight: window.innerHeight
+        }, '*');
+      } catch (e) {
+        console.error("Error posting ready message:", e);
+      }
+    }
 
     return () => {
       document.body.removeChild(script);
-      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('message', handleParentMessage);
     };
-  }, [isKakaoInitialized]);
+  }, [isMobile]);
 
   return (
-    <>
+    <div className={isMobile ? 'mobile-view' : 'desktop-view'}>
       <BrowserRouter>
         <WelcomeNotification />
         <Routes>
@@ -138,7 +155,7 @@ function App() {
         </Routes>
       </BrowserRouter>
       <Toaster />
-    </>
+    </div>
   );
 }
 

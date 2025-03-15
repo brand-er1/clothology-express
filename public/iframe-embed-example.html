@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clothology Express 임베드 예시</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    .iframe-container {
+      width: 100%;
+      height: 100vh;
+      position: relative;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="iframe-container">
+    <iframe id="clothologyFrame" src="https://clothology-express.lovable.app/" allowfullscreen></iframe>
+  </div>
+
+  <script>
+    // 모바일 기기 여부 확인
+    function isMobileDevice() {
+      return (window.innerWidth < 768) || 
+             /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+    
+    // iframe에 메시지 전송
+    function sendWindowSizeToIframe() {
+      const iframe = document.getElementById('clothologyFrame');
+      if (iframe && iframe.contentWindow) {
+        try {
+          const isMobile = isMobileDevice();
+          iframe.contentWindow.postMessage({
+            type: 'PARENT_WINDOW_SIZE',
+            isMobile: isMobile,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            pixelRatio: window.devicePixelRatio,
+            userAgent: navigator.userAgent
+          }, '*');
+          
+          console.log('Sent window size to iframe:', {
+            isMobile: isMobile,
+            width: window.innerWidth,
+            height: window.innerHeight
+          });
+        } catch (e) {
+          console.error('Error sending message to iframe:', e);
+        }
+      }
+    }
+    
+    // iframe으로부터 메시지 수신
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'IFRAME_READY') {
+        console.log('Iframe is ready:', event.data);
+        // iframe이 준비되면 창 크기 정보 전송
+        sendWindowSizeToIframe();
+      }
+      else if (event.data && event.data.type === 'IFRAME_MOBILE_STATE') {
+        console.log('Iframe reported mobile state:', event.data);
+      }
+    });
+    
+    // 페이지 로드 시 iframe에 창 크기 정보 전송
+    window.addEventListener('load', sendWindowSizeToIframe);
+    
+    // 창 크기가 변경될 때 iframe에 새 크기 정보 전송
+    window.addEventListener('resize', sendWindowSizeToIframe);
+  </script>
+</body>
+</html>

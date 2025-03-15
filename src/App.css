@@ -13,6 +13,17 @@
   }
 }
 
+/* iframe 내에서 실행 중일 때 */
+.in-iframe #root {
+  padding: 0.5rem;
+}
+
+/* 강제 모바일 모드 */
+.force-mobile #root, .parent-is-mobile #root {
+  max-width: 100%;
+  padding: 0.5rem;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -54,10 +65,28 @@ input, textarea, select, button {
   font-size: 16px !important; /* iOS에서 자동 확대 방지 */
 }
 
+/* 모바일 뷰에 적용되는 스타일 */
+.mobile-view .container {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.mobile-view h1 {
+  font-size: 1.75rem;
+}
+
+.mobile-view h2 {
+  font-size: 1.5rem;
+}
+
+.mobile-view h3 {
+  font-size: 1.25rem;
+}
+
 @media (max-width: 767px) {
   .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
   
   h1 {
@@ -97,6 +126,27 @@ a,
 }
 
 /* 모바일에서 폼 요소 스타일 개선 */
+.mobile-view input, 
+.mobile-view textarea, 
+.mobile-view select,
+.mobile-view [role="combobox"],
+.mobile-view button {
+  margin-bottom: 0.75rem;
+  min-height: 44px;
+}
+
+.mobile-view .form-group {
+  margin-bottom: 1rem;
+}
+
+/* iframe과 모바일 환경에서 컨테이너 최대 너비 제한 제거 */
+.in-iframe #root,
+.force-mobile #root,
+.parent-is-mobile #root,
+.mobile-view .container {
+  max-width: 100%;
+}
+
 @media (max-width: 767px) {
   input, 
   textarea, 
@@ -139,7 +189,7 @@ a,
 }
 
 /* 모바일 스크롤 개선 */
-@media (max-width: 767px) {
+@media (max-width: 767px), .mobile-view {
   .scrollable-content {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
@@ -157,10 +207,30 @@ a,
 }
 
 /* 모바일에서 터치 피드백 개선 */
-@media (max-width: 767px) {
+@media (max-width: 767px), .mobile-view {
   button:active, 
   [role="button"]:active,
   .card.selectable:active {
     opacity: 0.7;
+  }
+}
+
+/* iframe에 특화된 스타일 조정 */
+.in-iframe {
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.in-iframe #root {
+  padding: 0.25rem;
+}
+
+/* 최대 너비 제한 완화 */
+@media (max-width: 767px), .mobile-view, .in-iframe {
+  #root, .container {
+    max-width: 100% !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
   }
 }

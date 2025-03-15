@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Order } from "@/types/order";
 import { CheckCircle, XCircle, Clock, ImageOff, FileEdit } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface OrderDetailsProps {
   order: Order;
@@ -21,6 +22,8 @@ interface OrderDetailsProps {
 }
 
 export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
+  const isMobile = useIsMobile();
+  
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('ko-KR', {
@@ -78,20 +81,20 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
 
   return (
     <Dialog open={!!order} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle>주문 상세 정보</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg md:text-xl">주문 상세 정보</DialogTitle>
+          <DialogDescription className="text-base">
             주문일시: {formatDate(order.created_at)}
             <span className="ml-2">{getStatusBadge(order.status)}</span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           {/* 왼쪽: 주문 정보 */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">기본 정보</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-base">
               <span className="text-gray-500">의류 종류:</span>
               <span>{order.cloth_type}</span>
               
@@ -104,8 +107,8 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
 
             <div className="mt-4">
               <h4 className="text-md font-medium">상세 정보</h4>
-              <div className="mt-1 text-sm whitespace-pre-wrap p-2 bg-gray-50 rounded border border-gray-200">
-                {order.detail_description || ''}
+              <div className="mt-2 text-base whitespace-pre-wrap p-3 bg-gray-50 rounded border border-gray-200">
+                {order.detail_description || '-'}
               </div>
             </div>
 
@@ -113,7 +116,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
             {order.measurements && Object.keys(order.measurements).length > 0 && (
               <div className="mt-4">
                 <h4 className="text-md font-medium">맞춤 측정 정보</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm mt-2 p-2 bg-gray-50 rounded border border-gray-200">
+                <div className="grid grid-cols-2 gap-3 text-base mt-2 p-3 bg-gray-50 rounded border border-gray-200">
                   {Object.entries(order.measurements).map(([key, value]) => (
                     <React.Fragment key={key}>
                       <span className="text-gray-500">{key}:</span>
@@ -128,7 +131,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
             {order.admin_comment && (
               <div className="mt-4">
                 <h4 className="text-md font-medium">관리자 코멘트</h4>
-                <p className="mt-1 text-sm p-2 bg-gray-50 rounded border border-gray-200">{order.admin_comment}</p>
+                <p className="mt-2 text-base p-3 bg-gray-50 rounded border border-gray-200">{order.admin_comment}</p>
               </div>
             )}
           </div>
@@ -136,7 +139,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
           {/* 오른쪽: 이미지 */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">생성된 이미지</h3>
-            <div className="border rounded-md p-1 bg-gray-50 h-80 flex items-center justify-center">
+            <div className="border rounded-md p-1 bg-gray-50 h-60 md:h-80 flex items-center justify-center">
               {imageUrl && !imageError ? (
                 <img
                   src={imageUrl}
@@ -151,7 +154,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
               ) : (
                 <div className="text-gray-400 text-center">
                   <ImageOff className="w-12 h-12 mx-auto mb-2" />
-                  <p>이미지를 불러올 수 없습니다</p>
+                  <p className="text-base">이미지를 불러올 수 없습니다</p>
                   {order.image_path && (
                     <p className="text-xs mt-2">파일 경로: {order.image_path}</p>
                   )}
@@ -161,10 +164,16 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
           </div>
         </div>
 
-        <Separator />
+        <Separator className="my-6" />
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>닫기</Button>
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            className={`${isMobile ? 'w-full' : ''} h-11 text-base`}
+          >
+            닫기
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -51,7 +51,8 @@ const Customize = () => {
     selectedSeason,
     setSelectedSeason,
     imageLoading,
-    generatedImageUrl,
+    generatedImageUrls,
+    selectedImageIndex,
     storedImageUrl,
     generatedPrompt,
     selectedSize,
@@ -62,6 +63,7 @@ const Customize = () => {
     handleSizeTableChange,
     handleAddMaterial,
     handleGenerateImage,
+    handleSelectImage,
     handleNext,
     handleBack,
   } = useCustomizeForm();
@@ -186,7 +188,8 @@ const Customize = () => {
             {currentStep === 4 && (
               <ImageStep
                 isLoading={imageLoading}
-                generatedImageUrl={generatedImageUrl}
+                generatedImageUrls={generatedImageUrls}
+                selectedImageIndex={selectedImageIndex}
                 storedImageUrl={storedImageUrl}
                 selectedType={selectedType}
                 selectedMaterial={selectedMaterial}
@@ -196,6 +199,7 @@ const Customize = () => {
                 selectedFit={selectedFit}
                 selectedDetail={selectedDetail}
                 onGenerateImage={handleGenerateImage}
+                onSelectImage={handleSelectImage}
               />
             )}
 

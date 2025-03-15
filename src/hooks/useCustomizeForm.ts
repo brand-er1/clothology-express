@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
-import { generateImage } from "@/services/imageGeneration";
+import { generateImage, storeSelectedImage } from "@/services/imageGeneration";
 import { createOrder } from "@/services/orderCreation";
 import { UseCustomizeFormState, Material, SizeTableItem } from "@/types/customize";
 
@@ -31,7 +32,8 @@ export const useCustomizeForm = () => {
   const [selectedThickness, setSelectedThickness] = useState("");
   const [selectedSeason, setSelectedSeason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [generatedImageUrls, setGeneratedImageUrls] = useState<string[] | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(-1);
   const [storedImageUrl, setStoredImageUrl] = useState<string | null>(null);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [generatedPrompt, setGeneratedPrompt] = useState<string>("");
@@ -63,10 +65,18 @@ export const useCustomizeForm = () => {
         }
         break;
       case 4:
-        if (!generatedImageUrl) {
+        if (!generatedImageUrls || generatedImageUrls.length === 0) {
           toast({
             title: "이미지 필요",
             description: "이미지를 생성해주세요.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        if (selectedImageIndex === -1) {
+          toast({
+            title: "이미지 선택 필요",
+            description: "생성된 이미지 중 하나를 선택해주세요.",
             variant: "destructive",
           });
           return false;
@@ -107,6 +117,11 @@ export const useCustomizeForm = () => {
   const handleGenerateImage = async () => {
     try {
       setImageLoading(true);
+      // Reset selection when generating new images
+      setSelectedImageIndex(-1);
+      setStoredImageUrl(null);
+      setImagePath(null);
+      
       const result = await generateImage(
         selectedType,
         selectedMaterial,
@@ -116,14 +131,12 @@ export const useCustomizeForm = () => {
         selectedPocket,
         selectedColor,
         selectedFit,
-        true // 항상 true로 설정하여 항상 진행 상태 저장
+        false // Don't save as draft yet until user selects an image
       );
       
       if (result) {
-        setGeneratedImageUrl(result.imageUrl);
-        setStoredImageUrl(result.storedImageUrl || null);
-        setImagePath(result.imagePath || null);
-        setGeneratedPrompt(result.prompt || "");
+        setGeneratedImageUrls(result.imageUrls);
+        setGeneratedPrompt(result.optimizedPrompt || "");
       }
     } catch (err) {
       // Error is already handled in generateImage
@@ -132,9 +145,61 @@ export const useCustomizeForm = () => {
     }
   };
 
+  const handleSelectImage = async (index: number) => {
+    if (!generatedImageUrls || index >= generatedImageUrls.length || imageLoading) return;
+    
+    // If this image is already selected, do nothing
+    if (index === selectedImageIndex) return;
+    
+    setSelectedImageIndex(index);
+    
+    try {
+      setImageLoading(true);
+      const selectedImageUrl = generatedImageUrls[index];
+      
+      // Store the selected image and create a draft order
+      const result = await storeSelectedImage(
+        selectedType,
+        selectedMaterial,
+        selectedDetail,
+        selectedImageUrl,
+        generatedImageUrls,
+        index,
+        generatedPrompt,
+        materials,
+        true // Save as draft when user selects an image
+      );
+      
+      if (result) {
+        setStoredImageUrl(result.storedImageUrl);
+        setImagePath(result.imagePath);
+      }
+    } catch (err) {
+      console.error("Error selecting image:", err);
+      toast({
+        title: "이미지 선택 실패",
+        description: "이미지 선택 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
   const handleCreateOrder = async () => {
     try {
       setIsLoading(true);
+      
+      if (selectedImageIndex === -1 || !generatedImageUrls) {
+        toast({
+          title: "이미지 선택 필요",
+          description: "주문하기 전에 이미지를 선택해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const selectedImageUrl = generatedImageUrls[selectedImageIndex];
       
       console.log("Order data:", {
         selectedType,
@@ -147,43 +212,43 @@ export const useCustomizeForm = () => {
         selectedSize,
         customMeasurements,
         storedImageUrl,
-        generatedImageUrl,
+        selectedImageUrl,
         imagePath,
         materials,
         sizeTableData
       });
 
-    // If no size is selected, use default size 'M'
-    const finalSize = selectedSize || "M";
-    
-    const result = await createOrder(
-      selectedType,
-      selectedMaterial,
-      selectedDetail,
-      finalSize,
-      customMeasurements,
-      storedImageUrl || generatedImageUrl, // Prefer stored URL if available
-      imagePath, // Include the storage path
-      materials,
-      sizeTableData // Pass the edited size measurements directly
-    );
-    
-    if (result && result.redirectToConfirmation) {
-      navigate("/order-confirmation");
-    } else if (result && result.success) {
-      navigate("/orders");
+      // If no size is selected, use default size 'M'
+      const finalSize = selectedSize || "M";
+      
+      const result = await createOrder(
+        selectedType,
+        selectedMaterial,
+        selectedDetail,
+        finalSize,
+        customMeasurements,
+        storedImageUrl || selectedImageUrl, // Prefer stored URL if available
+        imagePath, // Include the storage path
+        materials,
+        sizeTableData // Pass the edited size measurements directly
+      );
+      
+      if (result && result.redirectToConfirmation) {
+        navigate("/order-confirmation");
+      } else if (result && result.success) {
+        navigate("/orders");
+      }
+    } catch (error) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "주문 실패",
+        description: "주문 생성 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error("Error creating order:", error);
-    toast({
-      title: "주문 실패",
-      description: "주문 생성 중 오류가 발생했습니다.",
-      variant: "destructive",
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleNext = () => {
     if (!validateCurrentStep()) {
@@ -250,7 +315,8 @@ export const useCustomizeForm = () => {
     setSelectedSeason,
     isLoading,
     imageLoading,
-    generatedImageUrl,
+    generatedImageUrls,
+    selectedImageIndex,
     storedImageUrl,
     imagePath,
     generatedPrompt,
@@ -262,6 +328,7 @@ export const useCustomizeForm = () => {
     handleSizeTableChange,
     handleAddMaterial,
     handleGenerateImage,
+    handleSelectImage,
     handleNext,
     handleBack,
   };

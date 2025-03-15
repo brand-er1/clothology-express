@@ -26,19 +26,21 @@ serve(async (req) => {
     const { 
       userId, 
       originalImageUrl, 
+      originalImageUrls, // New field to handle multiple original URLs
       storedImageUrl,
       imagePath,
       prompt,
       clothType,
       material,
       detailDescription,
-      generationPrompt  // This should be the optimized prompt from GPT
+      generationPrompt,  // This should be the optimized prompt from GPT
+      isSelected // New field to indicate which image was selected
     } = requestData;
 
     // Validate inputs
-    if (!userId || !originalImageUrl || !prompt) {
+    if (!userId || (!originalImageUrl && !originalImageUrls) || !prompt) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: userId, originalImageUrl, or prompt" }),
+        JSON.stringify({ error: "Missing required fields: userId, originalImageUrl/originalImageUrls, or prompt" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
@@ -46,35 +48,47 @@ serve(async (req) => {
     // Log the generation prompt for debugging
     console.log("Storing generation prompt:", generationPrompt);
 
-    // Insert data into generated_images table
-    const { data, error } = await supabase
-      .from('generated_images')
-      .insert({
-        user_id: userId,
-        original_image_url: originalImageUrl,
-        stored_image_url: storedImageUrl,
-        image_path: imagePath,
-        prompt: prompt,
-        cloth_type: clothType,
-        material: material,
-        detail: detailDescription,
-        created_at: new Date().toISOString(),
-        generation_prompt: generationPrompt || prompt // Fallback to original prompt if optimized isn't provided
-      })
-      .select();
+    // Use originalImageUrls if provided, otherwise use single originalImageUrl in an array
+    const imagesToSave = originalImageUrls || [originalImageUrl];
+    
+    // Save records for all images
+    const savedImages = [];
+    
+    for (const [index, imgUrl] of imagesToSave.entries()) {
+      const isThisImageSelected = isSelected !== undefined ? index === isSelected : index === 0;
+      
+      // Insert data into generated_images table
+      const { data, error } = await supabase
+        .from('generated_images')
+        .insert({
+          user_id: userId,
+          original_image_url: imgUrl,
+          stored_image_url: isThisImageSelected ? storedImageUrl : null, // Only the selected image has a stored URL
+          image_path: isThisImageSelected ? imagePath : null, // Only the selected image has a path
+          prompt: prompt,
+          cloth_type: clothType,
+          material: material,
+          detail: detailDescription,
+          created_at: new Date().toISOString(),
+          generation_prompt: generationPrompt || prompt, // Fallback to original prompt if optimized isn't provided
+          is_selected: isThisImageSelected // New field to indicate selection status
+        })
+        .select();
 
-    if (error) {
-      console.error("Error saving generated image data:", error);
-      return new Response(
-        JSON.stringify({ error: error.message }), 
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
+      if (error) {
+        console.error("Error saving generated image data:", error);
+        return new Response(
+          JSON.stringify({ error: error.message }), 
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      savedImages.push(data[0]);
+      console.log(`Generated image ${index + 1} data saved successfully:`, data);
     }
 
-    console.log("Generated image data saved successfully:", data);
-
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data: savedImages }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

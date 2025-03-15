@@ -77,7 +77,7 @@ Format: "Professional fashion photograph of a [garment] in [style and material d
           prompt: optimizedPrompt,
           hf_lora: "ccchhhoi/fashion",
           lora_scale: 0.8,
-          num_outputs: 1,
+          num_outputs: 4, // 1개에서 4개로 변경
           aspect_ratio: "1:1",
           output_format: "webp",
           output_quality: 80,
@@ -107,7 +107,7 @@ Format: "Professional fashion photograph of a [garment] in [style and material d
       return new Response(
         JSON.stringify({
           optimizedPrompt,
-          imageUrl: prediction.output[0],
+          imageUrls: prediction.output, // 단일 이미지 대신 배열 반환
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );

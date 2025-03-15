@@ -45,3 +45,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.handle-new-user]
 verify_jwt = true
+[functions.modify-generated-image]
+verify_jwt = true

@@ -160,6 +160,28 @@ serve(async (req) => {
         try {
           console.log("Falling back to gemini-1.5-flash model...");
           
+          // We need the base64Image and fullPrompt here too, so we need to fetch the image again
+          const imageResponse = await fetch(imageUrl);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+          }
+          
+          const imageBlob = await imageResponse.blob();
+          const imageArrayBuffer = await imageBlob.arrayBuffer();
+          const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+          
+          // Create the full prompt again
+          const fullPrompt = `
+          You are a professional fashion designer. Modify this clothing design based on the following instructions:
+          
+          Original design concept: ${originalPrompt || clothType}
+          
+          Modification requested: ${modificationPrompt}
+          
+          Please maintain the general style and type of clothing while applying these specific modifications.
+          Generate a photorealistic, high-quality product image of the modified design.
+          `;
+          
           const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
           
           // Build the prompt parts with the image

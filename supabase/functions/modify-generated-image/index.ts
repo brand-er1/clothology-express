@@ -62,9 +62,6 @@ serve(async (req) => {
       const imageArrayBuffer = await imageBlob.arrayBuffer();
       const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
       
-      // Create the model and prepare for image generation
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      
       // Create a detailed prompt for the AI
       const fullPrompt = `
       You are a professional fashion designer. Modify this clothing design based on the following instructions:
@@ -87,44 +84,127 @@ serve(async (req) => {
         }
       };
       
-      // Generate the content
+      // Use the experimental image generation model
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp-image-generation" });
+      
+      // Generate the content with specific configuration
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: fullPrompt }, imagePart] }],
         generationConfig: {
-          temperature: 0.9,
+          temperature: 1.0,
           topP: 0.95,
           topK: 40,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
+          responseModalities: ["image", "text"],
+          responseMimeType: "text/plain",
         }
       });
       
       const response = result.response;
+      console.log("Gemini response:", response);
       
-      // Extract the text response
-      const textResponse = response.text();
-      console.log("Gemini text response:", textResponse);
-      
-      // Check if there's an image in the response
+      // Process response to extract text and any generated images
+      const responseText = response.text();
       let generatedImageBase64 = null;
+      let generatedImageUrl = null;
       
-      // Since @google/generative-ai doesn't directly output images yet in the public API,
-      // we would need to set up a different model or approach for image generation
-      // For now, we'll return the text response and implement image generation separately
+      // Check if there's a generated image in the response
+      const parts = response.candidates[0]?.content?.parts;
+      if (parts && parts.length > 0) {
+        // Look for inline data (image) in the response
+        for (const part of parts) {
+          if (part.inlineData) {
+            generatedImageBase64 = part.inlineData.data;
+            const mimeType = part.inlineData.mimeType || 'image/jpeg';
+            
+            // Store the image in Supabase Storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('modified_images')
+              .upload(
+                `${userId}/${new Date().getTime()}.jpg`,
+                Buffer.from(generatedImageBase64, 'base64'),
+                {
+                  contentType: mimeType,
+                  upsert: false
+                }
+              );
+            
+            if (uploadError) {
+              console.error("Error uploading generated image:", uploadError);
+            } else if (uploadData) {
+              // Get public URL for the uploaded image
+              const { data: publicUrlData } = await supabase.storage
+                .from('modified_images')
+                .getPublicUrl(uploadData.path);
+              
+              generatedImageUrl = publicUrlData.publicUrl;
+            }
+          }
+        }
+      }
       
-      // Store the modified image in storage (would be implemented when image output is available)
-      // For now, just return the Gemini response
       return new Response(
         JSON.stringify({ 
           success: true, 
-          textResponse,
-          // Would include the image URL once image generation is implemented
-          // modifiedImageUrl: generatedImageUrl
+          textResponse: responseText,
+          modifiedImageUrl: generatedImageUrl,
+          hasImage: !!generatedImageUrl
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
       
     } catch (geminiError) {
       console.error("Gemini API error:", geminiError);
+      
+      // Check if the error is related to the experimental model not being available
+      if (geminiError.message && geminiError.message.includes("not found")) {
+        // Fall back to gemini-1.5-flash
+        try {
+          console.log("Falling back to gemini-1.5-flash model...");
+          
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          
+          // Build the prompt parts with the image
+          const imagePart = {
+            inlineData: {
+              data: base64Image,
+              mimeType: imageResponse.headers.get("content-type") || "image/jpeg"
+            }
+          };
+          
+          // Generate the content with the fallback model
+          const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: fullPrompt }, imagePart] }],
+            generationConfig: {
+              temperature: 0.9,
+              topP: 0.95,
+              topK: 40,
+              maxOutputTokens: 4096,
+            }
+          });
+          
+          const response = result.response;
+          const textResponse = response.text();
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              textResponse,
+              fallbackMode: true
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } catch (fallbackError) {
+          console.error("Fallback model error:", fallbackError);
+          return new Response(
+            JSON.stringify({ 
+              error: `Failed with both models: ${geminiError.message}, Fallback: ${fallbackError.message}` 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+          );
+        }
+      }
+      
       return new Response(
         JSON.stringify({ error: `Gemini API error: ${geminiError.message}` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }

@@ -87,7 +87,7 @@ serve(async (req) => {
       // Use the experimental image generation model
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp-image-generation" });
       
-      // Generate the content with specific configuration
+      // Generate the content with specific configuration - fix the parameters
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: fullPrompt }, imagePart] }],
         generationConfig: {
@@ -95,8 +95,6 @@ serve(async (req) => {
           topP: 0.95,
           topK: 40,
           maxOutputTokens: 8192,
-          responseModalities: ["image", "text"],
-          responseMimeType: "text/plain",
         }
       });
       
@@ -109,7 +107,7 @@ serve(async (req) => {
       let generatedImageUrl = null;
       
       // Check if there's a generated image in the response
-      const parts = response.candidates[0]?.content?.parts;
+      const parts = response.candidates?.[0]?.content?.parts;
       if (parts && parts.length > 0) {
         // Look for inline data (image) in the response
         for (const part of parts) {

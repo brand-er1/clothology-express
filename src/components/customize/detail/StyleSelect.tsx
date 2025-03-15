@@ -11,15 +11,15 @@ interface StyleSelectProps {
 
 export const StyleSelect = ({ selectedStyle, styleOptions, onStyleSelect }: StyleSelectProps) => {
   return (
-    <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">스타일</h3>
+    <Card className="p-4 md:p-6">
+      <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">스타일</h3>
       <Select value={selectedStyle} onValueChange={onStyleSelect}>
-        <SelectTrigger>
+        <SelectTrigger className="text-sm md:text-base">
           <SelectValue placeholder="스타일 선택" />
         </SelectTrigger>
         <SelectContent>
           {styleOptions.map((style) => (
-            <SelectItem key={style.value} value={style.value}>
+            <SelectItem key={style.value} value={style.value} className="text-sm md:text-base">
               {style.label}
             </SelectItem>
           ))}

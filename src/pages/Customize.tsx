@@ -11,6 +11,7 @@ import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const TOTAL_STEPS = 5;
 
@@ -18,6 +19,7 @@ const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");
   const [userHeight, setUserHeight] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   const {
     currentStep,
@@ -112,104 +114,110 @@ const Customize = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="container mx-auto px-4 pt-24 pb-12">
+      <main className="container mx-auto px-4 pt-16 md:pt-24 pb-12">
         <div className="max-w-4xl mx-auto">
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
-          {currentStep === 1 && (
-            <TypeStep
-              selectedType={selectedType}
-              onSelectType={setSelectedType}
-            />
-          )}
+          <div className="mt-4 md:mt-8">
+            {currentStep === 1 && (
+              <TypeStep
+                selectedType={selectedType}
+                onSelectType={setSelectedType}
+              />
+            )}
 
-          {currentStep === 2 && (
-            <MaterialStep
-              materials={materials}
-              selectedMaterial={selectedMaterial}
-              newMaterialName={newMaterialName}
-              onSelectMaterial={setSelectedMaterial}
-              onNewMaterialNameChange={setNewMaterialName}
-              onAddMaterial={handleAddMaterial}
-            />
-          )}
+            {currentStep === 2 && (
+              <MaterialStep
+                materials={materials}
+                selectedMaterial={selectedMaterial}
+                newMaterialName={newMaterialName}
+                onSelectMaterial={setSelectedMaterial}
+                onNewMaterialNameChange={setNewMaterialName}
+                onAddMaterial={handleAddMaterial}
+              />
+            )}
 
-          {currentStep === 3 && (
-            <DetailStep
-              detailInput={selectedDetail}
-              selectedStyle={selectedStyle}
-              selectedPocket={selectedPocket}
-              selectedColor={selectedColor}
-              selectedFit={selectedFit}
-              selectedTexture={selectedTexture}
-              selectedElasticity={selectedElasticity}
-              selectedTransparency={selectedTransparency}
-              selectedThickness={selectedThickness}
-              selectedSeason={selectedSeason}
-              onDetailInputChange={setSelectedDetail}
-              onStyleSelect={setSelectedStyle}
-              onPocketSelect={setSelectedPocket}
-              onColorSelect={setSelectedColor}
-              onFitSelect={setSelectedFit}
-              onTextureSelect={setSelectedTexture}
-              onElasticitySelect={setSelectedElasticity}
-              onTransparencySelect={setSelectedTransparency}
-              onThicknessSelect={setSelectedThickness}
-              onSeasonSelect={setSelectedSeason}
-            />
-          )}
+            {currentStep === 3 && (
+              <DetailStep
+                detailInput={selectedDetail}
+                selectedStyle={selectedStyle}
+                selectedPocket={selectedPocket}
+                selectedColor={selectedColor}
+                selectedFit={selectedFit}
+                selectedTexture={selectedTexture}
+                selectedElasticity={selectedElasticity}
+                selectedTransparency={selectedTransparency}
+                selectedThickness={selectedThickness}
+                selectedSeason={selectedSeason}
+                onDetailInputChange={setSelectedDetail}
+                onStyleSelect={setSelectedStyle}
+                onPocketSelect={setSelectedPocket}
+                onColorSelect={setSelectedColor}
+                onFitSelect={setSelectedFit}
+                onTextureSelect={setSelectedTexture}
+                onElasticitySelect={setSelectedElasticity}
+                onTransparencySelect={setSelectedTransparency}
+                onThicknessSelect={setSelectedThickness}
+                onSeasonSelect={setSelectedSeason}
+              />
+            )}
 
-          {currentStep === 4 && (
-            <ImageStep
-              isLoading={imageLoading}
-              generatedImageUrl={generatedImageUrl}
-              storedImageUrl={storedImageUrl}
-              selectedType={selectedType}
-              selectedMaterial={selectedMaterial}
-              selectedStyle={selectedStyle}
-              selectedColor={selectedColor}
-              selectedPocket={selectedPocket}
-              selectedFit={selectedFit}
-              selectedDetail={selectedDetail}
-              onGenerateImage={handleGenerateImage}
-            />
-          )}
+            {currentStep === 4 && (
+              <ImageStep
+                isLoading={imageLoading}
+                generatedImageUrl={generatedImageUrl}
+                storedImageUrl={storedImageUrl}
+                selectedType={selectedType}
+                selectedMaterial={selectedMaterial}
+                selectedStyle={selectedStyle}
+                selectedColor={selectedColor}
+                selectedPocket={selectedPocket}
+                selectedFit={selectedFit}
+                selectedDetail={selectedDetail}
+                onGenerateImage={handleGenerateImage}
+              />
+            )}
 
-          {currentStep === 5 && (
-            <SizeStep
-              selectedSize={selectedSize}
-              customMeasurements={customMeasurements}
-              sizeTableData={sizeTableData}
-              onSizeChange={setSelectedSize}
-              onCustomMeasurementChange={(label, value) => {
-                const numValue = parseFloat(value);
-                if (!isNaN(numValue)) {
-                  setCustomMeasurements(prev => ({
-                    ...prev,
-                    [label]: numValue
-                  }));
-                }
-              }}
-              onSizeTableChange={handleSizeTableChange}
-              selectedType={selectedType}
-              selectedMaterial={selectedMaterial}
-              selectedDetail={selectedDetail}
-              generatedPrompt={generatedPrompt}
-              gender={userGender}
-            />
-          )}
+            {currentStep === 5 && (
+              <SizeStep
+                selectedSize={selectedSize}
+                customMeasurements={customMeasurements}
+                sizeTableData={sizeTableData}
+                onSizeChange={setSelectedSize}
+                onCustomMeasurementChange={(label, value) => {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue)) {
+                    setCustomMeasurements(prev => ({
+                      ...prev,
+                      [label]: numValue
+                    }));
+                  }
+                }}
+                onSizeTableChange={handleSizeTableChange}
+                selectedType={selectedType}
+                selectedMaterial={selectedMaterial}
+                selectedDetail={selectedDetail}
+                generatedPrompt={generatedPrompt}
+                gender={userGender}
+              />
+            )}
+          </div>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
+          <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'justify-between'} mt-8`}>
             {currentStep > 1 && (
-              <Button variant="outline" onClick={handleBack}>
+              <Button 
+                variant="outline" 
+                onClick={handleBack} 
+                className={isMobile ? 'w-full' : ''}
+              >
                 이전
               </Button>
             )}
-            <div className="flex-1" />
+            {isMobile ? null : <div className="flex-1" />}
             <Button
               onClick={handleNext}
-              className="bg-brand hover:bg-brand-dark"
+              className={`bg-brand hover:bg-brand-dark ${isMobile ? 'w-full' : ''}`}
             >
               {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
             </Button>

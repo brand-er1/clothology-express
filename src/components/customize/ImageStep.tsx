@@ -56,7 +56,7 @@ export const ImageStep = ({
             선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다. 마음에 드는 이미지를 선택하세요.
           </p>
           
-          {isLoading ? (
+          {isLoading && !generatedImageUrls ? (
             <div className="flex justify-center items-center h-[600px] w-full bg-gray-100 rounded-lg">
               <div className="flex flex-col items-center space-y-2">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
@@ -94,6 +94,13 @@ export const ImageStep = ({
                             선택됨
                           </div>
                         )}
+                        {isLoading && selectedImageIndex === index && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <div className="bg-white/90 rounded-full p-2">
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand"></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="aspect-square bg-gray-100 flex flex-col items-center justify-center">
@@ -109,8 +116,14 @@ export const ImageStep = ({
                 onClick={onGenerateImage}
                 variant="outline"
                 className="w-full"
+                disabled={isLoading}
               >
-                이미지 다시 생성하기
+                {isLoading ? (
+                  <>
+                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand mr-2"></span>
+                    이미지 생성 중...
+                  </>
+                ) : "이미지 다시 생성하기"}
               </Button>
             </div>
           ) : (
@@ -119,8 +132,14 @@ export const ImageStep = ({
                 <Button 
                   onClick={onGenerateImage}
                   className="bg-brand hover:bg-brand-dark"
+                  disabled={isLoading}
                 >
-                  이미지 생성하기
+                  {isLoading ? (
+                    <>
+                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
+                      이미지 생성 중...
+                    </>
+                  ) : "이미지 생성하기"}
                 </Button>
               </div>
             </div>

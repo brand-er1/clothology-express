@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -41,6 +40,7 @@ export const useCustomizeForm = () => {
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
   const [imageLoading, setImageLoading] = useState(false);
   const [sizeTableData, setSizeTableData] = useState<SizeTableItem[]>([]);
+  const [storingImageInProgress, setStoringImageInProgress] = useState(false);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -146,18 +146,22 @@ export const useCustomizeForm = () => {
   };
 
   const handleSelectImage = async (index: number) => {
-    if (!generatedImageUrls || index >= generatedImageUrls.length || imageLoading) return;
+    if (!generatedImageUrls || index >= generatedImageUrls.length) return;
     
-    // If this image is already selected, do nothing
-    if (index === selectedImageIndex) return;
+    // 이미 선택된 이미지를 다시 클릭하는 경우 또는 현재 저장 작업이 진행 중인 경우 무시
+    if (index === selectedImageIndex && storedImageUrl) return;
+    if (storingImageInProgress) return;
     
+    // 즉시 UI에 선택 상태 반영
     setSelectedImageIndex(index);
     
     try {
-      setImageLoading(true);
+      // 이미지 저장 작업 시작 표시
+      setStoringImageInProgress(true);
+      
       const selectedImageUrl = generatedImageUrls[index];
       
-      // Store the selected image and create a draft order
+      // 백그라운드에서 저장 작업 진행 (사용자는 UI 차단없이 계속 사용 가능)
       const result = await storeSelectedImage(
         selectedType,
         selectedMaterial,
@@ -176,13 +180,14 @@ export const useCustomizeForm = () => {
       }
     } catch (err) {
       console.error("Error selecting image:", err);
+      // UI에는 선택이 반영되어 있으므로 오류 메시지만 표시
       toast({
-        title: "이미지 선택 실패",
-        description: "이미지 선택 중 오류가 발생했습니다.",
+        title: "이미지 저장 실패",
+        description: "백그라운드에서 이미지 저장 중 오류가 발생했습니다. 다음 단계에서 다시 시도하거나 도움을 요청하세요.",
         variant: "destructive",
       });
     } finally {
-      setImageLoading(false);
+      setStoringImageInProgress(false);
     }
   };
 

@@ -208,14 +208,19 @@ export const storeSelectedImage = async (
 
     // Save as draft order if requested
     if (saveAsDraft) {
-      await createDraftOrder(
-        selectedType,
-        selectedMaterial,
-        selectedDetail,
-        storedImageUrl || imageUrl,
-        imagePath,
-        materials
-      );
+      try {
+        await createDraftOrder(
+          selectedType,
+          selectedMaterial,
+          selectedDetail,
+          storedImageUrl || imageUrl,
+          imagePath,
+          materials
+        );
+      } catch (draftError) {
+        console.error("Failed to create draft order:", draftError);
+        // We don't want to fail the whole operation if just the draft creation fails
+      }
     }
 
     return {
@@ -226,11 +231,6 @@ export const storeSelectedImage = async (
     };
   } catch (error: any) {
     console.error("Image selection error:", error);
-    toast({
-      title: "이미지 저장 실패",
-      description: "선택한 이미지를 저장하는 중 오류가 발생했습니다.",
-      variant: "destructive",
-    });
-    return null;
+    throw error; // 더 나은 오류 처리를 위해 상위 함수에서 처리하도록 오류 전파
   }
 };

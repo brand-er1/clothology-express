@@ -41,6 +41,13 @@ const getBestWindowWidth = (): number => {
   return window.innerWidth;
 }
 
+// Check if user agent is mobile
+const isMobileUserAgent = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+}
+
 export function useIsMobile() {
   // First check URL parameter, then fallback to window width detection
   const mobileParamValue = React.useMemo(() => checkUrlForMobileParam(), []);
@@ -49,7 +56,7 @@ export function useIsMobile() {
     typeof window !== 'undefined' 
       ? (mobileParamValue !== null 
           ? mobileParamValue 
-          : getBestWindowWidth() < MOBILE_BREAKPOINT) 
+          : getBestWindowWidth() < MOBILE_BREAKPOINT || isMobileUserAgent()) 
       : false
   )
   
@@ -63,7 +70,7 @@ export function useIsMobile() {
     if (mobileParamValue !== null) return;
     
     const checkIsMobile = () => {
-      setIsMobile(getBestWindowWidth() < MOBILE_BREAKPOINT)
+      setIsMobile(getBestWindowWidth() < MOBILE_BREAKPOINT || isMobileUserAgent())
     }
     
     // 초기 체크
@@ -78,13 +85,17 @@ export function useIsMobile() {
       if (isInIframeContext && event.data && event.data.type === 'PARENT_WINDOW_SIZE') {
         const parentWidth = event.data.width;
         const explicitMobile = event.data.isMobile;
+        const parentUserAgent = event.data.userAgent;
         
         if (typeof explicitMobile === 'boolean') {
           // If parent explicitly tells us if it's mobile, use that
           setIsMobile(explicitMobile);
         } else if (typeof parentWidth === 'number') {
-          // Otherwise use width
-          setIsMobile(parentWidth < MOBILE_BREAKPOINT);
+          // Otherwise use width and check user agent
+          const isMobileUA = parentUserAgent ? 
+            /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(parentUserAgent.toLowerCase()) : 
+            false;
+          setIsMobile(parentWidth < MOBILE_BREAKPOINT || isMobileUA);
         }
       }
     };
@@ -108,6 +119,11 @@ export function useIsMobile() {
       }
     }
   }, [isInIframeContext, mobileParamValue])
+
+  // 외부에서 모바일 상태를 확인할 수 있도록 콘솔에 출력
+  React.useEffect(() => {
+    console.log('Current mobile state:', isMobile);
+  }, [isMobile]);
 
   return isMobile
 }

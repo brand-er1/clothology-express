@@ -46,7 +46,8 @@ serve(async (req) => {
     // Avoid using clothType since it might contain Korean characters
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `${userId ? userId.slice(0, 8) + '_' : ''}${timestamp}_${crypto.randomUUID()}.jpg`;
-    console.log(fileName);
+    console.log(`Generated filename: ${fileName}`);
+    
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from('generated_images')
@@ -65,6 +66,7 @@ serve(async (req) => {
       .getPublicUrl(fileName);
 
     const storedImageUrl = publicUrlData?.publicUrl;
+    console.log(`Image stored successfully, public URL: ${storedImageUrl}`);
 
     return new Response(
       JSON.stringify({ 

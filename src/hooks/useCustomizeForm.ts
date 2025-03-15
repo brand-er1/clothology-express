@@ -32,6 +32,8 @@ export const useCustomizeForm = () => {
   const [selectedSeason, setSelectedSeason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrls, setGeneratedImageUrls] = useState<string[] | null>(null);
+  const [storedImageUrls, setStoredImageUrls] = useState<string[] | null>(null);
+  const [imagePaths, setImagePaths] = useState<string[] | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(-1);
   const [storedImageUrl, setStoredImageUrl] = useState<string | null>(null);
   const [imagePath, setImagePath] = useState<string | null>(null);
@@ -118,6 +120,8 @@ export const useCustomizeForm = () => {
       setSelectedImageIndex(-1);
       setStoredImageUrl(null);
       setImagePath(null);
+      setStoredImageUrls(null);
+      setImagePaths(null);
       
       const result = await generateImage(
         selectedType,
@@ -133,9 +137,12 @@ export const useCustomizeForm = () => {
       
       if (result) {
         setGeneratedImageUrls(result.imageUrls);
+        setStoredImageUrls(result.storedImageUrls);
+        setImagePaths(result.imagePaths);
         setGeneratedPrompt(result.optimizedPrompt || "");
       }
     } catch (err) {
+      console.error("Error generating images:", err);
     } finally {
       setImageLoading(false);
     }
@@ -145,8 +152,18 @@ export const useCustomizeForm = () => {
     if (!generatedImageUrls || index >= generatedImageUrls.length) return;
     
     setSelectedImageIndex(index);
-    setStoredImageUrl(null);
-    setImagePath(null);
+    
+    if (storedImageUrls && storedImageUrls[index]) {
+      setStoredImageUrl(storedImageUrls[index]);
+    } else {
+      setStoredImageUrl(null);
+    }
+    
+    if (imagePaths && imagePaths[index]) {
+      setImagePath(imagePaths[index]);
+    } else {
+      setImagePath(null);
+    }
   };
 
   const handleCreateOrder = async () => {
@@ -175,7 +192,11 @@ export const useCustomizeForm = () => {
           selectedMaterial,
           selectedDetail,
           selectedImageUrl,
+          storedImageUrl,
+          imagePath,
           generatedImageUrls,
+          storedImageUrls,
+          imagePaths,
           selectedImageIndex,
           generatedPrompt,
           materials,
@@ -305,6 +326,7 @@ export const useCustomizeForm = () => {
     isLoading,
     imageLoading,
     generatedImageUrls,
+    storedImageUrls,
     selectedImageIndex,
     storedImageUrl,
     imagePath,

@@ -75,19 +75,55 @@ export const generateImage = async (
       return null;
     }
 
+    // Store all generated images in storage right after generation
+    const storedImageUrls: string[] = [];
+    const imagePaths: string[] = [];
+
+    try {
+      // Store all images in storage
+      for (const [index, imageUrl] of imageUrls.entries()) {
+        console.log(`Storing image ${index + 1} to storage...`);
+        
+        const { data: storeData, error: storeError } = await supabase.functions.invoke(
+          'store-generated-image',
+          {
+            body: { 
+              imageUrl,
+              userId: user.id,
+              clothType: selectedClothType
+            }
+          }
+        );
+
+        if (storeError) {
+          console.error(`Error storing image ${index + 1}:`, storeError);
+          storedImageUrls.push(imageUrl); // Fall back to original URL if storage fails
+          imagePaths.push(null);
+        } else {
+          console.log(`Image ${index + 1} stored successfully:`, storeData);
+          storedImageUrls.push(storeData?.storedImageUrl || imageUrl);
+          imagePaths.push(storeData?.imagePath || null);
+        }
+      }
+    } catch (storageError) {
+      console.error("Error storing images:", storageError);
+      // Continue with original URLs if storage fails
+    }
+
     // Only save images to DB when saveAsDraft is true
     // This is set to false in our new implementation until order creation
     if (saveAsDraft && imageUrls && imageUrls.length > 0 && user.id) {
       try {
         // Store image information in the generated_images table
+        // We're not setting the selected image yet - that happens when they actually select one
         const { data: imageData, error: imageError } = await supabase.functions.invoke(
           'save-generated-image',
           {
             body: {
               userId: user.id,
               originalImageUrls: imageUrls,
-              storedImageUrl: null, // We'll update this when an image is selected
-              imagePath: null, // We'll update this when an image is selected
+              storedImageUrls: storedImageUrls,
+              imagePaths: imagePaths,
               prompt: prompt,
               clothType: selectedClothType,
               material: selectedMaterialName,
@@ -109,6 +145,8 @@ export const generateImage = async (
 
     return {
       imageUrls,
+      storedImageUrls,
+      imagePaths,
       selectedIndex: -1, // No image selected yet
       storedImageUrl: null,
       imagePath: null,
@@ -132,7 +170,11 @@ export const storeSelectedImage = async (
   selectedMaterial: string,
   selectedDetail: string,
   imageUrl: string,
+  storedImageUrl: string | null,
+  imagePath: string | null,
   allImageUrls: string[],
+  allStoredImageUrls: string[] | null,
+  allImagePaths: string[] | null,
   selectedIndex: number, 
   optimizedPrompt: string,
   materials: Material[],
@@ -156,28 +198,33 @@ export const storeSelectedImage = async (
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
 
-    // Store the selected image in Supabase Storage
-    const { data: storeData, error: storeError } = await supabase.functions.invoke(
-      'store-generated-image',
-      {
-        body: { 
-          imageUrl,
-          userId: user.id,
-          clothType: selectedClothType
+    // Use the stored image URL and path if available, otherwise store the selected image
+    let finalStoredImageUrl = storedImageUrl;
+    let finalImagePath = imagePath;
+
+    if (!finalStoredImageUrl || !finalImagePath) {
+      // Store the selected image in Supabase Storage if not already stored
+      const { data: storeData, error: storeError } = await supabase.functions.invoke(
+        'store-generated-image',
+        {
+          body: { 
+            imageUrl,
+            userId: user.id,
+            clothType: selectedClothType
+          }
         }
+      );
+
+      if (storeError) {
+        console.error("Image storage error:", storeError);
+        return null;
       }
-    );
 
-    if (storeError) {
-      console.error("Image storage error:", storeError);
-      return null;
+      console.log("Image storage result:", storeData);
+      finalStoredImageUrl = storeData?.storedImageUrl || null;
+      finalImagePath = storeData?.imagePath || null;
+      console.log("Stored image public URL:", finalStoredImageUrl);
     }
-
-    console.log("Image storage result:", storeData);
-    // Get the storage URL and path from the response
-    const storedImageUrl = storeData?.storedImageUrl || null;
-    const imagePath = storeData?.imagePath || null;
-    console.log("Stored image public URL:", storedImageUrl);
 
     // Now save to DB with the selected image information
     const { data: imageData, error: imageError } = await supabase.functions.invoke(
@@ -186,8 +233,10 @@ export const storeSelectedImage = async (
         body: {
           userId: user.id,
           originalImageUrls: allImageUrls,
-          storedImageUrl: storedImageUrl,
-          imagePath: imagePath,
+          storedImageUrls: allStoredImageUrls || (finalStoredImageUrl ? [finalStoredImageUrl] : null),
+          imagePaths: allImagePaths || (finalImagePath ? [finalImagePath] : null),
+          storedImageUrl: finalStoredImageUrl,
+          imagePath: finalImagePath,
           prompt: optimizedPrompt,
           clothType: selectedClothType,
           material: selectedMaterialName,
@@ -211,8 +260,8 @@ export const storeSelectedImage = async (
           selectedType,
           selectedMaterial,
           selectedDetail,
-          storedImageUrl || imageUrl,
-          imagePath,
+          finalStoredImageUrl || imageUrl,
+          finalImagePath,
           materials
         );
       } catch (draftError) {
@@ -223,8 +272,8 @@ export const storeSelectedImage = async (
 
     return {
       imageUrl,
-      storedImageUrl,
-      imagePath,
+      storedImageUrl: finalStoredImageUrl,
+      imagePath: finalImagePath,
       optimizedPrompt,
     };
   } catch (error: any) {

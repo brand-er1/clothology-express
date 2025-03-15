@@ -8,7 +8,7 @@ interface ImageStepProps {
   isLoading: boolean;
   generatedImageUrls: string[] | null;
   selectedImageIndex: number;
-  storedImageUrl?: string | null;
+  storedImageUrls?: string[] | null;
   selectedType: string;
   selectedMaterial: string;
   selectedDetail: string;
@@ -24,7 +24,7 @@ export const ImageStep = ({
   isLoading,
   generatedImageUrls,
   selectedImageIndex,
-  storedImageUrl,
+  storedImageUrls,
   selectedType,
   selectedMaterial,
   selectedDetail,
@@ -76,7 +76,7 @@ export const ImageStep = ({
                     {!imageErrors[index] ? (
                       <div className="aspect-square relative">
                         <img
-                          src={imageUrl}
+                          src={storedImageUrls && storedImageUrls[index] ? storedImageUrls[index] : imageUrl}
                           alt={`Generated clothing design ${index + 1}`}
                           className="w-full h-full object-cover object-center"
                           onLoad={() => console.log(`Image ${index + 1} loaded successfully`)}

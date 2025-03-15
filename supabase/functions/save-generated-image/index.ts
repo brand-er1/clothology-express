@@ -25,8 +25,9 @@ serve(async (req) => {
     // Extract required data
     const { 
       userId, 
-      originalImageUrl, 
-      originalImageUrls, // New field to handle multiple original URLs
+      originalImageUrls, 
+      storedImageUrls,
+      imagePaths,
       storedImageUrl,
       imagePath,
       prompt,
@@ -38,9 +39,9 @@ serve(async (req) => {
     } = requestData;
 
     // Validate inputs
-    if (!userId || (!originalImageUrl && !originalImageUrls) || !prompt) {
+    if (!userId || !originalImageUrls || !prompt) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: userId, originalImageUrl/originalImageUrls, or prompt" }),
+        JSON.stringify({ error: "Missing required fields: userId, originalImageUrls, or prompt" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
@@ -48,38 +49,41 @@ serve(async (req) => {
     // Log the generation prompt for debugging
     console.log("Storing generation prompt:", generationPrompt);
     
-    // Use originalImageUrls if provided, otherwise use single originalImageUrl in an array
-    const imagesToSave = originalImageUrls || [originalImageUrl];
-    console.log(`Preparing to save ${imagesToSave.length} images to the database`);
-    
     // Delete any existing records for this user with the same prompt and material before inserting new ones
-    if (isSelected !== undefined) {
-      try {
-        const { error: deleteError } = await supabase
-          .from('generated_images')
-          .delete()
-          .eq('user_id', userId)
-          .eq('prompt', prompt)
-          .eq('material', material);
-        
-        if (deleteError) {
-          console.log("Warning: Failed to delete existing records:", deleteError);
-          // Continue with insertion anyway
-        } else {
-          console.log("Successfully deleted existing records for this generation");
-        }
-      } catch (deleteErr) {
-        console.log("Error during deletion of existing records:", deleteErr);
+    try {
+      const { error: deleteError } = await supabase
+        .from('generated_images')
+        .delete()
+        .eq('user_id', userId)
+        .eq('prompt', prompt)
+        .eq('material', material);
+      
+      if (deleteError) {
+        console.log("Warning: Failed to delete existing records:", deleteError);
         // Continue with insertion anyway
+      } else {
+        console.log("Successfully deleted existing records for this generation");
       }
+    } catch (deleteErr) {
+      console.log("Error during deletion of existing records:", deleteErr);
+      // Continue with insertion anyway
     }
     
     // Save records for all images
     const savedImages = [];
     
-    for (const [index, imgUrl] of imagesToSave.entries()) {
+    for (const [index, imgUrl] of originalImageUrls.entries()) {
       const isThisImageSelected = isSelected !== undefined ? index === isSelected : index === 0;
-      console.log(`Processing image ${index + 1}/${imagesToSave.length}, selected: ${isThisImageSelected}`);
+      console.log(`Processing image ${index + 1}/${originalImageUrls.length}, selected: ${isThisImageSelected}`);
+      
+      // Get the stored URL and path for this image if available
+      const thisStoredImageUrl = storedImageUrls && storedImageUrls[index] ? 
+        storedImageUrls[index] : 
+        (isThisImageSelected ? storedImageUrl : null);
+        
+      const thisImagePath = imagePaths && imagePaths[index] ? 
+        imagePaths[index] : 
+        (isThisImageSelected ? imagePath : null);
       
       // Insert data into generated_images table
       const { data, error } = await supabase
@@ -87,8 +91,8 @@ serve(async (req) => {
         .insert({
           user_id: userId,
           original_image_url: imgUrl,
-          stored_image_url: isThisImageSelected ? storedImageUrl : null, // Only the selected image has a stored URL
-          image_path: isThisImageSelected ? imagePath : null, // Only the selected image has a path
+          stored_image_url: thisStoredImageUrl,
+          image_path: thisImagePath,
           prompt: prompt,
           cloth_type: clothType,
           material: material,

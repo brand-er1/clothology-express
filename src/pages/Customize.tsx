@@ -52,6 +52,7 @@ const Customize = () => {
     setSelectedSeason,
     imageLoading,
     generatedImageUrls,
+    storedImageUrls,
     selectedImageIndex,
     storedImageUrl,
     generatedPrompt,
@@ -190,7 +191,7 @@ const Customize = () => {
                 isLoading={imageLoading}
                 generatedImageUrls={generatedImageUrls}
                 selectedImageIndex={selectedImageIndex}
-                storedImageUrl={storedImageUrl}
+                storedImageUrls={storedImageUrls}
                 selectedType={selectedType}
                 selectedMaterial={selectedMaterial}
                 selectedStyle={selectedStyle}

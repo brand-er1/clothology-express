@@ -47,9 +47,10 @@ serve(async (req) => {
 
     // Log the generation prompt for debugging
     console.log("Storing generation prompt:", generationPrompt);
-
+    
     // Use originalImageUrls if provided, otherwise use single originalImageUrl in an array
     const imagesToSave = originalImageUrls || [originalImageUrl];
+    console.log(`Preparing to save ${imagesToSave.length} images to the database`);
     
     // Delete any existing records for this user with the same prompt and material before inserting new ones
     if (isSelected !== undefined) {
@@ -78,6 +79,7 @@ serve(async (req) => {
     
     for (const [index, imgUrl] of imagesToSave.entries()) {
       const isThisImageSelected = isSelected !== undefined ? index === isSelected : index === 0;
+      console.log(`Processing image ${index + 1}/${imagesToSave.length}, selected: ${isThisImageSelected}`);
       
       // Insert data into generated_images table
       const { data, error } = await supabase
@@ -98,7 +100,7 @@ serve(async (req) => {
         .select();
 
       if (error) {
-        console.error("Error saving generated image data:", error);
+        console.error(`Error saving image ${index + 1}:`, error);
         return new Response(
           JSON.stringify({ error: error.message }), 
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }

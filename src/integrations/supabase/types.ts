@@ -17,6 +17,7 @@ export type Database = {
           generation_prompt: string | null
           id: string
           image_path: string | null
+          is_selected: boolean | null
           material: string | null
           original_image_url: string | null
           prompt: string
@@ -30,6 +31,7 @@ export type Database = {
           generation_prompt?: string | null
           id?: string
           image_path?: string | null
+          is_selected?: boolean | null
           material?: string | null
           original_image_url?: string | null
           prompt: string
@@ -43,6 +45,7 @@ export type Database = {
           generation_prompt?: string | null
           id?: string
           image_path?: string | null
+          is_selected?: boolean | null
           material?: string | null
           original_image_url?: string | null
           prompt?: string

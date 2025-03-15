@@ -22,7 +22,11 @@ export const DetailInput = ({ detailInput, onChange }: DetailInputProps) => {
             onChange={onChange}
             placeholder="추가 디테일을 자유롭게 입력해주세요"
             className="w-full h-20 md:h-32 p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 text-sm md:text-base"
-            style={{ fontSize: isMobile ? '16px' : undefined }}
+            style={{ 
+              fontSize: isMobile ? '16px' : undefined,
+              // Prevent iOS zoom on focus
+              WebkitTextSizeAdjust: isMobile ? '100%' : undefined 
+            }}
           />
         </div>
       </div>

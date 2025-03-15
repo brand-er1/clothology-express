@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
@@ -10,6 +9,19 @@ const isInIframe = (): boolean => {
   } catch (e) {
     return true; // If there's an error accessing parent, assume we're in a cross-origin iframe
   }
+}
+
+// Check URL parameters for mobile flag
+const checkUrlForMobileParam = (): boolean | null => {
+  if (typeof window === 'undefined') return null;
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const isMobileParam = urlParams.get('isMobile');
+  
+  if (isMobileParam === 'true') return true;
+  if (isMobileParam === 'false') return false;
+  
+  return null; // No explicit parameter
 }
 
 // Helper function to get the best available window width
@@ -30,8 +42,15 @@ const getBestWindowWidth = (): number => {
 }
 
 export function useIsMobile() {
+  // First check URL parameter, then fallback to window width detection
+  const mobileParamValue = React.useMemo(() => checkUrlForMobileParam(), []);
+  
   const [isMobile, setIsMobile] = React.useState<boolean>(
-    typeof window !== 'undefined' ? getBestWindowWidth() < MOBILE_BREAKPOINT : false
+    typeof window !== 'undefined' 
+      ? (mobileParamValue !== null 
+          ? mobileParamValue 
+          : getBestWindowWidth() < MOBILE_BREAKPOINT) 
+      : false
   )
   
   // Store whether we're in an iframe
@@ -40,6 +59,9 @@ export function useIsMobile() {
   )
 
   React.useEffect(() => {
+    // If we have explicit mobile parameter, don't need to listen for resize
+    if (mobileParamValue !== null) return;
+    
     const checkIsMobile = () => {
       setIsMobile(getBestWindowWidth() < MOBILE_BREAKPOINT)
     }
@@ -55,7 +77,13 @@ export function useIsMobile() {
       // Check for parent window size information
       if (isInIframeContext && event.data && event.data.type === 'PARENT_WINDOW_SIZE') {
         const parentWidth = event.data.width;
-        if (typeof parentWidth === 'number') {
+        const explicitMobile = event.data.isMobile;
+        
+        if (typeof explicitMobile === 'boolean') {
+          // If parent explicitly tells us if it's mobile, use that
+          setIsMobile(explicitMobile);
+        } else if (typeof parentWidth === 'number') {
+          // Otherwise use width
           setIsMobile(parentWidth < MOBILE_BREAKPOINT);
         }
       }
@@ -79,7 +107,7 @@ export function useIsMobile() {
         window.removeEventListener('message', handleMessage);
       }
     }
-  }, [isInIframeContext])
+  }, [isInIframeContext, mobileParamValue])
 
   return isMobile
 }

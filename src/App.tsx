@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
@@ -37,11 +38,18 @@ function App() {
         if (event.data && event.data.type === 'REQUEST_PARENT_SIZE') {
           // The iframe content is requesting the parent window size
           try {
+            // Get user agent to help determine if it's a mobile device
+            const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+            const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+            
+            // Send more detailed device information
             event.source?.postMessage({
               type: 'PARENT_WINDOW_SIZE',
               width: window.innerWidth,
               height: window.innerHeight,
-              isMobile: window.innerWidth < 768 // Using same mobile breakpoint
+              isMobile: window.innerWidth < 768 || isMobileUserAgent, // Using mobile breakpoint and user agent
+              userAgent: userAgent,
+              pixelRatio: window.devicePixelRatio || 1
             }, { targetOrigin: event.origin });
           } catch (e) {
             console.error('Error sending parent size to iframe:', e);

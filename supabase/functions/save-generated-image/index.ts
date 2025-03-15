@@ -51,6 +51,28 @@ serve(async (req) => {
     // Use originalImageUrls if provided, otherwise use single originalImageUrl in an array
     const imagesToSave = originalImageUrls || [originalImageUrl];
     
+    // Delete any existing records for this user with the same prompt and material before inserting new ones
+    if (isSelected !== undefined) {
+      try {
+        const { error: deleteError } = await supabase
+          .from('generated_images')
+          .delete()
+          .eq('user_id', userId)
+          .eq('prompt', prompt)
+          .eq('material', material);
+        
+        if (deleteError) {
+          console.log("Warning: Failed to delete existing records:", deleteError);
+          // Continue with insertion anyway
+        } else {
+          console.log("Successfully deleted existing records for this generation");
+        }
+      } catch (deleteErr) {
+        console.log("Error during deletion of existing records:", deleteErr);
+        // Continue with insertion anyway
+      }
+    }
+    
     // Save records for all images
     const savedImages = [];
     
@@ -71,7 +93,7 @@ serve(async (req) => {
           detail: detailDescription,
           created_at: new Date().toISOString(),
           generation_prompt: generationPrompt || prompt, // Fallback to original prompt if optimized isn't provided
-          is_selected: isThisImageSelected // New field to indicate selection status
+          is_selected: isThisImageSelected // Store selection status - new field needed in the database
         })
         .select();
 

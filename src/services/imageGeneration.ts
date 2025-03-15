@@ -128,7 +128,7 @@ export const generateImage = async (
   }
 };
 
-// New function to store a selected image
+// Function to store a selected image
 export const storeSelectedImage = async (
   selectedType: string,
   selectedMaterial: string,

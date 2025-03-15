@@ -25,7 +25,10 @@ export const DetailInput = ({ detailInput, onChange }: DetailInputProps) => {
             style={{ 
               fontSize: isMobile ? '16px' : undefined,
               // Prevent iOS zoom on focus
-              WebkitTextSizeAdjust: isMobile ? '100%' : undefined 
+              WebkitTextSizeAdjust: isMobile ? '100%' : undefined,
+              // Additional mobile optimization
+              padding: isMobile ? '12px' : undefined,
+              borderRadius: isMobile ? '8px' : undefined,
             }}
           />
         </div>

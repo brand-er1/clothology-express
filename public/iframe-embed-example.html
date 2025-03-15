@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRAND-ER 앱 임베드 예제</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    
+    .iframe-container {
+      flex-grow: 1;
+      position: relative;
+      height: 100%;
+    }
+    
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="iframe-container">
+      <iframe id="brandErFrame" src="/" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const iframe = document.getElementById('brandErFrame');
+      
+      // 모바일 기기 감지 함수
+      function detectMobile() {
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const isMobileDevice = /android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        const isMobileWidth = window.innerWidth < 768;
+        return isMobileDevice || isMobileWidth;
+      }
+      
+      // iframe에 모바일 상태 전달 함수
+      function sendMobileStatusToIframe() {
+        const isMobile = detectMobile();
+        
+        try {
+          iframe.contentWindow.postMessage({
+            type: 'PARENT_WINDOW_SIZE',
+            width: window.innerWidth,
+            height: window.innerHeight,
+            isMobile: isMobile,
+            userAgent: navigator.userAgent,
+            pixelRatio: window.devicePixelRatio || 1
+          }, '*');
+          
+          console.log('Sent mobile status to iframe:', isMobile);
+        } catch (e) {
+          console.error('Error sending message to iframe:', e);
+        }
+      }
+      
+      // iframe 로드 완료 시 모바일 상태 전달
+      iframe.onload = function() {
+        sendMobileStatusToIframe();
+      };
+      
+      // 화면 크기 변경 시 모바일 상태 업데이트
+      window.addEventListener('resize', function() {
+        sendMobileStatusToIframe();
+      });
+      
+      // iframe에서 오는 메시지 처리
+      window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'REQUEST_PARENT_SIZE') {
+          console.log('Received request for parent size');
+          sendMobileStatusToIframe();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

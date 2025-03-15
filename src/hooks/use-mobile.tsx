@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
@@ -48,21 +49,36 @@ const isMobileUserAgent = (): boolean => {
   return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
 }
 
+// Force mobile mode in specific conditions
+const shouldForceMobileMode = (): boolean => {
+  // If screen is narrow enough (common for mobile devices)
+  if (window.innerWidth < 480) return true;
+  
+  // Check if device pixel ratio is high (common for mobile devices)
+  if (window.devicePixelRatio > 2) return true;
+  
+  // Additional check for mobile user agent
+  return isMobileUserAgent();
+}
+
 export function useIsMobile() {
   // First check URL parameter, then fallback to window width detection
   const mobileParamValue = React.useMemo(() => checkUrlForMobileParam(), []);
   
+  // Store whether we're in an iframe
+  const [isInIframeContext] = React.useState<boolean>(
+    typeof window !== 'undefined' ? isInIframe() : false
+  )
+  
+  // Set initial mobile state with more aggressive detection for iframes
   const [isMobile, setIsMobile] = React.useState<boolean>(
     typeof window !== 'undefined' 
       ? (mobileParamValue !== null 
           ? mobileParamValue 
-          : getBestWindowWidth() < MOBILE_BREAKPOINT || isMobileUserAgent()) 
+          : isInIframeContext 
+            ? shouldForceMobileMode() || getBestWindowWidth() < MOBILE_BREAKPOINT
+            : getBestWindowWidth() < MOBILE_BREAKPOINT || isMobileUserAgent()) 
       : false
-  )
-  
-  // Store whether we're in an iframe
-  const [isInIframeContext] = React.useState<boolean>(
-    typeof window !== 'undefined' ? isInIframe() : false
   )
 
   React.useEffect(() => {
@@ -70,7 +86,12 @@ export function useIsMobile() {
     if (mobileParamValue !== null) return;
     
     const checkIsMobile = () => {
-      setIsMobile(getBestWindowWidth() < MOBILE_BREAKPOINT || isMobileUserAgent())
+      // More aggressive detection in iframe context
+      if (isInIframeContext) {
+        setIsMobile(shouldForceMobileMode() || getBestWindowWidth() < MOBILE_BREAKPOINT);
+      } else {
+        setIsMobile(getBestWindowWidth() < MOBILE_BREAKPOINT || isMobileUserAgent());
+      }
     }
     
     // 초기 체크
@@ -83,19 +104,36 @@ export function useIsMobile() {
     const handleMessage = (event: MessageEvent) => {
       // Check for parent window size information
       if (isInIframeContext && event.data && event.data.type === 'PARENT_WINDOW_SIZE') {
+        console.log('Received parent window size message:', event.data);
+        
         const parentWidth = event.data.width;
         const explicitMobile = event.data.isMobile;
         const parentUserAgent = event.data.userAgent;
+        const pixelRatio = event.data.pixelRatio;
         
         if (typeof explicitMobile === 'boolean') {
           // If parent explicitly tells us if it's mobile, use that
+          console.log('Setting mobile state from parent explicit value:', explicitMobile);
           setIsMobile(explicitMobile);
         } else if (typeof parentWidth === 'number') {
           // Otherwise use width and check user agent
           const isMobileUA = parentUserAgent ? 
-            /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(parentUserAgent.toLowerCase()) : 
+            /android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(parentUserAgent) : 
             false;
-          setIsMobile(parentWidth < MOBILE_BREAKPOINT || isMobileUA);
+          
+          const isMobileSize = parentWidth < MOBILE_BREAKPOINT;
+          const isMobilePixelRatio = pixelRatio && pixelRatio > 2;
+          
+          const newMobileState = isMobileSize || isMobileUA || isMobilePixelRatio;
+          console.log('Determining mobile state from parent data:', {
+            width: parentWidth,
+            isMobileUA,
+            isMobileSize,
+            isMobilePixelRatio,
+            result: newMobileState
+          });
+          
+          setIsMobile(newMobileState);
         }
       }
     };
@@ -106,9 +144,11 @@ export function useIsMobile() {
       
       // Send a message to parent window requesting its size (if parent listens for this)
       try {
+        console.log('Requesting parent window size...');
         window.parent.postMessage({ type: 'REQUEST_PARENT_SIZE' }, '*');
       } catch (e) {
         // Ignore cross-origin errors
+        console.error('Error requesting parent size:', e);
       }
     }
     
@@ -122,8 +162,8 @@ export function useIsMobile() {
 
   // 외부에서 모바일 상태를 확인할 수 있도록 콘솔에 출력
   React.useEffect(() => {
-    console.log('Current mobile state:', isMobile);
-  }, [isMobile]);
+    console.log('Current mobile state:', isMobile, 'In iframe:', isInIframeContext);
+  }, [isMobile, isInIframeContext]);
 
   return isMobile
 }

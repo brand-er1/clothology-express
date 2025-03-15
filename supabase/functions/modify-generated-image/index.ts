@@ -156,9 +156,9 @@ serve(async (req) => {
       
       // Check if the error is related to the experimental model not being available
       if (geminiError.message && geminiError.message.includes("not found")) {
-        // Fall back to gemini-1.5-flash
+        // Fall back to gemini-pro-vision
         try {
-          console.log("Falling back to gemini-1.5-flash model...");
+          console.log("Falling back to gemini-pro-vision model...");
           
           // We need the base64Image and fullPrompt here too, so we need to fetch the image again
           const imageResponse = await fetch(imageUrl);
@@ -182,7 +182,7 @@ serve(async (req) => {
           Generate a photorealistic, high-quality product image of the modified design.
           `;
           
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
           
           // Build the prompt parts with the image
           const imagePart = {

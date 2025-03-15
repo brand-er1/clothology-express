@@ -35,7 +35,8 @@ serve(async (req) => {
       material,
       detailDescription,
       generationPrompt,  // This should be the optimized prompt from GPT
-      isSelected // New field to indicate which image was selected
+      isSelected, // This will be undefined during initial generation, set only when ordering
+      saveOnlySelected = false // Flag to indicate if we're saving during generation or order
     } = requestData;
 
     // Validate inputs
@@ -49,41 +50,61 @@ serve(async (req) => {
     // Log the generation prompt for debugging
     console.log("Storing generation prompt:", generationPrompt);
     
-    // Delete any existing records for this user with the same prompt and material before inserting new ones
-    try {
-      const { error: deleteError } = await supabase
+    // If we're marking a selected image (during ordering)
+    if (isSelected !== undefined && saveOnlySelected) {
+      console.log(`Updating selection status for image ${isSelected + 1}`);
+      
+      // Update the selected image
+      const { error: updateError } = await supabase
         .from('generated_images')
-        .delete()
+        .update({ is_selected: true })
         .eq('user_id', userId)
         .eq('prompt', prompt)
-        .eq('material', material);
+        .eq('material', material)
+        .eq('original_image_url', originalImageUrls[isSelected]);
       
-      if (deleteError) {
-        console.log("Warning: Failed to delete existing records:", deleteError);
-        // Continue with insertion anyway
-      } else {
-        console.log("Successfully deleted existing records for this generation");
+      if (updateError) {
+        console.error("Failed to update selected image:", updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }), 
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
       }
-    } catch (deleteErr) {
-      console.log("Error during deletion of existing records:", deleteErr);
-      // Continue with insertion anyway
+      
+      // Reset all other images for this generation to not selected
+      const { error: resetError } = await supabase
+        .from('generated_images')
+        .update({ is_selected: false })
+        .eq('user_id', userId)
+        .eq('prompt', prompt)
+        .eq('material', material)
+        .neq('original_image_url', originalImageUrls[isSelected]);
+      
+      if (resetError) {
+        console.log("Warning: Failed to reset other images:", resetError);
+        // Continue anyway as the main selection was successful
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, message: "Selected image updated successfully" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
-    // Save records for all images
+    // For initial generation, we save all images but don't mark any as selected yet
     const savedImages = [];
     
     for (const [index, imgUrl] of originalImageUrls.entries()) {
-      const isThisImageSelected = isSelected !== undefined ? index === isSelected : index === 0;
-      console.log(`Processing image ${index + 1}/${originalImageUrls.length}, selected: ${isThisImageSelected}`);
+      console.log(`Processing image ${index + 1}/${originalImageUrls.length}`);
       
       // Get the stored URL and path for this image if available
       const thisStoredImageUrl = storedImageUrls && storedImageUrls[index] ? 
         storedImageUrls[index] : 
-        (isThisImageSelected ? storedImageUrl : null);
+        (index === 0 ? storedImageUrl : null);
         
       const thisImagePath = imagePaths && imagePaths[index] ? 
         imagePaths[index] : 
-        (isThisImageSelected ? imagePath : null);
+        (index === 0 ? imagePath : null);
       
       // Insert data into generated_images table
       const { data, error } = await supabase
@@ -99,7 +120,7 @@ serve(async (req) => {
           detail: detailDescription,
           created_at: new Date().toISOString(),
           generation_prompt: generationPrompt || prompt, // Fallback to original prompt if optimized isn't provided
-          is_selected: isThisImageSelected // Store selection status - new field needed in the database
+          is_selected: false // All images start as not selected
         })
         .select();
 

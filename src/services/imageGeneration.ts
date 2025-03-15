@@ -110,37 +110,33 @@ export const generateImage = async (
       // Continue with original URLs if storage fails
     }
 
-    // Only save images to DB when saveAsDraft is true
-    // This is set to false in our new implementation until order creation
-    if (saveAsDraft && imageUrls && imageUrls.length > 0 && user.id) {
-      try {
-        // Store image information in the generated_images table
-        // We're not setting the selected image yet - that happens when they actually select one
-        const { data: imageData, error: imageError } = await supabase.functions.invoke(
-          'save-generated-image',
-          {
-            body: {
-              userId: user.id,
-              originalImageUrls: imageUrls,
-              storedImageUrls: storedImageUrls,
-              imagePaths: imagePaths,
-              prompt: prompt,
-              clothType: selectedClothType,
-              material: selectedMaterialName,
-              detailDescription: selectedDetail,
-              generationPrompt: optimizedPrompt // Store the actual GPT-optimized prompt
-            }
+    // Always save all generated images to DB, but without selecting any of them yet
+    try {
+      // Store image information in the generated_images table without selecting any
+      const { data: imageData, error: imageError } = await supabase.functions.invoke(
+        'save-generated-image',
+        {
+          body: {
+            userId: user.id,
+            originalImageUrls: imageUrls,
+            storedImageUrls: storedImageUrls,
+            imagePaths: imagePaths,
+            prompt: prompt,
+            clothType: selectedClothType,
+            material: selectedMaterialName,
+            detailDescription: selectedDetail,
+            generationPrompt: optimizedPrompt // Store the actual GPT-optimized prompt
           }
-        );
-
-        if (imageError) {
-          console.error("Failed to save image data:", imageError);
-        } else {
-          console.log("Image data saved:", imageData);
         }
-      } catch (saveError) {
-        console.error("Error saving image data:", saveError);
+      );
+
+      if (imageError) {
+        console.error("Failed to save image data:", imageError);
+      } else {
+        console.log("Image data saved:", imageData);
       }
+    } catch (saveError) {
+      console.error("Error saving image data:", saveError);
     }
 
     return {
@@ -198,10 +194,19 @@ export const storeSelectedImage = async (
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
 
-    // Use the stored image URL and path if available, otherwise store the selected image
+    // Get the stored URL from the array if available
     let finalStoredImageUrl = storedImageUrl;
     let finalImagePath = imagePath;
 
+    if (allStoredImageUrls && selectedIndex >= 0 && selectedIndex < allStoredImageUrls.length) {
+      finalStoredImageUrl = allStoredImageUrls[selectedIndex];
+    }
+
+    if (allImagePaths && selectedIndex >= 0 && selectedIndex < allImagePaths.length) {
+      finalImagePath = allImagePaths[selectedIndex];
+    }
+
+    // If we still don't have storage info, try to store it now
     if (!finalStoredImageUrl || !finalImagePath) {
       // Store the selected image in Supabase Storage if not already stored
       const { data: storeData, error: storeError } = await supabase.functions.invoke(
@@ -226,15 +231,15 @@ export const storeSelectedImage = async (
       console.log("Stored image public URL:", finalStoredImageUrl);
     }
 
-    // Now save to DB with the selected image information
+    // Now update the DB to mark the selected image - this happens only at order time
     const { data: imageData, error: imageError } = await supabase.functions.invoke(
       'save-generated-image',
       {
         body: {
           userId: user.id,
           originalImageUrls: allImageUrls,
-          storedImageUrls: allStoredImageUrls || (finalStoredImageUrl ? [finalStoredImageUrl] : null),
-          imagePaths: allImagePaths || (finalImagePath ? [finalImagePath] : null),
+          storedImageUrls: allStoredImageUrls,
+          imagePaths: allImagePaths,
           storedImageUrl: finalStoredImageUrl,
           imagePath: finalImagePath,
           prompt: optimizedPrompt,
@@ -242,7 +247,8 @@ export const storeSelectedImage = async (
           material: selectedMaterialName,
           detailDescription: selectedDetail,
           generationPrompt: optimizedPrompt,
-          isSelected: selectedIndex // Index of the selected image
+          isSelected: selectedIndex, // Now we set the selected image
+          saveOnlySelected: true // Flag to indicate we're only updating selection status
         }
       }
     );

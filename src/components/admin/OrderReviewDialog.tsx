@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -120,18 +121,18 @@ export const OrderReviewDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
           <DialogTitle>주문 검토</DialogTitle>
         </DialogHeader>
         
         {order && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">주문 정보</h3>
-                  <dl className="space-y-2">
+                  <h3 className="font-semibold mb-2 text-base md:text-lg">주문 정보</h3>
+                  <dl className="space-y-2 text-sm md:text-base">
                     <div>
                       <dt className="text-sm text-gray-500">의류 종류</dt>
                       <dd>{order.cloth_type}</dd>
@@ -148,7 +149,7 @@ export const OrderReviewDialog = ({
                     </div>
                     <div>
                       <dt className="text-sm text-gray-500">상세 설명</dt>
-                      <dd className="whitespace-pre-wrap bg-gray-50 p-2 rounded text-sm">
+                      <dd className="whitespace-pre-wrap bg-gray-50 p-2 rounded text-xs md:text-sm">
                         {order.detail_description || '-'}
                       </dd>
                     </div>
@@ -157,9 +158,9 @@ export const OrderReviewDialog = ({
 
                 {order.measurements && Object.keys(order.measurements).length > 0 && (
                   <div>
-                    <h3 className="font-semibold mb-2">상세 사이즈 정보</h3>
+                    <h3 className="font-semibold mb-2 text-base md:text-lg">상세 사이즈 정보</h3>
                     <div className="bg-gray-50 p-3 rounded">
-                      <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                      <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs md:text-sm">
                         {Object.entries(order.measurements).map(([key, value]) => (
                           <div key={key} className="flex justify-between">
                             <span className="text-gray-600">{key}:</span>
@@ -173,8 +174,8 @@ export const OrderReviewDialog = ({
               </div>
 
               <div>
-                <h3 className="font-semibold mb-2">생성된 이미지</h3>
-                <div className="w-full h-auto min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
+                <h3 className="font-semibold mb-2 text-base md:text-lg">생성된 이미지</h3>
+                <div className="w-full h-auto min-h-32 md:min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
                   {imageUrl && !imageError ? (
                     <img
                       src={imageUrl}
@@ -187,11 +188,11 @@ export const OrderReviewDialog = ({
                       }}
                     />
                   ) : (
-                    <div className="p-4 flex flex-col items-center justify-center h-48 text-center">
-                      <ImageOff className="w-8 h-8 mb-2 text-gray-400" />
-                      <p className="text-sm text-gray-400">이미지를 불러올 수 없습니다</p>
+                    <div className="p-4 flex flex-col items-center justify-center h-32 md:h-48 text-center">
+                      <ImageOff className="w-6 h-6 md:w-8 md:h-8 mb-2 text-gray-400" />
+                      <p className="text-xs md:text-sm text-gray-400">이미지를 불러올 수 없습니다</p>
                       {order.image_path && (
-                        <p className="text-xs mt-2 text-gray-400">파일 경로: {order.image_path}</p>
+                        <p className="text-xs mt-2 text-gray-400 truncate max-w-full">파일 경로: {order.image_path}</p>
                       )}
                     </div>
                   )}
@@ -203,12 +204,12 @@ export const OrderReviewDialog = ({
 
             {/* 사용자 정보 섹션 - 엣지 함수 사용으로 개선 */}
             <div>
-              <h3 className="font-semibold mb-2">고객 정보</h3>
+              <h3 className="font-semibold mb-2 text-base md:text-lg">고객 정보</h3>
               {isLoadingProfile ? (
                 <p className="text-sm text-gray-500">고객 정보를 불러오는 중...</p>
               ) : userProfile ? (
                 <div className="bg-gray-50 p-3 rounded">
-                  <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 text-xs md:text-sm">
                     <div>
                       <span className="text-gray-500">이름:</span>
                       <span className="ml-2">{userProfile.full_name || '-'}</span>
@@ -217,7 +218,7 @@ export const OrderReviewDialog = ({
                       <span className="text-gray-500">연락처:</span>
                       <span className="ml-2">{userProfile.phone_number || '-'}</span>
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <span className="text-gray-500">주소:</span>
                       <span className="ml-2">{userProfile.address || '-'}</span>
                     </div>
@@ -243,22 +244,23 @@ export const OrderReviewDialog = ({
             </div>
 
             <div>
-              <h3 className="font-semibold mb-2">검토 의견</h3>
+              <h3 className="font-semibold mb-2 text-base md:text-lg">검토 의견</h3>
               <Textarea
                 value={adminComment}
                 onChange={(e) => setAdminComment(e.target.value)}
                 placeholder="승인 또는 거부 사유를 입력하세요"
-                className="min-h-[100px]"
+                className="min-h-[80px] md:min-h-[100px] text-sm"
               />
             </div>
           </div>
         )}
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 mt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isSaving}
+            className="w-full sm:w-auto"
           >
             취소
           </Button>
@@ -266,12 +268,14 @@ export const OrderReviewDialog = ({
             variant="destructive"
             onClick={() => onUpdateStatus('rejected', adminComment)}
             disabled={isSaving || !adminComment}
+            className="w-full sm:w-auto"
           >
             거부하기
           </Button>
           <Button
             onClick={() => onUpdateStatus('approved', adminComment)}
             disabled={isSaving}
+            className="w-full sm:w-auto"
           >
             승인하기
           </Button>

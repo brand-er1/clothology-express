@@ -1,8 +1,16 @@
+
 #root {
-  max-width: 1280px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
   text-align: center;
+}
+
+@media (min-width: 768px) {
+  #root {
+    max-width: 1280px;
+    padding: 2rem;
+  }
 }
 
 .logo {
@@ -39,4 +47,49 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* 모바일 최적화를 위한 추가 스타일 */
+input, textarea, select, button {
+  font-size: 16px !important; /* iOS에서 자동 확대 방지 */
+}
+
+@media (max-width: 767px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  h3 {
+    font-size: 1.25rem;
+  }
+}
+
+/* 터치 영역 최적화 */
+button, 
+a, 
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* 모바일에서 폼 요소 스타일 개선 */
+@media (max-width: 767px) {
+  input, 
+  textarea, 
+  select {
+    margin-bottom: 0.75rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
+  }
 }

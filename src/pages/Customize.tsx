@@ -118,6 +118,27 @@ const Customize = () => {
         <div className="max-w-4xl mx-auto">
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
+          {/* Navigation Buttons for Mobile - Top */}
+          {isMobile && (
+            <div className="flex flex-col space-y-3 mt-4 mb-6">
+              {currentStep > 1 && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleBack} 
+                  className="w-full"
+                >
+                  이전
+                </Button>
+              )}
+              <Button
+                onClick={handleNext}
+                className="w-full bg-brand hover:bg-brand-dark"
+              >
+                {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
+              </Button>
+            </div>
+          )}
+
           <div className="mt-4 md:mt-8">
             {currentStep === 1 && (
               <TypeStep
@@ -203,24 +224,25 @@ const Customize = () => {
             )}
           </div>
 
-          {/* Navigation Buttons */}
-          <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'justify-between'} mt-8`}>
-            {currentStep > 1 && (
+          {/* Navigation Buttons - Bottom (Desktop or Mobile) */}
+          <div className={`flex ${isMobile ? 'flex-col space-y-3 sticky bottom-4 mt-6 bg-white p-3 rounded-lg shadow-lg' : 'justify-between'} mt-8`}>
+            {!isMobile && currentStep > 1 && (
               <Button 
                 variant="outline" 
-                onClick={handleBack} 
-                className={isMobile ? 'w-full' : ''}
+                onClick={handleBack}
               >
                 이전
               </Button>
             )}
             {isMobile ? null : <div className="flex-1" />}
-            <Button
-              onClick={handleNext}
-              className={`bg-brand hover:bg-brand-dark ${isMobile ? 'w-full' : ''}`}
-            >
-              {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
-            </Button>
+            {!isMobile && (
+              <Button
+                onClick={handleNext}
+                className="bg-brand hover:bg-brand-dark"
+              >
+                {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
+              </Button>
+            )}
           </div>
         </div>
       </main>

@@ -52,13 +52,12 @@
 /* 모바일 최적화를 위한 추가 스타일 */
 input, textarea, select, button {
   font-size: 16px !important; /* iOS에서 자동 확대 방지 */
-  -webkit-appearance: none; /* iOS에서 기본 스타일 제거 */
 }
 
 @media (max-width: 767px) {
   .container {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
   
   h1 {
@@ -87,17 +86,6 @@ input, textarea, select, button {
   [role="combobox"] {
     min-height: 44px;
   }
-  
-  /* 폼 요소 크기 확대 */
-  input, 
-  textarea, 
-  select, 
-  button,
-  .select-trigger {
-    min-height: 44px;
-    margin-bottom: 12px;
-    padding: 10px 12px;
-  }
 }
 
 /* 터치 영역 최적화 */
@@ -106,65 +94,73 @@ a,
 [role="button"] {
   min-height: 44px;
   min-width: 44px;
-  padding: 10px;
 }
 
-/* iframe에서의 모바일 최적화 */
-@media (max-width: 767px), (max-device-width: 767px) {
-  body {
-    overflow-x: hidden;
-    -webkit-text-size-adjust: 100%;
-  }
-  
-  /* iframe 내에서 패딩 조정 */
-  #root {
-    padding: 0.5rem;
-  }
-  
-  /* 폼 요소 외관 개선 */
+/* 모바일에서 폼 요소 스타일 개선 */
+@media (max-width: 767px) {
   input, 
   textarea, 
-  select,
-  [role="combobox"] {
-    border-radius: 8px;
-    width: 100%;
+  select {
+    margin-bottom: 0.75rem;
   }
   
-  /* 모바일에서 터치 피드백 개선 */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  /* 모바일 터치 영역 개선 */
+  .select-trigger {
+    min-height: 44px;
+  }
+  
+  /* 모바일에서 그리드 간격 축소 */
+  .grid {
+    gap: 0.75rem;
+  }
+  
+  /* 모바일에서 여백 축소 */
+  .space-y-4 {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  /* 모바일에서 버튼 크기 확대 */
+  .button-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  /* 컨텐츠 최대 높이 설정 (스크롤 가능하게) */
+  .dialog-content {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+}
+
+/* 모바일 스크롤 개선 */
+@media (max-width: 767px) {
+  .scrollable-content {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  
+  /* 스크롤바 스타일 개선 */
+  .scrollable-content::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .scrollable-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+}
+
+/* 모바일에서 터치 피드백 개선 */
+@media (max-width: 767px) {
   button:active, 
   [role="button"]:active,
   .card.selectable:active {
     opacity: 0.7;
   }
-  
-  /* 모달 및 드롭다운 크기 조정 */
-  [role="dialog"],
-  .popover-content {
-    width: 94% !important;
-    max-width: 94% !important;
-  }
-}
-
-/* 모바일 스크롤 개선 */
-.scrollable-content {
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-}
-
-/* 스크롤바 스타일 개선 */
-.scrollable-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.scrollable-content::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-
-/* iOS에서 입력 필드 터치 시 파란색 하이라이트 제거 */
-input, 
-textarea, 
-select,
-button {
-  -webkit-tap-highlight-color: transparent;
 }

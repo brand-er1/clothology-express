@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
@@ -27,54 +28,7 @@ function App() {
 
   useEffect(() => {
     // Check if we're in an iframe
-    const inIframe = isInIframe();
-    setIsInIframeContext(inIframe);
-    
-    console.log('App initialized. In iframe:', inIframe);
-    
-    // If we're in an iframe, send a message to the parent with our viewport details
-    // and set up a listener to receive parent window size
-    if (inIframe) {
-      // Setup a listener for incoming parent size messages
-      const handleParentSizeRequest = (event: MessageEvent) => {
-        if (event.data && event.data.type === 'REQUEST_PARENT_SIZE') {
-          console.log('Received size request from iframe content');
-          try {
-            // Get user agent to help determine if it's a mobile device
-            const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-            const isMobileUserAgent = /android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-            const isMobileWidth = window.innerWidth < 768;
-            const isMobile = isMobileWidth || isMobileUserAgent;
-            
-            console.log('Sending parent size info to iframe:', {
-              width: window.innerWidth,
-              isMobile: isMobile,
-              userAgent: userAgent
-            });
-            
-            // Send more detailed device information
-            event.source?.postMessage({
-              type: 'PARENT_WINDOW_SIZE',
-              width: window.innerWidth,
-              height: window.innerHeight,
-              isMobile: isMobile,
-              userAgent: userAgent,
-              pixelRatio: window.devicePixelRatio || 1
-            }, { targetOrigin: event.origin });
-          } catch (e) {
-            console.error('Error sending parent size to iframe:', e);
-          }
-        }
-      };
-      
-      // Listen for size requests from any iframe content
-      window.addEventListener('message', handleParentSizeRequest);
-      
-      // Clean up
-      return () => {
-        window.removeEventListener('message', handleParentSizeRequest);
-      };
-    }
+    setIsInIframeContext(isInIframe());
     
     // Kakao SDK 스크립트 동적 로딩
     const script = document.createElement('script');
@@ -134,7 +88,7 @@ function App() {
     // Set up message listener for cross-domain iframe communication
     const handleMessage = async (event: MessageEvent) => {
       // Accept messages from any origin when in iframe
-      if (inIframe) {
+      if (isInIframeContext) {
         try {
           const message = event.data;
           if (message && message.type === 'SESSION_DATA' && message.data) {

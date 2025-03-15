@@ -5,6 +5,7 @@ import { TOTAL_STEPS } from "@/lib/customize-constants";
 import { generateImage, storeSelectedImage } from "@/services/imageGeneration";
 import { createOrder } from "@/services/orderCreation";
 import { UseCustomizeFormState, Material, SizeTableItem } from "@/types/customize";
+import { supabase } from "@/lib/supabase";
 
 export const useCustomizeForm = () => {
   const navigate = useNavigate();
@@ -42,6 +43,11 @@ export const useCustomizeForm = () => {
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
   const [imageLoading, setImageLoading] = useState(false);
   const [sizeTableData, setSizeTableData] = useState<SizeTableItem[]>([]);
+  
+  // New state for image modification
+  const [imageModifying, setImageModifying] = useState(false);
+  const [modificationHistory, setModificationHistory] = useState<Array<{prompt: string, response: string}>>([]);
+  const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -84,6 +90,9 @@ export const useCustomizeForm = () => {
         }
         break;
       case 5:
+        // No validation for modification step - it's optional
+        break;
+      case 6:
         if (!selectedSize && sizeTableData.length === 0) {
           toast({
             title: "사이즈 필요",
@@ -155,8 +164,10 @@ export const useCustomizeForm = () => {
     
     if (storedImageUrls && storedImageUrls[index]) {
       setStoredImageUrl(storedImageUrls[index]);
+      setCurrentModifiedImageUrl(storedImageUrls[index]);
     } else {
       setStoredImageUrl(null);
+      setCurrentModifiedImageUrl(null);
     }
     
     if (imagePaths && imagePaths[index]) {
@@ -164,6 +175,106 @@ export const useCustomizeForm = () => {
     } else {
       setImagePath(null);
     }
+  };
+
+  const handleModifyImage = async (prompt: string) => {
+    try {
+      setImageModifying(true);
+      
+      const imageUrlToModify = currentModifiedImageUrl || 
+        (storedImageUrls && selectedImageIndex >= 0 ? 
+          storedImageUrls[selectedImageIndex] : 
+          (generatedImageUrls && selectedImageIndex >= 0 ? 
+            generatedImageUrls[selectedImageIndex] : null));
+      
+      if (!imageUrlToModify) {
+        toast({
+          title: "이미지 필요",
+          description: "수정할 이미지가 없습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Get current user
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+      
+      if (!user) {
+        toast({
+          title: "로그인 필요",
+          description: "이미지를 수정하려면 로그인해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Find material name
+      const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
+      const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
+      
+      // Call the edge function
+      const { data: modificationData, error: modificationError } = await supabase.functions.invoke(
+        'modify-generated-image',
+        {
+          body: { 
+            imageUrl: imageUrlToModify,
+            modificationPrompt: prompt,
+            userId: user.id,
+            clothType: selectedType,
+            originalPrompt: `${selectedMaterialName} ${selectedType}, ${selectedDetail}`
+          }
+        }
+      );
+      
+      if (modificationError) {
+        console.error("Image modification error:", modificationError);
+        toast({
+          title: "이미지 수정 실패",
+          description: "이미지를 수정하는 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log("Modification result:", modificationData);
+      
+      // For now, just add the text response to history since image generation is not yet available
+      setModificationHistory(prev => [...prev, {
+        prompt,
+        response: modificationData.textResponse || "이미지가 수정되었습니다."
+      }]);
+      
+      // In the future, when image generation is available:
+      // setCurrentModifiedImageUrl(modificationData.modifiedImageUrl);
+      
+      toast({
+        title: "이미지 수정 요청 완료",
+        description: "Gemini의 응답이 채팅창에 표시됩니다. 이미지 생성 기능은 추후 업데이트 예정입니다.",
+      });
+      
+    } catch (err) {
+      console.error("Error modifying image:", err);
+      toast({
+        title: "이미지 수정 실패",
+        description: "이미지를 수정하는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setImageModifying(false);
+    }
+  };
+  
+  const handleResetModifications = () => {
+    // Reset to original selected image
+    if (storedImageUrls && selectedImageIndex >= 0) {
+      setCurrentModifiedImageUrl(storedImageUrls[selectedImageIndex]);
+    }
+    setModificationHistory([]);
+    toast({
+      title: "수정 내역 초기화",
+      description: "이미지가 원래 상태로 복원되었습니다.",
+    });
   };
 
   const handleCreateOrder = async () => {
@@ -342,5 +453,10 @@ export const useCustomizeForm = () => {
     handleSelectImage,
     handleNext,
     handleBack,
+    imageModifying,
+    modificationHistory,
+    currentModifiedImageUrl,
+    handleModifyImage,
+    handleResetModifications,
   };
 };

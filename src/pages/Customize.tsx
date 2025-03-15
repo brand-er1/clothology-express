@@ -6,6 +6,7 @@ import { TypeStep } from "@/components/customize/TypeStep";
 import { MaterialStep } from "@/components/customize/MaterialStep";
 import { DetailStep } from "@/components/customize/DetailStep";
 import { ImageStep } from "@/components/customize/ImageStep";
+import { ModifyImageStep } from "@/components/customize/ModifyImageStep";
 import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
@@ -13,7 +14,7 @@ import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6; // Updated from 5 to 6 to include the new modification step
 
 const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");
@@ -67,6 +68,12 @@ const Customize = () => {
     handleSelectImage,
     handleNext,
     handleBack,
+    // New properties for image modification
+    imageModifying,
+    modificationHistory,
+    currentModifiedImageUrl,
+    handleModifyImage,
+    handleResetModifications,
   } = useCustomizeForm();
 
   // 사용자 정보 가져오기
@@ -205,6 +212,16 @@ const Customize = () => {
             )}
 
             {currentStep === 5 && (
+              <ModifyImageStep
+                isLoading={imageModifying}
+                selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
+                modificationHistory={modificationHistory}
+                onModifyImage={handleModifyImage}
+                onResetModifications={handleResetModifications}
+              />
+            )}
+
+            {currentStep === 6 && (
               <SizeStep
                 selectedSize={selectedSize}
                 customMeasurements={customMeasurements}

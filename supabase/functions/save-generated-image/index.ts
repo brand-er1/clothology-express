@@ -36,7 +36,9 @@ serve(async (req) => {
       detailDescription,
       generationPrompt,  // This should be the optimized prompt from GPT
       isSelected, // This will be undefined during initial generation, set only when ordering
-      saveOnlySelected = false // Flag to indicate if we're saving during generation or order
+      saveOnlySelected = false, // Flag to indicate if we're saving during generation or order
+      modifiedImageUrl, // New field to store the modified image URL if available
+      modificationPrompt, // New field to store the modification prompt if provided
     } = requestData;
 
     // Validate inputs
@@ -57,7 +59,11 @@ serve(async (req) => {
       // Update the selected image
       const { error: updateError } = await supabase
         .from('generated_images')
-        .update({ is_selected: true })
+        .update({ 
+          is_selected: true,
+          modified_image_url: modifiedImageUrl || null,
+          modification_prompt: modificationPrompt || null
+        })
         .eq('user_id', userId)
         .eq('prompt', prompt)
         .eq('material', material)
@@ -120,7 +126,9 @@ serve(async (req) => {
           detail: detailDescription,
           created_at: new Date().toISOString(),
           generation_prompt: generationPrompt || prompt, // Fallback to original prompt if optimized isn't provided
-          is_selected: false // All images start as not selected
+          is_selected: false, // All images start as not selected
+          modified_image_url: null, // No modified image initially
+          modification_prompt: null // No modification prompt initially
         })
         .select();
 

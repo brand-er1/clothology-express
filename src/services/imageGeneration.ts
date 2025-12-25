@@ -198,7 +198,8 @@ export const storeSelectedImage = async (
   selectedIndex: number, 
   optimizedPrompt: string,
   materials: Material[],
-  saveAsDraft: boolean = true
+  saveAsDraft: boolean = true,
+  modificationHistory?: Array<{ prompt: string; response: string; imageUrl?: string | null; imagePath?: string | null }>
 ) => {
   try {
     const { data } = await supabase.auth.getSession();
@@ -222,11 +223,12 @@ export const storeSelectedImage = async (
     let finalStoredImageUrl = storedImageUrl;
     let finalImagePath = imagePath;
 
-    if (allStoredImageUrls && selectedIndex >= 0 && selectedIndex < allStoredImageUrls.length) {
+    // Prefer the passed-in (possibly modified) URL/path; only fall back to arrays if missing
+    if (!finalStoredImageUrl && allStoredImageUrls && selectedIndex >= 0 && selectedIndex < allStoredImageUrls.length) {
       finalStoredImageUrl = allStoredImageUrls[selectedIndex];
     }
 
-    if (allImagePaths && selectedIndex >= 0 && selectedIndex < allImagePaths.length) {
+    if (!finalImagePath && allImagePaths && selectedIndex >= 0 && selectedIndex < allImagePaths.length) {
       finalImagePath = allImagePaths[selectedIndex];
     }
 
@@ -292,7 +294,8 @@ export const storeSelectedImage = async (
           selectedDetail,
           finalStoredImageUrl || imageUrl,
           finalImagePath,
-          materials
+          materials,
+          modificationHistory
         );
       } catch (draftError) {
         console.error("Failed to create draft order:", draftError);

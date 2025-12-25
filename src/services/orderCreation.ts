@@ -11,7 +11,8 @@ export const createDraftOrder = async (
   selectedDetail: string,
   generatedImageUrl: string | null,
   imagePath: string | null,
-  materials: Material[]
+  materials: Material[],
+  modificationHistory?: Array<{ prompt: string; response: string; imageUrl?: string | null; imagePath?: string | null }>
 ) => {
   try {
     const { data } = await supabase.auth.getSession();
@@ -41,6 +42,17 @@ export const createDraftOrder = async (
     // Add custom details
     if (customDetailText) {
       detailDesc += `상세: ${customDetailText}`;
+    }
+    
+    // Append modification history if any
+    if (modificationHistory && modificationHistory.length > 0) {
+      const historyText = modificationHistory
+        .map((entry, idx) => {
+          const img = entry.imageUrl ? ` | image: ${entry.imageUrl}` : '';
+          return `#${idx + 1} ${entry.prompt}${img}`;
+        })
+        .join('\n');
+      detailDesc += (detailDesc ? '\n\n' : '') + `수정 이력:\n${historyText}`;
     }
     
     detailDesc = detailDesc.trim();
@@ -83,7 +95,8 @@ export const createOrder = async (
   generatedImageUrl: string | null,
   imagePath: string | null,
   materials: Material[],
-  sizeTableData?: SizeTableItem[]
+  sizeTableData?: SizeTableItem[],
+  modificationHistory?: Array<{ prompt: string; response: string; imageUrl?: string | null; imagePath?: string | null }>
 ) => {
   try {
     const { data } = await supabase.auth.getSession();
@@ -116,6 +129,17 @@ export const createOrder = async (
     // Add custom details
     if (customDetailText) {
       detailDesc += `상세: ${customDetailText}`;
+    }
+    
+    // Append modification history if any
+    if (modificationHistory && modificationHistory.length > 0) {
+      const historyText = modificationHistory
+        .map((entry, idx) => {
+          const img = entry.imageUrl ? ` | image: ${entry.imageUrl}` : '';
+          return `#${idx + 1} ${entry.prompt}${img}`;
+        })
+        .join('\n');
+      detailDesc += (detailDesc ? '\n\n' : '') + `수정 이력:\n${historyText}`;
     }
     
     detailDesc = detailDesc.trim();

@@ -280,8 +280,12 @@ export const useCustomizeForm = () => {
     });
   };
 
-  const handleSelectHistoryImage = (imageUrl: string | null, imagePath?: string | null) => {
+  const handleSelectHistoryImage = (imageUrl: string | null, imagePath?: string | null, index?: number) => {
     if (!imageUrl) return;
+    // Trim history up to the selected entry to reflect branching
+    if (typeof index === "number" && index >= 0) {
+      setModificationHistory(prev => prev.slice(0, index + 1));
+    }
     setCurrentModifiedImageUrl(imageUrl);
     setStoredImageUrl(imageUrl);
     if (imagePath) {
@@ -324,7 +328,8 @@ export const useCustomizeForm = () => {
           selectedIdx,
           generatedPrompt,
           materials,
-          true
+          true,
+          modificationHistory
         );
         
         if (imageResult) {
@@ -367,7 +372,8 @@ export const useCustomizeForm = () => {
         finalImageUrl,
         finalImagePath,
         materials,
-        sizeTableData
+        sizeTableData,
+        modificationHistory
       );
       
       if (result && result.redirectToConfirmation) {

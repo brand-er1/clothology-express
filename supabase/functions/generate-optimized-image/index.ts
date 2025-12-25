@@ -48,20 +48,13 @@ serve(async (req) => {
       throw new Error("GEMINI_API_KEY is not configured");
     }
 
-    // Call Gemini 3 image preview via REST streaming endpoint
-    const streamResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:streamGenerateContent?key=${geminiApiKey}`,
+    const geminiResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${geminiApiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: optimizedPrompt }],
-            },
-          ],
-          tools: [{ googleSearch: {} }],
+          contents: [{ role: "user", parts: [{ text: optimizedPrompt }] }],
           generationConfig: {
             responseModalities: ["IMAGE", "TEXT"],
             responseMimeType: "image/png",
@@ -71,53 +64,25 @@ serve(async (req) => {
       },
     );
 
-    if (!streamResp.body) {
-      throw new Error("No response body from Gemini");
+    if (!geminiResp.ok) {
+      const bodyText = await geminiResp.text();
+      throw new Error(`Gemini API error: ${geminiResp.status} ${geminiResp.statusText} - ${bodyText}`);
     }
 
-    const reader = streamResp.body.getReader();
+    const geminiData = await geminiResp.json();
+    const parts = geminiData?.candidates?.[0]?.content?.parts || [];
     let base64Image = "";
     let mimeType = "image/png";
     let textResponse = "";
-    const decoder = new TextDecoder();
-    let buffer = "";
 
-    const processLines = (lines: string[]) => {
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const jsonStr = trimmed.slice(5).trim();
-        if (!jsonStr) continue;
-        try {
-          const chunk = JSON.parse(jsonStr);
-          const parts = chunk.candidates?.[0]?.content?.parts || [];
-          for (const part of parts) {
-            if (part.inlineData?.data && !base64Image) {
-              base64Image = part.inlineData.data;
-              mimeType = part.inlineData.mimeType || "image/png";
-            }
-            if (part.text) {
-              textResponse += part.text;
-            }
-          }
-        } catch (_e) {
-          // ignore malformed lines
-        }
+    for (const part of parts) {
+      if (part.inlineData?.data && !base64Image) {
+        base64Image = part.inlineData.data;
+        mimeType = part.inlineData.mimeType || "image/png";
       }
-    };
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      processLines(lines);
-    }
-
-    // process any remaining buffered line
-    if (buffer.trim()) {
-      processLines([buffer]);
+      if (part.text) {
+        textResponse += part.text;
+      }
     }
 
     if (!base64Image) {

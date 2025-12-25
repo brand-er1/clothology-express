@@ -82,13 +82,7 @@ serve(async (req) => {
     const decoder = new TextDecoder();
     let buffer = "";
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
+    const processLines = (lines: string[]) => {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed.startsWith("data:")) continue;
@@ -110,11 +104,25 @@ serve(async (req) => {
           // ignore malformed lines
         }
       }
-      if (base64Image) break; // we got an image; stop early
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      processLines(lines);
+    }
+
+    // process any remaining buffered line
+    if (buffer.trim()) {
+      processLines([buffer]);
     }
 
     if (!base64Image) {
-      throw new Error("Gemini did not return an image");
+      const reason = textResponse ? `Gemini did not return an image. Text response: ${textResponse}` : "Gemini did not return an image";
+      throw new Error(reason);
     }
 
     // Base64 -> Uint8Array

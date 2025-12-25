@@ -113,13 +113,7 @@ serve(async (req) => {
     let mimeType = "image/png";
     let responseText = "";
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
+    const processLines = (lines: string[]) => {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed.startsWith("data:")) continue;
@@ -141,12 +135,24 @@ serve(async (req) => {
           // ignore malformed lines
         }
       }
+    };
 
-      if (generatedImageBase64) break;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      processLines(lines);
+    }
+
+    if (buffer.trim()) {
+      processLines([buffer]);
     }
 
     if (!generatedImageBase64) {
-      throw new Error("Gemini did not return an image");
+      const reason = responseText ? `Gemini did not return an image. Text response: ${responseText}` : "Gemini did not return an image";
+      throw new Error(reason);
     }
 
     // Store the image in Supabase Storage

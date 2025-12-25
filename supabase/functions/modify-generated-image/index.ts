@@ -140,8 +140,9 @@ serve(async (req) => {
     }
 
     const fileName = `${userId || "anon"}/${Date.now()}_${crypto.randomUUID()}.jpg`;
+    // Use generated_images bucket (ensure it exists in Supabase project)
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('modified_images')
+      .from('generated_images')
       .upload(fileName, bytes, {
         contentType: mimeType,
         upsert: false
@@ -153,7 +154,7 @@ serve(async (req) => {
     }
 
     const { data: publicUrlData } = await supabase.storage
-      .from('modified_images')
+      .from('generated_images')
       .getPublicUrl(uploadData?.path || fileName);
     
     const generatedImageUrl = publicUrlData?.publicUrl;

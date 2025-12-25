@@ -46,7 +46,7 @@ export const useCustomizeForm = () => {
   
   // New state for image modification
   const [imageModifying, setImageModifying] = useState(false);
-  const [modificationHistory, setModificationHistory] = useState<Array<{prompt: string, response: string}>>([]);
+  const [modificationHistory, setModificationHistory] = useState<Array<{prompt: string, response: string, imageUrl?: string | null}>>([]);
   const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
 
   const validateCurrentStep = () => {
@@ -131,6 +131,8 @@ export const useCustomizeForm = () => {
       setImagePath(null);
       setStoredImageUrls(null);
       setImagePaths(null);
+      setCurrentModifiedImageUrl(null);
+      setModificationHistory([]);
       
       const result = await generateImage(
         selectedType,
@@ -141,6 +143,11 @@ export const useCustomizeForm = () => {
         selectedPocket,
         selectedColor,
         selectedFit,
+        selectedTexture,
+        selectedElasticity,
+        selectedTransparency,
+        selectedThickness,
+        selectedSeason,
         false
       );
       
@@ -149,6 +156,15 @@ export const useCustomizeForm = () => {
         setStoredImageUrls(result.storedImageUrls);
         setImagePaths(result.imagePaths);
         setGeneratedPrompt(result.optimizedPrompt || "");
+        setSelectedImageIndex(0);
+        if (result.storedImageUrls?.[0]) {
+          setStoredImageUrl(result.storedImageUrls[0]);
+          setCurrentModifiedImageUrl(result.storedImageUrls[0]);
+        } else if (result.imageUrls?.[0]) {
+          setCurrentModifiedImageUrl(result.imageUrls[0]);
+        }
+        // 생성 직후 수정 단계로 이동
+        setCurrentStep(5);
       }
     } catch (err) {
       console.error("Error generating images:", err);
@@ -239,18 +255,27 @@ export const useCustomizeForm = () => {
       
       console.log("Modification result:", modificationData);
       
-      // For now, just add the text response to history since image generation is not yet available
+      const newImageUrl = modificationData?.modifiedImageUrl || currentModifiedImageUrl;
+      const newImagePath = modificationData?.modifiedImagePath || imagePath;
+      const textResponse = modificationData?.textResponse || "이미지가 수정되었습니다.";
+
+      if (newImageUrl) {
+        setCurrentModifiedImageUrl(newImageUrl);
+        setStoredImageUrl(newImageUrl);
+      }
+      if (newImagePath) {
+        setImagePath(newImagePath);
+      }
+      
       setModificationHistory(prev => [...prev, {
         prompt,
-        response: modificationData.textResponse || "이미지가 수정되었습니다."
+        response: textResponse,
+        imageUrl: newImageUrl || null,
       }]);
       
-      // In the future, when image generation is available:
-      // setCurrentModifiedImageUrl(modificationData.modifiedImageUrl);
-      
       toast({
-        title: "이미지 수정 요청 완료",
-        description: "Gemini의 응답이 채팅창에 표시됩니다. 이미지 생성 기능은 추후 업데이트 예정입니다.",
+        title: "이미지 수정 완료",
+        description: "수정된 결과가 아래 챗창에 반영되었습니다.",
       });
       
     } catch (err) {

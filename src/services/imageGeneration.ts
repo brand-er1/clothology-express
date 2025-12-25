@@ -14,6 +14,11 @@ export const generateImage = async (
   selectedPocket: string = "",
   selectedColor: string = "",
   selectedFit: string = "",
+  selectedTexture: string = "",
+  selectedElasticity: string = "",
+  selectedTransparency: string = "",
+  selectedThickness: string = "",
+  selectedSeason: string = "",
   saveAsDraft: boolean = false,
 ) => {
   try {
@@ -36,10 +41,22 @@ export const generateImage = async (
     const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
     const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
     
-    // Construct the generation prompt
-    const prompt = `${selectedMaterialName} ${selectedClothType}, ` +
-      (selectedDetail ? `${selectedDetail}, ` : '') +
-      `고해상도, 프로덕트 이미지`;
+    // Construct the generation prompt using all selected attributes
+    const promptParts = [
+      `${selectedMaterialName} ${selectedClothType}`,
+      selectedStyle && `스타일: ${selectedStyle}`,
+      selectedColor && `색상: ${selectedColor}`,
+      selectedPocket && `포켓: ${selectedPocket}`,
+      selectedFit && `핏: ${selectedFit}`,
+      selectedTexture && `질감: ${selectedTexture}`,
+      selectedElasticity && `신축성: ${selectedElasticity}`,
+      selectedTransparency && `비침: ${selectedTransparency}`,
+      selectedThickness && `두께: ${selectedThickness}`,
+      selectedSeason && `계절감: ${selectedSeason}`,
+      selectedDetail && `추가 설명: ${selectedDetail}`,
+    ].filter(Boolean);
+
+    const prompt = `${promptParts.join(", ")}, 고해상도, 프로덕트 이미지`;
 
     console.log("Generation prompt:", prompt);
 
@@ -63,8 +80,11 @@ export const generateImage = async (
 
     console.log("Generation result:", generationData);
 
-    const imageUrls = generationData?.imageUrls; // Now this is an array of URLs
+    const imageUrls = generationData?.imageUrls; // Now this is an array of URLs (single)
     const optimizedPrompt = generationData?.optimizedPrompt || prompt; // Get the optimized prompt from GPT
+    const alreadyStored = generationData?.alreadyStored;
+    const preStoredImagePaths = generationData?.imagePaths;
+    const preStoredImageUrls = generationData?.storedImageUrls;
 
     if (!imageUrls || imageUrls.length === 0) {
       toast({
@@ -75,34 +95,38 @@ export const generateImage = async (
       return null;
     }
 
-    // Store all generated images in storage right after generation
+    // Store all generated images in storage right after generation (now only one)
     const storedImageUrls: string[] = [];
     const imagePaths: string[] = [];
 
     try {
-      // Store all images in storage
-      for (const [index, imageUrl] of imageUrls.entries()) {
-        console.log(`Storing image ${index + 1} to storage...`);
-        
-        const { data: storeData, error: storeError } = await supabase.functions.invoke(
-          'store-generated-image',
-          {
-            body: { 
-              imageUrl,
-              userId: user.id,
-              clothType: selectedClothType
+      if (alreadyStored && preStoredImageUrls?.length) {
+        storedImageUrls.push(preStoredImageUrls[0]);
+        imagePaths.push(preStoredImagePaths?.[0] || null);
+      } else {
+        for (const [index, imageUrl] of imageUrls.entries()) {
+          console.log(`Storing image ${index + 1} to storage...`);
+          
+          const { data: storeData, error: storeError } = await supabase.functions.invoke(
+            'store-generated-image',
+            {
+              body: { 
+                imageUrl,
+                userId: user.id,
+                clothType: selectedClothType
+              }
             }
-          }
-        );
+          );
 
-        if (storeError) {
-          console.error(`Error storing image ${index + 1}:`, storeError);
-          storedImageUrls.push(imageUrl); // Fall back to original URL if storage fails
-          imagePaths.push(null);
-        } else {
-          console.log(`Image ${index + 1} stored successfully:`, storeData);
-          storedImageUrls.push(storeData?.storedImageUrl || imageUrl);
-          imagePaths.push(storeData?.imagePath || null);
+          if (storeError) {
+            console.error(`Error storing image ${index + 1}:`, storeError);
+            storedImageUrls.push(imageUrl); // Fall back to original URL if storage fails
+            imagePaths.push(null);
+          } else {
+            console.log(`Image ${index + 1} stored successfully:`, storeData);
+            storedImageUrls.push(storeData?.storedImageUrl || imageUrl);
+            imagePaths.push(storeData?.imagePath || null);
+          }
         }
       }
     } catch (storageError) {
@@ -143,9 +167,9 @@ export const generateImage = async (
       imageUrls,
       storedImageUrls,
       imagePaths,
-      selectedIndex: -1, // No image selected yet
-      storedImageUrl: null,
-      imagePath: null,
+      selectedIndex: 0, // Auto-select the single image
+      storedImageUrl: storedImageUrls[0] || null,
+      imagePath: imagePaths[0] || null,
       prompt,
       optimizedPrompt,
     };

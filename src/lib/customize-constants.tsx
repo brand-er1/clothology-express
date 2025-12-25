@@ -209,4 +209,4 @@ export const seasonOptions: SeasonOption[] = [
   { value: "winter", label: "겨울" },
 ];
 
-export const TOTAL_STEPS = 5;
+export const TOTAL_STEPS = 6;

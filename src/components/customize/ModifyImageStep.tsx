@@ -13,6 +13,7 @@ interface ModifyImageStepProps {
   modificationHistory: Array<{
     prompt: string;
     response: string;
+    imageUrl?: string | null;
   }>;
   onModifyImage: (prompt: string) => Promise<void>;
   onResetModifications: () => void;
@@ -122,19 +123,28 @@ export const ModifyImageStep = ({
       {/* Chat history - occupies 1/3 of the space */}
       <Card className="p-6 overflow-hidden flex flex-col">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">수정 내역</h3>
+          <h3 className="text-lg font-semibold">수정 챗봇</h3>
           
           {modificationHistory.length > 0 ? (
             <div className="overflow-y-auto max-h-[500px] flex flex-col space-y-4 pr-2">
               {modificationHistory.map((entry, index) => (
                 <div key={index} className="space-y-2">
-                  <div className="bg-gray-100 p-3 rounded-lg rounded-br-none">
+                  <div className="bg-gray-100 p-3 rounded-lg rounded-br-none ml-auto max-w-[90%]">
                     <p className="text-sm font-medium">나</p>
-                    <p className="text-sm">{entry.prompt}</p>
+                    <p className="text-sm whitespace-pre-wrap">{entry.prompt}</p>
                   </div>
-                  <div className="bg-brand/10 p-3 rounded-lg rounded-bl-none">
+                  <div className="bg-brand/10 p-3 rounded-lg rounded-bl-none mr-auto max-w-[90%] space-y-2">
                     <p className="text-sm font-medium">AI</p>
                     <p className="text-sm whitespace-pre-wrap">{entry.response}</p>
+                    {entry.imageUrl && (
+                      <div className="mt-2 overflow-hidden rounded-lg border">
+                        <img
+                          src={entry.imageUrl}
+                          alt="수정된 이미지"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
                   </div>
                   {index < modificationHistory.length - 1 && (
                     <Separator className="my-2" />
@@ -144,7 +154,7 @@ export const ModifyImageStep = ({
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
-              아직 수정 내역이、 없습니다
+              아직 수정 내역이 없습니다. 수정 요청을 입력해보세요.
             </div>
           )}
         </div>

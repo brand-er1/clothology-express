@@ -1,12 +1,16 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.3.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const DEFAULT_SYSTEM_PROMPT = `You are a fashion product image prompt writer for a generative model. Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -31,89 +35,95 @@ serve(async (req) => {
 
     if (systemPromptError) throw systemPromptError;
 
-    const systemPrompt = systemPromptData?.[0]?.prompt || `You are a fashion design expert. Convert the given clothing description into a clear, detailed prompt for image generation.
-Guidelines:
-1. Describe the garment type, style, and material in detail
-2. Include color information and any specific design elements
-3. Specify the view (front/back/etc)
-4. Keep the description professional and fashion-focused
-5. Add keywords that enhance image quality
-Format: "Professional fashion photograph of a [garment] in [style and material details]. [Design specifics]. [View angle]. Studio lighting, high resolution, fashion photography."`;
+    const systemPrompt = systemPromptData?.[0]?.prompt || DEFAULT_SYSTEM_PROMPT;
 
     console.log("Using system prompt:", systemPrompt);
 
-    // Step 1: OpenAI를 사용하여 프롬프트 최적화
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-        'Content-Type': 'application/json',
+    // Step 1: 시스템 프롬프트 + 스타일 가이드 + 사용자 입력 결합
+    const stylePrimer = `White background, photorealistic product photo like a real shopping mall listing. No models or mannequins. Show two views in one frame: left = garment front, right = garment back. Clean lighting, no props, no shadows that obscure details. High resolution, ecommerce ready.`;
+    const optimizedPrompt = `${stylePrimer}\n\nSystem guidance:\n${systemPrompt}\n\nUser request:\n${prompt}`;
+
+    // Step 2: Gemini 3 pro image preview로 단일 이미지 생성
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
+    if (!geminiApiKey) {
+      throw new Error("GEMINI_API_KEY is not configured");
+    }
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3-pro-image-preview",
+      generationConfig: {
+        temperature: 0.8,
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: 4096,
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
-      }),
+      // Prefer image modality + text similar to sample
+      responseMimeType: "image/png",
+      responseSchema: undefined,
     });
 
-    const openaiData = await openaiResponse.json();
-    const optimizedPrompt = openaiData.choices[0].message.content;
-    console.log("Optimized prompt:", optimizedPrompt);
-
-    // Step 2: 최적화된 프롬프트로 이미지 생성
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${Deno.env.get('REPLICATE_API_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        version: "091495765fa5ef2725a175a57b276ec30dc9d39c22d30410f2ede68a3eab66b3",
-        input: {
-          prompt: optimizedPrompt,
-          hf_lora: "ccchhhoi/fashion",
-          lora_scale: 0.8,
-          num_outputs: 4, // 1개에서 4개로 변경
-          aspect_ratio: "1:1",
-          output_format: "webp",
-          output_quality: 80,
-          prompt_strength: 0.8,
-          num_inference_steps: 28
-        }
-      }),
-    });
-
-    let prediction = await response.json();
-    console.log("Initial prediction:", prediction);
-
-    // Step 3: 결과 폴링
-    while (prediction.status === "starting" || prediction.status === "processing") {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const pollResponse = await fetch(prediction.urls.get, {
-        headers: {
-          'Authorization': `Token ${Deno.env.get('REPLICATE_API_KEY')}`,
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: optimizedPrompt },
+          ],
         },
-      });
-      prediction = await pollResponse.json();
-      console.log("Polling prediction status:", prediction.status);
+      ],
+    });
+
+    const response = result.response;
+    const parts = response.candidates?.[0]?.content?.parts || [];
+
+    const imagePart = parts.find((part: any) => part.inlineData);
+    if (!imagePart || !imagePart.inlineData?.data) {
+      throw new Error("Gemini did not return an image");
     }
 
-    if (prediction.status === "succeeded") {
-      console.log("Image generation succeeded:", prediction.output);
-      return new Response(
-        JSON.stringify({
-          optimizedPrompt,
-          imageUrls: prediction.output, // 단일 이미지 대신 배열 반환
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    } else {
-      throw new Error("Image generation failed");
+    const base64Image = imagePart.inlineData.data;
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+
+    // Base64 -> Uint8Array
+    const binaryString = atob(base64Image);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
     }
+
+    // 업로드
+    const fileName = `${crypto.randomUUID()}.png`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("generated_images")
+      .upload(fileName, bytes, {
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("generated_images")
+      .getPublicUrl(uploadData?.path || fileName);
+
+    const publicUrl = publicUrlData?.publicUrl;
+
+    if (!publicUrl) {
+      throw new Error("Failed to generate public URL for generated image");
+    }
+
+    return new Response(
+      JSON.stringify({
+        optimizedPrompt,
+        imageUrls: [publicUrl],
+        imagePaths: [uploadData?.path || fileName],
+        storedImageUrls: [publicUrl],
+        alreadyStored: true,
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
 
   } catch (error) {
     console.error('Error:', error);

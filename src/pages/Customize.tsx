@@ -13,8 +13,8 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { TOTAL_STEPS } from "@/lib/customize-constants";
 
-const TOTAL_STEPS = 6; // Updated from 5 to 6 to include the new modification step
 
 const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");

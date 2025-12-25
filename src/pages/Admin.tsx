@@ -10,8 +10,10 @@ import { OrderList } from "@/components/admin/OrderList";
 import { OrderReviewDialog } from "@/components/admin/OrderReviewDialog";
 import { type Order } from "@/types/order";
 
+const DEFAULT_SYSTEM_PROMPT = `You are a fashion product image prompt writer for a generative model. Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
+
 const Admin = () => {
-  const [systemPrompt, setSystemPrompt] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const { isAdmin, isLoading: isCheckingAdmin } = useAdmin();
@@ -72,6 +74,8 @@ const Admin = () => {
 
       if (data && data.length > 0) {
         setSystemPrompt(data[0].prompt);
+      } else {
+        setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
       }
     } catch (error) {
       console.error('Error loading system prompt:', error);

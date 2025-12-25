@@ -47,10 +47,7 @@ export const createDraftOrder = async (
     // Append modification history if any
     if (modificationHistory && modificationHistory.length > 0) {
       const historyText = modificationHistory
-        .map((entry, idx) => {
-          const img = entry.imageUrl ? ` | image: ${entry.imageUrl}` : '';
-          return `#${idx + 1} ${entry.prompt}${img}`;
-        })
+        .map((entry, idx) => `#${idx + 1} ${entry.prompt}`)
         .join('\n');
       detailDesc += (detailDesc ? '\n\n' : '') + `수정 이력:\n${historyText}`;
     }
@@ -134,10 +131,7 @@ export const createOrder = async (
     // Append modification history if any
     if (modificationHistory && modificationHistory.length > 0) {
       const historyText = modificationHistory
-        .map((entry, idx) => {
-          const img = entry.imageUrl ? ` | image: ${entry.imageUrl}` : '';
-          return `#${idx + 1} ${entry.prompt}${img}`;
-        })
+        .map((entry, idx) => `#${idx + 1} ${entry.prompt}`)
         .join('\n');
       detailDesc += (detailDesc ? '\n\n' : '') + `수정 이력:\n${historyText}`;
     }

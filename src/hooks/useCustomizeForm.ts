@@ -47,6 +47,7 @@ export const useCustomizeForm = () => {
   // New state for image modification
   const [imageModifying, setImageModifying] = useState(false);
   const [modificationHistory, setModificationHistory] = useState<Array<{prompt: string, response: string, imageUrl?: string | null, imagePath?: string | null}>>([]);
+  const [activeHistory, setActiveHistory] = useState<Array<{prompt: string, response: string, imageUrl?: string | null, imagePath?: string | null}>>([]);
   const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
 
   const validateCurrentStep = () => {
@@ -244,12 +245,20 @@ export const useCustomizeForm = () => {
         setImagePath(newImagePath);
       }
       
-      setModificationHistory(prev => [...prev, {
+      const newEntry = {
         prompt,
         response: textResponse,
         imageUrl: newImageUrl || null,
         imagePath: newImagePath || null,
-      }]);
+      };
+
+      setModificationHistory(prev => [...prev, newEntry]);
+
+      // Build active path based on currently selected path (or full history if none)
+      setActiveHistory(prev => {
+        const basePath = prev.length ? prev : modificationHistory;
+        return [...basePath.slice(0, basePath.length), newEntry];
+      });
       
       toast({
         title: "이미지 수정 완료",
@@ -282,9 +291,8 @@ export const useCustomizeForm = () => {
 
   const handleSelectHistoryImage = (imageUrl: string | null, imagePath?: string | null, index?: number) => {
     if (!imageUrl) return;
-    // Trim history up to the selected entry to reflect branching
     if (typeof index === "number" && index >= 0) {
-      setModificationHistory(prev => prev.slice(0, index + 1));
+      setActiveHistory(modificationHistory.slice(0, index + 1));
     }
     setCurrentModifiedImageUrl(imageUrl);
     setStoredImageUrl(imageUrl);
@@ -373,7 +381,7 @@ export const useCustomizeForm = () => {
         finalImagePath,
         materials,
         sizeTableData,
-        modificationHistory
+        activeHistory.length ? activeHistory : modificationHistory
       );
       
       if (result && result.redirectToConfirmation) {

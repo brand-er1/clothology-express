@@ -293,19 +293,20 @@ export const useCustomizeForm = () => {
     try {
       setIsLoading(true);
       
-      if (selectedImageIndex === -1 || !generatedImageUrls) {
+      if (!generatedImageUrls || generatedImageUrls.length === 0) {
         toast({
           title: "이미지 선택 필요",
-          description: "주문하기 전에 이미지를 선택해주세요.",
+          description: "주문하기 전에 이미지를 생성해주세요.",
           variant: "destructive",
         });
         return;
       }
       
-      const selectedImageUrl = generatedImageUrls[selectedImageIndex];
+      const selectedImageUrl = currentModifiedImageUrl || generatedImageUrls[selectedImageIndex >= 0 ? selectedImageIndex : 0];
       
       let finalImageUrl = selectedImageUrl;
-      let finalImagePath = null;
+      let finalImagePath = imagePath;
+      const selectedIdx = selectedImageIndex >= 0 ? selectedImageIndex : 0;
       
       try {
         console.log("Storing selected image before creating order...");
@@ -315,12 +316,12 @@ export const useCustomizeForm = () => {
           selectedMaterial,
           selectedDetail,
           selectedImageUrl,
-          storedImageUrl,
+          currentModifiedImageUrl || storedImageUrl,
           imagePath,
           generatedImageUrls,
           storedImageUrls,
           imagePaths,
-          selectedImageIndex,
+          selectedIdx,
           generatedPrompt,
           materials,
           true

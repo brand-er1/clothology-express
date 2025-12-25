@@ -58,7 +58,9 @@ serve(async (req) => {
       const { error: updateError } = await supabase
         .from('generated_images')
         .update({ 
-          is_selected: true
+          is_selected: true,
+          stored_image_url: storedImageUrl || null,
+          image_path: imagePath || null
         })
         .eq('user_id', userId)
         .eq('prompt', prompt)

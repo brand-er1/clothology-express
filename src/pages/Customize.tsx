@@ -141,12 +141,21 @@ const Customize = () => {
                   이전
                 </Button>
               )}
-              <Button
-                onClick={handleNext}
-                className="w-full bg-brand hover:bg-brand-dark"
-              >
-                {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
-              </Button>
+              {currentStep === 4 ? (
+                <Button
+                  onClick={handleNext}
+                  className="w-full bg-brand hover:bg-brand-dark"
+                >
+                  수정하기
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  className="w-full bg-brand hover:bg-brand-dark"
+                >
+                  {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
+                </Button>
+              )}
             </div>
           )}
 
@@ -260,12 +269,21 @@ const Customize = () => {
             )}
             {isMobile ? null : <div className="flex-1" />}
             {!isMobile && (
-              <Button
-                onClick={handleNext}
-                className="bg-brand hover:bg-brand-dark"
-              >
-                {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
-              </Button>
+              currentStep === 4 ? (
+                <Button
+                  onClick={handleNext}
+                  className="bg-brand hover:bg-brand-dark"
+                >
+                  수정하기
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  className="bg-brand hover:bg-brand-dark"
+                >
+                  {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
+                </Button>
+              )
             )}
           </div>
         </div>

@@ -51,7 +51,7 @@ export const ImageStep = ({
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">이미지 생성</h3>
           <p className="text-sm text-gray-500">
-            선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다. 마음에 드는 이미지를 선택하세요.
+            선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다. 다음 단계에서 디테일하게 디자인을 수정할 수 있습니다.
           </p>
           
           {isLoading && !generatedImageUrls ? (

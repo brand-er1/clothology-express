@@ -56,7 +56,13 @@ serve(async (req) => {
     
     const imageBlob = await imageResponse.blob();
     const imageArrayBuffer = await imageBlob.arrayBuffer();
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+    // Avoid spreading large Uint8Arrays (can cause call stack errors)
+    const bytes = new Uint8Array(imageArrayBuffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64Image = btoa(binary);
     
     // Create a detailed prompt for the AI
     const fullPrompt = `

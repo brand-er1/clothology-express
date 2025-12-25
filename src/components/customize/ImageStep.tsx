@@ -74,11 +74,11 @@ export const ImageStep = ({
                     onClick={() => onSelectImage(index)}
                   >
                     {!imageErrors[index] ? (
-                      <div className="aspect-square relative">
+                      <div className="relative w-full min-h-[260px] sm:min-h-[320px] max-h-[420px] bg-gray-50 flex items-center justify-center">
                         <img
                           src={storedImageUrls && storedImageUrls[index] ? storedImageUrls[index] : imageUrl}
                           alt={`Generated clothing design ${index + 1}`}
-                          className="w-full h-full object-cover object-center"
+                          className="max-h-[420px] w-full h-full object-contain object-center"
                           onLoad={() => console.log(`Image ${index + 1} loaded successfully`)}
                           onError={() => {
                             console.error(`Image ${index + 1} loading error:`, imageUrl);
@@ -96,7 +96,7 @@ export const ImageStep = ({
                         )}
                       </div>
                     ) : (
-                      <div className="aspect-square bg-gray-100 flex flex-col items-center justify-center">
+                      <div className="w-full min-h-[260px] sm:min-h-[320px] max-h-[420px] bg-gray-100 flex flex-col items-center justify-center">
                         <ImageOff className="w-8 h-8 text-gray-400 mb-2" />
                         <p className="text-sm text-gray-500">이미지를 불러올 수 없습니다</p>
                       </div>

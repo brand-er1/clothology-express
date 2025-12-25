@@ -60,12 +60,12 @@ export const ModifyImageStep = ({
           </p>
           
           <div className="flex flex-col items-center space-y-4">
-            <div className="relative w-full max-w-md aspect-square border rounded-md overflow-hidden">
+            <div className="relative w-full max-w-xl min-h-[260px] sm:min-h-[320px] max-h-[480px] border rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
               {selectedImageUrl && !imageError ? (
                 <img
                   src={selectedImageUrl}
                   alt="Selected clothing design"
-                  className="w-full h-full object-cover"
+                  className="max-h-[480px] w-full h-full object-contain"
                   onError={() => setImageError(true)}
                 />
               ) : (

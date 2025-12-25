@@ -72,11 +72,6 @@ serve(async (req) => {
     
     console.log("Sending prompt to Gemini:", fullPrompt);
     
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
-    if (!geminiApiKey) {
-      throw new Error("GEMINI_API_KEY is not configured");
-    }
-
     const geminiResp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${geminiApiKey}`,
       {

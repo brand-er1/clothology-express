@@ -10,7 +10,7 @@ import { OrderList } from "@/components/admin/OrderList";
 import { OrderReviewDialog } from "@/components/admin/OrderReviewDialog";
 import { type Order } from "@/types/order";
 
-const DEFAULT_SYSTEM_PROMPT = `You are a fashion product image prompt writer for a generative model. Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
+const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
 const Admin = () => {
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);

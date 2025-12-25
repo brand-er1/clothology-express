@@ -3,7 +3,6 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.3.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,41 +47,75 @@ serve(async (req) => {
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3-pro-image-preview",
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.9,
-        topK: 40,
-        maxOutputTokens: 4096,
-      },
-      // Prefer image modality + text similar to sample
-      responseMimeType: "image/png",
-      responseSchema: undefined,
-    });
 
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: optimizedPrompt },
+    // Call Gemini 3 image preview via REST streaming endpoint
+    const streamResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:streamGenerateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: optimizedPrompt }],
+            },
           ],
-        },
-      ],
-    });
+          tools: [{ googleSearch: {} }],
+          generationConfig: {
+            responseModalities: ["IMAGE", "TEXT"],
+            responseMimeType: "image/png",
+            imageConfig: { imageSize: "1K" },
+          },
+        }),
+      },
+    );
 
-    const response = result.response;
-    const parts = response.candidates?.[0]?.content?.parts || [];
-
-    const imagePart = parts.find((part: any) => part.inlineData);
-    if (!imagePart || !imagePart.inlineData?.data) {
-      throw new Error("Gemini did not return an image");
+    if (!streamResp.body) {
+      throw new Error("No response body from Gemini");
     }
 
-    const base64Image = imagePart.inlineData.data;
-    const mimeType = imagePart.inlineData.mimeType || "image/png";
+    const reader = streamResp.body.getReader();
+    let base64Image = "";
+    let mimeType = "image/png";
+    let textResponse = "";
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const jsonStr = trimmed.slice(5).trim();
+        if (!jsonStr) continue;
+        try {
+          const chunk = JSON.parse(jsonStr);
+          const parts = chunk.candidates?.[0]?.content?.parts || [];
+          for (const part of parts) {
+            if (part.inlineData?.data && !base64Image) {
+              base64Image = part.inlineData.data;
+              mimeType = part.inlineData.mimeType || "image/png";
+            }
+            if (part.text) {
+              textResponse += part.text;
+            }
+          }
+        } catch (_e) {
+          // ignore malformed lines
+        }
+      }
+      if (base64Image) break; // we got an image; stop early
+    }
+
+    if (!base64Image) {
+      throw new Error("Gemini did not return an image");
+    }
 
     // Base64 -> Uint8Array
     const binaryString = atob(base64Image);

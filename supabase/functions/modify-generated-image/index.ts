@@ -2,7 +2,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.3.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,9 +48,6 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Gemini AI
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    
     // Fetch base image
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
@@ -76,43 +72,82 @@ serve(async (req) => {
     
     console.log("Sending prompt to Gemini:", fullPrompt);
     
-    // Build the prompt parts with the image
-    const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType: imageResponse.headers.get("content-type") || "image/jpeg"
-      }
-    };
-    
-    // Use gemini-3-pro-image-preview and generate exactly one image
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3-pro-image-preview",
-      generationConfig: {
-        temperature: 0.9,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 4096,
+    // Call Gemini 3 image preview via REST streaming endpoint with image + text
+    const streamResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:streamGenerateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: fullPrompt },
+                {
+                  inlineData: {
+                    data: base64Image,
+                    mimeType: imageResponse.headers.get("content-type") || "image/jpeg",
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseModalities: ["IMAGE", "TEXT"],
+            responseMimeType: "image/png",
+            imageConfig: { imageSize: "1K" },
+          },
+        }),
       },
-      responseMimeType: "image/png",
-      responseSchema: undefined,
-    });
-    
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: fullPrompt }, imagePart] }],
-    });
-    
-    const response = result.response;
-    const responseText = response.text();
-    
-    const parts = response.candidates?.[0]?.content?.parts;
-    const inlineImagePart = parts?.find((part: any) => part.inlineData);
-    
-    if (!inlineImagePart?.inlineData?.data) {
-      throw new Error("Gemini did not return an image");
+    );
+
+    if (!streamResp.body) {
+      throw new Error("No response body from Gemini");
     }
 
-    const generatedImageBase64 = inlineImagePart.inlineData.data;
-    const mimeType = inlineImagePart.inlineData.mimeType || 'image/jpeg';
+    const reader = streamResp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let generatedImageBase64 = "";
+    let mimeType = "image/png";
+    let responseText = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const jsonStr = trimmed.slice(5).trim();
+        if (!jsonStr) continue;
+        try {
+          const chunk = JSON.parse(jsonStr);
+          const parts = chunk.candidates?.[0]?.content?.parts || [];
+          for (const part of parts) {
+            if (part.inlineData?.data && !generatedImageBase64) {
+              generatedImageBase64 = part.inlineData.data;
+              mimeType = part.inlineData.mimeType || "image/png";
+            }
+            if (part.text) {
+              responseText += part.text;
+            }
+          }
+        } catch (_e) {
+          // ignore malformed lines
+        }
+      }
+
+      if (generatedImageBase64) break;
+    }
+
+    if (!generatedImageBase64) {
+      throw new Error("Gemini did not return an image");
+    }
 
     // Store the image in Supabase Storage
     const binaryString = atob(generatedImageBase64);

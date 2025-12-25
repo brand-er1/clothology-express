@@ -218,6 +218,7 @@ const Customize = () => {
                 modificationHistory={modificationHistory}
                 onModifyImage={handleModifyImage}
                 onResetModifications={handleResetModifications}
+                onSelectHistoryImage={handleSelectHistoryImage}
               />
             )}
 

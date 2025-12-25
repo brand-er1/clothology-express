@@ -14,9 +14,11 @@ interface ModifyImageStepProps {
     prompt: string;
     response: string;
     imageUrl?: string | null;
+    imagePath?: string | null;
   }>;
   onModifyImage: (prompt: string) => Promise<void>;
   onResetModifications: () => void;
+  onSelectHistoryImage: (imageUrl: string | null, imagePath?: string | null) => void;
 }
 
 export const ModifyImageStep = ({
@@ -25,6 +27,7 @@ export const ModifyImageStep = ({
   modificationHistory,
   onModifyImage,
   onResetModifications,
+  onSelectHistoryImage,
 }: ModifyImageStepProps) => {
   const [modificationPrompt, setModificationPrompt] = useState("");
   const [imageError, setImageError] = useState(false);
@@ -141,8 +144,19 @@ export const ModifyImageStep = ({
                         <img
                           src={entry.imageUrl}
                           alt="수정된 이미지"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={() => onSelectHistoryImage(entry.imageUrl, entry.imagePath)}
                         />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 w-full"
+                          onClick={() => onSelectHistoryImage(entry.imageUrl, entry.imagePath)}
+                          disabled={isLoading}
+                        >
+                          이 이미지로 계속 수정
+                        </Button>
                       </div>
                     )}
                   </div>

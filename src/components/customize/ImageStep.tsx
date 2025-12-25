@@ -17,7 +17,6 @@ interface ImageStepProps {
   selectedPocket?: string;
   selectedFit?: string;
   onGenerateImage: () => void;
-  onSelectImage: (index: number) => void;
 }
 
 export const ImageStep = ({
@@ -33,7 +32,6 @@ export const ImageStep = ({
   selectedPocket,
   selectedFit,
   onGenerateImage,
-  onSelectImage,
 }: ImageStepProps) => {
   const [imageErrors, setImageErrors] = useState<boolean[]>([]);
   
@@ -69,9 +67,7 @@ export const ImageStep = ({
                 {generatedImageUrls.map((imageUrl, index) => (
                   <div 
                     key={index}
-                    className={`relative border-2 rounded-lg cursor-pointer overflow-hidden transition-all
-                      ${selectedImageIndex === index ? 'border-brand shadow-lg scale-[1.02]' : 'border-gray-200 hover:border-gray-300'}`}
-                    onClick={() => onSelectImage(index)}
+                    className="relative border-2 rounded-lg overflow-hidden transition-all border-gray-200"
                   >
                     {!imageErrors[index] ? (
                       <div className="relative w-full min-h-[260px] sm:min-h-[320px] max-h-[420px] bg-gray-50 flex items-center justify-center">

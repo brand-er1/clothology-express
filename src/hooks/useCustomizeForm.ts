@@ -46,7 +46,7 @@ export const useCustomizeForm = () => {
   
   // New state for image modification
   const [imageModifying, setImageModifying] = useState(false);
-  const [modificationHistory, setModificationHistory] = useState<Array<{prompt: string, response: string, imageUrl?: string | null}>>([]);
+  const [modificationHistory, setModificationHistory] = useState<Array<{prompt: string, response: string, imageUrl?: string | null, imagePath?: string | null}>>([]);
   const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
 
   const validateCurrentStep = () => {
@@ -76,14 +76,6 @@ export const useCustomizeForm = () => {
           toast({
             title: "이미지 필요",
             description: "이미지를 생성해주세요.",
-            variant: "destructive",
-          });
-          return false;
-        }
-        if (selectedImageIndex === -1) {
-          toast({
-            title: "이미지 선택 필요",
-            description: "생성된 이미지 중 하나를 선택해주세요.",
             variant: "destructive",
           });
           return false;
@@ -173,24 +165,9 @@ export const useCustomizeForm = () => {
     }
   };
 
-  const handleSelectImage = (index: number) => {
-    if (!generatedImageUrls || index >= generatedImageUrls.length) return;
-    
-    setSelectedImageIndex(index);
-    
-    if (storedImageUrls && storedImageUrls[index]) {
-      setStoredImageUrl(storedImageUrls[index]);
-      setCurrentModifiedImageUrl(storedImageUrls[index]);
-    } else {
-      setStoredImageUrl(null);
-      setCurrentModifiedImageUrl(null);
-    }
-    
-    if (imagePaths && imagePaths[index]) {
-      setImagePath(imagePaths[index]);
-    } else {
-      setImagePath(null);
-    }
+  const handleSelectImage = (_index: number) => {
+    // Selection disabled; we auto-use the first/only image.
+    return;
   };
 
   const handleModifyImage = async (prompt: string) => {
@@ -271,6 +248,7 @@ export const useCustomizeForm = () => {
         prompt,
         response: textResponse,
         imageUrl: newImageUrl || null,
+        imagePath: newImagePath || null,
       }]);
       
       toast({
@@ -300,6 +278,15 @@ export const useCustomizeForm = () => {
       title: "수정 내역 초기화",
       description: "이미지가 원래 상태로 복원되었습니다.",
     });
+  };
+
+  const handleSelectHistoryImage = (imageUrl: string | null, imagePath?: string | null) => {
+    if (!imageUrl) return;
+    setCurrentModifiedImageUrl(imageUrl);
+    setStoredImageUrl(imageUrl);
+    if (imagePath) {
+      setImagePath(imagePath);
+    }
   };
 
   const handleCreateOrder = async () => {
@@ -483,5 +470,6 @@ export const useCustomizeForm = () => {
     currentModifiedImageUrl,
     handleModifyImage,
     handleResetModifications,
+    handleSelectHistoryImage,
   };
 };

@@ -78,7 +78,7 @@ serve(async (req) => {
     }
 
     const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${geminiApiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,7 +99,6 @@ serve(async (req) => {
           ],
           generationConfig: {
             responseModalities: ["IMAGE", "TEXT"],
-            responseMimeType: "image/png",
             imageConfig: { imageSize: "1K" },
           },
         }),

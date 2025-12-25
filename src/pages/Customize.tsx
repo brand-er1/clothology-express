@@ -74,6 +74,7 @@ const Customize = () => {
     currentModifiedImageUrl,
     handleModifyImage,
     handleResetModifications,
+    handleSelectHistoryImage,
   } = useCustomizeForm();
 
   // 사용자 정보 가져오기

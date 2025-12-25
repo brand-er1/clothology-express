@@ -37,8 +37,6 @@ serve(async (req) => {
       generationPrompt,  // This should be the optimized prompt from GPT
       isSelected, // This will be undefined during initial generation, set only when ordering
       saveOnlySelected = false, // Flag to indicate if we're saving during generation or order
-      modifiedImageUrl, // New field to store the modified image URL if available
-      modificationPrompt, // New field to store the modification prompt if provided
     } = requestData;
 
     // Validate inputs
@@ -60,9 +58,7 @@ serve(async (req) => {
       const { error: updateError } = await supabase
         .from('generated_images')
         .update({ 
-          is_selected: true,
-          modified_image_url: modifiedImageUrl || null,
-          modification_prompt: modificationPrompt || null
+          is_selected: true
         })
         .eq('user_id', userId)
         .eq('prompt', prompt)
@@ -78,18 +74,7 @@ serve(async (req) => {
       }
       
       // Reset all other images for this generation to not selected
-      const { error: resetError } = await supabase
-        .from('generated_images')
-        .update({ is_selected: false })
-        .eq('user_id', userId)
-        .eq('prompt', prompt)
-        .eq('material', material)
-        .neq('original_image_url', originalImageUrls[isSelected]);
-      
-      if (resetError) {
-        console.log("Warning: Failed to reset other images:", resetError);
-        // Continue anyway as the main selection was successful
-      }
+      // For now skip resetting others (single image flow)
       
       return new Response(
         JSON.stringify({ success: true, message: "Selected image updated successfully" }),
@@ -126,9 +111,7 @@ serve(async (req) => {
           detail: detailDescription,
           created_at: new Date().toISOString(),
           generation_prompt: generationPrompt || prompt, // Fallback to original prompt if optimized isn't provided
-          is_selected: false, // All images start as not selected
-          modified_image_url: null, // No modified image initially
-          modification_prompt: null // No modification prompt initially
+          is_selected: index === 0 // single image flow: first is selected
         })
         .select();
 

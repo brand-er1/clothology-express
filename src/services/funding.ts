@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import type {
   CreateFundingInput,
   Funding,
+  KakaoPayReadyResult,
+  MyFundingParticipation,
   FundingParticipation,
   FundingParticipationStatus,
   FundingStatus,
@@ -87,23 +89,17 @@ export const updateFunding = async (
     "product_name" | "description" | "moq" | "price" | "funding_days" | "color_options" | "size_options"
   >
 ): Promise<Funding> => {
-  const user = await requireUser();
-  const { data, error } = await supabase
-    .from("fundings")
-    .update({
-      ...updates,
-      moq: Math.max(20, updates.moq),
-      status: "pending",
-      admin_comment: null,
-      reviewed_at: null,
-      reviewed_by: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .eq("creator_id", user.id)
-    .in("status", ["pending", "rejected"])
-    .select("*")
-    .single();
+  await requireUser();
+  const { data, error } = await supabase.rpc("update_creator_funding", {
+    p_funding_id: id,
+    p_product_name: updates.product_name,
+    p_description: updates.description,
+    p_moq: Math.max(20, updates.moq),
+    p_price: updates.price,
+    p_funding_days: updates.funding_days,
+    p_color_options: updates.color_options,
+    p_size_options: updates.size_options,
+  });
 
   if (error) throw error;
   return data as Funding;
@@ -139,22 +135,61 @@ export const reviewFunding = async (
   if (error) throw error;
 };
 
-export const participateInFunding = async (
+const invokeKakaoPay = async <T>(body: Record<string, unknown>): Promise<T> => {
+  await requireUser();
+  const { data, error } = await supabase.functions.invoke("kakaopay-payment", { body });
+
+  if (error) {
+    let message = error.message;
+    const context = (error as { context?: Response }).context;
+    if (context) {
+      try {
+        const payload = await context.clone().json();
+        message = payload.error || message;
+      } catch {
+        // Supabase's default error message is used when the body is not JSON.
+      }
+    }
+    throw new Error(message);
+  }
+
+  return data as T;
+};
+
+export const startKakaoPayFunding = async (
   fundingId: string,
   color: string,
   size: string,
   quantity: number
-): Promise<string> => {
-  await requireUser();
-  const { data, error } = await supabase.rpc("participate_in_funding", {
-    p_funding_id: fundingId,
-    p_color: color,
-    p_size: size,
-    p_quantity: quantity,
+): Promise<KakaoPayReadyResult> => invokeKakaoPay<KakaoPayReadyResult>({
+  action: "ready",
+  fundingId,
+  color,
+  size,
+  quantity,
+});
+
+export const approveKakaoPayFunding = async (
+  participationId: string,
+  pgToken: string
+): Promise<void> => {
+  await invokeKakaoPay({
+    action: "approve",
+    participationId,
+    pgToken,
   });
+};
+
+export const cancelFundingParticipation = async (participationId: string): Promise<void> => {
+  await invokeKakaoPay({ action: "cancel", participationId });
+};
+
+export const fetchMyFundingParticipations = async (): Promise<MyFundingParticipation[]> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_my_funding_participations");
 
   if (error) throw error;
-  return data as string;
+  return (data || []) as MyFundingParticipation[];
 };
 
 export const fetchFundingParticipants = async (fundingId: string): Promise<FundingParticipation[]> => {

@@ -10,10 +10,8 @@ import { useAddressSearch } from "@/hooks/useAddressSearch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Info } from "lucide-react";
-import { useLocation } from "react-router-dom";
 
 const Auth = () => {
-  const location = useLocation();
   const {
     isLoading,
     isSignUp,

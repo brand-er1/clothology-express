@@ -20,6 +20,14 @@ export type Database = {
           funding_id: string
           id: string
           participant_id: string
+          partner_order_id: string | null
+          payment_approved_at: string | null
+          payment_cancelled_at: string | null
+          payment_method_type: string | null
+          payment_payload: Json | null
+          payment_provider: string
+          payment_status: string
+          payment_tid: string | null
           quantity: number
           selected_color: string
           selected_size: string
@@ -33,6 +41,14 @@ export type Database = {
           funding_id: string
           id?: string
           participant_id: string
+          partner_order_id?: string | null
+          payment_approved_at?: string | null
+          payment_cancelled_at?: string | null
+          payment_method_type?: string | null
+          payment_payload?: Json | null
+          payment_provider?: string
+          payment_status?: string
+          payment_tid?: string | null
           quantity: number
           selected_color: string
           selected_size: string
@@ -46,6 +62,14 @@ export type Database = {
           funding_id?: string
           id?: string
           participant_id?: string
+          partner_order_id?: string | null
+          payment_approved_at?: string | null
+          payment_cancelled_at?: string | null
+          payment_method_type?: string | null
+          payment_payload?: Json | null
+          payment_provider?: string
+          payment_status?: string
+          payment_tid?: string | null
           quantity?: number
           selected_color?: string
           selected_size?: string
@@ -327,6 +351,47 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_funding_payment: {
+        Args: {
+          p_color: string
+          p_funding_id: string
+          p_quantity: number
+          p_size: string
+        }
+        Returns: {
+          item_name: string
+          participation_id: string
+          partner_order_id: string
+          partner_user_id: string
+          total_amount: number
+        }[]
+      }
+      fail_funding_payment: {
+        Args: {
+          p_error_payload: Json
+          p_participation_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      finalize_funding_cancellation: {
+        Args: {
+          p_participation_id: string
+          p_payment_payload: Json
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      finalize_funding_payment: {
+        Args: {
+          p_approved_at: string
+          p_participation_id: string
+          p_payment_method_type: string
+          p_payment_payload: Json
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       get_funding_participants: {
         Args: { p_funding_id: string }
         Returns: {
@@ -334,7 +399,35 @@ export type Database = {
           id: string
           participant_id: string
           participant_name: string
+          payment_approved_at: string
+          payment_cancelled_at: string
+          payment_provider: string
+          payment_status: string
           phone_number: string
+          quantity: number
+          selected_color: string
+          selected_size: string
+          status: string
+          total_amount: number
+          unit_price: number
+        }[]
+      }
+      get_my_funding_participations: {
+        Args: never
+        Returns: {
+          created_at: string
+          creator_id: string
+          funding_id: string
+          funding_status: string
+          id: string
+          image_url: string
+          participant_id: string
+          payment_approved_at: string
+          payment_cancelled_at: string
+          payment_method_type: string
+          payment_provider: string
+          payment_status: string
+          product_name: string
           quantity: number
           selected_color: string
           selected_size: string

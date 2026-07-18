@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { fetchFunding, participateInFunding } from "@/services/funding";
+import { fetchFunding, startKakaoPayFunding } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   SquarePen,
   Users,
+  WalletCards,
 } from "lucide-react";
 
 const FundingDetail = () => {
@@ -95,13 +96,14 @@ const FundingDetail = () => {
 
     setSubmitting(true);
     try {
-      await participateInFunding(id, selectedColor, selectedSize, quantity);
-      setFunding({ ...funding, current_orders: funding.current_orders + quantity });
-      toast({
-        title: "펀딩 참여가 완료되었습니다",
-        description: `${selectedColor} · ${selectedSize} · ${quantity}장으로 참여했습니다.`,
-      });
-      setQuantity(1);
+      const payment = await startKakaoPayFunding(id, selectedColor, selectedSize, quantity);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const redirectUrl = isMobile
+        ? payment.next_redirect_mobile_url || payment.next_redirect_pc_url
+        : payment.next_redirect_pc_url || payment.next_redirect_mobile_url;
+
+      if (!redirectUrl) throw new Error("카카오페이 결제창을 열 수 없습니다.");
+      window.location.assign(redirectUrl);
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.";
@@ -228,12 +230,13 @@ const FundingDetail = () => {
                 <strong className="text-2xl">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "가격 준비 중"}</strong>
               </div>
               <Button disabled={isPreview || !funding.price || submitting} onClick={handleParticipate}
-                className="h-14 w-full rounded-full bg-brand text-base hover:bg-brand-dark">
+                className="h-14 w-full rounded-full bg-[#FEE500] text-base font-bold text-[#191919] hover:bg-[#f5dc00]">
                 {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                {isPreview ? "관리자 승인 대기 중" : currentUserId ? "선택한 옵션으로 펀딩 참여" : "로그인하고 펀딩 참여"}
+                {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
+                {isPreview ? "관리자 승인 대기 중" : submitting ? "카카오페이 결제창 여는 중" : currentUserId ? "카카오페이로 펀딩 참여" : "로그인하고 펀딩 참여"}
               </Button>
               <p className="flex items-center justify-center text-xs text-gray-400">
-                <ShieldCheck className="mr-1 h-4 w-4" /> 로그인한 회원만 참여할 수 있으며 목표 미달 시 제작되지 않습니다.
+                <ShieldCheck className="mr-1 h-4 w-4" /> 결제가 완료된 수량만 펀딩에 반영되며 내 펀딩에서 취소할 수 있습니다.
               </p>
             </div>
           </div>

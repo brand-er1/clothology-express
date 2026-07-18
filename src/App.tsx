@@ -13,6 +13,8 @@ import Fundings from './pages/Fundings';
 import FundingDetail from './pages/FundingDetail';
 import FundingEditor from './pages/FundingEditor';
 import FundingManager from './pages/FundingManager';
+import MyFundingParticipations from './pages/MyFundingParticipations';
+import KakaoPayResult from './pages/KakaoPayResult';
 import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
@@ -22,7 +24,10 @@ import { useIsMobile } from './hooks/use-mobile';
 // Kakao 타입 선언
 declare global {
   interface Window {
-    Kakao: any;
+    Kakao: {
+      init: (apiKey: string) => void;
+      isInitialized: () => boolean;
+    };
   }
 }
 
@@ -141,7 +146,7 @@ function App() {
       document.body.removeChild(script);
       window.removeEventListener('message', handleParentMessage);
     };
-  }, [isMobile]);
+  }, [isMobile, isKakaoInitialized]);
 
   return (
     <div className={isMobile ? 'mobile-view' : 'desktop-view'}>
@@ -157,6 +162,10 @@ function App() {
           <Route path="/fundings/:id" element={<FundingDetail />} />
           <Route path="/fundings/:id/edit" element={<AuthGuard><FundingEditor /></AuthGuard>} />
           <Route path="/fundings/:id/manage" element={<AuthGuard><FundingManager /></AuthGuard>} />
+          <Route path="/my-fundings" element={<AuthGuard><MyFundingParticipations /></AuthGuard>} />
+          <Route path="/payment/success" element={<AuthGuard><KakaoPayResult kind="success" /></AuthGuard>} />
+          <Route path="/payment/cancel" element={<AuthGuard><KakaoPayResult kind="cancel" /></AuthGuard>} />
+          <Route path="/payment/fail" element={<AuthGuard><KakaoPayResult kind="fail" /></AuthGuard>} />
           <Route path="/orders" element={<AuthGuard><Orders /></AuthGuard>} />
           <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />

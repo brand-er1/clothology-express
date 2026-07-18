@@ -47,3 +47,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.modify-generated-image]
 verify_jwt = true
+[functions.kakaopay-payment]
+verify_jwt = true

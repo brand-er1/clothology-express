@@ -23,6 +23,14 @@ const statusLabel: Record<FundingParticipationStatus, string> = {
   fulfilled: "처리 완료",
 };
 
+const paymentLabel: Record<FundingParticipation["payment_status"], string> = {
+  unpaid: "기존 참여",
+  ready: "결제 중",
+  paid: "결제 완료",
+  cancelled: "환불 완료",
+  failed: "결제 실패",
+};
+
 const FundingManager = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -58,7 +66,9 @@ const FundingManager = () => {
   }, [load]);
 
   const activeParticipants = useMemo(
-    () => participants.filter((item) => item.status !== "cancelled"),
+    () => participants.filter((item) =>
+      item.status !== "cancelled" && !["ready", "cancelled", "failed"].includes(item.payment_status)
+    ),
     [participants]
   );
   const totalQuantity = activeParticipants.reduce((sum, item) => sum + item.quantity, 0);
@@ -181,6 +191,7 @@ const FundingManager = () => {
                         <TableHead>선택 옵션</TableHead>
                         <TableHead>수량</TableHead>
                         <TableHead>금액</TableHead>
+                        <TableHead>결제</TableHead>
                         <TableHead>참여일</TableHead>
                         <TableHead className="min-w-36">상태</TableHead>
                       </TableRow>
@@ -193,9 +204,14 @@ const FundingManager = () => {
                           <TableCell>{item.selected_color} · {item.selected_size}</TableCell>
                           <TableCell>{item.quantity}장</TableCell>
                           <TableCell>{item.total_amount.toLocaleString("ko-KR")}원</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={item.payment_status === "paid" ? "bg-emerald-100 text-emerald-800" : ""}>
+                              {paymentLabel[item.payment_status]}
+                            </Badge>
+                          </TableCell>
                           <TableCell>{new Date(item.created_at).toLocaleDateString("ko-KR")}</TableCell>
                           <TableCell>
-                            <Select value={item.status} disabled={updatingId === item.id}
+                            <Select value={item.status} disabled={updatingId === item.id || ["ready", "failed", "cancelled"].includes(item.payment_status)}
                               onValueChange={(value) => changeStatus(item.id, value as FundingParticipationStatus)}>
                               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                               <SelectContent>

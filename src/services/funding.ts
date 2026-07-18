@@ -195,10 +195,16 @@ export const approveKakaoPayFunding = async (
   invokePaymentFunction("kakaopay-approve", { participationId, pgToken });
 
 export const cancelFundingParticipation = async (
-  participationId: string,
-  reason = "사용자 펀딩 참여 취소"
-): Promise<{ success: boolean; refunded: boolean; funding_id?: string }> =>
-  invokePaymentFunction("kakaopay-cancel", { participationId, reason });
+  participationId: string
+): Promise<{ success: boolean; refunded: boolean; funding_id?: string }> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("cancel_my_funding_participation", {
+    p_participation_id: participationId,
+  });
+
+  if (error) throw error;
+  return { success: true, refunded: false, funding_id: data as string };
+};
 
 export const fetchMyFundingParticipations = async (): Promise<MyFundingParticipation[]> => {
   await requireUser();

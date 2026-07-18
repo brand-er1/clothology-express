@@ -17,6 +17,7 @@ import {
   Package,
   Plus,
   ShieldCheck,
+  SquarePen,
   Users,
 } from "lucide-react";
 
@@ -139,9 +140,14 @@ const FundingDetail = () => {
               <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">작성자 미리보기 · 승인 전 비공개</Badge>
             )}
             {isCreator && (
-              <Button asChild variant="outline" size="sm" className="rounded-full bg-white">
-                <Link to={`/fundings/${funding.id}/manage`}><Users className="mr-1.5 h-4 w-4" /> 참여자 관리</Link>
-              </Button>
+              <>
+                <Button asChild variant="outline" size="sm" className="rounded-full bg-white">
+                  <Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-1.5 h-4 w-4" /> 페이지 수정</Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="rounded-full bg-white">
+                  <Link to={`/fundings/${funding.id}/manage`}><Users className="mr-1.5 h-4 w-4" /> 참여자 관리</Link>
+                </Button>
+              </>
             )}
           </div>
         </div>

@@ -62,6 +62,16 @@ This project is built with .
 
 Simply open [Lovable](https://lovable.dev/projects/a412c583-f150-44a0-83aa-fca5eaa8061f) and click on Share -> Publish.
 
+### KakaoPay funding checkout
+
+The funding checkout uses Supabase Edge Functions so the KakaoPay secret key is never exposed to the browser.
+
+1. Apply `supabase/migrations/20260718020000_add_kakaopay_checkout_and_user_cancellations.sql`.
+2. Add the Supabase secrets `KAKAOPAY_CID`, `KAKAOPAY_SECRET_KEY`, and `APP_URL`.
+3. Deploy `kakaopay-ready`, `kakaopay-approve`, and `kakaopay-cancel`.
+
+`APP_URL` must be the public origin that serves this React app, without a trailing path. KakaoPay setup follows the current JSON API at `https://open-api.kakaopay.com/online/v1/payment/*`.
+
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)

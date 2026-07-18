@@ -1,4 +1,5 @@
 export type FundingStatus = "pending" | "approved" | "rejected" | "closed";
+export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
 
 export type Funding = {
   id: string;
@@ -8,6 +9,8 @@ export type Funding = {
   material: string;
   color: string | null;
   size: string;
+  color_options: string[];
+  size_options: string[];
   measurements: Record<string, string | number> | null;
   image_url: string;
   image_path: string | null;
@@ -33,4 +36,18 @@ export type CreateFundingInput = {
   imageUrl: string;
   imagePath: string | null;
   description: string;
+};
+
+export type FundingParticipation = {
+  id: string;
+  participant_id: string;
+  participant_name: string;
+  phone_number: string | null;
+  selected_color: string;
+  selected_size: string;
+  quantity: number;
+  unit_price: number;
+  total_amount: number;
+  status: FundingParticipationStatus;
+  created_at: string;
 };

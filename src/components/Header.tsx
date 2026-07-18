@@ -48,6 +48,9 @@ export const Header = () => {
           <Link to="/orders">
             <Button variant="ghost">주문 내역</Button>
           </Link>
+          <Link to="/my-fundings">
+            <Button variant="ghost">내 펀딩 참여</Button>
+          </Link>
           {isAdmin && (
             <Link to="/admin">
               <Button variant="ghost">관리자</Button>
@@ -87,6 +90,9 @@ export const Header = () => {
               </Link>
               <Link to="/orders" className="w-full">
                 <Button variant="ghost" className="w-full justify-start">주문 내역</Button>
+              </Link>
+              <Link to="/my-fundings" className="w-full">
+                <Button variant="ghost" className="w-full justify-start">내 펀딩 참여</Button>
               </Link>
               {isAdmin && (
                 <Link to="/admin" className="w-full">

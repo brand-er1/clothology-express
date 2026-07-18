@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/use-toast";
 import {
+  cancelFundingParticipation,
   fetchFunding,
   fetchFundingParticipants,
   updateFundingParticipationStatus,
 } from "@/services/funding";
-import type { Funding, FundingParticipation, FundingParticipationStatus } from "@/types/funding";
+import type { Funding, FundingParticipation, FundingParticipationStatus, FundingPaymentStatus } from "@/types/funding";
 import { ArrowLeft, Loader2, PackageCheck, ShoppingBag, Users, WalletCards } from "lucide-react";
 
 const statusLabel: Record<FundingParticipationStatus, string> = {
@@ -21,6 +22,14 @@ const statusLabel: Record<FundingParticipationStatus, string> = {
   confirmed: "참여 확정",
   cancelled: "취소",
   fulfilled: "처리 완료",
+};
+
+const paymentLabel: Record<FundingPaymentStatus, string> = {
+  unpaid: "기존 참여",
+  ready: "결제 대기",
+  paid: "결제 완료",
+  cancelled: "환불 완료",
+  failed: "결제 실패",
 };
 
 const FundingManager = () => {
@@ -58,7 +67,9 @@ const FundingManager = () => {
   }, [load]);
 
   const activeParticipants = useMemo(
-    () => participants.filter((item) => item.status !== "cancelled"),
+    () => participants.filter((item) =>
+      item.status !== "cancelled" && !["ready", "failed", "cancelled"].includes(item.payment_status)
+    ),
     [participants]
   );
   const totalQuantity = activeParticipants.reduce((sum, item) => sum + item.quantity, 0);
@@ -74,23 +85,34 @@ const FundingManager = () => {
     return Array.from(summary.entries()).sort((a, b) => b[1] - a[1]);
   }, [activeParticipants]);
 
-  const changeStatus = async (participationId: string, status: FundingParticipationStatus) => {
-    setUpdatingId(participationId);
+  const changeStatus = async (item: FundingParticipation, status: FundingParticipationStatus) => {
+    setUpdatingId(item.id);
     try {
-      await updateFundingParticipationStatus(participationId, status);
+      if (status === "cancelled") {
+        const message = item.payment_status === "paid"
+          ? `${item.total_amount.toLocaleString("ko-KR")}원을 카카오페이로 환불하고 참여를 취소하시겠습니까?`
+          : "이 참여 내역을 취소하시겠습니까?";
+        if (!window.confirm(message)) return;
+        await cancelFundingParticipation(item.id);
+      } else {
+        await updateFundingParticipationStatus(item.id, status);
+      }
       setParticipants((current) =>
-        current.map((item) => item.id === participationId ? { ...item, status } : item)
+        current.map((currentItem) => currentItem.id === item.id
+          ? { ...currentItem, status, payment_status: status === "cancelled" ? "cancelled" : currentItem.payment_status }
+          : currentItem)
       );
       if (funding) {
-        const item = participants.find((participant) => participant.id === participationId);
-        if (item) {
-          const wasCancelled = item.status === "cancelled";
-          const isCancelled = status === "cancelled";
-          const delta = wasCancelled === isCancelled ? 0 : isCancelled ? -item.quantity : item.quantity;
-          setFunding({ ...funding, current_orders: Math.max(0, funding.current_orders + delta) });
-        }
+        const wasCancelled = item.status === "cancelled";
+        const isCancelled = status === "cancelled";
+        const countedPayment = item.payment_status === "paid" || item.payment_status === "unpaid";
+        const delta = !countedPayment || wasCancelled === isCancelled ? 0 : isCancelled ? -item.quantity : item.quantity;
+        setFunding({ ...funding, current_orders: Math.max(0, funding.current_orders + delta) });
       }
-      toast({ title: "참여 상태를 변경했습니다", description: statusLabel[status] });
+      toast({
+        title: status === "cancelled" && item.payment_status === "paid" ? "카카오페이 환불을 완료했습니다" : "참여 상태를 변경했습니다",
+        description: statusLabel[status],
+      });
     } catch (error) {
       console.error(error);
       toast({ title: "상태를 변경하지 못했습니다", variant: "destructive" });
@@ -181,6 +203,7 @@ const FundingManager = () => {
                         <TableHead>선택 옵션</TableHead>
                         <TableHead>수량</TableHead>
                         <TableHead>금액</TableHead>
+                        <TableHead>결제</TableHead>
                         <TableHead>참여일</TableHead>
                         <TableHead className="min-w-36">상태</TableHead>
                       </TableRow>
@@ -193,10 +216,15 @@ const FundingManager = () => {
                           <TableCell>{item.selected_color} · {item.selected_size}</TableCell>
                           <TableCell>{item.quantity}장</TableCell>
                           <TableCell>{item.total_amount.toLocaleString("ko-KR")}원</TableCell>
+                          <TableCell>
+                            <Badge variant={item.payment_status === "paid" ? "default" : "secondary"}>
+                              {paymentLabel[item.payment_status]}
+                            </Badge>
+                          </TableCell>
                           <TableCell>{new Date(item.created_at).toLocaleDateString("ko-KR")}</TableCell>
                           <TableCell>
-                            <Select value={item.status} disabled={updatingId === item.id}
-                              onValueChange={(value) => changeStatus(item.id, value as FundingParticipationStatus)}>
+                            <Select value={item.status} disabled={updatingId === item.id || item.payment_status === "cancelled"}
+                              onValueChange={(value) => changeStatus(item, value as FundingParticipationStatus)}>
                               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="pledged">참여 접수</SelectItem>

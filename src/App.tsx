@@ -12,6 +12,7 @@ import Admin from './pages/Admin';
 import Fundings from './pages/Fundings';
 import FundingDetail from './pages/FundingDetail';
 import FundingEditor from './pages/FundingEditor';
+import FundingManager from './pages/FundingManager';
 import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
@@ -155,6 +156,7 @@ function App() {
           <Route path="/fundings" element={<Fundings />} />
           <Route path="/fundings/:id" element={<FundingDetail />} />
           <Route path="/fundings/:id/edit" element={<AuthGuard><FundingEditor /></AuthGuard>} />
+          <Route path="/fundings/:id/manage" element={<AuthGuard><FundingManager /></AuthGuard>} />
           <Route path="/orders" element={<AuthGuard><Orders /></AuthGuard>} />
           <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />

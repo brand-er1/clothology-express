@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { fetchFunding, updateFunding } from "@/services/funding";
 import type { Funding } from "@/types/funding";
-import { ArrowLeft, Check, Eye, Loader2, LockKeyhole, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Eye, Loader2, LockKeyhole, Plus, Sparkles, Users, X } from "lucide-react";
 
 const FundingEditor = () => {
   const { id } = useParams();
@@ -18,6 +18,8 @@ const FundingEditor = () => {
   const [funding, setFunding] = useState<Funding | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [newColor, setNewColor] = useState("");
+  const [newSize, setNewSize] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -41,6 +43,14 @@ const FundingEditor = () => {
       toast({ title: "최소 제작 수량은 20장입니다", variant: "destructive" });
       return;
     }
+    if (!funding.color_options?.length) {
+      toast({ title: "컬러를 한 개 이상 추가해주세요", variant: "destructive" });
+      return;
+    }
+    if (!funding.size_options?.length) {
+      toast({ title: "사이즈를 한 개 이상 추가해주세요", variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -50,6 +60,8 @@ const FundingEditor = () => {
         moq: funding.moq,
         price: funding.price,
         funding_days: funding.funding_days,
+        color_options: funding.color_options,
+        size_options: funding.size_options,
       });
       setFunding(updated);
       toast({ title: "펀딩 페이지가 저장되었습니다", description: "현재 관리자 승인 대기 상태입니다." });
@@ -73,6 +85,31 @@ const FundingEditor = () => {
   }
 
   const editable = funding.status === "pending" || funding.status === "rejected";
+  const colors = funding.color_options?.length ? funding.color_options : [funding.color || "기본 색상"];
+  const sizes = funding.size_options?.length ? funding.size_options : [funding.size || "FREE"];
+
+  const addOption = (kind: "color" | "size") => {
+    const rawValue = kind === "color" ? newColor : newSize;
+    const value = rawValue.trim();
+    if (!value) return;
+
+    const key = kind === "color" ? "color_options" : "size_options";
+    const current = kind === "color" ? colors : sizes;
+    if (current.some((option) => option.toLowerCase() === value.toLowerCase())) {
+      toast({ title: "이미 추가된 옵션입니다", variant: "destructive" });
+      return;
+    }
+
+    setFunding({ ...funding, [key]: [...current, value] });
+    if (kind === "color") setNewColor("");
+    else setNewSize("");
+  };
+
+  const removeOption = (kind: "color" | "size", value: string) => {
+    const key = kind === "color" ? "color_options" : "size_options";
+    const current = kind === "color" ? colors : sizes;
+    setFunding({ ...funding, [key]: current.filter((option) => option !== value) });
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f5f2]">
@@ -93,9 +130,14 @@ const FundingEditor = () => {
             <h1 className="text-3xl font-bold tracking-tight md:text-4xl">펀딩 페이지 자동 작성</h1>
             <p className="mt-2 text-gray-500">생성한 이미지와 옵션을 가져왔습니다. 소개 문구와 가격만 확인해주세요.</p>
           </div>
-          <Button asChild variant="outline" className="rounded-full">
-            <Link to={`/fundings/${funding.id}`}><Eye className="mr-2 h-4 w-4" /> 미리보기</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" className="rounded-full">
+              <Link to={`/fundings/${funding.id}`}><Eye className="mr-2 h-4 w-4" /> 미리보기</Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-full">
+              <Link to={`/fundings/${funding.id}/manage`}><Users className="mr-2 h-4 w-4" /> 참여자 관리</Link>
+            </Button>
+          </div>
         </div>
 
         {funding.status === "rejected" && funding.admin_comment && (
@@ -111,9 +153,9 @@ const FundingEditor = () => {
             </div>
             <CardContent className="grid grid-cols-2 gap-4 p-6 text-sm">
               <div><p className="text-gray-400">의류 종류</p><p className="mt-1 font-semibold">{funding.cloth_type}</p></div>
-              <div><p className="text-gray-400">색상</p><p className="mt-1 font-semibold">{funding.color || "미선택"}</p></div>
+              <div><p className="text-gray-400">출시 컬러</p><p className="mt-1 font-semibold">{colors.join(", ")}</p></div>
               <div><p className="text-gray-400">소재</p><p className="mt-1 font-semibold">{funding.material}</p></div>
-              <div><p className="text-gray-400">사이즈</p><p className="mt-1 font-semibold">{funding.size}</p></div>
+              <div><p className="text-gray-400">출시 사이즈</p><p className="mt-1 font-semibold">{sizes.join(", ")}</p></div>
             </CardContent>
           </Card>
 
@@ -135,15 +177,85 @@ const FundingEditor = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">펀딩 소개</Label>
+                <Label htmlFor="description">상품 상세 설명</Label>
                 <Textarea
                   id="description"
                   value={funding.description || ""}
                   disabled={!editable}
                   onChange={(event) => setFunding({ ...funding, description: event.target.value })}
-                  className="min-h-36 resize-none"
-                  placeholder="디자인의 특징과 제작 의도를 소개해주세요."
+                  className="min-h-56 resize-y"
+                  placeholder="디자인 특징, 원단, 핏, 제작 의도, 세탁 방법 등 고객에게 보여줄 상세 내용을 자유롭게 작성해주세요."
                 />
+              </div>
+
+              <div className="grid gap-5 rounded-2xl border bg-stone-50 p-5 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="new-color">출시 컬러</Label>
+                    <p className="mt-1 text-xs text-gray-500">한 펀딩에 여러 컬러를 추가할 수 있습니다.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="new-color"
+                      value={newColor}
+                      disabled={!editable}
+                      onChange={(event) => setNewColor(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addOption("color");
+                        }
+                      }}
+                      placeholder="예: 블랙"
+                      className="h-11"
+                    />
+                    <Button type="button" variant="outline" size="icon" disabled={!editable} onClick={() => addOption("color")}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {colors.map((color) => (
+                      <Badge key={color} variant="secondary" className="gap-1 rounded-full px-3 py-1.5">
+                        {color}
+                        {editable && <button type="button" onClick={() => removeOption("color", color)} aria-label={`${color} 삭제`}><X className="h-3 w-3" /></button>}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="new-size">출시 사이즈</Label>
+                    <p className="mt-1 text-xs text-gray-500">S, M, L처럼 판매할 사이즈를 모두 추가하세요.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="new-size"
+                      value={newSize}
+                      disabled={!editable}
+                      onChange={(event) => setNewSize(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addOption("size");
+                        }
+                      }}
+                      placeholder="예: XL"
+                      className="h-11"
+                    />
+                    <Button type="button" variant="outline" size="icon" disabled={!editable} onClick={() => addOption("size")}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {sizes.map((size) => (
+                      <Badge key={size} variant="secondary" className="gap-1 rounded-full px-3 py-1.5">
+                        {size}
+                        {editable && <button type="button" onClick={() => removeOption("size", size)} aria-label={`${size} 삭제`}><X className="h-3 w-3" /></button>}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">

@@ -56,6 +56,10 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
                   {funding.cloth_type} · MOQ {funding.moq}장
                 </p>
                 <h3 className="line-clamp-1 text-xl font-bold text-gray-950">{funding.product_name}</h3>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                  <span className="rounded-full bg-stone-100 px-2.5 py-1">컬러 {funding.color_options?.length || 1}종</span>
+                  <span className="rounded-full bg-stone-100 px-2.5 py-1">사이즈 {funding.size_options?.length || 1}종</span>
+                </div>
                 <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-gray-500">
                   {funding.description || "AI로 만든 디자인을 실제 제품으로 만나보세요."}
                 </p>

@@ -46,7 +46,7 @@ export const FundingList = ({ fundings, onReview }: { fundings: Funding[]; onRev
                   </TableCell>
                   <TableCell>
                     <p className="max-w-64 truncate font-medium">{funding.product_name}</p>
-                    <p className="text-xs text-gray-500">{funding.cloth_type} · {funding.color || "색상 미선택"}</p>
+                    <p className="text-xs text-gray-500">{funding.cloth_type} · 컬러 {funding.color_options?.length || 1}종 · 사이즈 {funding.size_options?.length || 1}종</p>
                   </TableCell>
                   <TableCell>{funding.moq}장</TableCell>
                   <TableCell>{statusBadge(funding.status)}</TableCell>

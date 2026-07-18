@@ -37,6 +37,10 @@ export const useAuthForm = () => {
     gender: "남성",
   });
   const navigate = useNavigate();
+  const requestedReturnTo = new URLSearchParams(window.location.search).get("returnTo");
+  const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
+    ? requestedReturnTo
+    : "/";
 
   useEffect(() => {
     // Check if we're in an iframe
@@ -119,7 +123,7 @@ export const useAuthForm = () => {
               }
               
               console.log("Successfully set session from poll");
-              navigate("/");
+              navigate(returnTo);
               toast({
                 title: "로그인 성공!",
                 description: "환영합니다.",
@@ -205,7 +209,7 @@ export const useAuthForm = () => {
         setIsSignUp(false);
       } else {
         await handleLogin(formData.email, formData.password);
-        navigate("/");
+        navigate(returnTo);
         toast({
           title: "로그인 성공!",
           description: "환영합니다.",
@@ -275,7 +279,7 @@ export const useAuthForm = () => {
               // Check if session refresh was successful
               const success = await refreshSessionAfterSocialLogin();
               if (success) {
-                navigate("/");
+                navigate(returnTo);
                 toast({
                   title: "로그인 성공!",
                   description: "환영합니다.",
@@ -295,7 +299,7 @@ export const useAuthForm = () => {
                 title: "로그인 성공!",
                 description: "환영합니다.",
               });
-              navigate("/");
+              navigate(returnTo);
             } else {
               toast({
                 title: "로그인 오류",

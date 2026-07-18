@@ -44,6 +44,7 @@ export type FundingParticipation = {
   participant_id: string;
   participant_name: string;
   phone_number: string | null;
+  address: string | null;
   selected_color: string;
   selected_size: string;
   quantity: number;

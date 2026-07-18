@@ -41,8 +41,8 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                 <dl className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-gray-50 p-4 text-sm">
                   <div><dt className="text-gray-400">종류</dt><dd className="mt-1 font-medium">{funding.cloth_type}</dd></div>
                   <div><dt className="text-gray-400">소재</dt><dd className="mt-1 font-medium">{funding.material}</dd></div>
-                  <div><dt className="text-gray-400">색상</dt><dd className="mt-1 font-medium">{funding.color || "-"}</dd></div>
-                  <div><dt className="text-gray-400">사이즈</dt><dd className="mt-1 font-medium">{funding.size}</dd></div>
+                  <div><dt className="text-gray-400">출시 컬러</dt><dd className="mt-1 font-medium">{(funding.color_options?.length ? funding.color_options : [funding.color || "-"]).join(", ")}</dd></div>
+                  <div><dt className="text-gray-400">출시 사이즈</dt><dd className="mt-1 font-medium">{(funding.size_options?.length ? funding.size_options : [funding.size]).join(", ")}</dd></div>
                   <div className="col-span-2"><dt className="text-gray-400">판매가</dt><dd className="mt-1 text-lg font-bold">{funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "미입력"}</dd></div>
                 </dl>
                 <Button asChild variant="outline" className="mt-4 w-full">
@@ -67,7 +67,7 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
           <Button variant="destructive" onClick={() => onReview("rejected", comment)} disabled={saving || !comment.trim()}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}거절하기
           </Button>
-          <Button onClick={() => onReview("approved", comment)} disabled={saving || !funding?.price || (funding?.moq || 0) < 20}
+          <Button onClick={() => onReview("approved", comment)} disabled={saving || !funding?.price || (funding?.moq || 0) < 20 || !funding?.color_options?.length || !funding?.size_options?.length}
             className="bg-brand hover:bg-brand-dark">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}승인하기
           </Button>

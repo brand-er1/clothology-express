@@ -1,5 +1,11 @@
 import { supabase } from "@/lib/supabase";
-import type { CreateFundingInput, Funding, FundingStatus } from "@/types/funding";
+import type {
+  CreateFundingInput,
+  Funding,
+  FundingParticipation,
+  FundingParticipationStatus,
+  FundingStatus,
+} from "@/types/funding";
 
 const requireUser = async () => {
   const { data } = await supabase.auth.getSession();
@@ -22,6 +28,8 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       material: input.material,
       color: input.color || null,
       size: input.size,
+      color_options: input.color ? [input.color] : ["기본 색상"],
+      size_options: input.size ? [input.size] : ["FREE"],
       measurements: input.measurements,
       image_url: input.imageUrl,
       image_path: input.imagePath,
@@ -74,7 +82,10 @@ export const fetchMyFundings = async (): Promise<Funding[]> => {
 
 export const updateFunding = async (
   id: string,
-  updates: Pick<Funding, "product_name" | "description" | "moq" | "price" | "funding_days">
+  updates: Pick<
+    Funding,
+    "product_name" | "description" | "moq" | "price" | "funding_days" | "color_options" | "size_options"
+  >
 ): Promise<Funding> => {
   const user = await requireUser();
   const { data, error } = await supabase
@@ -124,6 +135,47 @@ export const reviewFunding = async (
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
+
+  if (error) throw error;
+};
+
+export const participateInFunding = async (
+  fundingId: string,
+  color: string,
+  size: string,
+  quantity: number
+): Promise<string> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("participate_in_funding", {
+    p_funding_id: fundingId,
+    p_color: color,
+    p_size: size,
+    p_quantity: quantity,
+  });
+
+  if (error) throw error;
+  return data as string;
+};
+
+export const fetchFundingParticipants = async (fundingId: string): Promise<FundingParticipation[]> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_funding_participants", {
+    p_funding_id: fundingId,
+  });
+
+  if (error) throw error;
+  return (data || []) as FundingParticipation[];
+};
+
+export const updateFundingParticipationStatus = async (
+  participationId: string,
+  status: FundingParticipationStatus
+): Promise<void> => {
+  await requireUser();
+  const { error } = await supabase.rpc("update_funding_participation_status", {
+    p_participation_id: participationId,
+    p_status: status,
+  });
 
   if (error) throw error;
 };

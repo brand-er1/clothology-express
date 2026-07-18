@@ -72,6 +72,8 @@ The funding checkout uses Supabase Edge Functions so the KakaoPay secret key is 
 
 `APP_URL` must be the public origin that serves this React app, without a trailing path. KakaoPay setup follows the current JSON API at `https://open-api.kakaopay.com/online/v1/payment/*`.
 
+KakaoPay deployment checkpoint: the payment migration and the ready, approve, and cancel Edge Functions are present on `main`.
+
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)

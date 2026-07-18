@@ -37,10 +37,13 @@ export const Header = () => {
 
   const renderMenuItems = () => (
     <>
+      <Link to="/fundings">
+        <Button variant="ghost">펀딩</Button>
+      </Link>
       {isAuthenticated ? (
         <>
           <Link to="/customize">
-            <Button variant="ghost">맞춤 주문</Button>
+            <Button variant="ghost">AI 디자인</Button>
           </Link>
           <Link to="/orders">
             <Button variant="ghost">주문 내역</Button>
@@ -74,10 +77,13 @@ export const Header = () => {
       </SheetTrigger>
       <SheetContent side="right" className="w-[250px] sm:w-[300px]">
         <div className="flex flex-col gap-4 py-4">
+          <Link to="/fundings" className="w-full">
+            <Button variant="ghost" className="w-full justify-start">펀딩</Button>
+          </Link>
           {isAuthenticated ? (
             <>
               <Link to="/customize" className="w-full">
-                <Button variant="ghost" className="w-full justify-start">맞춤 주문</Button>
+                <Button variant="ghost" className="w-full justify-start">AI 디자인</Button>
               </Link>
               <Link to="/orders" className="w-full">
                 <Button variant="ghost" className="w-full justify-start">주문 내역</Button>

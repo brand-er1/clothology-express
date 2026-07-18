@@ -9,6 +9,10 @@ import { SystemPromptEditor } from "@/components/admin/SystemPromptEditor";
 import { OrderList } from "@/components/admin/OrderList";
 import { OrderReviewDialog } from "@/components/admin/OrderReviewDialog";
 import { type Order } from "@/types/order";
+import { type Funding } from "@/types/funding";
+import { FundingList } from "@/components/admin/FundingList";
+import { FundingReviewDialog } from "@/components/admin/FundingReviewDialog";
+import { fetchAllFundings, reviewFunding as saveFundingReview } from "@/services/funding";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -23,6 +27,9 @@ const Admin = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [fundings, setFundings] = useState<Funding[]>([]);
+  const [selectedFunding, setSelectedFunding] = useState<Funding | null>(null);
+  const [isFundingReviewOpen, setIsFundingReviewOpen] = useState(false);
 
   useEffect(() => {
     if (!isCheckingAdmin && !isAdmin) {
@@ -39,6 +46,7 @@ const Admin = () => {
     if (isAdmin) {
       loadSystemPrompt();
       loadOrders();
+      loadFundings();
     }
   }, [isAdmin]);
 
@@ -86,6 +94,36 @@ const Admin = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadFundings = async () => {
+    try {
+      setFundings(await fetchAllFundings());
+    } catch (error) {
+      console.error("Error loading fundings:", error);
+      toast({ title: "펀딩 목록을 불러오지 못했습니다", variant: "destructive" });
+    }
+  };
+
+  const handleReviewFunding = async (status: "approved" | "rejected", comment: string) => {
+    if (!selectedFunding) return;
+
+    setIsSaving(true);
+    try {
+      await saveFundingReview(selectedFunding.id, status, comment);
+      toast({
+        title: status === "approved" ? "펀딩을 승인했습니다" : "펀딩을 거절했습니다",
+        description: status === "approved" ? "공개 펀딩 목록에 노출됩니다." : "작성자에게 수정 요청 상태로 표시됩니다.",
+      });
+      setIsFundingReviewOpen(false);
+      setSelectedFunding(null);
+      await loadFundings();
+    } catch (error) {
+      console.error("Error reviewing funding:", error);
+      toast({ title: "펀딩 상태를 변경하지 못했습니다", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -178,13 +216,23 @@ const Admin = () => {
       <Header />
       <main className="container mx-auto px-4 pt-24 pb-12">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">관리자 설정</h1>
+          <h1 className="text-3xl font-bold mb-8">브랜더 관리자</h1>
           
           <SystemPromptEditor
             systemPrompt={systemPrompt}
             isLoading={isLoading}
             onSave={handleSaveSystemPrompt}
           />
+
+          <div className="my-8">
+            <FundingList
+              fundings={fundings}
+              onReview={(funding) => {
+                setSelectedFunding(funding);
+                setIsFundingReviewOpen(true);
+              }}
+            />
+          </div>
 
           <OrderList
             orders={orders}
@@ -200,6 +248,14 @@ const Admin = () => {
             isSaving={isSaving}
             onOpenChange={setIsReviewDialogOpen}
             onUpdateStatus={handleUpdateOrderStatus}
+          />
+
+          <FundingReviewDialog
+            funding={selectedFunding}
+            open={isFundingReviewOpen}
+            saving={isSaving}
+            onOpenChange={setIsFundingReviewOpen}
+            onReview={handleReviewFunding}
           />
         </div>
       </main>

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { TOTAL_STEPS } from "@/lib/customize-constants";
+import { TOTAL_STEPS, clothTypes, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { generateImage, storeSelectedImage } from "@/services/imageGeneration";
-import { createOrder } from "@/services/orderCreation";
+import { createFundingDraft } from "@/services/funding";
 import { UseCustomizeFormState, Material, SizeTableItem } from "@/types/customize";
 import { supabase } from "@/lib/supabase";
 
@@ -17,7 +17,7 @@ export const useCustomizeForm = () => {
   const [selectedDetail, setSelectedDetail] = useState("");
   const [newMaterialName, setNewMaterialName] = useState("");
   const [materials, setMaterials] = useState<Material[]>([
-    { id: "cotton", name: "면", description: "부드럽고 통기성이 ��은 천연 소재" },
+    { id: "cotton", name: "면", description: "부드럽고 통기성이 좋은 천연 소재" },
     { id: "denim", name: "데님", description: "튼튼하고 클래식한 청바지 소재" },
     { id: "poly", name: "폴리", description: "구김이 적고 관리가 쉬운 소재" },
     { id: "linen", name: "린넨", description: "시원하고 자연스러운 질감의 소재" },
@@ -301,14 +301,14 @@ export const useCustomizeForm = () => {
     }
   };
 
-  const handleCreateOrder = async () => {
+  const handleCreateFunding = async () => {
     try {
       setIsLoading(true);
       
       if (!generatedImageUrls || generatedImageUrls.length === 0) {
         toast({
           title: "이미지 선택 필요",
-          description: "주문하기 전에 이미지를 생성해주세요.",
+          description: "펀딩을 만들기 전에 이미지를 생성해주세요.",
           variant: "destructive",
         });
         return;
@@ -353,7 +353,7 @@ export const useCustomizeForm = () => {
         console.error("Error storing selected image:", imageError);
       }
       
-      console.log("Order data:", {
+      console.log("Funding data:", {
         selectedType,
         selectedMaterial,
         selectedDetail,
@@ -369,31 +369,53 @@ export const useCustomizeForm = () => {
         sizeTableData
       });
 
-      const finalSize = selectedSize || "M";
-      
-      const result = await createOrder(
-        selectedType,
-        selectedMaterial,
-        selectedDetail,
-        finalSize,
-        customMeasurements,
-        finalImageUrl,
-        finalImagePath,
-        materials,
-        sizeTableData,
-        activeHistory.length ? activeHistory : modificationHistory
-      );
-      
-      if (result && result.redirectToConfirmation) {
-        navigate("/order-confirmation");
-      } else if (result && result.success) {
-        navigate("/orders");
+      if (!finalImageUrl) {
+        throw new Error("펀딩에 사용할 이미지 URL이 없습니다.");
       }
-    } catch (error) {
-      console.error("Error creating order:", error);
+
+      const finalSize = selectedSize || "M";
+      const clothTypeName = clothTypes.find((type) => type.id === selectedType)?.name || selectedType;
+      const materialName = materials.find((material) => material.id === selectedMaterial)?.name || selectedMaterial;
+      const colorName = colorOptions.find((color) => color.value === selectedColor)?.label || selectedColor;
+      const fitName = fitOptions.find((fit) => fit.value === selectedFit)?.label || selectedFit;
+      const productName = [colorName, clothTypeName].filter(Boolean).join(" ");
+      const measurements = sizeTableData.length > 0
+        ? sizeTableData.reduce<Record<string, string | number>>((result, item) => {
+            result[item.key] = item.value;
+            return result;
+          }, {})
+        : Object.keys(customMeasurements).length > 0
+          ? customMeasurements
+          : null;
+      const description = [
+        `${productName || clothTypeName} 디자인입니다. 목표 인원이 모이면 브랜더가 실제 제품으로 제작합니다.`,
+        selectedDetail ? `디자인 특징: ${selectedDetail}` : "",
+        fitName ? `핏: ${fitName}` : "",
+        `소재: ${materialName}`,
+      ].filter(Boolean).join("\n");
+
+      const funding = await createFundingDraft({
+        productName: productName || clothTypeName,
+        clothType: clothTypeName,
+        material: materialName,
+        color: colorName,
+        size: finalSize,
+        measurements,
+        imageUrl: finalImageUrl,
+        imagePath: finalImagePath,
+        description,
+      });
+
       toast({
-        title: "주문 실패",
-        description: "주문 생성 중 오류가 발생했습니다.",
+        title: "펀딩 페이지가 만들어졌습니다",
+        description: "MOQ 20장·관리자 승인 대기 상태로 자동 등록했습니다.",
+      });
+      navigate(`/fundings/${funding.id}/edit`);
+    } catch (error) {
+      console.error("Error creating funding:", error);
+      toast({
+        title: "펀딩 생성 실패",
+        description: "펀딩 페이지를 만드는 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     } finally {
@@ -407,7 +429,7 @@ export const useCustomizeForm = () => {
     }
 
     if (currentStep === TOTAL_STEPS) {
-      handleCreateOrder();
+      handleCreateFunding();
       return;
     }
 

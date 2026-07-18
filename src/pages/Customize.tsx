@@ -51,6 +51,7 @@ const Customize = () => {
     setSelectedThickness,
     selectedSeason,
     setSelectedSeason,
+    isLoading: isCreatingFunding,
     imageLoading,
     generatedImageUrls,
     storedImageUrls,
@@ -65,7 +66,6 @@ const Customize = () => {
     handleSizeTableChange,
     handleAddMaterial,
     handleGenerateImage,
-    handleSelectImage,
     handleNext,
     handleBack,
     // New properties for image modification
@@ -151,9 +151,12 @@ const Customize = () => {
               ) : (
                 <Button
                   onClick={handleNext}
+                  disabled={isCreatingFunding}
                   className="w-full bg-brand hover:bg-brand-dark"
                 >
-                  {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
+                  {currentStep === TOTAL_STEPS
+                    ? (isCreatingFunding ? "펀딩 페이지 만드는 중..." : "이 이미지로 펀딩 만들기")
+                    : "다음"}
                 </Button>
               )}
             </div>
@@ -217,7 +220,6 @@ const Customize = () => {
                 selectedFit={selectedFit}
                 selectedDetail={selectedDetail}
                 onGenerateImage={handleGenerateImage}
-                onSelectImage={handleSelectImage}
               />
             )}
 
@@ -279,9 +281,12 @@ const Customize = () => {
               ) : (
                 <Button
                   onClick={handleNext}
+                  disabled={isCreatingFunding}
                   className="bg-brand hover:bg-brand-dark"
                 >
-                  {currentStep === TOTAL_STEPS ? "주문하기" : "다음"}
+                  {currentStep === TOTAL_STEPS
+                    ? (isCreatingFunding ? "펀딩 페이지 만드는 중..." : "이 이미지로 펀딩 만들기")
+                    : "다음"}
                 </Button>
               )
             )}

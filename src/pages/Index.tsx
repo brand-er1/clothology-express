@@ -1,108 +1,103 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
-import { ArrowRight } from "lucide-react";
-import { WelcomeNotification } from "@/components/WelcomeNotification";
+import { ArrowRight, Check, Factory, Sparkles, Users } from "lucide-react";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f7f5f2] text-[#171313]">
       <Header />
-      <WelcomeNotification />
-      
-      {/* Hero Section */}
       <main className="pt-16">
-        {/* Hero Section */}
-        <section className="relative h-[90vh] flex items-center justify-center bg-gradient-to-b from-white to-gray-50">
-          <div className="container mx-auto px-4 text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 animate-fadeIn">
-              맞춤형 의류, <span className="text-brand">당신을 위한 디자인</span>
-            </h1>
-            <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto animate-fadeIn">
-              직관적인 맞춤 도구로 완벽한 의상을 디자인하세요. 스타일과 소재를 선택하고 나만을 위한 맞춤 제작을 경험하세요.
-            </p>
-            <Link to="/customize">
-              <Button
-                size="lg"
-                className="bg-brand hover:bg-brand-dark text-white rounded-full px-8 animate-slideUp"
-              >
-                디자인 시작하기 <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+        <section className="relative overflow-hidden bg-[#211819] text-white">
+          <div className="absolute -right-32 -top-32 h-[34rem] w-[34rem] rounded-full bg-brand/35 blur-3xl" />
+          <div className="container relative mx-auto grid min-h-[720px] items-center gap-12 px-4 py-20 lg:grid-cols-[1.02fr_0.98fr]">
+            <div className="max-w-3xl">
+              <div className="mb-6 inline-flex items-center rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/75 backdrop-blur">
+                <Sparkles className="mr-2 h-4 w-4 text-[#d5a6a6]" /> AI 기반 패션 창업 플랫폼
+              </div>
+              <h1 className="text-5xl font-bold leading-[1.08] tracking-[-0.04em] md:text-7xl">
+                디자인부터 펀딩,
+                <br />생산까지 한 번에.
+              </h1>
+              <p className="mt-7 max-w-xl text-lg leading-8 text-white/65">
+                키워드를 입력하면 AI가 의류 디자인을 만들고, 펀딩으로 수요를 확인한 뒤 브랜더가 실제 생산과 배송까지 책임집니다.
+              </p>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <Button asChild size="lg" className="h-14 rounded-full bg-brand px-8 text-base hover:bg-brand-light">
+                  <Link to="/customize">AI 디자인 시작하기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-white/25 bg-transparent px-8 text-base text-white hover:bg-white hover:text-gray-950">
+                  <Link to="/fundings">펀딩 둘러보기</Link>
+                </Button>
+              </div>
+              <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/60">
+                {["재고 부담 없이 시작", "MOQ 20장부터", "생산·배송 원스톱"].map((text) => (
+                  <span key={text} className="flex items-center"><Check className="mr-1.5 h-4 w-4 text-[#d5a6a6]" />{text}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative mx-auto w-full max-w-xl">
+              <div className="absolute inset-8 rounded-[3rem] bg-brand/30 blur-3xl" />
+              <div className="relative rotate-2 rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl backdrop-blur-xl">
+                <div className="overflow-hidden rounded-[1.5rem] bg-[#eee9e3]">
+                  <div className="flex items-center justify-between border-b border-black/5 px-5 py-4 text-xs font-medium text-gray-500">
+                    <span>BRAND-ER AI STUDIO</span><span>DESIGN 01</span>
+                  </div>
+                  <div className="aspect-[4/3] p-8 md:p-12">
+                    <img src="/lovable-uploads/jacket.png" alt="AI로 생성한 의류 디자인 예시" className="h-full w-full object-contain drop-shadow-2xl" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 p-3 text-center text-xs text-white/75">
+                  <div className="rounded-xl bg-white/10 py-3"><span className="block text-white/40">COLOR</span>BURGUNDY</div>
+                  <div className="rounded-xl bg-white/10 py-3"><span className="block text-white/40">FIT</span>RELAXED</div>
+                  <div className="rounded-xl bg-white/10 py-3"><span className="block text-white/40">MOQ</span>20 PCS</div>
+                </div>
+              </div>
+              <div className="absolute -bottom-8 -left-5 rounded-2xl border border-white/10 bg-[#362829] px-5 py-4 shadow-xl">
+                <p className="text-xs text-white/45">펀딩 페이지 자동 생성</p>
+                <p className="mt-1 font-semibold text-white">관리자 승인 대기 완료</p>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="py-20 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-brand"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
-                    />
-                  </svg>
+        <section className="container mx-auto px-4 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-brand">HOW IT WORKS</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">아이디어 하나면 충분합니다</h2>
+            <p className="mt-5 text-gray-500">복잡했던 의류 창업 과정을 세 단계로 단순하게 만들었습니다.</p>
+          </div>
+          <div className="mt-14 grid gap-5 md:grid-cols-3">
+            {[
+              [Sparkles, "01", "AI 디자인 생성", "의류 종류, 원단, 색상과 핏을 선택하면 AI가 판매 가능한 디자인 이미지를 만듭니다."],
+              [Users, "02", "펀딩으로 수요 검증", "완성된 이미지로 펀딩 페이지가 자동 작성되고 최소 20장의 선주문을 모읍니다."],
+              [Factory, "03", "브랜더 생산·배송", "목표 수량을 달성하면 원단 컨택, 패턴, 샘플, 생산과 배송까지 진행합니다."],
+            ].map(([Icon, number, title, description]) => {
+              const StepIcon = Icon as typeof Sparkles;
+              return (
+                <div key={String(number)} className="rounded-[2rem] border border-black/5 bg-white p-7 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand"><StepIcon className="h-6 w-6" /></div>
+                    <span className="text-sm font-bold text-gray-300">{String(number)}</span>
+                  </div>
+                  <h3 className="mt-8 text-xl font-bold">{String(title)}</h3>
+                  <p className="mt-3 text-sm leading-6 text-gray-500">{String(description)}</p>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">맞춤 디자인</h3>
-                <p className="text-gray-600">
-                  쉽게 사용할 수 있는 디자인 도구로 완벽한 의상을 만들어보세요
-                </p>
-              </div>
+              );
+            })}
+          </div>
+        </section>
 
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-brand"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">프리미엄 소재</h3>
-                <p className="text-gray-600">
-                  다양한 고품질 원단 중에서 선택하세요
-                </p>
-              </div>
-
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-brand"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">완벽한 핏</h3>
-                <p className="text-gray-600">
-                  정확한 치수에 맞게 제작된 의류를 만나보세요
-                </p>
-              </div>
+        <section className="border-y border-black/5 bg-white">
+          <div className="container mx-auto flex flex-col items-center justify-between gap-8 px-4 py-16 text-center md:flex-row md:text-left">
+            <div>
+              <h2 className="text-3xl font-bold">당신의 디자인을 실제 제품으로.</h2>
+              <p className="mt-3 text-gray-500">재고 없이 시작하고, 팔릴 디자인만 생산하세요.</p>
             </div>
+            <Button asChild size="lg" className="h-14 rounded-full bg-brand px-8 hover:bg-brand-dark">
+              <Link to="/customize">지금 펀딩 만들기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
+            </Button>
           </div>
         </section>
       </main>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 import { fetchFunding, updateFunding } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { ArrowLeft, Check, Eye, Loader2, LockKeyhole, Plus, Sparkles, Users, X } from "lucide-react";
@@ -23,14 +24,31 @@ const FundingEditor = () => {
 
   useEffect(() => {
     if (!id) return;
-    fetchFunding(id)
-      .then(setFunding)
-      .catch((error) => {
+
+    const load = async () => {
+      try {
+        const [{ data: sessionData }, fundingData] = await Promise.all([
+          supabase.auth.getSession(),
+          fetchFunding(id),
+        ]);
+        if (!sessionData.session?.user || sessionData.session.user.id !== fundingData.creator_id) {
+          throw new Error("펀딩을 수정할 권한이 없습니다.");
+        }
+        setFunding(fundingData);
+      } catch (error) {
         console.error(error);
-        toast({ title: "펀딩을 불러오지 못했습니다", variant: "destructive" });
+        toast({
+          title: "펀딩 수정 페이지를 열 수 없습니다",
+          description: error instanceof Error ? error.message : "펀딩 제작자만 수정할 수 있습니다.",
+          variant: "destructive",
+        });
         navigate("/fundings");
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [id, navigate]);
 
   const handleSave = async () => {
@@ -54,6 +72,7 @@ const FundingEditor = () => {
 
     setSaving(true);
     try {
+      const wasApproved = funding.status === "approved" || funding.status === "closed";
       const updated = await updateFunding(id, {
         product_name: funding.product_name.trim(),
         description: funding.description,
@@ -64,10 +83,17 @@ const FundingEditor = () => {
         size_options: funding.size_options,
       });
       setFunding(updated);
-      toast({ title: "펀딩 페이지가 저장되었습니다", description: "현재 관리자 승인 대기 상태입니다." });
+      toast({
+        title: "펀딩 페이지가 저장되었습니다",
+        description: wasApproved ? "상품명과 상세 설명이 공개 페이지에 반영됐습니다." : "현재 관리자 승인 대기 상태입니다.",
+      });
     } catch (error) {
       console.error(error);
-      toast({ title: "저장하지 못했습니다", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
+      toast({
+        title: "저장하지 못했습니다",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -84,7 +110,8 @@ const FundingEditor = () => {
     );
   }
 
-  const editable = funding.status === "pending" || funding.status === "rejected";
+  const canEditContent = true;
+  const canEditSales = funding.status === "pending" || funding.status === "rejected";
   const colors = funding.color_options?.length ? funding.color_options : [funding.color || "기본 색상"];
   const sizes = funding.size_options?.length ? funding.size_options : [funding.size || "FREE"];
 
@@ -171,7 +198,7 @@ const FundingEditor = () => {
                 <Input
                   id="product-name"
                   value={funding.product_name}
-                  disabled={!editable}
+                  disabled={!canEditContent}
                   onChange={(event) => setFunding({ ...funding, product_name: event.target.value })}
                   className="h-12"
                 />
@@ -181,7 +208,7 @@ const FundingEditor = () => {
                 <Textarea
                   id="description"
                   value={funding.description || ""}
-                  disabled={!editable}
+                  disabled={!canEditContent}
                   onChange={(event) => setFunding({ ...funding, description: event.target.value })}
                   className="min-h-56 resize-y"
                   placeholder="디자인 특징, 원단, 핏, 제작 의도, 세탁 방법 등 고객에게 보여줄 상세 내용을 자유롭게 작성해주세요."
@@ -198,7 +225,7 @@ const FundingEditor = () => {
                     <Input
                       id="new-color"
                       value={newColor}
-                      disabled={!editable}
+                      disabled={!canEditSales}
                       onChange={(event) => setNewColor(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
@@ -209,7 +236,7 @@ const FundingEditor = () => {
                       placeholder="예: 블랙"
                       className="h-11"
                     />
-                    <Button type="button" variant="outline" size="icon" disabled={!editable} onClick={() => addOption("color")}>
+                    <Button type="button" variant="outline" size="icon" disabled={!canEditSales} onClick={() => addOption("color")}>
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -217,7 +244,7 @@ const FundingEditor = () => {
                     {colors.map((color) => (
                       <Badge key={color} variant="secondary" className="gap-1 rounded-full px-3 py-1.5">
                         {color}
-                        {editable && <button type="button" onClick={() => removeOption("color", color)} aria-label={`${color} 삭제`}><X className="h-3 w-3" /></button>}
+                        {canEditSales && <button type="button" onClick={() => removeOption("color", color)} aria-label={`${color} 삭제`}><X className="h-3 w-3" /></button>}
                       </Badge>
                     ))}
                   </div>
@@ -232,7 +259,7 @@ const FundingEditor = () => {
                     <Input
                       id="new-size"
                       value={newSize}
-                      disabled={!editable}
+                      disabled={!canEditSales}
                       onChange={(event) => setNewSize(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
@@ -243,7 +270,7 @@ const FundingEditor = () => {
                       placeholder="예: XL"
                       className="h-11"
                     />
-                    <Button type="button" variant="outline" size="icon" disabled={!editable} onClick={() => addOption("size")}>
+                    <Button type="button" variant="outline" size="icon" disabled={!canEditSales} onClick={() => addOption("size")}>
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -251,7 +278,7 @@ const FundingEditor = () => {
                     {sizes.map((size) => (
                       <Badge key={size} variant="secondary" className="gap-1 rounded-full px-3 py-1.5">
                         {size}
-                        {editable && <button type="button" onClick={() => removeOption("size", size)} aria-label={`${size} 삭제`}><X className="h-3 w-3" /></button>}
+                        {canEditSales && <button type="button" onClick={() => removeOption("size", size)} aria-label={`${size} 삭제`}><X className="h-3 w-3" /></button>}
                       </Badge>
                     ))}
                   </div>
@@ -261,7 +288,7 @@ const FundingEditor = () => {
                 <div className="space-y-2">
                   <Label htmlFor="moq">목표 수량</Label>
                   <div className="relative">
-                    <Input id="moq" type="number" min={20} disabled={!editable} value={funding.moq}
+                    <Input id="moq" type="number" min={20} disabled={!canEditSales} value={funding.moq}
                       onChange={(event) => setFunding({ ...funding, moq: Number(event.target.value) })} className="h-12 pr-10" />
                     <span className="absolute right-3 top-3 text-sm text-gray-400">장</span>
                   </div>
@@ -270,7 +297,7 @@ const FundingEditor = () => {
                 <div className="space-y-2">
                   <Label htmlFor="price">판매가</Label>
                   <div className="relative">
-                    <Input id="price" type="number" min={0} disabled={!editable} value={funding.price ?? ""}
+                    <Input id="price" type="number" min={0} disabled={!canEditSales} value={funding.price ?? ""}
                       onChange={(event) => setFunding({ ...funding, price: event.target.value ? Number(event.target.value) : null })} className="h-12 pr-10" />
                     <span className="absolute right-3 top-3 text-sm text-gray-400">원</span>
                   </div>
@@ -278,7 +305,7 @@ const FundingEditor = () => {
                 <div className="space-y-2">
                   <Label htmlFor="funding-days">진행 기간</Label>
                   <div className="relative">
-                    <Input id="funding-days" type="number" min={1} max={90} disabled={!editable} value={funding.funding_days}
+                    <Input id="funding-days" type="number" min={1} max={90} disabled={!canEditSales} value={funding.funding_days}
                       onChange={(event) => setFunding({ ...funding, funding_days: Number(event.target.value) })} className="h-12 pr-10" />
                     <span className="absolute right-3 top-3 text-sm text-gray-400">일</span>
                   </div>
@@ -288,14 +315,19 @@ const FundingEditor = () => {
               <div className="rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-600">
                 <div className="flex gap-3">
                   <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-                  <p><strong className="text-gray-900">승인 전 비공개</strong><br />관리자가 승인하기 전까지 작성자와 관리자만 이 페이지를 볼 수 있습니다.</p>
+                  <p>
+                    <strong className="text-gray-900">{canEditSales ? "승인 전 전체 수정 가능" : "공개 펀딩 안전 편집"}</strong><br />
+                    {canEditSales
+                      ? "관리자가 승인하기 전까지 상품명, 설명, 옵션, 가격과 기간을 모두 수정할 수 있습니다."
+                      : "고객이 본 조건을 보호하기 위해 승인 후에는 상품명과 상세 설명만 수정할 수 있습니다."}
+                  </p>
                 </div>
               </div>
 
-              {editable && (
+              {canEditContent && (
                 <Button onClick={handleSave} disabled={saving} className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                  저장하고 승인 대기
+                  {canEditSales ? "저장하고 승인 대기" : "공개 페이지 내용 저장"}
                 </Button>
               )}
             </CardContent>

@@ -87,23 +87,17 @@ export const updateFunding = async (
     "product_name" | "description" | "moq" | "price" | "funding_days" | "color_options" | "size_options"
   >
 ): Promise<Funding> => {
-  const user = await requireUser();
-  const { data, error } = await supabase
-    .from("fundings")
-    .update({
-      ...updates,
-      moq: Math.max(20, updates.moq),
-      status: "pending",
-      admin_comment: null,
-      reviewed_at: null,
-      reviewed_by: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .eq("creator_id", user.id)
-    .in("status", ["pending", "rejected"])
-    .select("*")
-    .single();
+  await requireUser();
+  const { data, error } = await supabase.rpc("update_creator_funding", {
+    p_funding_id: id,
+    p_product_name: updates.product_name,
+    p_description: updates.description,
+    p_moq: Math.max(20, updates.moq),
+    p_price: updates.price,
+    p_funding_days: updates.funding_days,
+    p_color_options: updates.color_options,
+    p_size_options: updates.size_options,
+  });
 
   if (error) throw error;
   return data as Funding;

@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import type {
   CreateFundingInput,
   Funding,
+  KakaoPayReadyResult,
+  MyFundingParticipation,
   FundingParticipation,
   FundingParticipationStatus,
   FundingStatus,
@@ -149,6 +151,61 @@ export const participateInFunding = async (
 
   if (error) throw error;
   return data as string;
+};
+
+const invokePaymentFunction = async <T>(name: string, body: Record<string, unknown>): Promise<T> => {
+  await requireUser();
+  const { data, error } = await supabase.functions.invoke(name, { body });
+
+  if (error) {
+    let message = error.message;
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.json === "function") {
+      try {
+        const payload = await context.json();
+        message = payload?.error || message;
+      } catch {
+        // Supabase의 기본 오류 메시지를 사용합니다.
+      }
+    }
+    throw new Error(message || "결제 처리 중 오류가 발생했습니다.");
+  }
+
+  if (data?.error) throw new Error(data.error);
+  return data as T;
+};
+
+export const startKakaoPayFunding = async (
+  fundingId: string,
+  color: string,
+  size: string,
+  quantity: number
+): Promise<KakaoPayReadyResult> => invokePaymentFunction<KakaoPayReadyResult>("kakaopay-ready", {
+  fundingId,
+  color,
+  size,
+  quantity,
+  returnUrl: window.location.origin,
+});
+
+export const approveKakaoPayFunding = async (
+  participationId: string,
+  pgToken: string
+): Promise<{ success: boolean; funding_id: string }> =>
+  invokePaymentFunction("kakaopay-approve", { participationId, pgToken });
+
+export const cancelFundingParticipation = async (
+  participationId: string,
+  reason = "사용자 펀딩 참여 취소"
+): Promise<{ success: boolean; refunded: boolean; funding_id?: string }> =>
+  invokePaymentFunction("kakaopay-cancel", { participationId, reason });
+
+export const fetchMyFundingParticipations = async (): Promise<MyFundingParticipation[]> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_my_funding_participations");
+
+  if (error) throw error;
+  return (data || []) as MyFundingParticipation[];
 };
 
 export const fetchFundingParticipants = async (fundingId: string): Promise<FundingParticipation[]> => {

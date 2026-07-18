@@ -1,5 +1,6 @@
 export type FundingStatus = "pending" | "approved" | "rejected" | "closed";
 export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
+export type FundingPaymentStatus = "unpaid" | "ready" | "paid" | "cancelled" | "failed";
 
 export type Funding = {
   id: string;
@@ -49,5 +50,25 @@ export type FundingParticipation = {
   unit_price: number;
   total_amount: number;
   status: FundingParticipationStatus;
+  payment_provider: "none" | "kakaopay";
+  payment_status: FundingPaymentStatus;
+  payment_approved_at: string | null;
+  payment_cancelled_at: string | null;
   created_at: string;
+};
+
+export type MyFundingParticipation = FundingParticipation & {
+  funding_id: string;
+  product_name: string;
+  image_url: string;
+  funding_status: FundingStatus;
+  creator_id: string;
+  payment_method_type: string | null;
+};
+
+export type KakaoPayReadyResult = {
+  participation_id: string;
+  next_redirect_pc_url: string | null;
+  next_redirect_mobile_url: string | null;
+  next_redirect_app_url: string | null;
 };

@@ -16,24 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { cancelFundingParticipation, fetchMyFundingParticipations } from "@/services/funding";
-import type { FundingPaymentStatus, MyFundingParticipation } from "@/types/funding";
-import { ArrowRight, CalendarDays, Loader2, PackageOpen, RotateCcw, WalletCards } from "lucide-react";
-
-const paymentLabel: Record<FundingPaymentStatus, string> = {
-  unpaid: "기존 참여",
-  ready: "결제 진행 중",
-  paid: "결제 완료",
-  cancelled: "결제 취소",
-  failed: "결제 실패",
-};
-
-const paymentBadgeClass: Record<FundingPaymentStatus, string> = {
-  unpaid: "bg-slate-100 text-slate-700 hover:bg-slate-100",
-  ready: "bg-amber-100 text-amber-800 hover:bg-amber-100",
-  paid: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
-  cancelled: "bg-gray-100 text-gray-500 hover:bg-gray-100",
-  failed: "bg-red-100 text-red-700 hover:bg-red-100",
-};
+import type { MyFundingParticipation } from "@/types/funding";
+import { ArrowRight, CalendarDays, Loader2, PackageOpen, RotateCcw } from "lucide-react";
 
 const MyFundings = () => {
   const [items, setItems] = useState<MyFundingParticipation[]>([]);
@@ -64,9 +48,9 @@ const MyFundings = () => {
     () => items.filter((item) => item.status !== "cancelled" && item.payment_status !== "failed").length,
     [items]
   );
-  const paidAmount = useMemo(
+  const totalAmount = useMemo(
     () => items
-      .filter((item) => item.payment_status === "paid" && item.status !== "cancelled")
+      .filter((item) => item.status !== "cancelled")
       .reduce((sum, item) => sum + item.total_amount, 0),
     [items]
   );
@@ -75,7 +59,7 @@ const MyFundings = () => {
     if (!selectedItem) return;
     setCancellingId(selectedItem.id);
     try {
-      const result = await cancelFundingParticipation(selectedItem.id);
+      await cancelFundingParticipation(selectedItem.id);
       setItems((current) => current.map((item) => item.id === selectedItem.id
         ? {
             ...item,
@@ -85,10 +69,8 @@ const MyFundings = () => {
           }
         : item));
       toast({
-        title: result.refunded ? "펀딩 취소와 환불이 완료되었습니다" : "펀딩 참여를 취소했습니다",
-        description: result.refunded
-          ? "카카오페이 결제 금액이 전액 취소되었습니다."
-          : "취소된 수량은 펀딩 달성 수량에서 제외됩니다.",
+        title: "펀딩 참여를 취소했습니다",
+        description: "취소된 수량은 펀딩 달성 수량에서 제외됩니다.",
       });
     } catch (error) {
       console.error(error);
@@ -122,7 +104,7 @@ const MyFundings = () => {
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-brand">MY FUNDING</p>
             <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">내 펀딩 참여 내역</h1>
-            <p className="mt-3 text-gray-500">결제한 펀딩의 옵션과 진행 상태를 확인하고 직접 취소할 수 있습니다.</p>
+            <p className="mt-3 text-gray-500">참여한 펀딩의 옵션과 진행 상태를 확인하고 직접 취소할 수 있습니다.</p>
           </div>
           <Button asChild className="rounded-full bg-brand hover:bg-brand-dark">
             <Link to="/fundings">새 펀딩 둘러보기 <ArrowRight className="ml-2 h-4 w-4" /></Link>
@@ -138,8 +120,8 @@ const MyFundings = () => {
           </Card>
           <Card className="rounded-2xl">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-2xl bg-[#FEE500]/40 p-3 text-[#493f00]"><WalletCards className="h-6 w-6" /></div>
-              <div><p className="text-sm text-gray-500">현재 결제 금액</p><p className="text-2xl font-bold">{paidAmount.toLocaleString("ko-KR")}원</p></div>
+              <div className="rounded-2xl bg-brand/10 p-3 text-brand"><PackageOpen className="h-6 w-6" /></div>
+              <div><p className="text-sm text-gray-500">총 참여 예정 금액</p><p className="text-2xl font-bold">{totalAmount.toLocaleString("ko-KR")}원</p></div>
             </CardContent>
           </Card>
         </div>
@@ -170,7 +152,7 @@ const MyFundings = () => {
 
                     <div className="p-6 md:p-7">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge className={paymentBadgeClass[item.payment_status]}>{paymentLabel[item.payment_status]}</Badge>
+                        <Badge variant="secondary">결제 없음</Badge>
                         {item.status === "fulfilled" && <Badge variant="secondary">제작 처리 완료</Badge>}
                       </div>
                       <Link to={`/fundings/${item.funding_id}`} className="mt-3 block text-xl font-bold hover:text-brand md:text-2xl">
@@ -218,9 +200,7 @@ const MyFundings = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>펀딩 참여를 취소할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              {selectedItem?.payment_status === "paid"
-                ? `${selectedItem.total_amount.toLocaleString("ko-KR")}원이 카카오페이로 전액 취소되며, 참여 수량도 펀딩 현황에서 차감됩니다.`
-                : "진행 중인 결제가 종료되고 참여 내역이 취소 처리됩니다."}
+              참여 내역이 취소되고 해당 수량이 펀딩 현황에서 차감됩니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -229,7 +209,7 @@ const MyFundings = () => {
               onClick={cancelParticipation}
               className="bg-red-600 text-white hover:bg-red-700"
             >
-              {selectedItem?.payment_status === "paid" ? "취소 및 환불" : "참여 취소"}
+              참여 취소
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

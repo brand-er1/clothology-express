@@ -3,9 +3,10 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { approveKakaoPayFunding, cancelFundingParticipation } from "@/services/funding";
-import { AlertCircle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { AlertCircle, CheckCircle2, Loader2, LogIn, XCircle } from "lucide-react";
 
-type ResultState = "loading" | "success" | "cancelled" | "failed";
+type ResultState = "loading" | "success" | "cancelled" | "failed" | "auth-required";
 
 const KakaoPayResult = () => {
   const location = useLocation();
@@ -30,6 +31,13 @@ const KakaoPayResult = () => {
         return;
       }
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setState("auth-required");
+        setMessage("결제를 승인하려면 다시 로그인해주세요. 로그인 후 이 결제 화면으로 자동 복귀합니다.");
+        return;
+      }
+
       try {
         if (resultType === "success") {
           if (!pgToken) throw new Error("카카오페이 승인번호가 없습니다.");
@@ -40,7 +48,10 @@ const KakaoPayResult = () => {
           return;
         }
 
-        const result = await cancelFundingParticipation(participationId);
+        const result = await cancelFundingParticipation(
+          participationId,
+          resultType === "cancel" ? "카카오페이 결제창에서 취소" : "카카오페이 결제 실패"
+        );
         setFundingId(result.funding_id || null);
         setState(resultType === "cancel" ? "cancelled" : "failed");
         setMessage(resultType === "cancel"
@@ -73,7 +84,13 @@ const KakaoPayResult = () => {
       icon: <AlertCircle className="h-16 w-16 text-red-500" />,
       title: "결제 미완료",
     },
+    "auth-required": {
+      icon: <LogIn className="h-16 w-16 text-brand" />,
+      title: "로그인이 필요합니다",
+    },
   }[state];
+
+  const returnTo = `${location.pathname}${location.search}`;
 
   return (
     <div className="min-h-screen bg-[#f7f5f2]">
@@ -84,7 +101,13 @@ const KakaoPayResult = () => {
           <h1 className="mt-6 text-3xl font-bold">{content.title}</h1>
           <p className="mx-auto mt-4 max-w-md leading-7 text-gray-500">{message}</p>
 
-          {state !== "loading" && (
+          {state === "auth-required" ? (
+            <div className="mt-9">
+              <Button asChild className="rounded-full bg-brand hover:bg-brand-dark">
+                <Link to={`/auth?returnTo=${encodeURIComponent(returnTo)}`}>로그인하고 결제 완료하기</Link>
+              </Button>
+            </div>
+          ) : state !== "loading" && (
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild className="rounded-full bg-brand hover:bg-brand-dark">
                 <Link to="/my-fundings">내 펀딩 확인</Link>

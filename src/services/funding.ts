@@ -211,13 +211,27 @@ export const startKakaoPayFunding = async (
   color: string,
   size: string,
   quantity: number
-): Promise<KakaoPayReadyResult> => invokePaymentFunction<KakaoPayReadyResult>("kakaopay-ready", {
-  fundingId,
-  color,
-  size,
-  quantity,
-  returnUrl: window.location.origin,
-});
+): Promise<KakaoPayReadyResult> => {
+  const user = await requireUser();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("phone_number, address")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) throwFundingError(profileError, "회원 정보를 확인하지 못했습니다.");
+  if (!profile?.phone_number?.trim() || !profile.address?.trim()) {
+    throw new Error("결제 전에 마이페이지에서 전화번호와 배송지를 입력해주세요.");
+  }
+
+  return invokePaymentFunction<KakaoPayReadyResult>("kakaopay-ready", {
+    fundingId,
+    color,
+    size,
+    quantity,
+    returnUrl: window.location.origin,
+  });
+};
 
 export const approveKakaoPayFunding = async (
   participationId: string,
@@ -226,16 +240,10 @@ export const approveKakaoPayFunding = async (
   invokePaymentFunction("kakaopay-approve", { participationId, pgToken });
 
 export const cancelFundingParticipation = async (
-  participationId: string
-): Promise<{ success: boolean; refunded: boolean; funding_id?: string }> => {
-  await requireUser();
-  const { data, error } = await supabase.rpc("cancel_my_funding_participation", {
-    p_participation_id: participationId,
-  });
-
-  if (error) throwFundingError(error, "펀딩 참여를 취소하지 못했습니다.");
-  return { success: true, refunded: false, funding_id: data as string };
-};
+  participationId: string,
+  reason = "사용자 펀딩 참여 취소"
+): Promise<{ success: boolean; refunded: boolean; funding_id?: string }> =>
+  invokePaymentFunction("kakaopay-cancel", { participationId, reason });
 
 export const fetchMyFundingParticipations = async (): Promise<MyFundingParticipation[]> => {
   await requireUser();

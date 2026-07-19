@@ -58,20 +58,20 @@ This project is built with .
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## How is this project deployed?
 
-Simply open [Lovable](https://lovable.dev/projects/a412c583-f150-44a0-83aa-fca5eaa8061f) and click on Share -> Publish.
+GitHub `main` is the source of truth for the production build. Changes are validated locally and pushed directly to the repository.
 
-### Funding participation
+### Funding participation and KakaoPay
 
-The current beta flow accepts funding participation without payment.
+The funding flow uses KakaoPay checkout.
 
-1. Apply `supabase/migrations/20260719010000_enable_unpaid_funding_participation.sql` after the earlier funding migrations.
-2. A signed-in participant must save a phone number and shipping address in their profile.
-3. Only the funding creator and admins can view participant contact and shipping information.
-4. Participants can review and cancel their own funding participation from `/my-fundings`.
-
-The KakaoPay functions remain in the repository for a later payment relaunch, but they are not used by the current funding UI.
+1. Apply the funding migrations through `20260719020000_enable_kakaopay_funding_participation.sql`.
+2. Deploy `kakaopay-ready`, `kakaopay-approve`, and `kakaopay-cancel` with JWT verification enabled.
+3. Configure `KAKAOPAY_SECRET_KEY`, `KAKAOPAY_CID`, and `APP_URL` in the Supabase Edge Function secrets.
+4. A signed-in participant must save a phone number and shipping address before checkout.
+5. Only paid quantities count toward the funding goal. Participants can cancel and refund eligible payments from `/my-fundings`.
+6. Only the funding creator and admins can view participant contact and shipping information.
 
 ## I want to use a custom domain - is that possible?
 

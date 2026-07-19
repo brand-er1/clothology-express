@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { fetchFunding, getFundingErrorMessage, participateInFunding } from "@/services/funding";
+import { fetchFunding, getFundingErrorMessage, startKakaoPayFunding } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import {
   ArrowLeft,
@@ -19,7 +19,7 @@ import {
   ShieldCheck,
   SquarePen,
   Users,
-  UserRoundCheck,
+  WalletCards,
 } from "lucide-react";
 
 const FundingDetail = () => {
@@ -96,12 +96,19 @@ const FundingDetail = () => {
 
     setSubmitting(true);
     try {
-      await participateInFunding(id, selectedColor, selectedSize, quantity);
-      toast({
-        title: "펀딩 참여가 완료되었습니다",
-        description: "선택한 옵션과 수량이 펀딩 현황에 반영되었습니다.",
-      });
-      navigate("/my-fundings");
+      const payment = await startKakaoPayFunding(id, selectedColor, selectedSize, quantity);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const redirectUrl = isMobile
+        ? payment.next_redirect_mobile_url || payment.next_redirect_pc_url
+        : payment.next_redirect_pc_url || payment.next_redirect_mobile_url;
+
+      if (!redirectUrl) throw new Error("카카오페이 결제창을 열 수 없습니다.");
+
+      if (window.top && window.top !== window.self) {
+        window.top.location.href = redirectUrl;
+      } else {
+        window.location.assign(redirectUrl);
+      }
     } catch (error) {
       console.error(error);
       const message = getFundingErrorMessage(error);
@@ -109,7 +116,7 @@ const FundingDetail = () => {
       if (message.includes("전화번호") || message.includes("배송지") || message.includes("마이페이지")) {
         toast({
           title: "연락처와 배송지를 먼저 입력해주세요",
-          description: "저장하면 이 펀딩 페이지로 자동으로 돌아옵니다.",
+          description: "저장하면 이 펀딩 페이지로 돌아와 결제를 진행할 수 있습니다.",
         });
         navigate(`/profile?returnTo=${encodeURIComponent(`/fundings/${id}`)}`);
         return;
@@ -240,11 +247,11 @@ const FundingDetail = () => {
               <Button disabled={isPreview || !funding.price || submitting} onClick={handleParticipate}
                 className="h-14 w-full rounded-full bg-[#FEE500] text-base font-bold text-[#191919] hover:bg-[#f5dc00]">
                 {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                {!submitting && !isPreview && <UserRoundCheck className="mr-2 h-5 w-5" />}
-                {isPreview ? "관리자 승인 대기 중" : submitting ? "펀딩 참여 처리 중" : currentUserId ? "펀딩 참여하기" : "로그인하고 펀딩 참여"}
+                {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
+                {isPreview ? "관리자 승인 대기 중" : submitting ? "카카오페이 결제창 여는 중" : currentUserId ? "카카오페이로 펀딩 참여" : "로그인하고 펀딩 참여"}
               </Button>
               <p className="flex items-center justify-center text-xs text-gray-400">
-                <ShieldCheck className="mr-1 h-4 w-4" /> 결제 없이 참여되며, 전화번호와 배송지는 펀딩 개설자에게만 제공됩니다.
+                <ShieldCheck className="mr-1 h-4 w-4" /> 결제 완료 수량만 반영되며, 내 펀딩에서 결제 취소·환불할 수 있습니다.
               </p>
             </div>
           </div>

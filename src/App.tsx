@@ -14,6 +14,7 @@ import FundingDetail from './pages/FundingDetail';
 import FundingEditor from './pages/FundingEditor';
 import FundingManager from './pages/FundingManager';
 import MyFundings from './pages/MyFundings';
+import KakaoPayResult from './pages/KakaoPayResult';
 import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
@@ -23,12 +24,14 @@ import { useIsMobile } from './hooks/use-mobile';
 // Kakao 타입 선언
 declare global {
   interface Window {
-    Kakao: any;
+    Kakao?: {
+      init: (key: string) => void;
+      isInitialized: () => boolean;
+    };
   }
 }
 
 function App() {
-  const [isKakaoInitialized, setIsKakaoInitialized] = useState(false);
   const [isInIframeContext, setIsInIframeContext] = useState(false);
   
   // 모바일 상태 확인
@@ -55,11 +58,10 @@ function App() {
     script.onload = () => {
       // Kakao SDK 초기화 (JavaScript 키 사용)
       const kakaoApiKey = '65949909b86a9401ca9559ea3c184659';
-      if (kakaoApiKey && !isKakaoInitialized && window.Kakao) {
+      if (kakaoApiKey && window.Kakao) {
         // Kakao SDK 초기화는 한 번만 실행되도록
         if (!window.Kakao.isInitialized()) {
           window.Kakao.init(kakaoApiKey);
-          setIsKakaoInitialized(true);
           console.log('Kakao SDK initialized.');
         } else {
           console.log('Kakao SDK already initialized.');
@@ -159,6 +161,7 @@ function App() {
           <Route path="/fundings/:id/edit" element={<AuthGuard><FundingEditor /></AuthGuard>} />
           <Route path="/fundings/:id/manage" element={<AuthGuard><FundingManager /></AuthGuard>} />
           <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
+          <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
           <Route path="/orders" element={<AuthGuard><Orders /></AuthGuard>} />
           <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />

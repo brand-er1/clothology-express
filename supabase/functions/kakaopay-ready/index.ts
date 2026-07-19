@@ -32,6 +32,16 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "펀딩 옵션과 수량을 확인해주세요." }, 400);
     }
 
+    const { data: profile, error: profileError } = await userClient
+      .from("profiles")
+      .select("phone_number, address")
+      .eq("id", user.id)
+      .single();
+    if (profileError) throw profileError;
+    if (!profile?.phone_number?.trim() || !profile.address?.trim()) {
+      return jsonResponse({ error: "결제 전에 마이페이지에서 전화번호와 배송지를 입력해주세요." }, 400);
+    }
+
     const { data, error } = await userClient.rpc("create_funding_payment", {
       p_funding_id: body.fundingId,
       p_color: body.color,
@@ -92,4 +102,3 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: errorMessage(error) }, 400);
   }
 });
-

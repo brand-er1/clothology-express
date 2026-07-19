@@ -84,7 +84,12 @@ export const getKakaoPayCid = () => {
 
 export const getReturnOrigin = (req: Request, requestedUrl?: string) => {
   const configuredUrl = Deno.env.get("APP_URL");
-  const candidate = configuredUrl || requestedUrl || req.headers.get("Origin");
+  const requestOrigin = req.headers.get("Origin");
+  const requestedOrigin = requestedUrl ? new URL(requestedUrl).origin : null;
+  const configuredOrigin = configuredUrl ? new URL(configuredUrl).origin : null;
+  const candidate = requestedOrigin && requestedOrigin === requestOrigin
+    ? requestedOrigin
+    : configuredOrigin || requestOrigin;
 
   if (!candidate) {
     throw new Error("결제 후 돌아갈 사이트 주소가 설정되지 않았습니다.");
@@ -98,4 +103,3 @@ export const getReturnOrigin = (req: Request, requestedUrl?: string) => {
 
   return url.origin;
 };
-

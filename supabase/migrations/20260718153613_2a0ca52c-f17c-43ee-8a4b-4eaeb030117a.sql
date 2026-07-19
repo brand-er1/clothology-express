@@ -1,3 +1,4 @@
+-- 원격 Supabase 마이그레이션 기록과 동일한 버전으로 관리합니다.
 alter table public.funding_participations
   add column if not exists payment_provider text not null default 'none'
     check (payment_provider in ('none', 'kakaopay')),

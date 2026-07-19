@@ -40,10 +40,7 @@ const KakaoPayResult = () => {
           return;
         }
 
-        const result = await cancelFundingParticipation(
-          participationId,
-          resultType === "cancel" ? "카카오페이 결제창에서 취소" : "카카오페이 결제 실패"
-        );
+        const result = await cancelFundingParticipation(participationId);
         setFundingId(result.funding_id || null);
         setState(resultType === "cancel" ? "cancelled" : "failed");
         setMessage(resultType === "cancel"
@@ -106,4 +103,3 @@ const KakaoPayResult = () => {
 };
 
 export default KakaoPayResult;
-

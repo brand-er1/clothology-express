@@ -199,7 +199,9 @@ const FundingManager = () => {
                           <TableCell>{item.total_amount.toLocaleString("ko-KR")}원</TableCell>
                           <TableCell>{new Date(item.created_at).toLocaleDateString("ko-KR")}</TableCell>
                           <TableCell>
-                            <Select value={item.status} disabled={updatingId === item.id}
+                            <Select
+                              value={item.status}
+                              disabled={updatingId === item.id || ["ready", "cancelled", "failed"].includes(item.payment_status)}
                               onValueChange={(value) => changeStatus(item.id, value as FundingParticipationStatus)}>
                               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                               <SelectContent>

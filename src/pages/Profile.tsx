@@ -7,8 +7,12 @@ import { useProfileForm } from "@/hooks/useProfileForm";
 import { ReadOnlyFields } from "@/components/profile/ReadOnlyFields";
 import { EditableFields } from "@/components/profile/EditableFields";
 import { AddressFields } from "@/components/profile/AddressFields";
+import { useSearchParams } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
 
 const Profile = () => {
+  const [searchParams] = useSearchParams();
+  const isFundingReturn = searchParams.get("returnTo")?.startsWith("/fundings/");
   const {
     isLoading,
     email,
@@ -34,6 +38,12 @@ const Profile = () => {
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>마이페이지</CardTitle>
+            {isFundingReturn && (
+              <p className="flex items-start gap-2 rounded-xl bg-brand/10 p-4 text-sm leading-6 text-brand-dark">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                펀딩 참여에 필요한 전화번호와 배송지를 입력해주세요. 저장하면 펀딩 페이지로 돌아갑니다.
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

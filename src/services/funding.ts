@@ -19,6 +19,25 @@ const requireUser = async () => {
 
   return user;
 };
+
+export const getFundingErrorMessage = (
+  error: unknown,
+  fallback = "잠시 후 다시 시도해주세요."
+) => {
+  if (error instanceof Error && error.message) return error.message;
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+
+  return fallback;
+};
+
+const throwFundingError = (error: unknown, fallback?: string): never => {
+  throw new Error(getFundingErrorMessage(error, fallback));
+};
+
 export const createFundingDraft = async (input: CreateFundingInput): Promise<Funding> => {
   const user = await requireUser();
   const { data, error } = await supabase
@@ -141,7 +160,19 @@ export const participateInFunding = async (
   size: string,
   quantity: number
 ): Promise<string> => {
-  await requireUser();
+  const user = await requireUser();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("phone_number, address")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) throwFundingError(profileError, "회원 정보를 확인하지 못했습니다.");
+
+  if (!profile?.phone_number?.trim() || !profile.address?.trim()) {
+    throw new Error("펀딩 참여 전에 마이페이지에서 전화번호와 배송지를 입력해주세요.");
+  }
+
   const { data, error } = await supabase.rpc("participate_in_funding", {
     p_funding_id: fundingId,
     p_color: color,
@@ -149,7 +180,7 @@ export const participateInFunding = async (
     p_quantity: quantity,
   });
 
-  if (error) throw error;
+  if (error) throwFundingError(error, "펀딩 참여를 처리하지 못했습니다.");
   return data as string;
 };
 
@@ -202,7 +233,7 @@ export const cancelFundingParticipation = async (
     p_participation_id: participationId,
   });
 
-  if (error) throw error;
+  if (error) throwFundingError(error, "펀딩 참여를 취소하지 못했습니다.");
   return { success: true, refunded: false, funding_id: data as string };
 };
 
@@ -210,7 +241,7 @@ export const fetchMyFundingParticipations = async (): Promise<MyFundingParticipa
   await requireUser();
   const { data, error } = await supabase.rpc("get_my_funding_participations");
 
-  if (error) throw error;
+  if (error) throwFundingError(error, "펀딩 참여 내역을 불러오지 못했습니다.");
   return (data || []) as MyFundingParticipation[];
 };
 
@@ -220,7 +251,7 @@ export const fetchFundingParticipants = async (fundingId: string): Promise<Fundi
     p_funding_id: fundingId,
   });
 
-  if (error) throw error;
+  if (error) throwFundingError(error, "참여자 목록을 불러오지 못했습니다.");
   return (data || []) as FundingParticipation[];
 };
 
@@ -234,5 +265,5 @@ export const updateFundingParticipationStatus = async (
     p_status: status,
   });
 
-  if (error) throw error;
+  if (error) throwFundingError(error, "참여 상태를 변경하지 못했습니다.");
 };

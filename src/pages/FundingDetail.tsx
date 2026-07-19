@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { fetchFunding, participateInFunding } from "@/services/funding";
+import { fetchFunding, getFundingErrorMessage, participateInFunding } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import {
   ArrowLeft,
@@ -104,7 +104,17 @@ const FundingDetail = () => {
       navigate("/my-fundings");
     } catch (error) {
       console.error(error);
-      const message = error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.";
+      const message = getFundingErrorMessage(error);
+
+      if (message.includes("전화번호") || message.includes("배송지") || message.includes("마이페이지")) {
+        toast({
+          title: "연락처와 배송지를 먼저 입력해주세요",
+          description: "저장하면 이 펀딩 페이지로 자동으로 돌아옵니다.",
+        });
+        navigate(`/profile?returnTo=${encodeURIComponent(`/fundings/${id}`)}`);
+        return;
+      }
+
       toast({ title: "펀딩 참여에 실패했습니다", description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);

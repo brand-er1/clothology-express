@@ -163,6 +163,7 @@ $$;
 revoke all on function public.participate_in_funding(uuid, text, text, integer) from public;
 grant execute on function public.participate_in_funding(uuid, text, text, integer) to authenticated;
 
+drop function if exists public.get_funding_participants(uuid);
 create or replace function public.get_funding_participants(p_funding_id uuid)
 returns table (
   id uuid,

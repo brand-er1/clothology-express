@@ -1,12 +1,16 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 export const useProfileForm = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [formData, setFormData] = useState<Partial<AuthFormData>>({
@@ -36,7 +40,7 @@ export const useProfileForm = () => {
     }));
   };
 
-  const loadUserProfile = async () => {
+  const loadUserProfile = useCallback(async () => {
     try {
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user;
@@ -77,15 +81,15 @@ export const useProfileForm = () => {
           gender: profile.gender || "남성",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading profile:', error);
       toast({
         title: "프로필 로드 실패",
-        description: error.message,
+        description: getErrorMessage(error, "프로필 정보를 불러오지 못했습니다."),
         variant: "destructive",
       });
     }
-  };
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,13 +120,20 @@ export const useProfileForm = () => {
 
       toast({
         title: "프로필 업데이트 성공",
-        description: "프로필 정보가 성공적으로 수정되었습니다.",
+        description: "전화번호와 배송지를 안전하게 저장했습니다.",
       });
-    } catch (error: any) {
+
+      const requestedReturnTo = searchParams.get("returnTo");
+      const safeReturnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
+        ? requestedReturnTo
+        : null;
+
+      if (safeReturnTo) navigate(safeReturnTo, { replace: true });
+    } catch (error: unknown) {
       console.error('Error updating profile:', error);
       toast({
         title: "프로필 업데이트 실패",
-        description: error.message,
+        description: getErrorMessage(error, "프로필 정보를 저장하지 못했습니다."),
         variant: "destructive",
       });
     } finally {
@@ -132,7 +143,7 @@ export const useProfileForm = () => {
 
   useEffect(() => {
     loadUserProfile();
-  }, []);
+  }, [loadUserProfile]);
 
   return {
     isLoading,

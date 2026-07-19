@@ -62,17 +62,16 @@ This project is built with .
 
 Simply open [Lovable](https://lovable.dev/projects/a412c583-f150-44a0-83aa-fca5eaa8061f) and click on Share -> Publish.
 
-### KakaoPay funding checkout
+### Funding participation
 
-The funding checkout uses Supabase Edge Functions so the KakaoPay secret key is never exposed to the browser.
+The current beta flow accepts funding participation without payment.
 
-1. Apply `supabase/migrations/20260718020000_add_kakaopay_checkout_and_user_cancellations.sql`.
-2. Add the Supabase secrets `KAKAOPAY_CID`, `KAKAOPAY_SECRET_KEY`, and `APP_URL`.
-3. Deploy `kakaopay-ready`, `kakaopay-approve`, and `kakaopay-cancel`.
+1. Apply `supabase/migrations/20260719010000_enable_unpaid_funding_participation.sql` after the earlier funding migrations.
+2. A signed-in participant must save a phone number and shipping address in their profile.
+3. Only the funding creator and admins can view participant contact and shipping information.
+4. Participants can review and cancel their own funding participation from `/my-fundings`.
 
-`APP_URL` must be the public origin that serves this React app, without a trailing path. KakaoPay setup follows the current JSON API at `https://open-api.kakaopay.com/online/v1/payment/*`.
-
-KakaoPay deployment checkpoint: the payment migration and the ready, approve, and cancel Edge Functions are present on `main`.
+The KakaoPay functions remain in the repository for a later payment relaunch, but they are not used by the current funding UI.
 
 ## I want to use a custom domain - is that possible?
 

@@ -45,12 +45,16 @@ const MyFundings = () => {
   }, [load]);
 
   const activeCount = useMemo(
-    () => items.filter((item) => item.status !== "cancelled" && item.payment_status !== "failed").length,
+    () => items.filter((item) =>
+      item.status !== "cancelled" && !["ready", "cancelled", "failed"].includes(item.payment_status)
+    ).length,
     [items]
   );
   const totalAmount = useMemo(
     () => items
-      .filter((item) => item.status !== "cancelled")
+      .filter((item) =>
+        item.status !== "cancelled" && !["ready", "cancelled", "failed"].includes(item.payment_status)
+      )
       .reduce((sum, item) => sum + item.total_amount, 0),
     [items]
   );
@@ -138,7 +142,7 @@ const MyFundings = () => {
         ) : (
           <div className="mt-8 space-y-4">
             {items.map((item) => {
-              const isCancelled = item.status === "cancelled" || item.payment_status === "cancelled";
+              const isCancelled = item.status === "cancelled" || ["cancelled", "failed"].includes(item.payment_status);
               const canCancel = item.status !== "fulfilled"
                 && !isCancelled
                 && item.payment_status !== "failed";

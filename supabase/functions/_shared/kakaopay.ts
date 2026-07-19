@@ -85,21 +85,21 @@ export const getKakaoPayCid = () => {
 export const getReturnOrigin = (req: Request, requestedUrl?: string) => {
   const configuredUrl = Deno.env.get("APP_URL");
   const requestOrigin = req.headers.get("Origin");
-  const requestedOrigin = requestedUrl ? new URL(requestedUrl).origin : null;
-  const configuredOrigin = configuredUrl ? new URL(configuredUrl).origin : null;
-  const candidate = requestedOrigin && requestedOrigin === requestOrigin
-    ? requestedOrigin
-    : configuredOrigin || requestOrigin;
+  const requestedReturnUrl = requestedUrl ? new URL(requestedUrl) : null;
+  const configuredReturnUrl = configuredUrl ? new URL(configuredUrl) : null;
+  const candidate = requestedReturnUrl?.origin === requestOrigin
+    ? requestedReturnUrl
+    : configuredReturnUrl || (requestOrigin ? new URL(requestOrigin) : null);
 
   if (!candidate) {
     throw new Error("결제 후 돌아갈 사이트 주소가 설정되지 않았습니다.");
   }
 
-  const url = new URL(candidate);
-  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  if (url.protocol !== "https:" && !(isLocal && url.protocol === "http:")) {
+  const isLocal = candidate.hostname === "localhost" || candidate.hostname === "127.0.0.1";
+  if (candidate.protocol !== "https:" && !(isLocal && candidate.protocol === "http:")) {
     throw new Error("안전한 결제 복귀 주소가 아닙니다.");
   }
 
-  return url.origin;
+  const basePath = candidate.pathname === "/" ? "" : candidate.pathname.replace(/\/+$/, "");
+  return `${candidate.origin}${basePath}`;
 };

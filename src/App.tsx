@@ -19,6 +19,7 @@ import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
 import { refreshSessionAfterSocialLogin, isInIframe } from './utils/authUtils';
+import { getAppUrl, routerBasename } from './utils/appUrl';
 import { useIsMobile } from './hooks/use-mobile';
 
 // Kakao 타입 선언
@@ -102,7 +103,7 @@ function App() {
             } else {
               console.log("Successfully set session in iframe");
               // Force a reload if needed
-              window.location.href = window.location.origin;
+              window.location.href = getAppUrl();
             }
           }
           
@@ -148,7 +149,7 @@ function App() {
 
   return (
     <div className={isMobile ? 'mobile-view' : 'desktop-view'}>
-      <BrowserRouter>
+      <BrowserRouter basename={routerBasename}>
         <WelcomeNotification />
         <Routes>
           <Route path="/" element={<Index />} />

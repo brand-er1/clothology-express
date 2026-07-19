@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { ArrowRight, Check, Factory, Sparkles, Users } from "lucide-react";
+import { getAppPath } from "@/utils/appUrl";
 
 const Index = () => {
   return (
@@ -45,7 +46,7 @@ const Index = () => {
                     <span>BRAND-ER AI STUDIO</span><span>DESIGN 01</span>
                   </div>
                   <div className="aspect-[4/3] p-8 md:p-12">
-                    <img src="/lovable-uploads/jacket.png" alt="AI로 생성한 의류 디자인 예시" className="h-full w-full object-contain drop-shadow-2xl" />
+                    <img src={getAppPath("/lovable-uploads/jacket.png")} alt="AI로 생성한 의류 디자인 예시" className="h-full w-full object-contain drop-shadow-2xl" />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 p-3 text-center text-xs text-white/75">

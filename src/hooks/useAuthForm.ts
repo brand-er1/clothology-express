@@ -14,6 +14,7 @@ import {
   isInIframe
 } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
+import { getAppUrl } from "@/utils/appUrl";
 
 export const useAuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -147,11 +148,11 @@ export const useAuthForm = () => {
         }, 5 * 60 * 1000);
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Social login error:", error);
       toast({
         title: "로그인 오류",
-        description: error.message,
+        description: error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -198,7 +199,7 @@ export const useAuthForm = () => {
               weight: weight,
               gender: formData.gender,
             },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: getAppUrl("/auth/callback"),
           },
         });
         if (error) throw error;
@@ -215,10 +216,10 @@ export const useAuthForm = () => {
           description: "환영합니다.",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "오류 발생",
-        description: error.message,
+        description: error instanceof Error ? error.message : "요청을 처리하지 못했습니다.",
         variant: "destructive",
       });
     } finally {
@@ -344,7 +345,7 @@ export const useAuthForm = () => {
     return () => {
       window.removeEventListener('message', handleAuthMessage);
     };
-  }, [navigate, isInIframeContext]);
+  }, [navigate, isInIframeContext, returnTo]);
 
   return {
     isLoading,

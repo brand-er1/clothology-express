@@ -8,6 +8,7 @@ import type {
   FundingParticipationStatus,
   FundingStatus,
 } from "@/types/funding";
+import { getAppUrl } from "@/utils/appUrl";
 
 const requireUser = async () => {
   const { data } = await supabase.auth.getSession();
@@ -229,7 +230,7 @@ export const startKakaoPayFunding = async (
     color,
     size,
     quantity,
-    returnUrl: window.location.origin,
+    returnUrl: getAppUrl(),
   });
 };
 

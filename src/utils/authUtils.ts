@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
+import { getAppUrl } from "@/utils/appUrl";
+import type { Session } from "@supabase/supabase-js";
 
 export const checkEmailAvailability = async (email: string) => {
   const trimmedEmail = email.trim().replace(/\n/g, '');
@@ -102,12 +104,12 @@ export const validateSignUpForm = async (
   }
 };
 
-export type AuthMessageType = 'SOCIAL_LOGIN_SUCCESS' | 'SOCIAL_LOGIN_ERROR' | 'PROFILE_INCOMPLETE' | 'SESSION_DATA';
+type SessionTokens = Pick<Session, "access_token" | "refresh_token">;
 
-export interface AuthMessage {
-  type: AuthMessageType;
-  data?: any;
-}
+export type AuthMessage =
+  | { type: "SESSION_DATA"; data: SessionTokens }
+  | { type: "SOCIAL_LOGIN_ERROR"; data?: { message?: string } }
+  | { type: "SOCIAL_LOGIN_SUCCESS" | "PROFILE_INCOMPLETE"; data?: unknown };
 
 // Get social login URL for popup window
 export const getSocialLoginUrl = async (provider: 'google' | 'kakao'): Promise<string> => {
@@ -116,7 +118,7 @@ export const getSocialLoginUrl = async (provider: 'google' | 'kakao'): Promise<s
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getAppUrl("/auth/callback"),
         skipBrowserRedirect: true, // This is the key change to prevent automatic redirection
         queryParams: provider === 'google' ? {
           access_type: 'offline',
@@ -189,7 +191,7 @@ export const sendMessageToParentWindow = (message: AuthMessage) => {
 };
 
 // Store session data in localStorage for the main window to use
-export const storeSessionData = (session: any) => {
+export const storeSessionData = (session: SessionTokens) => {
   try {
     localStorage.setItem('tempSessionData', JSON.stringify(session));
     console.log("Session data stored in localStorage");
@@ -199,7 +201,11 @@ export const storeSessionData = (session: any) => {
 };
 
 // Check if user profile is complete
-export const isProfileComplete = (profile: any): boolean => {
+export const isProfileComplete = (profile: {
+  phone_number?: string | null;
+  height?: number | null;
+  weight?: number | null;
+} | null | undefined): boolean => {
   return !(!profile || 
     !profile.phone_number || 
     profile.height === null || 

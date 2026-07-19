@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { SizeTableItem } from "@/types/customize";
+import { getAppPath } from "@/utils/appUrl";
 
 interface SizeStepProps {
   selectedSize: string;
@@ -47,13 +48,13 @@ interface SizeRecommendation {
 
 // 각 의류 타입별 이미지 매핑
 const clothingImages: Record<string, string> = {
-  'short_sleeve': '/lovable-uploads/short_sleeve.png',
-  'long_sleeve': '/lovable-uploads/long_sleeve.png', 
-  'sweatshirt': '/lovable-uploads/sweatshirt.png',
-  'jacket': '/lovable-uploads/jacket.png',
-  'hoodie': '/lovable-uploads/hoodie.png',
-  'short_pants': '/lovable-uploads/short_pants.png',
-  'long_pants': '/lovable-uploads/long_pants.png'
+  'short_sleeve': getAppPath('/lovable-uploads/short_sleeve.png'),
+  'long_sleeve': getAppPath('/lovable-uploads/long_sleeve.png'),
+  'sweatshirt': getAppPath('/lovable-uploads/sweatshirt.png'),
+  'jacket': getAppPath('/lovable-uploads/jacket.png'),
+  'hoodie': getAppPath('/lovable-uploads/hoodie.png'),
+  'short_pants': getAppPath('/lovable-uploads/short_pants.png'),
+  'long_pants': getAppPath('/lovable-uploads/long_pants.png')
 };
 
 export const SizeStep = ({
@@ -251,7 +252,7 @@ export const SizeStep = ({
   // Handle size value change with numeric input validation
   const handleSizeValueChange = (key: string, newValue: string) => {
     // Extract numeric part only
-    let numericValue = newValue.replace(/[^0-9.]/g, '');
+    const numericValue = newValue.replace(/[^0-9.]/g, '');
     
     // Format with cm suffix
     const formattedValue = `${numericValue}cm`;
@@ -425,7 +426,7 @@ export const SizeStep = ({
                       onError={(e) => {
                         console.error("이미지 로드 오류:", e);
                         console.log("오류가 발생한 이미지 경로:", clothingImages[selectedType]);
-                        (e.target as HTMLImageElement).src = "/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png";
+                        (e.target as HTMLImageElement).src = getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png");
                       }}
                     />
                     <p className="text-center text-xs text-gray-500 mt-2">사이즈 가이드</p>

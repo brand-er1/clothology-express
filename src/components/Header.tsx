@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getAppPath } from "@/utils/appUrl";
 
 export const Header = () => {
   const { isAdmin } = useAdmin();
@@ -122,7 +123,7 @@ export const Header = () => {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="text-xl font-bold">
             <img 
-              src="/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png" 
+              src={getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png")}
               alt="BRAND-ER Logo"
               className="h-8"
             />

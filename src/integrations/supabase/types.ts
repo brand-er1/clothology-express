@@ -395,6 +395,7 @@ export type Database = {
       get_funding_participants: {
         Args: { p_funding_id: string }
         Returns: {
+          address: string
           created_at: string
           id: string
           participant_id: string

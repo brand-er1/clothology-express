@@ -1,13 +1,12 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
 import { AddressFields } from "./AddressFields";
 import { OptionalFields } from "./OptionalFields";
+import { ShoppingBag, Store } from "lucide-react";
+import type { AccountType } from "@/utils/accountRouting";
 
 interface SignUpFormProps {
   formData: AuthFormData;
@@ -20,6 +19,7 @@ interface SignUpFormProps {
   isUsernameAvailable: boolean | null;
   checkUsername: () => Promise<void>;
   handleGenderChange: (value: string) => void;
+  handleAccountTypeChange: (value: AccountType) => void;
 }
 
 export const SignUpForm = ({
@@ -33,9 +33,44 @@ export const SignUpForm = ({
   isUsernameAvailable,
   checkUsername,
   handleGenderChange,
+  handleAccountTypeChange,
 }: SignUpFormProps) => {
   return (
     <>
+      <div className="space-y-3">
+        <div>
+          <Label>회원 유형</Label>
+          <p className="mt-1 text-xs text-gray-500">가입 후 이용할 서비스를 선택해주세요.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => handleAccountTypeChange("seller")}
+            className={`rounded-xl border p-4 text-left transition-all ${
+              formData.accountType === "seller"
+                ? "border-brand bg-brand/5 ring-2 ring-brand/20"
+                : "border-gray-200 hover:border-brand/40"
+            }`}
+          >
+            <Store className="h-6 w-6 text-brand" />
+            <p className="mt-3 font-bold">판매자</p>
+            <p className="mt-1 text-xs leading-5 text-gray-500">AI 디자인·펀딩 만들기</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAccountTypeChange("buyer")}
+            className={`rounded-xl border p-4 text-left transition-all ${
+              formData.accountType === "buyer"
+                ? "border-brand bg-brand/5 ring-2 ring-brand/20"
+                : "border-gray-200 hover:border-brand/40"
+            }`}
+          >
+            <ShoppingBag className="h-6 w-6 text-brand" />
+            <p className="mt-3 font-bold">구매자</p>
+            <p className="mt-1 text-xs leading-5 text-gray-500">펀딩 둘러보기·참여</p>
+          </button>
+        </div>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="email">이메일</Label>
         <div className="flex gap-2">
@@ -129,11 +164,13 @@ export const SignUpForm = ({
         handleChange={handleChange}
         handleAddressSearch={handleAddressSearch}
       />
-      <OptionalFields 
-        formData={formData} 
-        handleChange={handleChange}
-        handleGenderChange={handleGenderChange}
-      />
+      {formData.accountType === "seller" && (
+        <OptionalFields
+          formData={formData}
+          handleChange={handleChange}
+          handleGenderChange={handleGenderChange}
+        />
+      )}
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "처리 중..." : "회원가입"}
       </Button>

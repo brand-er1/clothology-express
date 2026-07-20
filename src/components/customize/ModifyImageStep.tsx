@@ -6,10 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageOff, Send, RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
+import { ProductionEstimateCard } from "./ProductionEstimateCard";
 
 interface ModifyImageStepProps {
   isLoading: boolean;
   selectedImageUrl: string | null;
+  selectedType: string;
   modificationHistory: Array<{
     prompt: string;
     response: string;
@@ -24,6 +26,7 @@ interface ModifyImageStepProps {
 export const ModifyImageStep = ({
   isLoading,
   selectedImageUrl,
+  selectedType,
   modificationHistory,
   onModifyImage,
   onResetModifications,
@@ -83,6 +86,8 @@ export const ModifyImageStep = ({
                 </div>
               )}
             </div>
+
+            {selectedImageUrl && <ProductionEstimateCard selectedType={selectedType} />}
             
             <form onSubmit={handleSubmit} className="w-full space-y-4">
               <Textarea

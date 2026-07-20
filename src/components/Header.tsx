@@ -8,11 +8,13 @@ import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getAppPath } from "@/utils/appUrl";
+import { getAccountType, type AccountType } from "@/utils/accountRouting";
 
 export const Header = () => {
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [accountType, setAccountType] = useState<AccountType | null>(null);
   const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
@@ -24,11 +26,13 @@ export const Header = () => {
     // 인증 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
+      setAccountType(session ? getAccountType(session.user) : null);
     });
 
     // 초기 인증 상태 확인
     supabase.auth.getSession().then(({ data }) => {
       setIsAuthenticated(!!data.session);
+      setAccountType(data.session ? getAccountType(data.session.user) : null);
     });
 
     return () => {
@@ -43,12 +47,16 @@ export const Header = () => {
       </Link>
       {isAuthenticated ? (
         <>
-          <Link to="/customize">
-            <Button variant="ghost">AI 디자인</Button>
-          </Link>
-          <Link to="/orders">
-            <Button variant="ghost">주문 내역</Button>
-          </Link>
+          {accountType === "seller" && (
+            <>
+              <Link to="/customize">
+                <Button variant="ghost">AI 디자인</Button>
+              </Link>
+              <Link to="/orders">
+                <Button variant="ghost">주문 내역</Button>
+              </Link>
+            </>
+          )}
           <Link to="/my-fundings">
             <Button variant="ghost">내 펀딩</Button>
           </Link>
@@ -86,12 +94,16 @@ export const Header = () => {
           </Link>
           {isAuthenticated ? (
             <>
-              <Link to="/customize" className="w-full">
-                <Button variant="ghost" className="w-full justify-start">AI 디자인</Button>
-              </Link>
-              <Link to="/orders" className="w-full">
-                <Button variant="ghost" className="w-full justify-start">주문 내역</Button>
-              </Link>
+              {accountType === "seller" && (
+                <>
+                  <Link to="/customize" className="w-full">
+                    <Button variant="ghost" className="w-full justify-start">AI 디자인</Button>
+                  </Link>
+                  <Link to="/orders" className="w-full">
+                    <Button variant="ghost" className="w-full justify-start">주문 내역</Button>
+                  </Link>
+                </>
+              )}
               <Link to="/my-fundings" className="w-full">
                 <Button variant="ghost" className="w-full justify-start">내 펀딩</Button>
               </Link>
@@ -121,7 +133,7 @@ export const Header = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="text-xl font-bold">
+          <Link to={accountType === "buyer" ? "/fundings" : "/"} className="text-xl font-bold">
             <img 
               src={getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png")}
               alt="BRAND-ER Logo"

@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { getAccountType, type AccountType } from "@/utils/accountRouting";
 
 interface AuthGuardProps {
   children: React.ReactNode;
+  requiredAccountType?: AccountType;
 }
 
-export const AuthGuard = ({ children }: AuthGuardProps) => {
+export const AuthGuard = ({ children, requiredAccountType }: AuthGuardProps) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,6 +19,11 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       
       if (!data.session) {
         navigate("/auth");
+        return;
+      }
+
+      if (requiredAccountType && getAccountType(data.session.user) !== requiredAccountType) {
+        navigate("/fundings", { replace: true });
         return;
       }
       
@@ -34,7 +41,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, requiredAccountType]);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

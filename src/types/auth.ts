@@ -1,4 +1,6 @@
 
+import type { AccountType } from "@/utils/accountRouting";
+
 export interface AuthFormData {
   email: string;
   password: string;
@@ -12,4 +14,5 @@ export interface AuthFormData {
   height: string;
   weight: string;
   gender: string;
+  accountType: AccountType | "";
 }

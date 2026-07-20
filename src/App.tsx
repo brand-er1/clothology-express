@@ -156,14 +156,14 @@ function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
-          <Route path="/customize" element={<AuthGuard><Customize /></AuthGuard>} />
+          <Route path="/customize" element={<AuthGuard requiredAccountType="seller"><Customize /></AuthGuard>} />
           <Route path="/fundings" element={<Fundings />} />
           <Route path="/fundings/:id" element={<FundingDetail />} />
-          <Route path="/fundings/:id/edit" element={<AuthGuard><FundingEditor /></AuthGuard>} />
-          <Route path="/fundings/:id/manage" element={<AuthGuard><FundingManager /></AuthGuard>} />
+          <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />
+          <Route path="/fundings/:id/manage" element={<AuthGuard requiredAccountType="seller"><FundingManager /></AuthGuard>} />
           <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
           <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
-          <Route path="/orders" element={<AuthGuard><Orders /></AuthGuard>} />
+          <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
           <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

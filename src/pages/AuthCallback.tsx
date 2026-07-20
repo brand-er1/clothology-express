@@ -8,6 +8,7 @@ import {
   isProfileComplete, 
   storeSessionData 
 } from "@/utils/authUtils";
+import { getAccountLandingPath, syncAccountTypeToProfile } from "@/utils/accountRouting";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -166,6 +167,8 @@ const AuthCallback = () => {
           }
           return;
         }
+
+        await syncAccountTypeToProfile(data.session.user);
         
         // Get user profile to check if it's complete
         if (window.opener && data.session) {
@@ -207,7 +210,7 @@ const AuthCallback = () => {
             console.error("Could not close window:", e);
           }
         } else {
-          navigate("/");
+          navigate(getAccountLandingPath(data.session.user));
         }
       } catch (error: any) {
         console.error("Auth callback error:", error);

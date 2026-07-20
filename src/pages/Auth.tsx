@@ -21,6 +21,7 @@ const Auth = () => {
     formData,
     handleChange,
     handleGenderChange,
+    handleAccountTypeChange,
     checkEmail,
     checkUsername,
     handleAuth,
@@ -83,6 +84,7 @@ const Auth = () => {
                   formData={formData}
                   handleChange={handleChange}
                   handleGenderChange={handleGenderChange}
+                  handleAccountTypeChange={handleAccountTypeChange}
                   isLoading={isLoading}
                   passwordMatch={passwordMatch}
                   handleAddressSearch={handleAddressSearch}

@@ -77,7 +77,8 @@ export const validateSignUpForm = async (
   isEmailAvailable: boolean | null,
   isUsernameAvailable: boolean | null,
   height: string,
-  weight: string
+  weight: string,
+  accountType: string,
 ) => {
   if (!passwordMatch) {
     throw new Error("비밀번호가 일치하지 않습니다.");
@@ -95,12 +96,18 @@ export const validateSignUpForm = async (
     throw new Error("닉네임 중복 확인이 필요합니다.");
   }
 
-  if (!height) {
-    throw new Error("키를 입력해주세요.");
+  if (!accountType) {
+    throw new Error("판매자 또는 구매자를 선택해주세요.");
   }
 
-  if (!weight) {
-    throw new Error("몸무게를 입력해주세요.");
+  if (accountType === "seller") {
+    if (!height) {
+      throw new Error("키를 입력해주세요.");
+    }
+
+    if (!weight) {
+      throw new Error("몸무게를 입력해주세요.");
+    }
   }
 };
 

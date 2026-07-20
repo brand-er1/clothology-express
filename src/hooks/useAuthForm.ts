@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +15,7 @@ import {
 } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 import { getAppUrl } from "@/utils/appUrl";
+import { getAccountLandingPath, syncAccountTypeToProfile, type AccountType } from "@/utils/accountRouting";
 
 export const useAuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -36,12 +37,21 @@ export const useAuthForm = () => {
     height: "",
     weight: "",
     gender: "남성",
+    accountType: "",
   });
   const navigate = useNavigate();
   const requestedReturnTo = new URLSearchParams(window.location.search).get("returnTo");
-  const returnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
+  const safeReturnTo = requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
     ? requestedReturnTo
-    : "/";
+    : null;
+
+  const resolvePostAuthDestination = useCallback(async () => {
+    if (safeReturnTo) return safeReturnTo;
+
+    const { data } = await supabase.auth.getUser();
+    await syncAccountTypeToProfile(data.user);
+    return getAccountLandingPath(data.user);
+  }, [safeReturnTo]);
 
   useEffect(() => {
     // Check if we're in an iframe
@@ -67,6 +77,13 @@ export const useAuthForm = () => {
     setFormData(prev => ({
       ...prev,
       gender: value
+    }));
+  };
+
+  const handleAccountTypeChange = (value: AccountType) => {
+    setFormData(prev => ({
+      ...prev,
+      accountType: value,
     }));
   };
 
@@ -124,7 +141,7 @@ export const useAuthForm = () => {
               }
               
               console.log("Successfully set session from poll");
-              navigate(returnTo);
+              navigate(await resolvePostAuthDestination());
               toast({
                 title: "로그인 성공!",
                 description: "환영합니다.",
@@ -171,14 +188,15 @@ export const useAuthForm = () => {
           isEmailAvailable,
           isUsernameAvailable,
           formData.height,
-          formData.weight
+          formData.weight,
+          formData.accountType,
         );
         
         // Height와 Weight 값이 유효한 숫자인지 확인
-        const height = parseFloat(formData.height);
-        const weight = parseFloat(formData.weight);
+        const height = formData.height ? parseFloat(formData.height) : null;
+        const weight = formData.weight ? parseFloat(formData.weight) : null;
         
-        if (isNaN(height) || isNaN(weight)) {
+        if (formData.accountType === "seller" && (height === null || weight === null || isNaN(height) || isNaN(weight))) {
           throw new Error("키와 몸무게는 유효한 숫자여야 합니다.");
         }
 
@@ -198,6 +216,7 @@ export const useAuthForm = () => {
               height: height,
               weight: weight,
               gender: formData.gender,
+              account_type: formData.accountType,
             },
             emailRedirectTo: getAppUrl("/auth/callback"),
           },
@@ -210,7 +229,7 @@ export const useAuthForm = () => {
         setIsSignUp(false);
       } else {
         await handleLogin(formData.email, formData.password);
-        navigate(returnTo);
+        navigate(await resolvePostAuthDestination());
         toast({
           title: "로그인 성공!",
           description: "환영합니다.",
@@ -242,6 +261,7 @@ export const useAuthForm = () => {
       height: "",
       weight: "",
       gender: "남성",
+      accountType: "",
     });
     setPasswordMatch(true);
     setIsEmailAvailable(null);
@@ -280,7 +300,7 @@ export const useAuthForm = () => {
               // Check if session refresh was successful
               const success = await refreshSessionAfterSocialLogin();
               if (success) {
-                navigate(returnTo);
+                navigate(await resolvePostAuthDestination());
                 toast({
                   title: "로그인 성공!",
                   description: "환영합니다.",
@@ -300,7 +320,7 @@ export const useAuthForm = () => {
                 title: "로그인 성공!",
                 description: "환영합니다.",
               });
-              navigate(returnTo);
+              navigate(await resolvePostAuthDestination());
             } else {
               toast({
                 title: "로그인 오류",
@@ -345,7 +365,7 @@ export const useAuthForm = () => {
     return () => {
       window.removeEventListener('message', handleAuthMessage);
     };
-  }, [navigate, isInIframeContext, returnTo]);
+  }, [navigate, isInIframeContext, resolvePostAuthDestination]);
 
   return {
     isLoading,
@@ -356,6 +376,7 @@ export const useAuthForm = () => {
     formData,
     handleChange,
     handleGenderChange,
+    handleAccountTypeChange,
     checkEmail,
     checkUsername,
     handleAuth,

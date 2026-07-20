@@ -227,6 +227,7 @@ const Customize = () => {
               <ModifyImageStep
                 isLoading={imageModifying}
                 selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
+                selectedType={selectedType}
                 modificationHistory={modificationHistory}
                 onModifyImage={handleModifyImage}
                 onResetModifications={handleResetModifications}

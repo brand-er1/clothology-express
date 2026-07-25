@@ -12,6 +12,7 @@ interface ModifyImageStepProps {
   isLoading: boolean;
   selectedImageUrl: string | null;
   selectedType: string;
+  designContext?: string;
   modificationHistory: Array<{
     prompt: string;
     response: string;
@@ -27,6 +28,7 @@ export const ModifyImageStep = ({
   isLoading,
   selectedImageUrl,
   selectedType,
+  designContext,
   modificationHistory,
   onModifyImage,
   onResetModifications,
@@ -87,7 +89,13 @@ export const ModifyImageStep = ({
               )}
             </div>
 
-            {selectedImageUrl && <ProductionEstimateCard selectedType={selectedType} />}
+            {selectedImageUrl && (
+              <ProductionEstimateCard
+                selectedType={selectedType}
+                imageUrl={selectedImageUrl}
+                designContext={designContext}
+              />
+            )}
             
             <form onSubmit={handleSubmit} className="w-full space-y-4">
               <Textarea

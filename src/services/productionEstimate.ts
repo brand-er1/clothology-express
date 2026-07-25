@@ -1,10 +1,14 @@
 import { supabase } from "@/lib/supabase";
-import type { ProductionEstimateResult } from "@/types/productionEstimate";
+import type {
+  ProductionEstimateResult,
+  UploadedArtworkAnalysis,
+} from "@/types/productionEstimate";
 
 interface AnalyzeProductionEstimateParams {
   imageUrl: string;
   selectedType: string;
   designContext?: string;
+  uploadedArtwork?: UploadedArtworkAnalysis | null;
 }
 
 const estimateRequestCache = new Map<
@@ -16,8 +20,14 @@ export const analyzeProductionEstimate = async ({
   imageUrl,
   selectedType,
   designContext = "",
+  uploadedArtwork = null,
 }: AnalyzeProductionEstimateParams): Promise<ProductionEstimateResult> => {
-  const cacheKey = JSON.stringify([imageUrl, selectedType, designContext]);
+  const cacheKey = JSON.stringify([
+    imageUrl,
+    selectedType,
+    designContext,
+    uploadedArtwork,
+  ]);
   const cachedRequest = estimateRequestCache.get(cacheKey);
   if (cachedRequest) return cachedRequest;
 
@@ -29,6 +39,7 @@ export const analyzeProductionEstimate = async ({
           imageUrl,
           selectedType,
           designContext,
+          uploadedArtwork,
         },
       },
     );

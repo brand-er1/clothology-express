@@ -8,6 +8,67 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type ArtworkType = "logo" | "photo" | "illustration";
+type UploadDecorationKind =
+  | "screen_print_1_color"
+  | "screen_print_multi_color"
+  | "dtf"
+  | "dtg";
+type ArtworkLocation =
+  | "front"
+  | "back"
+  | "left_sleeve"
+  | "right_sleeve"
+  | "neck"
+  | "other";
+
+const validArtworkTypes = new Set<ArtworkType>([
+  "logo",
+  "photo",
+  "illustration",
+]);
+const validUploadDecorationKinds = new Set<UploadDecorationKind>([
+  "screen_print_1_color",
+  "screen_print_multi_color",
+  "dtf",
+  "dtg",
+]);
+const validArtworkLocations = new Set<ArtworkLocation>([
+  "front",
+  "back",
+  "left_sleeve",
+  "right_sleeve",
+  "neck",
+  "other",
+]);
+const artworkTypeLabels: Record<ArtworkType, string> = {
+  logo: "로고형",
+  photo: "사진형",
+  illustration: "일러스트형",
+};
+const artworkLocationLabels: Record<ArtworkLocation, string> = {
+  front: "앞면",
+  back: "뒷면",
+  left_sleeve: "왼쪽 소매",
+  right_sleeve: "오른쪽 소매",
+  neck: "목 부분",
+  other: "기타 위치",
+};
+const artworkSizeLabels: Record<string, string> = {
+  small: "작은",
+  medium: "보통",
+  large: "큰",
+};
+
+const parseJsonResponse = (text: string) => {
+  const normalized = text
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/, "")
+    .replace(/\s*```$/, "");
+  return JSON.parse(normalized);
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -29,7 +90,13 @@ serve(async (req) => {
 
     // Get request body
     const requestData = await req.json();
-    console.log("Received modify-generated-image request:", requestData);
+    console.log("Received modify-generated-image request", {
+      hasImageUrl: Boolean(requestData?.imageUrl),
+      hasReferenceImage: Boolean(requestData?.referenceImage?.base64),
+      clothType: requestData?.clothType,
+      artworkLocation: requestData?.artworkLocation,
+      artworkSize: requestData?.artworkSize,
+    });
 
     // Extract required data
     const { 
@@ -37,7 +104,10 @@ serve(async (req) => {
       modificationPrompt,
       userId,
       clothType,
-      originalPrompt
+      originalPrompt,
+      referenceImage,
+      artworkLocation,
+      artworkSize,
     } = requestData;
 
     // Validate inputs
@@ -63,6 +133,158 @@ serve(async (req) => {
       binary += String.fromCharCode(sourceBytes[i]);
     }
     const base64Image = btoa(binary);
+
+    const referenceBase64 = String(referenceImage?.base64 || "")
+      .replace(/^data:image\/[^;]+;base64,/, "");
+    const referenceMimeType = String(referenceImage?.mimeType || "");
+    const hasReferenceImage = Boolean(referenceBase64);
+    if (
+      hasReferenceImage &&
+      !["image/png", "image/jpeg", "image/webp"].includes(referenceMimeType)
+    ) {
+      return new Response(
+        JSON.stringify({ error: "지원하지 않는 업로드 이미지 형식입니다." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+    if (referenceBase64.length > 8 * 1024 * 1024) {
+      return new Response(
+        JSON.stringify({ error: "업로드 이미지는 6MB 이하로 압축해주세요." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+
+    const safeArtworkLocation = validArtworkLocations.has(artworkLocation)
+      ? artworkLocation as ArtworkLocation
+      : "front";
+    let artworkAnalysis: Record<string, unknown> | null = null;
+
+    if (hasReferenceImage) {
+      const classificationPrompt = `
+You are a Korean apparel printing specialist. Analyze only the uploaded
+artwork image and return JSON only:
+{
+  "artworkType": "logo | photo | illustration",
+  "recommendedKind": "screen_print_1_color | screen_print_multi_color | dtf | dtg",
+  "confidence": 0.0,
+  "reason": "short Korean explanation"
+}
+
+Classification:
+- logo: brand mark, wordmark, emblem, or simple symbol.
+- photo: photorealistic or continuous-tone photographic image.
+- illustration: drawing, character, artwork, or graphic that is not primarily a logo.
+
+Printing recommendation:
+- One-color flat logo/illustration: screen_print_1_color.
+- Flat artwork using two to four spot colors: screen_print_multi_color.
+- Photos, gradients, detailed full-color artwork, or more than four colors: dtf.
+- Use dtg only when direct-to-garment is clearly more appropriate than DTF.
+- Do not choose embroidery, patch, PU, or silicone from appearance alone.
+`.trim();
+      const classificationBody = JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: classificationPrompt },
+              {
+                inlineData: {
+                  data: referenceBase64,
+                  mimeType: referenceMimeType,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
+        },
+      });
+      const classificationModels = [
+        "gemini-3-flash-preview",
+        "gemini-3-pro-preview",
+      ];
+      let rawClassification: Record<string, unknown> | null = null;
+
+      for (const model of classificationModels) {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: classificationBody,
+          },
+        );
+        if (!response.ok) continue;
+
+        const responseData = await response.json();
+        const responseText = (responseData?.candidates?.[0]?.content?.parts || [])
+          .map((part: { text?: string }) => part.text || "")
+          .join("")
+          .trim();
+        if (!responseText) continue;
+
+        try {
+          rawClassification = parseJsonResponse(responseText);
+          break;
+        } catch (error) {
+          console.warn("Artwork classification JSON parse failed", error);
+        }
+      }
+
+      const rawArtworkType = String(rawClassification?.artworkType || "");
+      const rawRecommendedKind = String(
+        rawClassification?.recommendedKind || "",
+      );
+      const resolvedArtworkType = validArtworkTypes.has(
+          rawArtworkType as ArtworkType,
+        )
+        ? rawArtworkType as ArtworkType
+        : "illustration";
+      const resolvedRecommendedKind = validUploadDecorationKinds.has(
+          rawRecommendedKind as UploadDecorationKind,
+        )
+        ? rawRecommendedKind as UploadDecorationKind
+        : "dtf";
+      const confidenceValue = Number(rawClassification?.confidence);
+      const confidence = Number.isFinite(confidenceValue)
+        ? Math.min(1, Math.max(0, confidenceValue))
+        : 0.5;
+      const reason =
+        String(rawClassification?.reason || "").trim() ||
+        "세부 색상과 그라데이션을 안전하게 구현할 수 있는 인쇄 방식으로 계산했습니다.";
+
+      const { data: priceRows, error: priceError } = await supabase
+        .from("quote_decoration_prices")
+        .select(
+          "price_label, analysis_kinds, unit_min, unit_max, is_starting_from, pricing_note",
+        )
+        .eq("active", true);
+      if (priceError) {
+        console.warn("Artwork price lookup failed", priceError);
+      }
+      const matchedPrice = (priceRows || []).find(
+        (row: { analysis_kinds?: string[] }) =>
+          row.analysis_kinds?.includes(resolvedRecommendedKind),
+      );
+
+      artworkAnalysis = {
+        artworkType: resolvedArtworkType,
+        artworkTypeLabel: artworkTypeLabels[resolvedArtworkType],
+        recommendedKind: resolvedRecommendedKind,
+        location: safeArtworkLocation,
+        locationLabel: artworkLocationLabels[safeArtworkLocation],
+        confidence,
+        reason,
+        priceLabel: matchedPrice?.price_label || null,
+        unitMin: matchedPrice?.unit_min ?? null,
+        unitMax: matchedPrice?.unit_max ?? null,
+        isStartingFrom: Boolean(matchedPrice?.is_starting_from),
+        pricingNote: matchedPrice?.pricing_note || null,
+      };
+    }
     
     // Create a detailed prompt for the AI
     const fullPrompt = `
@@ -73,11 +295,36 @@ serve(async (req) => {
     Modification requested: ${modificationPrompt}
     
     Please maintain the general style and type of clothing while applying these specific modifications.
+    ${hasReferenceImage
+      ? `The second supplied image is the customer's exact artwork. Preserve its composition, colors, lettering, and proportions. Apply it only to the ${artworkLocationLabels[safeArtworkLocation]} of the garment at a ${artworkSizeLabels[artworkSize] || "보통"} size. Do not invent, redraw, replace, or add any other logo or graphic.`
+      : ""}
     Generate a photorealistic, high-quality product image of the modified design.
     `;
     
     console.log("Sending prompt to Gemini:", fullPrompt);
     
+    const generationParts: Array<Record<string, unknown>> = [
+      { text: fullPrompt },
+      { text: "First image: source garment design." },
+      {
+        inlineData: {
+          data: base64Image,
+          mimeType: imageResponse.headers.get("content-type") || "image/jpeg",
+        },
+      },
+    ];
+    if (hasReferenceImage) {
+      generationParts.push(
+        { text: "Second image: exact customer-uploaded artwork to place on the garment." },
+        {
+          inlineData: {
+            data: referenceBase64,
+            mimeType: referenceMimeType,
+          },
+        },
+      );
+    }
+
     const geminiResp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${geminiApiKey}`,
       {
@@ -87,15 +334,7 @@ serve(async (req) => {
           contents: [
             {
               role: "user",
-              parts: [
-                { text: fullPrompt },
-                {
-                  inlineData: {
-                    data: base64Image,
-                    mimeType: imageResponse.headers.get("content-type") || "image/jpeg",
-                  },
-                },
-              ],
+              parts: generationParts,
             },
           ],
           generationConfig: {
@@ -158,14 +397,18 @@ serve(async (req) => {
       .getPublicUrl(uploadData?.path || fileName);
     
     const generatedImageUrl = publicUrlData?.publicUrl;
+    const resolvedTextResponse = artworkAnalysis
+      ? `${artworkAnalysis.artworkTypeLabel} 이미지로 분석해 ${artworkAnalysis.locationLabel}에 적용했습니다. ${artworkAnalysis.priceLabel || "추천 인쇄 방식"} 장당 공임을 자동견적에 반영합니다.`
+      : responseText;
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        textResponse: responseText,
+        textResponse: resolvedTextResponse,
         modifiedImageUrl: generatedImageUrl,
         modifiedImagePath: uploadData?.path || fileName,
-        hasImage: !!generatedImageUrl
+        hasImage: !!generatedImageUrl,
+        artworkAnalysis,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

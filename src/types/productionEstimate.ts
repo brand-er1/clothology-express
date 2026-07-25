@@ -46,15 +46,25 @@ export interface ProductionAnalysis {
 }
 
 export interface ProductionEstimateTotals {
+  quantity: number;
   productionMin: number | null;
   productionMax: number | null;
   productionIsStartingFrom: boolean;
+  productionTotalMin: number;
+  productionTotalMax: number;
   patternCost: number;
   sampleCost: number;
+  developmentTotal: number;
   decorationMin: number;
   decorationMax: number;
+  decorationTotalMin: number;
+  decorationTotalMax: number;
+  directUnitMin: number;
+  directUnitMax: number;
   totalMin: number;
   totalMax: number;
+  effectiveUnitMin: number;
+  effectiveUnitMax: number;
   totalIsStartingFrom: boolean;
 }
 

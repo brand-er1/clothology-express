@@ -312,40 +312,61 @@ Design context:
 ${String(designContext).slice(0, 3000)}
 `.trim();
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
+    const geminiModels = [
+      "gemini-3-flash-preview",
+      "gemini-3-pro-preview",
+      "gemini-3-pro-image-preview",
+    ];
+    const geminiRequestBody = JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: analysisPrompt },
             {
-              role: "user",
-              parts: [
-                { text: analysisPrompt },
-                {
-                  inlineData: {
-                    data: arrayBufferToBase64(imageBuffer),
-                    mimeType:
-                      imageResponse.headers.get("content-type") || "image/png",
-                  },
-                },
-              ],
+              inlineData: {
+                data: arrayBufferToBase64(imageBuffer),
+                mimeType:
+                  imageResponse.headers.get("content-type") || "image/png",
+              },
             },
           ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.1,
-          },
-        }),
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.1,
       },
-    );
+    });
 
-    if (!geminiResponse.ok) {
-      const responseBody = await geminiResponse.text();
-      throw new Error(
-        `AI 이미지 분석 실패: ${geminiResponse.status} ${responseBody}`,
+    let geminiResponse: Response | null = null;
+    const modelErrors: string[] = [];
+
+    for (const model of geminiModels) {
+      const candidateResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: geminiRequestBody,
+        },
       );
+
+      if (candidateResponse.ok) {
+        geminiResponse = candidateResponse;
+        break;
+      }
+
+      const responseBody = await candidateResponse.text();
+      modelErrors.push(`${model}: ${candidateResponse.status} ${responseBody}`);
+
+      if (![400, 404].includes(candidateResponse.status)) {
+        break;
+      }
+    }
+
+    if (!geminiResponse) {
+      throw new Error(`AI 이미지 분석 실패: ${modelErrors.join(" | ")}`);
     }
 
     const geminiData = await geminiResponse.json();

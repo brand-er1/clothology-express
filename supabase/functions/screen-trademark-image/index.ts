@@ -45,6 +45,7 @@ type KiprisMatch = {
   apparelClassMatch: boolean;
 };
 
+const analysisVersion = "brand-er-famous-logo-v2";
 const supportedMimeTypes = new Set([
   "image/png",
   "image/jpeg",
@@ -72,6 +73,8 @@ const genericSearchTerms = new Set([
 const famousBrandAliases = new Set([
   "nike",
   "나이키",
+  "swoosh",
+  "스우시",
   "jordan",
   "jumpman",
   "adidas",
@@ -594,11 +597,10 @@ const resolveDecision = (
   const highRiskMark = marks.find(
     (mark) =>
       (
-        mark.isGloballyRecognized ||
         famousBrandAliases.has(comparableName(mark.normalizedName)) ||
         famousBrandAliases.has(comparableName(mark.displayName))
       ) &&
-      mark.confidence >= 0.7,
+      mark.confidence >= 0.8,
   );
   if (highRiskMark) {
     return {
@@ -728,7 +730,8 @@ serve(async (req) => {
       .select("*")
       .eq("user_id", user.id)
       .eq("image_sha256", imageSha256)
-      .eq("source", source);
+      .eq("source", source)
+      .eq("analysis_version", analysisVersion);
     cacheQuery = imageUrl
       ? cacheQuery.eq("image_url", imageUrl)
       : cacheQuery.is("image_url", null);
@@ -779,6 +782,7 @@ serve(async (req) => {
         kipris_checked: kiprisChecked,
         kipris_matches: kiprisMatches.slice(0, 20),
         reason: resolved.reason,
+        analysis_version: analysisVersion,
       })
       .select("*")
       .single();

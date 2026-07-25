@@ -1,8 +1,34 @@
 
+import type {
+  DecorationLocation,
+  UploadedArtworkAnalysis,
+} from "@/types/productionEstimate";
+
 export interface Material {
   id: string;
   name: string;
   description: string;
+}
+
+export type ArtworkSize = "small" | "medium" | "large";
+
+export interface ArtworkReference {
+  base64: string;
+  mimeType: string;
+  fileName: string;
+}
+
+export interface ArtworkPlacement {
+  location: DecorationLocation;
+  size: ArtworkSize;
+}
+
+export interface ImageModificationEntry {
+  prompt: string;
+  response: string;
+  imageUrl?: string | null;
+  imagePath?: string | null;
+  artworkAnalysis?: UploadedArtworkAnalysis | null;
 }
 
 export interface CustomMeasurements {

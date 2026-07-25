@@ -23,6 +23,7 @@ import type {
 
 interface ProductionEstimateCardProps {
   selectedType: string;
+  selectedMaterial: string;
   imageUrl: string;
   designContext?: string;
   uploadedArtwork?: UploadedArtworkAnalysis | null;
@@ -78,6 +79,7 @@ const EstimateLoading = () => (
 
 export const ProductionEstimateCard = ({
   selectedType,
+  selectedMaterial,
   imageUrl,
   designContext = "",
   uploadedArtwork = null,
@@ -97,6 +99,7 @@ export const ProductionEstimateCard = ({
       const result = await analyzeProductionEstimate({
         imageUrl,
         selectedType,
+        selectedMaterial,
         designContext,
         uploadedArtwork,
       });
@@ -116,7 +119,13 @@ export const ProductionEstimateCard = ({
         setIsLoading(false);
       }
     }
-  }, [designContext, imageUrl, selectedType, uploadedArtwork]);
+  }, [
+    designContext,
+    imageUrl,
+    selectedMaterial,
+    selectedType,
+    uploadedArtwork,
+  ]);
 
   useEffect(() => {
     void loadEstimate();
@@ -230,6 +239,13 @@ export const ProductionEstimateCard = ({
                   totals.productionIsStartingFrom,
                 )}
           </p>
+          {estimate.materialPremium &&
+            totals.productionUnitSurcharge > 0 && (
+              <p className="mt-1 text-[11px] font-semibold text-brand">
+                {estimate.materialPremium.label} 소재 공임{" "}
+                +{formatWon(totals.productionUnitSurcharge)}/장 포함
+              </p>
+            )}
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
@@ -248,6 +264,12 @@ export const ProductionEstimateCard = ({
           <p className="mt-2 font-bold text-gray-950">
             {formatWon(totals.sampleCost)}
           </p>
+          {estimate.materialPremium && totals.sampleSurcharge > 0 && (
+            <p className="mt-1 text-[11px] font-semibold text-brand">
+              {estimate.materialPremium.label} 프리미엄 샘플비{" "}
+              +{formatWon(totals.sampleSurcharge)} 포함
+            </p>
+          )}
         </div>
       </div>
 

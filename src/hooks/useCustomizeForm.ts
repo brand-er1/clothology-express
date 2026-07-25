@@ -244,6 +244,7 @@ export const useCustomizeForm = () => {
               ? {
                   xPercent: options.placement.xPercent,
                   yPercent: options.placement.yPercent,
+                  widthPercent: options.placement.widthPercent,
                 }
               : undefined,
           }

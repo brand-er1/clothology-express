@@ -7,6 +7,7 @@ import {
   ImageOff,
   ImagePlus,
   MapPin,
+  Maximize2,
   Move,
   RefreshCw,
   Send,
@@ -17,6 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { ProductionEstimateCard } from "./ProductionEstimateCard";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -46,17 +48,29 @@ const locationOptions: Array<{
   { value: "neck", label: "목 부분" },
 ];
 
-const sizeOptions: Array<{ value: ArtworkSize; label: string }> = [
-  { value: "small", label: "작게" },
-  { value: "medium", label: "보통" },
-  { value: "large", label: "크게" },
-];
+const MIN_ARTWORK_WIDTH = 8;
+const MAX_ARTWORK_WIDTH = 50;
+const DEFAULT_ARTWORK_WIDTH = 25;
 
-const artworkWidthBySize: Record<ArtworkSize, number> = {
-  small: 16,
-  medium: 25,
-  large: 36,
+const resolveArtworkSize = (widthPercent: number): ArtworkSize => {
+  if (widthPercent < 18) return "small";
+  if (widthPercent > 34) return "large";
+  return "medium";
 };
+
+type ArtworkGesture =
+  | {
+      mode: "move";
+      pointerId: number;
+      offsetXPercent: number;
+      offsetYPercent: number;
+    }
+  | {
+      mode: "resize";
+      pointerId: number;
+      startClientX: number;
+      startWidthPercent: number;
+    };
 
 const locationPositionPresets: Record<
   DecorationLocation,
@@ -162,7 +176,9 @@ export const ModifyImageStep = ({
   const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
   const [artworkLocation, setArtworkLocation] =
     useState<DecorationLocation>("front");
-  const [artworkSize, setArtworkSize] = useState<ArtworkSize>("medium");
+  const [artworkWidthPercent, setArtworkWidthPercent] = useState(
+    DEFAULT_ARTWORK_WIDTH,
+  );
   const [artworkPosition, setArtworkPosition] = useState(
     locationPositionPresets.front,
   );
@@ -170,7 +186,7 @@ export const ModifyImageStep = ({
   const [isPreparingArtwork, setIsPreparingArtwork] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const artworkCanvasRef = useRef<HTMLDivElement>(null);
-  const activePointerRef = useRef<number | null>(null);
+  const activeGestureRef = useRef<ArtworkGesture | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,12 +268,10 @@ export const ModifyImageStep = ({
     const locationLabel =
       locationOptions.find((option) => option.value === artworkLocation)
         ?.label || "앞면";
-    const sizeLabel =
-      sizeOptions.find((option) => option.value === artworkSize)?.label ||
-      "보통";
+    const artworkSize = resolveArtworkSize(artworkWidthPercent);
 
     await onModifyImage(
-      `업로드한 이미지를 원본 형태와 색상을 유지해 옷의 ${locationLabel}, 화면 기준 왼쪽 ${Math.round(artworkPosition.xPercent)}%·위쪽 ${Math.round(artworkPosition.yPercent)}% 지점에 ${sizeLabel} 크기로 자연스럽게 적용해주세요.`,
+      `업로드한 이미지를 원본 형태와 색상을 유지해 옷의 ${locationLabel}, 화면 기준 왼쪽 ${Math.round(artworkPosition.xPercent)}%·위쪽 ${Math.round(artworkPosition.yPercent)}% 지점에 이미지 폭의 약 ${Math.round(artworkWidthPercent)}% 크기로 자연스럽게 적용해주세요.`,
       {
         referenceImage: uploadedArtwork,
         placement: {
@@ -265,6 +279,7 @@ export const ModifyImageStep = ({
           size: artworkSize,
           xPercent: artworkPosition.xPercent,
           yPercent: artworkPosition.yPercent,
+          widthPercent: artworkWidthPercent,
         },
       },
     );
@@ -274,56 +289,142 @@ export const ModifyImageStep = ({
     setUploadedArtwork(null);
     setArtworkPreview(null);
     setArtworkPosition(locationPositionPresets.front);
+    setArtworkWidthPercent(DEFAULT_ARTWORK_WIDTH);
   };
 
-  const updateArtworkPosition = (clientX: number, clientY: number) => {
+  const getPointerPercent = (clientX: number, clientY: number) => {
     const canvas = artworkCanvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const artworkWidth = artworkWidthBySize[artworkSize];
-    const xMargin = artworkWidth / 2;
-    const yMargin = Math.max(7, artworkWidth / 4);
-    const xPercent = ((clientX - rect.left) / rect.width) * 100;
-    const yPercent = ((clientY - rect.top) / rect.height) * 100;
-
-    setArtworkPosition({
-      xPercent: Math.min(100 - xMargin, Math.max(xMargin, xPercent)),
-      yPercent: Math.min(100 - yMargin, Math.max(yMargin, yPercent)),
-    });
+    return {
+      xPercent: ((clientX - rect.left) / rect.width) * 100,
+      yPercent: ((clientY - rect.top) / rect.height) * 100,
+      canvasWidth: rect.width,
+    };
   };
 
-  const handleArtworkPointerDown = (
+  const clampArtworkPosition = (
+    xPercent: number,
+    yPercent: number,
+    widthPercent = artworkWidthPercent,
+  ) => {
+    const xMargin = widthPercent / 2;
+    const yMargin = Math.max(6, widthPercent / 4);
+    return {
+      xPercent: Math.min(100 - xMargin, Math.max(xMargin, xPercent)),
+      yPercent: Math.min(100 - yMargin, Math.max(yMargin, yPercent)),
+    };
+  };
+
+  const handleCanvasPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
     if (!artworkPreview || isLoading) return;
+    if (event.target !== event.currentTarget) return;
+    const point = getPointerPercent(event.clientX, event.clientY);
+    if (!point) return;
     event.preventDefault();
-    activePointerRef.current = event.pointerId;
+    setArtworkPosition(
+      clampArtworkPosition(point.xPercent, point.yPercent),
+    );
+  };
+
+  const handleMovePointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    if (isLoading) return;
+    const point = getPointerPercent(event.clientX, event.clientY);
+    if (!point) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activeGestureRef.current = {
+      mode: "move",
+      pointerId: event.pointerId,
+      offsetXPercent: point.xPercent - artworkPosition.xPercent,
+      offsetYPercent: point.yPercent - artworkPosition.yPercent,
+    };
     event.currentTarget.setPointerCapture(event.pointerId);
-    updateArtworkPosition(event.clientX, event.clientY);
+  };
+
+  const handleResizePointerDown = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (isLoading) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activeGestureRef.current = {
+      mode: "resize",
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startWidthPercent: artworkWidthPercent,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handleArtworkPointerMove = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
-    if (activePointerRef.current !== event.pointerId) return;
+    const gesture = activeGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const point = getPointerPercent(event.clientX, event.clientY);
+    if (!point) return;
     event.preventDefault();
-    updateArtworkPosition(event.clientX, event.clientY);
+
+    if (gesture.mode === "move") {
+      setArtworkPosition(
+        clampArtworkPosition(
+          point.xPercent - gesture.offsetXPercent,
+          point.yPercent - gesture.offsetYPercent,
+        ),
+      );
+      return;
+    }
+
+    const deltaPercent =
+      ((event.clientX - gesture.startClientX) / point.canvasWidth) * 100;
+    const nextWidth = Math.min(
+      MAX_ARTWORK_WIDTH,
+      Math.max(
+        MIN_ARTWORK_WIDTH,
+        gesture.startWidthPercent + deltaPercent,
+      ),
+    );
+    setArtworkWidthPercent(nextWidth);
+    setArtworkPosition((current) =>
+      clampArtworkPosition(
+        current.xPercent,
+        current.yPercent,
+        nextWidth,
+      ),
+    );
   };
 
   const handleArtworkPointerEnd = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
-    if (activePointerRef.current !== event.pointerId) return;
-    activePointerRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
+    if (activeGestureRef.current?.pointerId !== event.pointerId) return;
+    activeGestureRef.current = null;
   };
 
   const handleLocationChange = (value: DecorationLocation) => {
     setArtworkLocation(value);
     setArtworkPosition(locationPositionPresets[value]);
+  };
+
+  const handleArtworkWidthChange = (values: number[]) => {
+    const nextWidth = Math.min(
+      MAX_ARTWORK_WIDTH,
+      Math.max(MIN_ARTWORK_WIDTH, values[0] || DEFAULT_ARTWORK_WIDTH),
+    );
+    setArtworkWidthPercent(nextWidth);
+    setArtworkPosition((current) =>
+      clampArtworkPosition(
+        current.xPercent,
+        current.yPercent,
+        nextWidth,
+      ),
+    );
   };
 
   const handleArtworkDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -371,13 +472,13 @@ export const ModifyImageStep = ({
           <div className="flex flex-col items-center space-y-4">
             <div
               ref={artworkCanvasRef}
-              className={`relative w-full max-w-xl touch-none select-none overflow-hidden rounded-xl border bg-gray-50 ${
+              className={`relative w-full max-w-xl touch-pan-y select-none overflow-hidden rounded-xl border bg-gray-50 ${
                 artworkPreview
                   ? "cursor-crosshair border-brand/40 shadow-inner"
                   : "border-gray-200"
               }`}
               style={{ aspectRatio: baseImageAspectRatio }}
-              onPointerDown={handleArtworkPointerDown}
+              onPointerDown={handleCanvasPointerDown}
               onPointerMove={handleArtworkPointerMove}
               onPointerUp={handleArtworkPointerEnd}
               onPointerCancel={handleArtworkPointerEnd}
@@ -412,12 +513,13 @@ export const ModifyImageStep = ({
                     로고를 누른 채 원하는 위치로 이동
                   </div>
                   <div
-                    className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-lg border-2 border-dashed border-brand bg-white/15 p-1 shadow-lg"
+                    className="absolute -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-lg border-2 border-dashed border-brand bg-white/15 p-1 shadow-lg active:cursor-grabbing"
                     style={{
                       left: `${artworkPosition.xPercent}%`,
                       top: `${artworkPosition.yPercent}%`,
-                      width: `${artworkWidthBySize[artworkSize]}%`,
+                      width: `${artworkWidthPercent}%`,
                     }}
+                    onPointerDown={handleMovePointerDown}
                   >
                     <img
                       src={artworkPreview}
@@ -425,9 +527,17 @@ export const ModifyImageStep = ({
                       className="block h-auto w-full object-contain"
                       draggable={false}
                     />
-                    <span className="absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
+                    <span className="pointer-events-none absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
                       <Move className="h-3 w-3" />
                     </span>
+                    <button
+                      type="button"
+                      className="absolute -bottom-3 -right-3 flex h-7 w-7 touch-none items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md cursor-nwse-resize"
+                      onPointerDown={handleResizePointerDown}
+                      aria-label="이미지 크기 조절"
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </>
               )}
@@ -496,11 +606,12 @@ export const ModifyImageStep = ({
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
                     <p className="flex items-center gap-1.5 text-xs font-extrabold text-brand">
                       <Move className="h-4 w-4" />
-                      위 옷 이미지에서 로고를 직접 이동하세요
+                      로고를 이동하거나 모서리로 크기를 조절하세요
                     </p>
                     <p className="text-[11px] font-semibold text-gray-500">
                       현재 위치 {Math.round(artworkPosition.xPercent)}% ·{" "}
-                      {Math.round(artworkPosition.yPercent)}%
+                      {Math.round(artworkPosition.yPercent)}% · 크기{" "}
+                      {Math.round(artworkWidthPercent)}%
                     </p>
                   </div>
                 </div>
@@ -547,28 +658,27 @@ export const ModifyImageStep = ({
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <p className="mb-1.5 text-xs font-bold text-gray-700">
-                    적용 크기
+                <div className="rounded-lg bg-white px-3 py-2.5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="flex items-center gap-1 text-xs font-bold text-gray-700">
+                      <Maximize2 className="h-3.5 w-3.5" /> 이미지 크기
+                    </p>
+                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-extrabold text-brand">
+                      {Math.round(artworkWidthPercent)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[artworkWidthPercent]}
+                    min={MIN_ARTWORK_WIDTH}
+                    max={MAX_ARTWORK_WIDTH}
+                    step={1}
+                    onValueChange={handleArtworkWidthChange}
+                    disabled={isLoading || !artworkPreview}
+                    aria-label="업로드 이미지 크기"
+                  />
+                  <p className="mt-2 text-[11px] leading-4 text-gray-500">
+                    슬라이더 또는 이미지 오른쪽 아래 핸들로 조절
                   </p>
-                  <Select
-                    value={artworkSize}
-                    onValueChange={(value) =>
-                      setArtworkSize(value as ArtworkSize)
-                    }
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sizeOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 

@@ -188,7 +188,7 @@ export const SizeStep = ({
                         {selectedGender} {size.number}사이즈
                       </p>
                       <p className="text-lg font-black text-gray-950">
-                        {size.label}
+                        {size.domesticLabel}
                       </p>
                     </div>
                   </div>
@@ -213,7 +213,7 @@ export const SizeStep = ({
                   {category} 평균 사이즈표
                 </h3>
                 <p className="mt-1 text-xs leading-5 text-gray-500">
-                  국내 성인 레귤러핏 평균 기준 · 단면 측정 · 단위 cm
+                  표준 사이즈 참고표 기준 · 단면 측정 · 단위 cm
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -251,7 +251,7 @@ export const SizeStep = ({
                           {size.number}사이즈
                         </span>
                         <span className="mt-0.5 block text-base">
-                          {size.label}
+                          {size.domesticLabel}
                         </span>
                       </th>
                     ))}
@@ -324,8 +324,8 @@ export const SizeStep = ({
                   <strong className="text-gray-950">사이즈 번호 기준</strong>
                   <br />
                   {selectedGender === "남성"
-                    ? "남성 1=M · 2=L · 3=XL"
-                    : "여성 1=S · 2=M · 3=L"}
+                    ? "남성 1=M(95) · 2=L(100) · 3=XL(105)"
+                    : "여성 1=S(85) · 2=M(90) · 3=L(95)"}
                 </p>
               </div>
               <div className="flex gap-3 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">

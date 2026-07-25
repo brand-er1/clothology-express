@@ -7,6 +7,7 @@ import {
   ImageOff,
   ImagePlus,
   MapPin,
+  Move,
   RefreshCw,
   Send,
   Sparkles,
@@ -50,6 +51,24 @@ const sizeOptions: Array<{ value: ArtworkSize; label: string }> = [
   { value: "medium", label: "보통" },
   { value: "large", label: "크게" },
 ];
+
+const artworkWidthBySize: Record<ArtworkSize, number> = {
+  small: 16,
+  medium: 25,
+  large: 36,
+};
+
+const locationPositionPresets: Record<
+  DecorationLocation,
+  { xPercent: number; yPercent: number }
+> = {
+  front: { xPercent: 50, yPercent: 45 },
+  back: { xPercent: 50, yPercent: 45 },
+  left_sleeve: { xPercent: 24, yPercent: 42 },
+  right_sleeve: { xPercent: 76, yPercent: 42 },
+  neck: { xPercent: 50, yPercent: 24 },
+  other: { xPercent: 50, yPercent: 50 },
+};
 
 const prepareArtworkReference = (file: File): Promise<ArtworkReference> =>
   new Promise((resolve, reject) => {
@@ -142,8 +161,14 @@ export const ModifyImageStep = ({
   const [artworkLocation, setArtworkLocation] =
     useState<DecorationLocation>("front");
   const [artworkSize, setArtworkSize] = useState<ArtworkSize>("medium");
+  const [artworkPosition, setArtworkPosition] = useState(
+    locationPositionPresets.front,
+  );
+  const [baseImageAspectRatio, setBaseImageAspectRatio] = useState(4 / 3);
   const [isPreparingArtwork, setIsPreparingArtwork] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const artworkCanvasRef = useRef<HTMLDivElement>(null);
+  const activePointerRef = useRef<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +220,7 @@ export const ModifyImageStep = ({
       setArtworkPreview(
         `data:${prepared.mimeType};base64,${prepared.base64}`,
       );
+      setArtworkPosition(locationPositionPresets[artworkLocation]);
     } catch (error) {
       toast({
         title: "이미지 처리 실패",
@@ -223,12 +249,14 @@ export const ModifyImageStep = ({
       "보통";
 
     await onModifyImage(
-      `업로드한 이미지를 원본 형태와 색상을 유지해 옷의 ${locationLabel}에 ${sizeLabel} 크기로 자연스럽게 적용해주세요.`,
+      `업로드한 이미지를 원본 형태와 색상을 유지해 옷의 ${locationLabel}, 화면 기준 왼쪽 ${Math.round(artworkPosition.xPercent)}%·위쪽 ${Math.round(artworkPosition.yPercent)}% 지점에 ${sizeLabel} 크기로 자연스럽게 적용해주세요.`,
       {
         referenceImage: uploadedArtwork,
         placement: {
           location: artworkLocation,
           size: artworkSize,
+          xPercent: artworkPosition.xPercent,
+          yPercent: artworkPosition.yPercent,
         },
       },
     );
@@ -237,6 +265,57 @@ export const ModifyImageStep = ({
   const clearArtwork = () => {
     setUploadedArtwork(null);
     setArtworkPreview(null);
+    setArtworkPosition(locationPositionPresets.front);
+  };
+
+  const updateArtworkPosition = (clientX: number, clientY: number) => {
+    const canvas = artworkCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const artworkWidth = artworkWidthBySize[artworkSize];
+    const xMargin = artworkWidth / 2;
+    const yMargin = Math.max(7, artworkWidth / 4);
+    const xPercent = ((clientX - rect.left) / rect.width) * 100;
+    const yPercent = ((clientY - rect.top) / rect.height) * 100;
+
+    setArtworkPosition({
+      xPercent: Math.min(100 - xMargin, Math.max(xMargin, xPercent)),
+      yPercent: Math.min(100 - yMargin, Math.max(yMargin, yPercent)),
+    });
+  };
+
+  const handleArtworkPointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    if (!artworkPreview || isLoading) return;
+    event.preventDefault();
+    activePointerRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updateArtworkPosition(event.clientX, event.clientY);
+  };
+
+  const handleArtworkPointerMove = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    if (activePointerRef.current !== event.pointerId) return;
+    event.preventDefault();
+    updateArtworkPosition(event.clientX, event.clientY);
+  };
+
+  const handleArtworkPointerEnd = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    if (activePointerRef.current !== event.pointerId) return;
+    activePointerRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleLocationChange = (value: DecorationLocation) => {
+    setArtworkLocation(value);
+    setArtworkPosition(locationPositionPresets[value]);
   };
 
   return (
@@ -295,30 +374,91 @@ export const ModifyImageStep = ({
               />
 
               {artworkPreview ? (
-                <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
-                  <img
-                    src={artworkPreview}
-                    alt="업로드한 프린팅 이미지"
-                    className="h-20 w-20 rounded-lg bg-gray-50 object-contain"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-gray-900">
-                      {uploadedArtwork?.fileName}
+                <div className="mt-4">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 text-xs font-extrabold text-brand">
+                      <Move className="h-4 w-4" />
+                      이미지를 끌어 원하는 위치에 놓아주세요
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      적용 후 AI가 로고형·사진형·일러스트형을 자동 판단합니다.
+                    <p className="text-[11px] font-semibold text-gray-500">
+                      위치 {Math.round(artworkPosition.xPercent)}% ·{" "}
+                      {Math.round(artworkPosition.yPercent)}%
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={clearArtwork}
-                    disabled={isLoading}
-                    aria-label="업로드 이미지 제거"
+                  <div
+                    ref={artworkCanvasRef}
+                    className="relative w-full touch-none select-none overflow-hidden rounded-xl border border-gray-200 bg-white shadow-inner cursor-crosshair"
+                    style={{ aspectRatio: baseImageAspectRatio }}
+                    onPointerDown={handleArtworkPointerDown}
+                    onPointerMove={handleArtworkPointerMove}
+                    onPointerUp={handleArtworkPointerEnd}
+                    onPointerCancel={handleArtworkPointerEnd}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
+                    {selectedImageUrl ? (
+                      <img
+                        src={selectedImageUrl}
+                        alt="이미지 배치 대상 의류"
+                        className="pointer-events-none h-full w-full object-contain"
+                        draggable={false}
+                        onLoad={(event) => {
+                          const image = event.currentTarget;
+                          if (image.naturalWidth && image.naturalHeight) {
+                            setBaseImageAspectRatio(
+                              image.naturalWidth / image.naturalHeight,
+                            );
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                        의류 이미지를 불러오는 중입니다.
+                      </div>
+                    )}
+                    <div
+                      className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-lg border-2 border-dashed border-brand bg-white/15 p-1 shadow-lg"
+                      style={{
+                        left: `${artworkPosition.xPercent}%`,
+                        top: `${artworkPosition.yPercent}%`,
+                        width: `${artworkWidthBySize[artworkSize]}%`,
+                      }}
+                    >
+                      <img
+                        src={artworkPreview}
+                        alt="배치할 업로드 이미지"
+                        className="block h-auto w-full object-contain"
+                        draggable={false}
+                      />
+                      <span className="absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
+                        <Move className="h-3 w-3" />
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
+                    <p className="min-w-0 truncate text-xs font-semibold text-gray-700">
+                      {uploadedArtwork?.fileName}
+                    </p>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoading}
+                      >
+                        교체
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={clearArtwork}
+                        disabled={isLoading}
+                        aria-label="업로드 이미지 제거"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -342,12 +482,12 @@ export const ModifyImageStep = ({
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div>
                   <p className="mb-1.5 flex items-center gap-1 text-xs font-bold text-gray-700">
-                    <MapPin className="h-3.5 w-3.5" /> 적용 위치
+                    <MapPin className="h-3.5 w-3.5" /> 제작 위치 구분
                   </p>
                   <Select
                     value={artworkLocation}
                     onValueChange={(value) =>
-                      setArtworkLocation(value as DecorationLocation)
+                      handleLocationChange(value as DecorationLocation)
                     }
                     disabled={isLoading}
                   >

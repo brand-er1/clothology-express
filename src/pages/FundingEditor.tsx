@@ -9,7 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { fetchFunding, updateFunding } from "@/services/funding";
+import {
+  fetchFunding,
+  resolveDefaultFabricUnitCost,
+  updateFunding,
+} from "@/services/funding";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type { Funding } from "@/types/funding";
 import {
@@ -176,6 +180,7 @@ const FundingEditor = () => {
   const sellingPrice = Math.max(0, funding.price || 0);
   const expectedSales = sellingPrice * targetQuantity;
   const fabricUnitCost = Math.max(0, funding.fabric_unit_cost || 0);
+  const defaultFabricUnitCost = resolveDefaultFabricUnitCost(funding.material);
   const fabricTotal = fabricUnitCost * targetQuantity;
   const fundingFee = Math.round(expectedSales * 0.1);
   const productionFee = Math.round(expectedSales * 0.15);
@@ -394,6 +399,10 @@ const FundingEditor = () => {
                       onChange={(event) => setFunding({ ...funding, price: event.target.value ? Number(event.target.value) : null })} className="h-12 pr-10" />
                     <span className="absolute right-3 top-3 text-sm text-gray-400">원</span>
                   </div>
+                  <p className="text-xs text-gray-500">
+                    자동 기본값 {formatWon(defaultFabricUnitCost)} · 면·린넨 등
+                    10,000원, 데님·레더 15,000원
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fabric-unit-cost">원단비 (장당)</Label>

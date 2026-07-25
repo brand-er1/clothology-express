@@ -429,16 +429,20 @@ ${String(designContext).slice(0, 3000)}
     const productionMax = garment.production_max;
     const knownProductionMin = productionMin ?? 0;
     const knownProductionMax = productionMax ?? 0;
+    const quantity = 20;
+    const productionTotalMin = knownProductionMin * quantity;
+    const productionTotalMax = knownProductionMax * quantity;
+    const decorationTotalMin = decorationMin * quantity;
+    const decorationTotalMax = decorationMax * quantity;
+    const directUnitMin = knownProductionMin + decorationMin;
+    const directUnitMax = knownProductionMax + decorationMax;
+    const developmentTotal = garment.pattern_cost + garment.sample_cost;
     const totalMin =
-      knownProductionMin +
-      garment.pattern_cost +
-      garment.sample_cost +
-      decorationMin;
+      productionTotalMin + decorationTotalMin + developmentTotal;
     const totalMax =
-      knownProductionMax +
-      garment.pattern_cost +
-      garment.sample_cost +
-      decorationMax;
+      productionTotalMax + decorationTotalMax + developmentTotal;
+    const effectiveUnitMin = Math.ceil(totalMin / quantity);
+    const effectiveUnitMax = Math.ceil(totalMax / quantity);
     const categoryConfidence = clampConfidence(
       rawAnalysis.categoryConfidence,
     );
@@ -502,15 +506,25 @@ ${String(designContext).slice(0, 3000)}
       },
       decorations: decorationLines,
       totals: {
+        quantity,
         productionMin,
         productionMax,
         productionIsStartingFrom: garment.production_is_starting_from,
+        productionTotalMin,
+        productionTotalMax,
         patternCost: garment.pattern_cost,
         sampleCost: garment.sample_cost,
+        developmentTotal,
         decorationMin,
         decorationMax,
+        decorationTotalMin,
+        decorationTotalMax,
+        directUnitMin,
+        directUnitMax,
         totalMin,
         totalMax,
+        effectiveUnitMin,
+        effectiveUnitMax,
         totalIsStartingFrom,
       },
       isPartial: productionMin === null || productionMax === null,

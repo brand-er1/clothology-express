@@ -21,6 +21,8 @@ export interface ArtworkReference {
 export interface ArtworkPlacement {
   location: DecorationLocation;
   size: ArtworkSize;
+  xPercent: number;
+  yPercent: number;
 }
 
 export interface ImageModificationEntry {

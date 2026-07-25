@@ -96,6 +96,7 @@ serve(async (req) => {
       clothType: requestData?.clothType,
       artworkLocation: requestData?.artworkLocation,
       artworkSize: requestData?.artworkSize,
+      artworkPosition: requestData?.artworkPosition,
     });
 
     // Extract required data
@@ -108,6 +109,7 @@ serve(async (req) => {
       referenceImage,
       artworkLocation,
       artworkSize,
+      artworkPosition,
     } = requestData;
 
     // Validate inputs
@@ -157,6 +159,14 @@ serve(async (req) => {
     const safeArtworkLocation = validArtworkLocations.has(artworkLocation)
       ? artworkLocation as ArtworkLocation
       : "front";
+    const rawXPercent = Number(artworkPosition?.xPercent);
+    const rawYPercent = Number(artworkPosition?.yPercent);
+    const xPercent = Number.isFinite(rawXPercent)
+      ? Math.min(100, Math.max(0, rawXPercent))
+      : 50;
+    const yPercent = Number.isFinite(rawYPercent)
+      ? Math.min(100, Math.max(0, rawYPercent))
+      : 45;
     let artworkAnalysis: Record<string, unknown> | null = null;
 
     if (hasReferenceImage) {
@@ -296,7 +306,7 @@ Printing recommendation:
     
     Please maintain the general style and type of clothing while applying these specific modifications.
     ${hasReferenceImage
-      ? `The second supplied image is the customer's exact artwork. Preserve its composition, colors, lettering, and proportions. Apply it only to the ${artworkLocationLabels[safeArtworkLocation]} of the garment at a ${artworkSizeLabels[artworkSize] || "보통"} size. Do not invent, redraw, replace, or add any other logo or graphic.`
+      ? `The second supplied image is the customer's exact artwork. Preserve its composition, colors, lettering, and proportions. The customer dragged it to a precise target centered ${xPercent.toFixed(1)}% from the left edge and ${yPercent.toFixed(1)}% from the top edge of the source image. Apply it only to that dragged position on the ${artworkLocationLabels[safeArtworkLocation]} at a ${artworkSizeLabels[artworkSize] || "보통"} size. The drag coordinates are authoritative. Do not invent, redraw, replace, or add any other logo or graphic.`
       : ""}
     Generate a photorealistic, high-quality product image of the modified design.
     `;

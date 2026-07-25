@@ -239,6 +239,12 @@ export const useCustomizeForm = () => {
             referenceImage: options.referenceImage,
             artworkLocation: options.placement?.location,
             artworkSize: options.placement?.size,
+            artworkPosition: options.placement
+              ? {
+                  xPercent: options.placement.xPercent,
+                  yPercent: options.placement.yPercent,
+                }
+              : undefined,
           }
         }
       );

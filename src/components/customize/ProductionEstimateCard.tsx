@@ -15,14 +15,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type {
+  ArtworkType,
   EstimateDifficulty,
   ProductionEstimateResult,
+  UploadedArtworkAnalysis,
 } from "@/types/productionEstimate";
 
 interface ProductionEstimateCardProps {
   selectedType: string;
   imageUrl: string;
   designContext?: string;
+  uploadedArtwork?: UploadedArtworkAnalysis | null;
 }
 
 const formatWon = (amount: number) => `${amount.toLocaleString("ko-KR")}원`;
@@ -51,6 +54,12 @@ const difficultyStyle: Record<EstimateDifficulty, string> = {
   hard: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
+const artworkTypeLabel: Record<ArtworkType, string> = {
+  logo: "로고형",
+  photo: "사진형",
+  illustration: "일러스트형",
+};
+
 const EstimateLoading = () => (
   <Card className="w-full overflow-hidden border-brand/20">
     <div className="flex min-h-48 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
@@ -71,6 +80,7 @@ export const ProductionEstimateCard = ({
   selectedType,
   imageUrl,
   designContext = "",
+  uploadedArtwork = null,
 }: ProductionEstimateCardProps) => {
   const [estimate, setEstimate] = useState<ProductionEstimateResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +98,7 @@ export const ProductionEstimateCard = ({
         imageUrl,
         selectedType,
         designContext,
+        uploadedArtwork,
       });
       if (requestIdRef.current !== requestId) return;
       setEstimate(result);
@@ -105,7 +116,7 @@ export const ProductionEstimateCard = ({
         setIsLoading(false);
       }
     }
-  }, [designContext, imageUrl, selectedType]);
+  }, [designContext, imageUrl, selectedType, uploadedArtwork]);
 
   useEffect(() => {
     void loadEstimate();
@@ -264,6 +275,13 @@ export const ProductionEstimateCard = ({
                   <p className="font-semibold text-gray-800">
                     {decoration.locationLabel} · {decoration.label}
                   </p>
+                  {decoration.source === "uploaded_artwork" &&
+                    decoration.artworkType && (
+                      <p className="mt-0.5 text-[11px] font-bold text-brand">
+                        업로드 {artworkTypeLabel[decoration.artworkType]} 분석
+                        기준
+                      </p>
+                    )}
                   {decoration.note && (
                     <p className="mt-0.5 text-xs text-gray-500">
                       {decoration.note}

@@ -45,7 +45,7 @@ type KiprisMatch = {
   apparelClassMatch: boolean;
 };
 
-const analysisVersion = "brand-er-famous-logo-v2";
+const analysisVersion = "brand-er-known-famous-logo-v3";
 const supportedMimeTypes = new Set([
   "image/png",
   "image/jpeg",
@@ -70,7 +70,7 @@ const genericSearchTerms = new Set([
   "오리지널",
   "패션",
 ]);
-const famousBrandAliases = new Set([
+const blockedFamousBrandAliases = new Set([
   "nike",
   "나이키",
   "swoosh",
@@ -183,6 +183,25 @@ const famousBrandAliases = new Set([
   "아더에러",
   "thisisneverthat",
   "디스이즈네버댓",
+  "matinkim",
+  "마뗑킴",
+  "마땡킴",
+  "mardimercredi",
+  "마르디메크르디",
+  "musinsastandard",
+  "무신사스탠다드",
+  "covernat",
+  "커버낫",
+  "kirsh",
+  "키르시",
+  "emis",
+  "이미스",
+  "marithefrancoisgirbaud",
+  "마리떼프랑소와저버",
+  "anderssonbell",
+  "앤더슨벨",
+  "wooyoungmi",
+  "우영미",
   "apple",
   "애플",
   "cocacola",
@@ -378,6 +397,8 @@ Rules:
 - Set likelyThirdPartyBrand=true only when the image is likely reproducing or
   closely imitating an identifiable existing brand, not merely because it
   contains a logo-like original design.
+- Treat Korean domestic fashion brands as existing third-party brands too.
+  For example, normalize MATIN KIM or 마뗑킴 to "MATIN KIM".
 - Recognize well-known logos even when the brand name is removed, recolored,
   rotated, partially hidden, or slightly altered.
 - Set isGloballyRecognized=true for a brand widely recognized in South Korea
@@ -592,22 +613,37 @@ const buildSearchTerms = (marks: DetectedMark[], recognizedText: string[]) =>
 
 const resolveDecision = (
   marks: DetectedMark[],
+  recognizedText: string[],
   kiprisMatches: KiprisMatch[],
 ) => {
-  const highRiskMark = marks.find(
+  const knownBrandText = recognizedText.find((text) =>
+    blockedFamousBrandAliases.has(comparableName(text))
+  );
+  const knownBrandMark = marks.find(
     (mark) =>
       (
-        famousBrandAliases.has(comparableName(mark.normalizedName)) ||
-        famousBrandAliases.has(comparableName(mark.displayName))
+        blockedFamousBrandAliases.has(comparableName(mark.normalizedName)) ||
+        blockedFamousBrandAliases.has(comparableName(mark.displayName))
       ) &&
-      mark.confidence >= 0.8,
+      mark.confidence >= 0.65,
   );
-  if (highRiskMark) {
+  const modelConfirmedFamousMark = marks.find(
+    (mark) =>
+      mark.isGloballyRecognized &&
+      mark.likelyThirdPartyBrand &&
+      comparableName(mark.normalizedName).length >= 3 &&
+      mark.confidence >= 0.9,
+  );
+  const blockedMark = knownBrandMark || modelConfirmedFamousMark;
+
+  if (knownBrandText || blockedMark) {
+    const name = knownBrandText || blockedMark?.displayName ||
+      "유명 브랜드 표지";
     return {
       decision: "blocked" as Decision,
       riskLevel: "high" as RiskLevel,
       reason:
-        `${highRiskMark.displayName} 등 유명 타사 상표 또는 매우 유사한 표지가 감지되어 이미지 적용을 차단했습니다.`,
+        `${name} 등 정확히 식별된 유명 브랜드 로고 또는 매우 유사한 표지가 감지되어 이미지 적용을 차단했습니다.`,
     };
   }
 
@@ -767,7 +803,11 @@ serve(async (req) => {
       });
     }
 
-    const resolved = resolveDecision(analysis.marks, kiprisMatches);
+    const resolved = resolveDecision(
+      analysis.marks,
+      analysis.recognizedText,
+      kiprisMatches,
+    );
     const { data: saved, error: saveError } = await adminClient
       .from("trademark_screenings")
       .insert({

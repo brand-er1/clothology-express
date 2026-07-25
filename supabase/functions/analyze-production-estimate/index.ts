@@ -19,6 +19,7 @@ type DecorationKind =
   | "embroidery"
   | "patch"
   | "transfer"
+  | "washing"
   | "unknown_print";
 type DecorationLocation =
   | "front"
@@ -55,6 +56,15 @@ type DecorationPriceRow = {
   source_version: string;
 };
 
+type MaterialSurchargeRow = {
+  material_key: string;
+  material_label: string;
+  aliases: string[];
+  sample_surcharge: number;
+  production_unit_surcharge: number;
+  pricing_note: string | null;
+};
+
 type RawDecoration = {
   kind?: string;
   locations?: string[];
@@ -68,6 +78,8 @@ type RawAnalysis = {
   hasLining?: boolean;
   difficulty?: string;
   difficultyReason?: string;
+  hasWashing?: boolean;
+  washingConfidence?: number;
   decorations?: RawDecoration[];
 };
 
@@ -95,6 +107,7 @@ const validDecorationKinds = new Set<DecorationKind>([
   "embroidery",
   "patch",
   "transfer",
+  "washing",
   "unknown_print",
 ]);
 
@@ -262,6 +275,7 @@ serve(async (req) => {
     const {
       imageUrl,
       selectedType,
+      selectedMaterial = "",
       designContext = "",
       uploadedArtwork,
     } = await req.json();
@@ -293,7 +307,12 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const [garmentResult, decorationResult, imageResponse] = await Promise.all([
+    const [
+      garmentResult,
+      decorationResult,
+      materialResult,
+      imageResponse,
+    ] = await Promise.all([
       supabase
         .from("quote_garment_prices")
         .select(
@@ -306,11 +325,18 @@ serve(async (req) => {
           "price_key,price_label,analysis_kinds,unit_min,unit_max,is_starting_from,pricing_note,source_file,source_version",
         )
         .eq("active", true),
+      supabase
+        .from("quote_material_surcharges")
+        .select(
+          "material_key,material_label,aliases,sample_surcharge,production_unit_surcharge,pricing_note",
+        )
+        .eq("active", true),
       fetch(parsedImageUrl.toString()),
     ]);
 
     if (garmentResult.error) throw garmentResult.error;
     if (decorationResult.error) throw decorationResult.error;
+    if (materialResult.error) throw materialResult.error;
     if (!imageResponse.ok) {
       throw new Error(`이미지를 불러오지 못했습니다: ${imageResponse.status}`);
     }
@@ -322,6 +348,7 @@ serve(async (req) => {
 
     const garmentRows = (garmentResult.data || []) as GarmentPriceRow[];
     const decorationRows = (decorationResult.data || []) as DecorationPriceRow[];
+    const materialRows = (materialResult.data || []) as MaterialSurchargeRow[];
     if (garmentRows.length === 0) {
       throw new Error("의류 단가 데이터가 없습니다.");
     }
@@ -343,6 +370,8 @@ Return JSON only, with this exact shape:
   "categoryKey": "one allowed category key",
   "categoryConfidence": 0.0,
   "hasLining": false,
+  "hasWashing": false,
+  "washingConfidence": 0.0,
   "difficulty": "easy | medium | hard",
   "difficultyReason": "short Korean reason",
   "decorations": [
@@ -366,6 +395,10 @@ Rules:
 - If the design context explicitly names a printing technique or location, use
   it to distinguish visually similar methods unless the image contradicts it.
 - Do not mark fabric texture, seams, pockets, buttons, or zippers as printing.
+- Mark hasWashing true only when the finished garment visibly shows deliberate
+  washing effects such as fading, whiskers, abrasion, stone wash, acid wash,
+  uneven washed color, or a clearly washed vintage finish. A plain solid denim
+  or leather color without these effects is not washing.
 - Use hard for complex paneling, lining, tailoring, padding, layered
   construction, numerous pockets, unusual cut lines, or difficult sewing.
 - If front and back garments appear side by side, inspect both.
@@ -374,6 +407,7 @@ ${uploadedArtworkHint
       : ""}
 
 Selected type hint: ${selectedType}
+Selected material hint: ${selectedMaterial}
 Design context:
 ${String(designContext).slice(0, 3000)}
 `.trim();
@@ -460,9 +494,37 @@ ${String(designContext).slice(0, 3000)}
       throw new Error("분석된 의류 종류의 단가를 찾지 못했습니다.");
     }
 
+    const materialSearchValue = String(selectedMaterial).trim().toLowerCase();
+    const materialPremium = materialRows.find((row) => {
+      if (row.material_key.toLowerCase() === materialSearchValue) return true;
+      return row.aliases.some((alias) => {
+        const normalizedAlias = alias.trim().toLowerCase();
+        return (
+          normalizedAlias === materialSearchValue ||
+          materialSearchValue.includes(normalizedAlias)
+        );
+      });
+    }) || null;
+
     let normalizedDecorations = normalizeDecorations(
       rawAnalysis.decorations,
     );
+    const hasWashing =
+      Boolean(rawAnalysis.hasWashing) &&
+      clampConfidence(rawAnalysis.washingConfidence) >= 0.55;
+    if (
+      hasWashing &&
+      !normalizedDecorations.some(
+        (decoration) => decoration.kind === "washing",
+      )
+    ) {
+      normalizedDecorations.push({
+        kind: "washing",
+        location: "other",
+        source: "image_analysis",
+        artworkType: null,
+      });
+    }
     if (uploadedArtworkHint) {
       normalizedDecorations = normalizedDecorations.filter(
         (decoration) =>
@@ -486,7 +548,10 @@ ${String(designContext).slice(0, 3000)}
         kind: decoration.kind,
         label: price.price_label,
         location: decoration.location,
-        locationLabel: locationLabels[decoration.location],
+        locationLabel:
+          decoration.kind === "washing"
+            ? "전체 의류"
+            : locationLabels[decoration.location],
         unitMin: price.unit_min,
         unitMax: price.unit_max,
         lineMin: price.unit_min,
@@ -506,10 +571,18 @@ ${String(designContext).slice(0, 3000)}
       (sum, line) => sum + line.lineMax,
       0,
     );
-    const productionMin = garment.production_min;
-    const productionMax = garment.production_max;
+    const productionUnitSurcharge =
+      materialPremium?.production_unit_surcharge || 0;
+    const productionMin = garment.production_min === null
+      ? null
+      : garment.production_min + productionUnitSurcharge;
+    const productionMax = garment.production_max === null
+      ? null
+      : garment.production_max + productionUnitSurcharge;
     const knownProductionMin = productionMin ?? 0;
     const knownProductionMax = productionMax ?? 0;
+    const sampleSurcharge = materialPremium?.sample_surcharge || 0;
+    const sampleCost = garment.sample_cost + sampleSurcharge;
     const quantity = 20;
     const productionTotalMin = knownProductionMin * quantity;
     const productionTotalMax = knownProductionMax * quantity;
@@ -517,7 +590,7 @@ ${String(designContext).slice(0, 3000)}
     const decorationTotalMax = decorationMax * quantity;
     const directUnitMin = knownProductionMin + decorationMin;
     const directUnitMax = knownProductionMax + decorationMax;
-    const developmentTotal = garment.pattern_cost + garment.sample_cost;
+    const developmentTotal = garment.pattern_cost + sampleCost;
     const totalMin =
       productionTotalMin + decorationTotalMin + developmentTotal;
     const totalMax =
@@ -551,7 +624,9 @@ ${String(designContext).slice(0, 3000)}
 
     const hasPrinting = normalizedDecorations.some(
       (decoration) =>
-        decoration.kind !== "embroidery" && decoration.kind !== "patch",
+        decoration.kind !== "embroidery" &&
+        decoration.kind !== "patch" &&
+        decoration.kind !== "washing",
     );
     const hasEmbroidery = normalizedDecorations.some(
       (decoration) => decoration.kind === "embroidery",
@@ -577,6 +652,7 @@ ${String(designContext).slice(0, 3000)}
           "기본 봉제 난이도로 판단했습니다.",
         hasPrinting,
         hasEmbroidery,
+        hasWashing,
         detectedDecorationCount: decorationLines.length,
       },
       garment: {
@@ -585,16 +661,27 @@ ${String(designContext).slice(0, 3000)}
         moq: garment.moq,
         note: garment.pricing_note,
       },
+      materialPremium: materialPremium
+        ? {
+          key: materialPremium.material_key,
+          label: materialPremium.material_label,
+          sampleSurcharge,
+          productionUnitSurcharge,
+          note: materialPremium.pricing_note,
+        }
+        : null,
       decorations: decorationLines,
       totals: {
         quantity,
         productionMin,
         productionMax,
         productionIsStartingFrom: garment.production_is_starting_from,
+        productionUnitSurcharge,
         productionTotalMin,
         productionTotalMax,
         patternCost: garment.pattern_cost,
-        sampleCost: garment.sample_cost,
+        sampleCost,
+        sampleSurcharge,
         developmentTotal,
         decorationMin,
         decorationMax,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Calculator,
+  CirclePlus,
   Info,
   Loader2,
   Printer,
@@ -71,7 +72,7 @@ const EstimateLoading = () => (
       <div>
         <p className="font-bold text-gray-950">AI가 디자인을 분석하고 있습니다</p>
         <p className="mt-1 text-sm text-gray-500">
-          의류 종류·프린팅 위치·후가공·난이도를 확인해 견적을 계산합니다.
+          의류 종류·프린팅·부자재·난이도를 확인해 견적을 계산합니다.
         </p>
       </div>
     </div>
@@ -169,6 +170,9 @@ export const ProductionEstimateCard = ({
   }
 
   const { analysis, garment, totals, decorations } = estimate;
+  const accessories = estimate.accessories || [];
+  const accessoryUnitTotal = totals.accessoryUnitTotal || 0;
+  const accessoryTotal = totals.accessoryTotal || 0;
   const totalLabel = estimate.isPartial
     ? `${totals.quantity}장 기준 확인 가능한 합계`
     : `${totals.quantity}장 기준 예상 제작비`;
@@ -191,7 +195,7 @@ export const ProductionEstimateCard = ({
               <Calculator className="h-5 w-5" /> 예상 제작 견적
             </h3>
             <p className="mt-1 text-xs font-semibold text-white/75">
-              장당 생산·프린팅 공임 + 별도 패턴·샘플 개발비
+              장당 생산·프린팅·부자재 공임 + 별도 패턴·샘플 개발비
             </p>
           </div>
           <div className="sm:text-right">
@@ -338,6 +342,53 @@ export const ProductionEstimateCard = ({
         )}
       </div>
 
+      <div className="mx-5 mb-5 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 font-bold text-gray-950">
+            <CirclePlus className="h-4 w-4 text-brand" />
+            이미지 판별 부자재 (장당)
+          </p>
+          <p className="font-extrabold text-brand">
+            {accessories.length
+              ? formatWon(accessoryUnitTotal)
+              : "없음"}
+          </p>
+        </div>
+
+        {accessories.length > 0 ? (
+          <div className="mt-3 divide-y divide-gray-100">
+            {accessories.map((accessory) => (
+              <div
+                key={accessory.kind}
+                className="flex items-start justify-between gap-4 py-2.5 text-sm"
+              >
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {accessory.label} × {accessory.count}개
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-gray-500">
+                    AI 판별 신뢰도 {Math.round(accessory.confidence * 100)}% ·
+                    개당 {formatWon(accessory.unitPrice)}
+                  </p>
+                  {accessory.note && (
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {accessory.note}
+                    </p>
+                  )}
+                </div>
+                <p className="shrink-0 font-bold text-gray-950">
+                  {formatWon(accessory.lineTotal)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-xs leading-5 text-gray-500">
+            이미지에서 견적에 반영할 부자재가 뚜렷하게 확인되지 않았습니다.
+          </p>
+        )}
+      </div>
+
       <div className="mx-5 mb-5 overflow-hidden rounded-xl border border-brand/15 bg-white shadow-sm">
         <div className="grid divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
           <div className="p-4">
@@ -348,7 +399,7 @@ export const ProductionEstimateCard = ({
               {formatRange(totals.directUnitMin, totals.directUnitMax)}
             </p>
             <p className="mt-1 text-[11px] leading-4 text-gray-500">
-              생산공임 + 프린팅·후가공 공임
+              생산공임 + 프린팅·후가공 + 부자재 공임
             </p>
           </div>
           <div className="p-4">
@@ -391,6 +442,14 @@ export const ProductionEstimateCard = ({
                   totals.decorationTotalMin,
                   totals.decorationTotalMax,
                 )}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-600">
+                이미지 판별 부자재 × {totals.quantity}장
+              </span>
+              <span className="font-bold text-gray-950">
+                {formatWon(accessoryTotal)}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4">
@@ -446,8 +505,8 @@ export const ProductionEstimateCard = ({
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
         <div className="space-y-1">
           <p>
-            산출 기준: 생산·프린팅 공임은 장당 단가이며, 패턴·샘플비는
-            수량과 곱하지 않는 별도 1회 개발비입니다.
+            산출 기준: 생산·프린팅·부자재 공임은 장당 단가이며,
+            패턴·샘플비는 수량과 곱하지 않는 별도 1회 개발비입니다.
           </p>
           <p className="font-extrabold text-brand">※ 원단 가격은 별도입니다.</p>
           <p>※ 위 금액은 예상 제작 단가(About Price)입니다.</p>

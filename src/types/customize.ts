@@ -18,6 +18,13 @@ export interface ArtworkReference {
   fileName: string;
 }
 
+export interface CompositedImageReference {
+  base64: string;
+  mimeType: "image/webp";
+  width: number;
+  height: number;
+}
+
 export interface ArtworkPlacement {
   location: DecorationLocation;
   size: ArtworkSize;

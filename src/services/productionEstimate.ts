@@ -7,6 +7,7 @@ import type {
 interface AnalyzeProductionEstimateParams {
   imageUrl: string;
   selectedType: string;
+  selectedMaterial: string;
   designContext?: string;
   uploadedArtwork?: UploadedArtworkAnalysis | null;
 }
@@ -19,12 +20,14 @@ const estimateRequestCache = new Map<
 export const analyzeProductionEstimate = async ({
   imageUrl,
   selectedType,
+  selectedMaterial,
   designContext = "",
   uploadedArtwork = null,
 }: AnalyzeProductionEstimateParams): Promise<ProductionEstimateResult> => {
   const cacheKey = JSON.stringify([
     imageUrl,
     selectedType,
+    selectedMaterial,
     designContext,
     uploadedArtwork,
   ]);
@@ -38,6 +41,7 @@ export const analyzeProductionEstimate = async ({
         body: {
           imageUrl,
           selectedType,
+          selectedMaterial,
           designContext,
           uploadedArtwork,
         },

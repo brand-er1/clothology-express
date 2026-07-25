@@ -7,6 +7,7 @@ import { createFundingDraft } from "@/services/funding";
 import type {
   ArtworkPlacement,
   ArtworkReference,
+  CompositedImageReference,
   ImageModificationEntry,
   Material,
   SizeTableItem,
@@ -17,6 +18,7 @@ import { supabase } from "@/lib/supabase";
 interface ModifyImageOptions {
   referenceImage?: ArtworkReference;
   placement?: ArtworkPlacement;
+  compositedImage?: CompositedImageReference;
 }
 
 export const useCustomizeForm = () => {
@@ -207,7 +209,7 @@ export const useCustomizeForm = () => {
           description: "수정할 이미지가 없습니다.",
           variant: "destructive",
         });
-        return;
+        return false;
       }
       
       // Get current user
@@ -220,7 +222,7 @@ export const useCustomizeForm = () => {
           description: "이미지를 수정하려면 로그인해주세요.",
           variant: "destructive",
         });
-        return;
+        return false;
       }
       
       // Find material name
@@ -238,6 +240,7 @@ export const useCustomizeForm = () => {
             clothType: selectedType,
             originalPrompt: `${selectedMaterialName} ${selectedType}, ${selectedDetail}`,
             referenceImage: options.referenceImage,
+            compositedImage: options.compositedImage,
             artworkLocation: options.placement?.location,
             artworkSize: options.placement?.size,
             artworkPosition: options.placement
@@ -258,7 +261,7 @@ export const useCustomizeForm = () => {
           description: "이미지를 수정하는 중 오류가 발생했습니다.",
           variant: "destructive",
         });
-        return;
+        return false;
       }
       
       console.log("Modification result:", modificationData);
@@ -297,9 +300,14 @@ export const useCustomizeForm = () => {
       });
       
       toast({
-        title: "이미지 수정 완료",
-        description: "수정된 결과가 아래 챗창에 반영되었습니다.",
+        title: options.compositedImage
+          ? "선택한 위치에 적용 완료"
+          : "이미지 수정 완료",
+        description: options.compositedImage
+          ? "미리보기에서 지정한 위치와 크기를 그대로 반영했습니다."
+          : "수정된 결과가 아래 챗창에 반영되었습니다.",
       });
+      return true;
       
     } catch (err) {
       console.error("Error modifying image:", err);
@@ -308,6 +316,7 @@ export const useCustomizeForm = () => {
         description: "이미지를 수정하는 중 오류가 발생했습니다.",
         variant: "destructive",
       });
+      return false;
     } finally {
       setImageModifying(false);
     }

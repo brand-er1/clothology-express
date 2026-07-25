@@ -23,6 +23,16 @@ export type DecorationLocation =
 
 export type ArtworkType = "logo" | "photo" | "illustration";
 
+export type AccessoryAnalysisKind =
+  | "stud"
+  | "zipper"
+  | "button"
+  | "rivet"
+  | "hood_cord"
+  | "snap_button"
+  | "buckle"
+  | "drawstring";
+
 export interface UploadedArtworkAnalysis {
   artworkType: ArtworkType;
   artworkTypeLabel: string;
@@ -53,6 +63,16 @@ export interface DecorationEstimateLine {
   artworkType?: ArtworkType | null;
 }
 
+export interface AccessoryEstimateLine {
+  kind: AccessoryAnalysisKind;
+  label: string;
+  count: number;
+  confidence: number;
+  unitPrice: number;
+  lineTotal: number;
+  note?: string | null;
+}
+
 export interface ProductionAnalysis {
   categoryKey: string;
   categoryLabel: string;
@@ -64,6 +84,7 @@ export interface ProductionAnalysis {
   hasEmbroidery: boolean;
   hasWashing: boolean;
   detectedDecorationCount: number;
+  detectedAccessoryCount: number;
 }
 
 export interface ProductionEstimateTotals {
@@ -82,6 +103,8 @@ export interface ProductionEstimateTotals {
   decorationMax: number;
   decorationTotalMin: number;
   decorationTotalMax: number;
+  accessoryUnitTotal: number;
+  accessoryTotal: number;
   directUnitMin: number;
   directUnitMax: number;
   totalMin: number;
@@ -111,6 +134,7 @@ export interface ProductionEstimateResult {
     note?: string | null;
   } | null;
   decorations: DecorationEstimateLine[];
+  accessories: AccessoryEstimateLine[];
   totals: ProductionEstimateTotals;
   isPartial: boolean;
   manualReviewReasons: string[];

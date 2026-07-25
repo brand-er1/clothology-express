@@ -144,8 +144,8 @@ export const ProductionEstimateCard = ({
 
   const { analysis, garment, totals, decorations } = estimate;
   const totalLabel = estimate.isPartial
-    ? "확인 가능한 항목 합계"
-    : "예상 제작비";
+    ? `${totals.quantity}장 기준 확인 가능한 합계`
+    : `${totals.quantity}장 기준 예상 제작비`;
 
   return (
     <Card className="w-full overflow-hidden border-brand/20 bg-gradient-to-br from-white via-white to-brand/5 shadow-sm">
@@ -165,7 +165,7 @@ export const ProductionEstimateCard = ({
               <Calculator className="h-5 w-5" /> 예상 제작 견적
             </h3>
             <p className="mt-1 text-xs font-semibold text-white/75">
-              생산공임 + 패턴비 + 샘플비 + 프린팅공임
+              장당 생산·프린팅 공임 + 별도 패턴·샘플 개발비
             </p>
           </div>
           <div className="sm:text-right">
@@ -208,7 +208,7 @@ export const ProductionEstimateCard = ({
 
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Shirt className="h-4 w-4" /> 생산공임
+            <Shirt className="h-4 w-4" /> 생산공임 (장당)
           </p>
           <p className="mt-2 font-bold text-gray-950">
             {totals.productionMin === null || totals.productionMax === null
@@ -223,7 +223,7 @@ export const ProductionEstimateCard = ({
 
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Scissors className="h-4 w-4" /> 패턴비
+            <Scissors className="h-4 w-4" /> 패턴비 (별도 · 1회)
           </p>
           <p className="mt-2 font-bold text-gray-950">
             {formatWon(totals.patternCost)}
@@ -232,7 +232,7 @@ export const ProductionEstimateCard = ({
 
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Scissors className="h-4 w-4" /> 샘플비
+            <Scissors className="h-4 w-4" /> 샘플비 (별도 · 1회)
           </p>
           <p className="mt-2 font-bold text-gray-950">
             {formatWon(totals.sampleCost)}
@@ -244,7 +244,7 @@ export const ProductionEstimateCard = ({
         <div className="flex items-center justify-between gap-3">
           <p className="flex items-center gap-2 font-bold text-gray-950">
             <Printer className="h-4 w-4 text-brand" />
-            프린팅·후가공
+            프린팅·후가공 (장당)
           </p>
           <p className="font-extrabold text-brand">
             {decorations.length
@@ -270,13 +270,18 @@ export const ProductionEstimateCard = ({
                     </p>
                   )}
                 </div>
-                <p className="shrink-0 font-bold text-gray-950">
-                  {formatRange(
-                    decoration.lineMin,
-                    decoration.lineMax,
-                    decoration.isStartingFrom,
-                  )}
-                </p>
+                <div className="shrink-0 text-right">
+                  <p className="font-bold text-gray-950">
+                    {formatRange(
+                      decoration.lineMin,
+                      decoration.lineMax,
+                      decoration.isStartingFrom,
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-gray-500">
+                    장당
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -285,6 +290,92 @@ export const ProductionEstimateCard = ({
             이미지에서 뚜렷한 프린팅·자수·패치가 확인되지 않았습니다.
           </p>
         )}
+      </div>
+
+      <div className="mx-5 mb-5 overflow-hidden rounded-xl border border-brand/15 bg-white shadow-sm">
+        <div className="grid divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <div className="p-4">
+            <p className="text-xs font-semibold text-gray-500">
+              장당 제작 공임
+            </p>
+            <p className="mt-1 text-lg font-extrabold text-gray-950">
+              {formatRange(totals.directUnitMin, totals.directUnitMax)}
+            </p>
+            <p className="mt-1 text-[11px] leading-4 text-gray-500">
+              생산공임 + 프린팅·후가공 공임
+            </p>
+          </div>
+          <div className="p-4">
+            <p className="text-xs font-semibold text-gray-500">
+              별도 개발비 (1회)
+            </p>
+            <p className="mt-1 text-lg font-extrabold text-gray-950">
+              {formatWon(totals.developmentTotal)}
+            </p>
+            <p className="mt-1 text-[11px] leading-4 text-gray-500">
+              패턴비 {formatWon(totals.patternCost)} + 샘플비{" "}
+              {formatWon(totals.sampleCost)}
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 bg-brand/5 p-4">
+          <p className="text-xs font-extrabold text-brand">
+            {totals.quantity}장 제작 기준
+          </p>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-600">
+                생산공임 × {totals.quantity}장
+              </span>
+              <span className="font-bold text-gray-950">
+                {formatRange(
+                  totals.productionTotalMin,
+                  totals.productionTotalMax,
+                  totals.productionIsStartingFrom,
+                )}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-600">
+                프린팅·후가공 × {totals.quantity}장
+              </span>
+              <span className="font-bold text-gray-950">
+                {formatRange(
+                  totals.decorationTotalMin,
+                  totals.decorationTotalMax,
+                )}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-600">패턴·샘플 개발비 (별도 1회)</span>
+              <span className="font-bold text-gray-950">
+                {formatWon(totals.developmentTotal)}
+              </span>
+            </div>
+          </div>
+          <div className="mt-3 flex items-end justify-between gap-4 border-t border-brand/15 pt-3">
+            <div>
+              <p className="text-sm font-extrabold text-gray-950">
+                총 예상 제작비
+              </p>
+              <p className="mt-0.5 text-[11px] text-gray-500">
+                개발비 포함 환산 장당{" "}
+                {formatRange(
+                  totals.effectiveUnitMin,
+                  totals.effectiveUnitMax,
+                )}
+              </p>
+            </div>
+            <p className="text-xl font-black text-brand">
+              {formatRange(
+                totals.totalMin,
+                totals.totalMax,
+                totals.totalIsStartingFrom,
+              )}
+            </p>
+          </div>
+        </div>
       </div>
 
       {analysis.difficulty === "hard" && (
@@ -309,7 +400,8 @@ export const ProductionEstimateCard = ({
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
         <div className="space-y-1">
           <p>
-            산출 기준: 1벌 생산·후가공 공임 + 패턴·샘플 개발비 1회
+            산출 기준: 생산·프린팅 공임은 장당 단가이며, 패턴·샘플비는
+            수량과 곱하지 않는 별도 1회 개발비입니다.
           </p>
           <p className="font-extrabold text-brand">※ 원단 가격은 별도입니다.</p>
           <p>※ 위 금액은 예상 제작 단가(About Price)입니다.</p>

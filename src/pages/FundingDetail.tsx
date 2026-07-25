@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -264,6 +265,13 @@ const FundingDetail = () => {
             {funding.description || "등록된 상세 설명이 없습니다."}
           </div>
         </section>
+
+        <div className="mt-10">
+          <FundingSizeGuide
+            measurements={funding.measurements}
+            sizeOptions={sizeOptions}
+          />
+        </div>
 
         <section className="mt-10 grid gap-4 md:grid-cols-3">
           {[

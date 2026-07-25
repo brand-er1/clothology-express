@@ -4,8 +4,20 @@ import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS, clothTypes, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { generateImage, storeSelectedImage } from "@/services/imageGeneration";
 import { createFundingDraft } from "@/services/funding";
-import { UseCustomizeFormState, Material, SizeTableItem } from "@/types/customize";
+import type {
+  ArtworkPlacement,
+  ArtworkReference,
+  ImageModificationEntry,
+  Material,
+  SizeTableItem,
+} from "@/types/customize";
+import type { UploadedArtworkAnalysis } from "@/types/productionEstimate";
 import { supabase } from "@/lib/supabase";
+
+interface ModifyImageOptions {
+  referenceImage?: ArtworkReference;
+  placement?: ArtworkPlacement;
+}
 
 export const useCustomizeForm = () => {
   const navigate = useNavigate();
@@ -46,9 +58,11 @@ export const useCustomizeForm = () => {
   
   // New state for image modification
   const [imageModifying, setImageModifying] = useState(false);
-  const [modificationHistory, setModificationHistory] = useState<Array<{prompt: string, response: string, imageUrl?: string | null, imagePath?: string | null}>>([]);
-  const [activeHistory, setActiveHistory] = useState<Array<{prompt: string, response: string, imageUrl?: string | null, imagePath?: string | null}>>([]);
+  const [modificationHistory, setModificationHistory] = useState<ImageModificationEntry[]>([]);
+  const [activeHistory, setActiveHistory] = useState<ImageModificationEntry[]>([]);
   const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
+  const [currentArtworkAnalysis, setCurrentArtworkAnalysis] =
+    useState<UploadedArtworkAnalysis | null>(null);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -126,6 +140,8 @@ export const useCustomizeForm = () => {
       setImagePaths(null);
       setCurrentModifiedImageUrl(null);
       setModificationHistory([]);
+      setActiveHistory([]);
+      setCurrentArtworkAnalysis(null);
       
       const result = await generateImage(
         selectedType,
@@ -171,7 +187,10 @@ export const useCustomizeForm = () => {
     return;
   };
 
-  const handleModifyImage = async (prompt: string) => {
+  const handleModifyImage = async (
+    prompt: string,
+    options: ModifyImageOptions = {},
+  ) => {
     try {
       setImageModifying(true);
       
@@ -216,7 +235,10 @@ export const useCustomizeForm = () => {
             modificationPrompt: prompt,
             userId: user.id,
             clothType: selectedType,
-            originalPrompt: `${selectedMaterialName} ${selectedType}, ${selectedDetail}`
+            originalPrompt: `${selectedMaterialName} ${selectedType}, ${selectedDetail}`,
+            referenceImage: options.referenceImage,
+            artworkLocation: options.placement?.location,
+            artworkSize: options.placement?.size,
           }
         }
       );
@@ -236,6 +258,10 @@ export const useCustomizeForm = () => {
       const newImageUrl = modificationData?.modifiedImageUrl || currentModifiedImageUrl;
       const newImagePath = modificationData?.modifiedImagePath || imagePath;
       const textResponse = modificationData?.textResponse || "이미지가 수정되었습니다.";
+      const artworkAnalysis =
+        (modificationData?.artworkAnalysis as
+          | UploadedArtworkAnalysis
+          | undefined) || currentArtworkAnalysis;
 
       if (newImageUrl) {
         setCurrentModifiedImageUrl(newImageUrl);
@@ -244,12 +270,14 @@ export const useCustomizeForm = () => {
       if (newImagePath) {
         setImagePath(newImagePath);
       }
+      setCurrentArtworkAnalysis(artworkAnalysis);
       
-      const newEntry = {
+      const newEntry: ImageModificationEntry = {
         prompt,
         response: textResponse,
         imageUrl: newImageUrl || null,
         imagePath: newImagePath || null,
+        artworkAnalysis,
       };
 
       setModificationHistory(prev => [...prev, newEntry]);
@@ -283,6 +311,8 @@ export const useCustomizeForm = () => {
       setCurrentModifiedImageUrl(storedImageUrls[selectedImageIndex]);
     }
     setModificationHistory([]);
+    setActiveHistory([]);
+    setCurrentArtworkAnalysis(null);
     toast({
       title: "수정 내역 초기화",
       description: "이미지가 원래 상태로 복원되었습니다.",
@@ -293,6 +323,9 @@ export const useCustomizeForm = () => {
     if (!imageUrl) return;
     if (typeof index === "number" && index >= 0) {
       setActiveHistory(modificationHistory.slice(0, index + 1));
+      setCurrentArtworkAnalysis(
+        modificationHistory[index]?.artworkAnalysis || null,
+      );
     }
     setCurrentModifiedImageUrl(imageUrl);
     setStoredImageUrl(imageUrl);
@@ -505,6 +538,7 @@ export const useCustomizeForm = () => {
     imageModifying,
     modificationHistory,
     currentModifiedImageUrl,
+    currentArtworkAnalysis,
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,

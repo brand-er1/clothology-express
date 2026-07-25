@@ -72,6 +72,7 @@ const Customize = () => {
     imageModifying,
     modificationHistory,
     currentModifiedImageUrl,
+    currentArtworkAnalysis,
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,
@@ -107,7 +108,7 @@ const Customize = () => {
           setUserGender(profile.gender || "남성");
           setUserHeight(profile.height);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error loading profile:', error);
         toast({
           title: "프로필 로드 실패",
@@ -230,6 +231,7 @@ const Customize = () => {
                 selectedType={selectedType}
                 designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
                 modificationHistory={modificationHistory}
+                currentArtworkAnalysis={currentArtworkAnalysis}
                 onModifyImage={handleModifyImage}
                 onResetModifications={handleResetModifications}
                 onSelectHistoryImage={handleSelectHistoryImage}

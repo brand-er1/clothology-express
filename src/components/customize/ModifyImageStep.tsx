@@ -16,49 +16,32 @@ import {
   X,
 } from "lucide-react";
 import { createExactArtworkComposite } from "@/lib/artwork-composite";
+import {
+  artworkLocationLabels,
+  DEFAULT_ARTWORK_WIDTH,
+  prepareArtworkReference,
+  resolveArtworkSize,
+  resolveArtworkPlacementPrompt,
+  summarizeArtworkPlacement,
+  type ArtworkContentType,
+} from "@/lib/artwork-upload";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { ProductionEstimateCard } from "./ProductionEstimateCard";
-import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type {
   ArtworkPlacement,
   ArtworkReference,
-  ArtworkSize,
   CompositedImageReference,
   ImageModificationEntry,
 } from "@/types/customize";
-import type {
-  DecorationLocation,
-  UploadedArtworkAnalysis,
-} from "@/types/productionEstimate";
+import type { UploadedArtworkAnalysis } from "@/types/productionEstimate";
 
-const locationOptions: Array<{
-  value: DecorationLocation;
-  label: string;
-}> = [
-  { value: "front", label: "앞면" },
-  { value: "back", label: "뒷면" },
-  { value: "left_sleeve", label: "왼쪽 소매" },
-  { value: "right_sleeve", label: "오른쪽 소매" },
-  { value: "neck", label: "목 부분" },
+const placementExamples = [
+  "앞면 왼쪽 가슴에 작게 넣어줘",
+  "앞면 중앙에 크게 넣어줘",
+  "등 중앙에 중간 크기로 넣어줘",
+  "오른쪽 소매에 작게 넣어줘",
 ];
-
-const MIN_ARTWORK_WIDTH = 8;
-const MAX_ARTWORK_WIDTH = 50;
-const DEFAULT_ARTWORK_WIDTH = 25;
-
-const resolveArtworkSize = (widthPercent: number): ArtworkSize => {
-  if (widthPercent < 18) return "small";
-  if (widthPercent > 34) return "large";
-  return "medium";
-};
 
 type ArtworkGesture =
   | {
@@ -73,56 +56,6 @@ type ArtworkGesture =
       startClientX: number;
       startWidthPercent: number;
     };
-
-const locationPositionPresets: Record<
-  DecorationLocation,
-  { xPercent: number; yPercent: number }
-> = {
-  front: { xPercent: 50, yPercent: 45 },
-  back: { xPercent: 50, yPercent: 45 },
-  left_sleeve: { xPercent: 24, yPercent: 42 },
-  right_sleeve: { xPercent: 76, yPercent: 42 },
-  neck: { xPercent: 50, yPercent: 24 },
-  other: { xPercent: 50, yPercent: 50 },
-};
-
-const prepareArtworkReference = (file: File): Promise<ArtworkReference> =>
-  new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
-
-    image.onload = () => {
-      try {
-        const maxDimension = 1024;
-        const scale = Math.min(
-          1,
-          maxDimension / Math.max(image.naturalWidth, image.naturalHeight),
-        );
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("이미지를 처리할 수 없습니다.");
-
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/webp", 0.9);
-        const [metadata, base64] = dataUrl.split(",");
-        const mimeType =
-          metadata.match(/^data:(image\/[^;]+);base64$/)?.[1] || "image/webp";
-
-        resolve({ base64, mimeType, fileName: file.name });
-      } catch (error) {
-        reject(error);
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("이미지를 불러올 수 없습니다."));
-    };
-    image.src = objectUrl;
-  });
 
 const formatArtworkPrice = (analysis: UploadedArtworkAnalysis) => {
   if (
@@ -177,13 +110,26 @@ export const ModifyImageStep = ({
   const [uploadedArtwork, setUploadedArtwork] =
     useState<ArtworkReference | null>(null);
   const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
-  const [artworkLocation, setArtworkLocation] =
-    useState<DecorationLocation>("front");
-  const [artworkWidthPercent, setArtworkWidthPercent] = useState(
+  const [sourceArtworkFile, setSourceArtworkFile] = useState<File | null>(null);
+  const [artworkContentType, setArtworkContentType] =
+    useState<ArtworkContentType>("logo");
+  const [artworkPlacementPrompt, setArtworkPlacementPrompt] = useState(
+    placementExamples[0],
+  );
+  const initialPlacement = resolveArtworkPlacementPrompt(
+    placementExamples[0],
     DEFAULT_ARTWORK_WIDTH,
   );
-  const [artworkPosition, setArtworkPosition] = useState(
-    locationPositionPresets.front,
+  const [resolvedPlacement, setResolvedPlacement] =
+    useState<ArtworkPlacement>(initialPlacement.placement);
+  const [placementSummary, setPlacementSummary] = useState(
+    initialPlacement.summary,
+  );
+  const [lastResolvedPrompt, setLastResolvedPrompt] = useState(
+    placementExamples[0],
+  );
+  const [placementSource, setPlacementSource] = useState<"prompt" | "drag">(
+    "prompt",
   );
   const [baseImageAspectRatio, setBaseImageAspectRatio] = useState(4 / 3);
   const [isPreparingArtwork, setIsPreparingArtwork] = useState(false);
@@ -215,7 +161,7 @@ export const ModifyImageStep = ({
 
   const loadArtworkFile = async (
     file: File,
-    initialPosition = locationPositionPresets[artworkLocation],
+    contentType = artworkContentType,
   ) => {
     if (!file.type.startsWith("image/")) {
       toast({
@@ -236,12 +182,12 @@ export const ModifyImageStep = ({
 
     try {
       setIsPreparingArtwork(true);
-      const prepared = await prepareArtworkReference(file);
+      const prepared = await prepareArtworkReference(file, contentType);
+      setSourceArtworkFile(file);
       setUploadedArtwork(prepared);
       setArtworkPreview(
         `data:${prepared.mimeType};base64,${prepared.base64}`,
       );
-      setArtworkPosition(initialPosition);
     } catch (error) {
       toast({
         title: "이미지 처리 실패",
@@ -265,24 +211,51 @@ export const ModifyImageStep = ({
     await loadArtworkFile(file);
   };
 
+  const handleArtworkContentTypeChange = async (
+    contentType: ArtworkContentType,
+  ) => {
+    setArtworkContentType(contentType);
+    if (sourceArtworkFile) {
+      await loadArtworkFile(sourceArtworkFile, contentType);
+    }
+  };
+
+  const handleResolvePlacement = () => {
+    if (!artworkPlacementPrompt.trim()) {
+      toast({
+        title: "위치 설명 필요",
+        description:
+          "예: '앞면 왼쪽 가슴에 작게 넣어줘'처럼 입력해주세요.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    const resolved = resolveArtworkPlacementPrompt(
+      artworkPlacementPrompt,
+      resolvedPlacement.widthPercent,
+    );
+    setResolvedPlacement(resolved.placement);
+    setPlacementSummary(resolved.summary);
+    setLastResolvedPrompt(artworkPlacementPrompt.trim());
+    setPlacementSource("prompt");
+    return resolved;
+  };
+
   const handleApplyArtwork = async () => {
     if (!uploadedArtwork || !selectedImageUrl) {
       fileInputRef.current?.click();
       return;
     }
-
-    const locationLabel =
-      locationOptions.find((option) => option.value === artworkLocation)
-        ?.label || "앞면";
-    const artworkSize = resolveArtworkSize(artworkWidthPercent);
-
-    const placement: ArtworkPlacement = {
-      location: artworkLocation,
-      size: artworkSize,
-      xPercent: artworkPosition.xPercent,
-      yPercent: artworkPosition.yPercent,
-      widthPercent: artworkWidthPercent,
-    };
+    let placement = resolvedPlacement;
+    let appliedWithDrag = placementSource === "drag";
+    if (artworkPlacementPrompt.trim() !== lastResolvedPrompt) {
+      const resolved = handleResolvePlacement();
+      if (!resolved) return;
+      placement = resolved.placement;
+      appliedWithDrag = false;
+    }
+    const locationLabel = artworkLocationLabels[placement.location];
 
     try {
       setIsApplyingArtwork(true);
@@ -293,7 +266,19 @@ export const ModifyImageStep = ({
       });
 
       const applied = await onModifyImage(
-        `업로드한 이미지를 원본 형태와 색상을 유지해 옷의 ${locationLabel}, 화면 기준 왼쪽 ${Math.round(artworkPosition.xPercent)}%·위쪽 ${Math.round(artworkPosition.yPercent)}% 지점에 이미지 폭의 약 ${Math.round(artworkWidthPercent)}% 크기로 정확히 적용했습니다.`,
+        `사용자 요청 "${artworkPlacementPrompt.trim()}"${
+          appliedWithDrag ? " 후 드래그로 미세 조정한 위치" : ""
+        }에 따라 업로드한 ${
+          artworkContentType === "logo"
+            ? "로고의 겉 배경을 제거하고"
+            : "사진의 배경을 그대로 유지해"
+        } 옷의 ${locationLabel}, 화면 기준 가로 ${Math.round(
+          placement.xPercent,
+        )}%·세로 ${Math.round(
+          placement.yPercent,
+        )}% 지점에 이미지 폭의 약 ${Math.round(
+          placement.widthPercent,
+        )}% 크기로 정확히 적용했습니다.`,
         {
           referenceImage: uploadedArtwork,
           placement,
@@ -318,16 +303,14 @@ export const ModifyImageStep = ({
   };
 
   const clearArtwork = () => {
+    setSourceArtworkFile(null);
     setUploadedArtwork(null);
     setArtworkPreview(null);
-    setArtworkPosition(locationPositionPresets[artworkLocation]);
-    setArtworkWidthPercent(DEFAULT_ARTWORK_WIDTH);
   };
 
   const getPointerPercent = (clientX: number, clientY: number) => {
     const canvas = artworkCanvasRef.current;
     if (!canvas) return null;
-
     const rect = canvas.getBoundingClientRect();
     return {
       xPercent: ((clientX - rect.left) / rect.width) * 100,
@@ -339,7 +322,7 @@ export const ModifyImageStep = ({
   const clampArtworkPosition = (
     xPercent: number,
     yPercent: number,
-    widthPercent = artworkWidthPercent,
+    widthPercent = resolvedPlacement.widthPercent,
   ) => {
     const xMargin = widthPercent / 2;
     const yMargin = Math.max(6, widthPercent / 4);
@@ -349,23 +332,16 @@ export const ModifyImageStep = ({
     };
   };
 
-  const handleCanvasPointerDown = (
-    event: React.PointerEvent<HTMLDivElement>,
-  ) => {
-    if (!artworkPreview || isLoading) return;
-    if (event.target !== event.currentTarget) return;
-    const point = getPointerPercent(event.clientX, event.clientY);
-    if (!point) return;
-    event.preventDefault();
-    setArtworkPosition(
-      clampArtworkPosition(point.xPercent, point.yPercent),
-    );
+  const applyDraggedPlacement = (placement: ArtworkPlacement) => {
+    setResolvedPlacement(placement);
+    setPlacementSummary(summarizeArtworkPlacement(placement));
+    setPlacementSource("drag");
   };
 
   const handleMovePointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
-    if (isLoading) return;
+    if (isLoading || isApplyingArtwork) return;
     const point = getPointerPercent(event.clientX, event.clientY);
     if (!point) return;
     event.preventDefault();
@@ -373,8 +349,8 @@ export const ModifyImageStep = ({
     activeGestureRef.current = {
       mode: "move",
       pointerId: event.pointerId,
-      offsetXPercent: point.xPercent - artworkPosition.xPercent,
-      offsetYPercent: point.yPercent - artworkPosition.yPercent,
+      offsetXPercent: point.xPercent - resolvedPlacement.xPercent,
+      offsetYPercent: point.yPercent - resolvedPlacement.yPercent,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -382,14 +358,14 @@ export const ModifyImageStep = ({
   const handleResizePointerDown = (
     event: React.PointerEvent<HTMLButtonElement>,
   ) => {
-    if (isLoading) return;
+    if (isLoading || isApplyingArtwork) return;
     event.preventDefault();
     event.stopPropagation();
     activeGestureRef.current = {
       mode: "resize",
       pointerId: event.pointerId,
       startClientX: event.clientX,
-      startWidthPercent: artworkWidthPercent,
+      startWidthPercent: resolvedPlacement.widthPercent,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -404,32 +380,34 @@ export const ModifyImageStep = ({
     event.preventDefault();
 
     if (gesture.mode === "move") {
-      setArtworkPosition(
-        clampArtworkPosition(
-          point.xPercent - gesture.offsetXPercent,
-          point.yPercent - gesture.offsetYPercent,
-        ),
+      const position = clampArtworkPosition(
+        point.xPercent - gesture.offsetXPercent,
+        point.yPercent - gesture.offsetYPercent,
       );
+      applyDraggedPlacement({
+        ...resolvedPlacement,
+        ...position,
+      });
       return;
     }
 
     const deltaPercent =
       ((event.clientX - gesture.startClientX) / point.canvasWidth) * 100;
-    const nextWidth = Math.min(
-      MAX_ARTWORK_WIDTH,
-      Math.max(
-        MIN_ARTWORK_WIDTH,
-        gesture.startWidthPercent + deltaPercent,
-      ),
+    const widthPercent = Math.min(
+      50,
+      Math.max(8, gesture.startWidthPercent + deltaPercent),
     );
-    setArtworkWidthPercent(nextWidth);
-    setArtworkPosition((current) =>
-      clampArtworkPosition(
-        current.xPercent,
-        current.yPercent,
-        nextWidth,
-      ),
+    const position = clampArtworkPosition(
+      resolvedPlacement.xPercent,
+      resolvedPlacement.yPercent,
+      widthPercent,
     );
+    applyDraggedPlacement({
+      ...resolvedPlacement,
+      ...position,
+      widthPercent,
+      size: resolveArtworkSize(widthPercent),
+    });
   };
 
   const handleArtworkPointerEnd = (
@@ -437,26 +415,6 @@ export const ModifyImageStep = ({
   ) => {
     if (activeGestureRef.current?.pointerId !== event.pointerId) return;
     activeGestureRef.current = null;
-  };
-
-  const handleLocationChange = (value: DecorationLocation) => {
-    setArtworkLocation(value);
-    setArtworkPosition(locationPositionPresets[value]);
-  };
-
-  const handleArtworkWidthChange = (values: number[]) => {
-    const nextWidth = Math.min(
-      MAX_ARTWORK_WIDTH,
-      Math.max(MIN_ARTWORK_WIDTH, values[0] || DEFAULT_ARTWORK_WIDTH),
-    );
-    setArtworkWidthPercent(nextWidth);
-    setArtworkPosition((current) =>
-      clampArtworkPosition(
-        current.xPercent,
-        current.yPercent,
-        nextWidth,
-      ),
-    );
   };
 
   const handleArtworkDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -471,23 +429,15 @@ export const ModifyImageStep = ({
     const file = event.dataTransfer.files?.[0];
     if (!file) return;
     event.preventDefault();
-
-    const canvas = artworkCanvasRef.current;
-    const rect = canvas?.getBoundingClientRect();
-    const dropPosition = rect
-      ? {
-          xPercent: Math.min(
-            92,
-            Math.max(8, ((event.clientX - rect.left) / rect.width) * 100),
-          ),
-          yPercent: Math.min(
-            92,
-            Math.max(8, ((event.clientY - rect.top) / rect.height) * 100),
-          ),
-        }
-      : locationPositionPresets[artworkLocation];
-
-    await loadArtworkFile(file, dropPosition);
+    const point = getPointerPercent(event.clientX, event.clientY);
+    if (point) {
+      const position = clampArtworkPosition(point.xPercent, point.yPercent);
+      applyDraggedPlacement({
+        ...resolvedPlacement,
+        ...position,
+      });
+    }
+    await loadArtworkFile(file);
   };
 
   return (
@@ -503,9 +453,9 @@ export const ModifyImageStep = ({
           
           <div className="flex flex-col items-center space-y-4">
             <div
-              className={`relative w-full max-w-xl touch-pan-y select-none overflow-hidden rounded-xl border bg-gray-50 ${
+              className={`relative w-full max-w-xl select-none overflow-hidden rounded-xl border bg-gray-50 ${
                 artworkPreview
-                  ? "cursor-crosshair border-brand/40 shadow-inner"
+                  ? "border-brand/40 shadow-inner"
                   : "border-gray-200"
               }`}
               style={{ aspectRatio: baseImageAspectRatio }}
@@ -513,7 +463,6 @@ export const ModifyImageStep = ({
               <div
                 ref={artworkCanvasRef}
                 className="absolute inset-0"
-                onPointerDown={handleCanvasPointerDown}
                 onPointerMove={handleArtworkPointerMove}
                 onPointerUp={handleArtworkPointerEnd}
                 onPointerCancel={handleArtworkPointerEnd}
@@ -547,14 +496,14 @@ export const ModifyImageStep = ({
                 {artworkPreview && (
                   <>
                     <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-bold text-white shadow">
-                      로고를 누른 채 원하는 위치로 이동
+                      프롬프트 적용 후 드래그로 미세 조절
                     </div>
                     <div
                       className="absolute -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab active:cursor-grabbing"
                       style={{
-                        left: `${artworkPosition.xPercent}%`,
-                        top: `${artworkPosition.yPercent}%`,
-                        width: `${artworkWidthPercent}%`,
+                        left: `${resolvedPlacement.xPercent}%`,
+                        top: `${resolvedPlacement.yPercent}%`,
+                        width: `${resolvedPlacement.widthPercent}%`,
                       }}
                       onPointerDown={handleMovePointerDown}
                     >
@@ -566,7 +515,7 @@ export const ModifyImageStep = ({
                       />
                       <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-dashed border-brand shadow-lg" />
                       <span className="pointer-events-none absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
-                        <Move className="h-3 w-3" />
+                        <Move className="h-3.5 w-3.5" />
                       </span>
                       <button
                         type="button"
@@ -581,7 +530,8 @@ export const ModifyImageStep = ({
                 )}
                 {!artworkPreview && !isLoading && (
                   <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-lg bg-white/90 px-3 py-2 text-center text-xs font-semibold text-gray-600 shadow-sm">
-                    PC에서는 로고 파일을 이 옷 위로 바로 끌어 놓을 수 있습니다.
+                    이미지 선택 또는 파일 드롭 후 프롬프트·드래그를 모두 사용할
+                    수 있습니다.
                   </div>
                 )}
                 {(isLoading || isApplyingArtwork) && (
@@ -600,9 +550,56 @@ export const ModifyImageStep = ({
                     내 이미지 옷에 넣기
                   </h4>
                   <p className="mt-1 text-xs leading-5 text-gray-600">
-                    휴대폰이나 PC의 로고·사진·일러스트를 올리면 AI가 유형과
-                    적합한 인쇄 방식을 분석해 장당 공임에 반영합니다.
+                    로고는 겉 배경을 자동으로 지우고, 사진은 배경을 유지합니다.
+                    위치와 크기는 프롬프트로 지정한 뒤 드래그로 미세 조절할 수
+                    있습니다.
                   </p>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-bold text-gray-700">
+                  1. 추가할 이미지 유형
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+                      artworkContentType === "logo"
+                        ? "border-brand bg-brand/10 text-brand"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-brand/30"
+                    }`}
+                    onClick={() =>
+                      void handleArtworkContentTypeChange("logo")
+                    }
+                    disabled={isLoading || isPreparingArtwork}
+                    aria-pressed={artworkContentType === "logo"}
+                  >
+                    <span className="block text-sm font-extrabold">
+                      로고·일러스트
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-4">
+                      겉 배경 자동 제거
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+                      artworkContentType === "photo"
+                        ? "border-brand bg-brand/10 text-brand"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-brand/30"
+                    }`}
+                    onClick={() =>
+                      void handleArtworkContentTypeChange("photo")
+                    }
+                    disabled={isLoading || isPreparingArtwork}
+                    aria-pressed={artworkContentType === "photo"}
+                  >
+                    <span className="block text-sm font-extrabold">사진</span>
+                    <span className="mt-1 block text-[11px] leading-4">
+                      원본 배경 그대로 유지
+                    </span>
+                  </button>
                 </div>
               </div>
 
@@ -643,16 +640,21 @@ export const ModifyImageStep = ({
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-                    <p className="flex items-center gap-1.5 text-xs font-extrabold text-brand">
-                      <Move className="h-4 w-4" />
-                      로고를 이동하거나 모서리로 크기를 조절하세요
+                    <p className="text-xs font-extrabold text-brand">
+                      {artworkContentType === "logo"
+                        ? "겉 배경 제거가 적용된 미리보기입니다."
+                        : "사진 배경을 제거하지 않고 원본 그대로 사용합니다."}
                     </p>
                     <p className="text-[11px] font-semibold text-gray-500">
-                      현재 위치 {Math.round(artworkPosition.xPercent)}% ·{" "}
-                      {Math.round(artworkPosition.yPercent)}% · 크기{" "}
-                      {Math.round(artworkWidthPercent)}%
+                      {artworkContentType === "logo"
+                        ? "투명 PNG로 변환"
+                        : "고화질 WEBP로 변환"}
                     </p>
                   </div>
+                  <p className="mt-2 text-[11px] leading-4 text-gray-500">
+                    미리보기의 이미지를 직접 끌어 위치를 조절하고, 오른쪽 아래
+                    핸들로 크기를 바꿀 수도 있습니다.
+                  </p>
                 </div>
               ) : (
                 <button
@@ -668,57 +670,79 @@ export const ModifyImageStep = ({
                       : "이미지를 선택해주세요"}
                   </span>
                   <span className="mt-1 text-xs text-gray-500">
-                    JPG, PNG, WEBP · 최대 10MB
+                    2. JPG, PNG, WEBP · 최대 10MB
                   </span>
                 </button>
               )}
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <p className="mb-1.5 flex items-center gap-1 text-xs font-bold text-gray-700">
-                    <MapPin className="h-3.5 w-3.5" /> 제작 위치 구분
-                  </p>
-                  <Select
-                    value={artworkLocation}
-                    onValueChange={(value) =>
-                      handleLocationChange(value as DecorationLocation)
-                    }
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locationOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="mt-4 rounded-xl border border-brand/15 bg-white p-3">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-gray-700">
+                  <MapPin className="h-3.5 w-3.5" />
+                  3. 이미지 위치와 크기를 문장으로 입력
+                </p>
+                <Textarea
+                  value={artworkPlacementPrompt}
+                  onChange={(event) =>
+                    setArtworkPlacementPrompt(event.target.value)
+                  }
+                  placeholder="예: 앞면 왼쪽 가슴에 작게 넣어줘"
+                  className="min-h-[82px] resize-none"
+                  disabled={isLoading || isApplyingArtwork}
+                />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {placementExamples.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-600 transition-colors hover:border-brand/30 hover:bg-brand/5 hover:text-brand"
+                      onClick={() => {
+                        setArtworkPlacementPrompt(example);
+                        const resolved = resolveArtworkPlacementPrompt(
+                          example,
+                          resolvedPlacement.widthPercent,
+                        );
+                        setResolvedPlacement(resolved.placement);
+                        setPlacementSummary(resolved.summary);
+                        setLastResolvedPrompt(example);
+                        setPlacementSource("prompt");
+                      }}
+                      disabled={isLoading || isApplyingArtwork}
+                    >
+                      {example.replace(" 넣어줘", "")}
+                    </button>
+                  ))}
                 </div>
-                <div className="rounded-lg bg-white px-3 py-2.5">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="flex items-center gap-1 text-xs font-bold text-gray-700">
-                      <Maximize2 className="h-3.5 w-3.5" /> 이미지 크기
+                <div className="mt-3 flex flex-col gap-2 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold text-brand">
+                      {placementSource === "drag"
+                        ? "현재 배치 · 드래그 미세 조정됨"
+                        : "프롬프트로 해석된 배치"}
                     </p>
-                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-extrabold text-brand">
-                      {Math.round(artworkWidthPercent)}%
-                    </span>
+                    <p className="mt-0.5 text-xs leading-5 text-gray-700">
+                      {placementSummary}
+                    </p>
                   </div>
-                  <Slider
-                    value={[artworkWidthPercent]}
-                    min={MIN_ARTWORK_WIDTH}
-                    max={MAX_ARTWORK_WIDTH}
-                    step={1}
-                    onValueChange={handleArtworkWidthChange}
-                    disabled={isLoading || !artworkPreview}
-                    aria-label="업로드 이미지 크기"
-                  />
-                  <p className="mt-2 text-[11px] leading-4 text-gray-500">
-                    슬라이더 또는 이미지 오른쪽 아래 핸들로 조절
-                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResolvePlacement}
+                    disabled={
+                      isLoading ||
+                      isApplyingArtwork ||
+                      !artworkPlacementPrompt.trim()
+                    }
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    위치 미리보기
+                  </Button>
                 </div>
+                <p className="mt-2 text-[11px] leading-4 text-gray-500">
+                  왼쪽·오른쪽 가슴, 앞면·뒷면 중앙, 목 뒤, 양쪽 소매와
+                  작게·중간·크게 또는 폭 20% 같은 표현을 이해합니다. 프롬프트
+                  적용 뒤에는 드래그로 미세 조절하세요.
+                </p>
               </div>
 
               <Button
@@ -732,12 +756,12 @@ export const ModifyImageStep = ({
                 {isLoading || isApplyingArtwork ? (
                   <>
                     <span className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
-                    위치 그대로 적용·분석 중...
+                    프롬프트 위치 적용·분석 중...
                   </>
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    옷에 적용하고 공임 분석
+                    프롬프트대로 옷에 적용하고 공임 분석
                   </>
                 )}
               </Button>

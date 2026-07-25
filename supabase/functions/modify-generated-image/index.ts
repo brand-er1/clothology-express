@@ -63,6 +63,27 @@ const parseJsonResponse = (text: string) => {
   return JSON.parse(normalized);
 };
 
+const supportedImageMimeTypes = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+
+const decodeBase64Image = (base64: string) => {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+};
+
+const extensionForMimeType = (mimeType: string) => {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/webp") return "webp";
+  return "jpg";
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -87,6 +108,7 @@ serve(async (req) => {
     console.log("Received modify-generated-image request", {
       hasImageUrl: Boolean(requestData?.imageUrl),
       hasReferenceImage: Boolean(requestData?.referenceImage?.base64),
+      hasCompositedImage: Boolean(requestData?.compositedImage?.base64),
       clothType: requestData?.clothType,
       artworkLocation: requestData?.artworkLocation,
       artworkSize: requestData?.artworkSize,
@@ -101,6 +123,7 @@ serve(async (req) => {
       clothType,
       originalPrompt,
       referenceImage,
+      compositedImage,
       artworkLocation,
       artworkPosition,
     } = requestData;
@@ -113,32 +136,36 @@ serve(async (req) => {
       );
     }
 
-    // Fetch base image
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-    }
-    
-    const imageBlob = await imageResponse.blob();
-    const imageArrayBuffer = await imageBlob.arrayBuffer();
-    // Avoid spreading large Uint8Arrays (can cause call stack errors)
-    const sourceBytes = new Uint8Array(imageArrayBuffer);
-    let binary = "";
-    for (let i = 0; i < sourceBytes.length; i++) {
-      binary += String.fromCharCode(sourceBytes[i]);
-    }
-    const base64Image = btoa(binary);
-
     const referenceBase64 = String(referenceImage?.base64 || "")
       .replace(/^data:image\/[^;]+;base64,/, "");
     const referenceMimeType = String(referenceImage?.mimeType || "");
     const hasReferenceImage = Boolean(referenceBase64);
     if (
       hasReferenceImage &&
-      !["image/png", "image/jpeg", "image/webp"].includes(referenceMimeType)
+      !supportedImageMimeTypes.has(referenceMimeType)
     ) {
       return new Response(
         JSON.stringify({ error: "지원하지 않는 업로드 이미지 형식입니다." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+
+    const compositedBase64 = String(compositedImage?.base64 || "")
+      .replace(/^data:image\/[^;]+;base64,/, "");
+    const compositedMimeType = String(compositedImage?.mimeType || "");
+    const hasCompositedImage = Boolean(compositedBase64);
+    if (
+      hasCompositedImage &&
+      !supportedImageMimeTypes.has(compositedMimeType)
+    ) {
+      return new Response(
+        JSON.stringify({ error: "지원하지 않는 합성 이미지 형식입니다." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+    if (compositedBase64.length > 12 * 1024 * 1024) {
+      return new Response(
+        JSON.stringify({ error: "합성 이미지 용량이 너무 큽니다." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
       );
     }
@@ -147,6 +174,25 @@ serve(async (req) => {
         JSON.stringify({ error: "업로드 이미지는 6MB 이하로 압축해주세요." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
       );
+    }
+
+    let base64Image = "";
+    let sourceMimeType = "image/jpeg";
+    if (!hasCompositedImage) {
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+      }
+
+      const imageBlob = await imageResponse.blob();
+      sourceMimeType =
+        imageResponse.headers.get("content-type") || "image/jpeg";
+      const sourceBytes = new Uint8Array(await imageBlob.arrayBuffer());
+      let binary = "";
+      for (let i = 0; i < sourceBytes.length; i++) {
+        binary += String.fromCharCode(sourceBytes[i]);
+      }
+      base64Image = btoa(binary);
     }
 
     const safeArtworkLocation = validArtworkLocations.has(artworkLocation)
@@ -292,6 +338,51 @@ Printing recommendation:
         pricingNote: matchedPrice?.pricing_note || null,
       };
     }
+
+    if (hasCompositedImage) {
+      if (!hasReferenceImage) {
+        return new Response(
+          JSON.stringify({ error: "합성 이미지에는 업로드 원본이 필요합니다." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+        );
+      }
+
+      const extension = extensionForMimeType(compositedMimeType);
+      const fileName =
+        `${userId || "anon"}/${Date.now()}_${crypto.randomUUID()}.${extension}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("generated_images")
+        .upload(fileName, decodeBase64Image(compositedBase64), {
+          contentType: compositedMimeType,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("Error uploading exact composite:", uploadError);
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = await supabase.storage
+        .from("generated_images")
+        .getPublicUrl(uploadData?.path || fileName);
+      const modifiedImageUrl = publicUrlData?.publicUrl;
+      const textResponse = artworkAnalysis
+        ? `${artworkAnalysis.artworkTypeLabel} 이미지를 미리보기에서 지정한 ${artworkAnalysis.locationLabel} 위치와 크기 그대로 적용했습니다. ${artworkAnalysis.priceLabel || "추천 인쇄 방식"} 장당 공임을 자동견적에 반영합니다.`
+        : "미리보기에서 지정한 위치와 크기 그대로 이미지를 적용했습니다.";
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          textResponse,
+          modifiedImageUrl,
+          modifiedImagePath: uploadData?.path || fileName,
+          hasImage: Boolean(modifiedImageUrl),
+          placementMode: "exact",
+          artworkAnalysis,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     
     // Create a detailed prompt for the AI
     const fullPrompt = `
@@ -316,7 +407,7 @@ Printing recommendation:
       {
         inlineData: {
           data: base64Image,
-          mimeType: imageResponse.headers.get("content-type") || "image/jpeg",
+          mimeType: sourceMimeType,
         },
       },
     ];
@@ -379,13 +470,11 @@ Printing recommendation:
     }
 
     // Store the image in Supabase Storage
-    const binaryString = atob(generatedImageBase64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
+    const bytes = decodeBase64Image(generatedImageBase64);
 
-    const fileName = `${userId || "anon"}/${Date.now()}_${crypto.randomUUID()}.jpg`;
+    const extension = extensionForMimeType(mimeType);
+    const fileName =
+      `${userId || "anon"}/${Date.now()}_${crypto.randomUUID()}.${extension}`;
     // Use generated_images bucket (ensure it exists in Supabase project)
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('generated_images')

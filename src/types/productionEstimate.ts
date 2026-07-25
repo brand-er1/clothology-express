@@ -10,6 +10,7 @@ export type DecorationAnalysisKind =
   | "embroidery"
   | "patch"
   | "transfer"
+  | "washing"
   | "unknown_print";
 
 export type DecorationLocation =
@@ -61,6 +62,7 @@ export interface ProductionAnalysis {
   difficultyReason: string;
   hasPrinting: boolean;
   hasEmbroidery: boolean;
+  hasWashing: boolean;
   detectedDecorationCount: number;
 }
 
@@ -69,10 +71,12 @@ export interface ProductionEstimateTotals {
   productionMin: number | null;
   productionMax: number | null;
   productionIsStartingFrom: boolean;
+  productionUnitSurcharge: number;
   productionTotalMin: number;
   productionTotalMax: number;
   patternCost: number;
   sampleCost: number;
+  sampleSurcharge: number;
   developmentTotal: number;
   decorationMin: number;
   decorationMax: number;
@@ -99,6 +103,13 @@ export interface ProductionEstimateResult {
     moq: number;
     note?: string | null;
   };
+  materialPremium: {
+    key: string;
+    label: string;
+    sampleSurcharge: number;
+    productionUnitSurcharge: number;
+    note?: string | null;
+  } | null;
   decorations: DecorationEstimateLine[];
   totals: ProductionEstimateTotals;
   isPartial: boolean;

@@ -31,6 +31,7 @@ export const useCustomizeForm = () => {
   const [materials, setMaterials] = useState<Material[]>([
     { id: "cotton", name: "면", description: "부드럽고 통기성이 좋은 천연 소재" },
     { id: "denim", name: "데님", description: "튼튼하고 클래식한 청바지 소재" },
+    { id: "leather", name: "레더", description: "고급스럽고 구조감이 있는 가죽 소재" },
     { id: "poly", name: "폴리", description: "구김이 적고 관리가 쉬운 소재" },
     { id: "linen", name: "린넨", description: "시원하고 자연스러운 질감의 소재" },
   ]);

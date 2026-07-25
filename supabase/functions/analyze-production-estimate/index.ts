@@ -27,6 +27,7 @@ type DecorationLocation =
   | "right_sleeve"
   | "neck"
   | "other";
+type ArtworkType = "logo" | "photo" | "illustration";
 
 type GarmentPriceRow = {
   category_key: string;
@@ -70,6 +71,20 @@ type RawAnalysis = {
   decorations?: RawDecoration[];
 };
 
+type UploadedArtworkHint = {
+  artworkType: ArtworkType;
+  recommendedKind: DecorationKind;
+  location: DecorationLocation;
+  confidence: number;
+};
+
+type NormalizedDecoration = {
+  kind: DecorationKind;
+  location: DecorationLocation;
+  source: "image_analysis" | "uploaded_artwork";
+  artworkType: ArtworkType | null;
+};
+
 const validDecorationKinds = new Set<DecorationKind>([
   "screen_print_1_color",
   "screen_print_multi_color",
@@ -90,6 +105,19 @@ const validLocations = new Set<DecorationLocation>([
   "right_sleeve",
   "neck",
   "other",
+]);
+const validArtworkTypes = new Set<ArtworkType>([
+  "logo",
+  "photo",
+  "illustration",
+]);
+const printableDecorationKinds = new Set<DecorationKind>([
+  "screen_print_1_color",
+  "screen_print_multi_color",
+  "dtf",
+  "dtg",
+  "transfer",
+  "unknown_print",
 ]);
 
 const locationLabels: Record<DecorationLocation, string> = {
@@ -138,6 +166,33 @@ const clampConfidence = (value: unknown) => {
 const normalizeDifficulty = (value: unknown): Difficulty =>
   value === "easy" || value === "hard" ? value : "medium";
 
+const normalizeUploadedArtwork = (
+  value: unknown,
+): UploadedArtworkHint | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const artworkType = String(record.artworkType || "") as ArtworkType;
+  const recommendedKind = String(
+    record.recommendedKind || "",
+  ) as DecorationKind;
+  const location = String(record.location || "") as DecorationLocation;
+
+  if (
+    !validArtworkTypes.has(artworkType) ||
+    !validDecorationKinds.has(recommendedKind) ||
+    !validLocations.has(location)
+  ) {
+    return null;
+  }
+
+  return {
+    artworkType,
+    recommendedKind,
+    location,
+    confidence: clampConfidence(record.confidence),
+  };
+};
+
 const resolveGarmentKey = (
   rawAnalysis: RawAnalysis,
   selectedType: string,
@@ -162,10 +217,7 @@ const resolveGarmentKey = (
 };
 
 const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
-  const normalized: Array<{
-    kind: DecorationKind;
-    location: DecorationLocation;
-  }> = [];
+  const normalized: NormalizedDecoration[] = [];
   const seen = new Set<string>();
 
   for (const rawDecoration of rawDecorations || []) {
@@ -189,7 +241,12 @@ const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
       const key = `${kind}:${location}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      normalized.push({ kind, location });
+      normalized.push({
+        kind,
+        location,
+        source: "image_analysis",
+        artworkType: null,
+      });
     }
   }
 
@@ -202,7 +259,12 @@ serve(async (req) => {
   }
 
   try {
-    const { imageUrl, selectedType, designContext = "" } = await req.json();
+    const {
+      imageUrl,
+      selectedType,
+      designContext = "",
+      uploadedArtwork,
+    } = await req.json();
     if (!imageUrl || !selectedType) {
       return new Response(
         JSON.stringify({ error: "imageUrl과 selectedType이 필요합니다." }),
@@ -220,6 +282,7 @@ serve(async (req) => {
       throw new Error("자동 견적 서비스 환경변수가 설정되지 않았습니다.");
     }
 
+    const uploadedArtworkHint = normalizeUploadedArtwork(uploadedArtwork);
     const parsedImageUrl = new URL(imageUrl);
     const storageHostname = new URL(supabaseUrl).hostname;
     if (
@@ -306,6 +369,9 @@ Rules:
 - Use hard for complex paneling, lining, tailoring, padding, layered
   construction, numerous pockets, unusual cut lines, or difficult sewing.
 - If front and back garments appear side by side, inspect both.
+${uploadedArtworkHint
+      ? `- A separately verified customer-uploaded ${uploadedArtworkHint.artworkType} artwork was applied at ${uploadedArtworkHint.location}. Treat it as ${uploadedArtworkHint.recommendedKind} even if the composite image makes the technique visually ambiguous.`
+      : ""}
 
 Selected type hint: ${selectedType}
 Design context:
@@ -394,9 +460,22 @@ ${String(designContext).slice(0, 3000)}
       throw new Error("분석된 의류 종류의 단가를 찾지 못했습니다.");
     }
 
-    const normalizedDecorations = normalizeDecorations(
+    let normalizedDecorations = normalizeDecorations(
       rawAnalysis.decorations,
     );
+    if (uploadedArtworkHint) {
+      normalizedDecorations = normalizedDecorations.filter(
+        (decoration) =>
+          decoration.location !== uploadedArtworkHint.location ||
+          !printableDecorationKinds.has(decoration.kind),
+      );
+      normalizedDecorations.push({
+        kind: uploadedArtworkHint.recommendedKind,
+        location: uploadedArtworkHint.location,
+        source: "uploaded_artwork",
+        artworkType: uploadedArtworkHint.artworkType,
+      });
+    }
     const decorationLines = normalizedDecorations.flatMap((decoration) => {
       const price = decorationRows.find((row) =>
         row.analysis_kinds.includes(decoration.kind)
@@ -414,6 +493,8 @@ ${String(designContext).slice(0, 3000)}
         lineMax: price.unit_max,
         isStartingFrom: price.is_starting_from,
         note: price.pricing_note,
+        source: decoration.source,
+        artworkType: decoration.artworkType,
       }];
     });
 

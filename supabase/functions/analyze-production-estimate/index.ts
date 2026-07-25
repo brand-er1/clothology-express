@@ -29,6 +29,15 @@ type DecorationLocation =
   | "neck"
   | "other";
 type ArtworkType = "logo" | "photo" | "illustration";
+type AccessoryKind =
+  | "stud"
+  | "zipper"
+  | "button"
+  | "rivet"
+  | "hood_cord"
+  | "snap_button"
+  | "buckle"
+  | "drawstring";
 
 type GarmentPriceRow = {
   category_key: string;
@@ -65,10 +74,25 @@ type MaterialSurchargeRow = {
   pricing_note: string | null;
 };
 
+type AccessoryPriceRow = {
+  accessory_key: AccessoryKind;
+  accessory_label: string;
+  unit_price: number;
+  pricing_note: string | null;
+  source_label: string;
+  source_version: string;
+};
+
 type RawDecoration = {
   kind?: string;
   locations?: string[];
   colorCount?: number;
+  confidence?: number;
+};
+
+type RawAccessory = {
+  kind?: string;
+  count?: number;
   confidence?: number;
 };
 
@@ -81,6 +105,7 @@ type RawAnalysis = {
   hasWashing?: boolean;
   washingConfidence?: number;
   decorations?: RawDecoration[];
+  accessories?: RawAccessory[];
 };
 
 type UploadedArtworkHint = {
@@ -109,6 +134,16 @@ const validDecorationKinds = new Set<DecorationKind>([
   "transfer",
   "washing",
   "unknown_print",
+]);
+const validAccessoryKinds = new Set<AccessoryKind>([
+  "stud",
+  "zipper",
+  "button",
+  "rivet",
+  "hood_cord",
+  "snap_button",
+  "buckle",
+  "drawstring",
 ]);
 
 const validLocations = new Set<DecorationLocation>([
@@ -266,6 +301,40 @@ const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
   return normalized;
 };
 
+const normalizeAccessories = (rawAccessories: RawAccessory[] | undefined) => {
+  const counts = new Map<
+    AccessoryKind,
+    { count: number; confidence: number }
+  >();
+
+  for (const rawAccessory of rawAccessories || []) {
+    const kind = String(rawAccessory.kind || "") as AccessoryKind;
+    const confidence = clampConfidence(rawAccessory.confidence);
+    const count = Math.min(
+      50,
+      Math.max(0, Math.round(Number(rawAccessory.count) || 0)),
+    );
+    if (
+      !validAccessoryKinds.has(kind) ||
+      confidence < 0.55 ||
+      count === 0
+    ) {
+      continue;
+    }
+
+    const current = counts.get(kind);
+    if (!current || count > current.count) {
+      counts.set(kind, { count, confidence });
+    }
+  }
+
+  return Array.from(counts.entries()).map(([kind, value]) => ({
+    kind,
+    count: value.count,
+    confidence: value.confidence,
+  }));
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -311,6 +380,7 @@ serve(async (req) => {
       garmentResult,
       decorationResult,
       materialResult,
+      accessoryResult,
       imageResponse,
     ] = await Promise.all([
       supabase
@@ -331,12 +401,19 @@ serve(async (req) => {
           "material_key,material_label,aliases,sample_surcharge,production_unit_surcharge,pricing_note",
         )
         .eq("active", true),
+      supabase
+        .from("quote_accessory_prices")
+        .select(
+          "accessory_key,accessory_label,unit_price,pricing_note,source_label,source_version",
+        )
+        .eq("active", true),
       fetch(parsedImageUrl.toString()),
     ]);
 
     if (garmentResult.error) throw garmentResult.error;
     if (decorationResult.error) throw decorationResult.error;
     if (materialResult.error) throw materialResult.error;
+    if (accessoryResult.error) throw accessoryResult.error;
     if (!imageResponse.ok) {
       throw new Error(`이미지를 불러오지 못했습니다: ${imageResponse.status}`);
     }
@@ -349,6 +426,7 @@ serve(async (req) => {
     const garmentRows = (garmentResult.data || []) as GarmentPriceRow[];
     const decorationRows = (decorationResult.data || []) as DecorationPriceRow[];
     const materialRows = (materialResult.data || []) as MaterialSurchargeRow[];
+    const accessoryRows = (accessoryResult.data || []) as AccessoryPriceRow[];
     if (garmentRows.length === 0) {
       throw new Error("의류 단가 데이터가 없습니다.");
     }
@@ -381,6 +459,13 @@ Return JSON only, with this exact shape:
       "colorCount": 1,
       "confidence": 0.0
     }
+  ],
+  "accessories": [
+    {
+      "kind": "stud | zipper | button | rivet | hood_cord | snap_button | buckle | drawstring",
+      "count": 1,
+      "confidence": 0.0
+    }
   ]
 }
 
@@ -395,6 +480,20 @@ Rules:
 - If the design context explicitly names a printing technique or location, use
   it to distinguish visually similar methods unless the image contradicts it.
 - Do not mark fabric texture, seams, pockets, buttons, or zippers as printing.
+- Inspect the actual image for every visible accessory and return its per-garment
+  count in accessories.
+- Count a complete zipper closure as one zipper, never individual teeth or the
+  zipper pull.
+- Count each visible normal button, snap button, stud, denim rivet, and buckle
+  separately.
+- Count a pair/set of hood cords on one garment as one hood_cord.
+- Count a pair/set of non-hood waist or hem cords as one drawstring.
+- Do not count eyelets, cord tips, seams, printed drawings of hardware, or
+  accessories that are not actually visible.
+- Do not count the same accessory twice when front and back views of the same
+  garment appear together.
+- Distinguish stud from denim rivet, button from snap_button, and hood_cord from
+  drawstring. If uncertain, lower confidence instead of guessing.
 - Mark hasWashing true only when the finished garment visibly shows deliberate
   washing effects such as fading, whiskers, abrasion, stone wash, acid wash,
   uneven washed color, or a clearly washed vintage finish. A plain solid denim
@@ -562,6 +661,25 @@ ${String(designContext).slice(0, 3000)}
         artworkType: decoration.artworkType,
       }];
     });
+    const normalizedAccessories = normalizeAccessories(
+      rawAnalysis.accessories,
+    );
+    const accessoryLines = normalizedAccessories.flatMap((accessory) => {
+      const price = accessoryRows.find(
+        (row) => row.accessory_key === accessory.kind,
+      );
+      if (!price) return [];
+
+      return [{
+        kind: accessory.kind,
+        label: price.accessory_label,
+        count: accessory.count,
+        confidence: accessory.confidence,
+        unitPrice: price.unit_price,
+        lineTotal: price.unit_price * accessory.count,
+        note: price.pricing_note,
+      }];
+    });
 
     const decorationMin = decorationLines.reduce(
       (sum, line) => sum + line.lineMin,
@@ -569,6 +687,10 @@ ${String(designContext).slice(0, 3000)}
     );
     const decorationMax = decorationLines.reduce(
       (sum, line) => sum + line.lineMax,
+      0,
+    );
+    const accessoryUnitTotal = accessoryLines.reduce(
+      (sum, line) => sum + line.lineTotal,
       0,
     );
     const productionUnitSurcharge =
@@ -588,13 +710,22 @@ ${String(designContext).slice(0, 3000)}
     const productionTotalMax = knownProductionMax * quantity;
     const decorationTotalMin = decorationMin * quantity;
     const decorationTotalMax = decorationMax * quantity;
-    const directUnitMin = knownProductionMin + decorationMin;
-    const directUnitMax = knownProductionMax + decorationMax;
+    const accessoryTotal = accessoryUnitTotal * quantity;
+    const directUnitMin =
+      knownProductionMin + decorationMin + accessoryUnitTotal;
+    const directUnitMax =
+      knownProductionMax + decorationMax + accessoryUnitTotal;
     const developmentTotal = garment.pattern_cost + sampleCost;
     const totalMin =
-      productionTotalMin + decorationTotalMin + developmentTotal;
+      productionTotalMin +
+      decorationTotalMin +
+      accessoryTotal +
+      developmentTotal;
     const totalMax =
-      productionTotalMax + decorationTotalMax + developmentTotal;
+      productionTotalMax +
+      decorationTotalMax +
+      accessoryTotal +
+      developmentTotal;
     const effectiveUnitMin = Math.ceil(totalMin / quantity);
     const effectiveUnitMax = Math.ceil(totalMax / quantity);
     const categoryConfidence = clampConfidence(
@@ -654,6 +785,10 @@ ${String(designContext).slice(0, 3000)}
         hasEmbroidery,
         hasWashing,
         detectedDecorationCount: decorationLines.length,
+        detectedAccessoryCount: accessoryLines.reduce(
+          (sum, line) => sum + line.count,
+          0,
+        ),
       },
       garment: {
         key: garment.category_key,
@@ -671,6 +806,7 @@ ${String(designContext).slice(0, 3000)}
         }
         : null,
       decorations: decorationLines,
+      accessories: accessoryLines,
       totals: {
         quantity,
         productionMin,
@@ -687,6 +823,8 @@ ${String(designContext).slice(0, 3000)}
         decorationMax,
         decorationTotalMin,
         decorationTotalMax,
+        accessoryUnitTotal,
+        accessoryTotal,
         directUnitMin,
         directUnitMax,
         totalMin,

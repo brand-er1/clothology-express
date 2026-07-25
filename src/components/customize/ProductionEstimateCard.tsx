@@ -27,6 +27,7 @@ interface ProductionEstimateCardProps {
   imageUrl: string;
   designContext?: string;
   uploadedArtwork?: UploadedArtworkAnalysis | null;
+  onEstimateChange?: (estimate: ProductionEstimateResult | null) => void;
 }
 
 const formatWon = (amount: number) => `${amount.toLocaleString("ko-KR")}원`;
@@ -83,6 +84,7 @@ export const ProductionEstimateCard = ({
   imageUrl,
   designContext = "",
   uploadedArtwork = null,
+  onEstimateChange,
 }: ProductionEstimateCardProps) => {
   const [estimate, setEstimate] = useState<ProductionEstimateResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,6 +96,7 @@ export const ProductionEstimateCard = ({
     requestIdRef.current = requestId;
     setIsLoading(true);
     setError(null);
+    onEstimateChange?.(null);
 
     try {
       const result = await analyzeProductionEstimate({
@@ -105,10 +108,12 @@ export const ProductionEstimateCard = ({
       });
       if (requestIdRef.current !== requestId) return;
       setEstimate(result);
+      onEstimateChange?.(result);
     } catch (analysisError) {
       if (requestIdRef.current !== requestId) return;
       console.error("Production estimate analysis error:", analysisError);
       setEstimate(null);
+      onEstimateChange?.(null);
       setError(
         analysisError instanceof Error
           ? analysisError.message
@@ -122,6 +127,7 @@ export const ProductionEstimateCard = ({
   }, [
     designContext,
     imageUrl,
+    onEstimateChange,
     selectedMaterial,
     selectedType,
     uploadedArtwork,

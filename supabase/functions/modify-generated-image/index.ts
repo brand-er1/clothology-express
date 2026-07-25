@@ -208,7 +208,7 @@ serve(async (req) => {
       ? Math.min(100, Math.max(0, rawYPercent))
       : 45;
     const widthPercent = Number.isFinite(rawWidthPercent)
-      ? Math.min(60, Math.max(6, rawWidthPercent))
+      ? Math.min(60, Math.max(0.1, rawWidthPercent))
       : 25;
     let artworkAnalysis: Record<string, unknown> | null = null;
 

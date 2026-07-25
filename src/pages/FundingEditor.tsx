@@ -10,14 +10,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { fetchFunding, updateFunding } from "@/services/funding";
+import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type { Funding } from "@/types/funding";
-import { ArrowLeft, Check, Eye, Loader2, LockKeyhole, Plus, Sparkles, Users, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Calculator,
+  Check,
+  Eye,
+  Loader2,
+  LockKeyhole,
+  Plus,
+  Sparkles,
+  TrendingUp,
+  Users,
+  X,
+} from "lucide-react";
+
+const formatWon = (amount: number) =>
+  `${Math.round(amount).toLocaleString("ko-KR")}원`;
 
 const FundingEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [funding, setFunding] = useState<Funding | null>(null);
   const [loading, setLoading] = useState(true);
+  const [estimating, setEstimating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newColor, setNewColor] = useState("");
   const [newSize, setNewSize] = useState("");
@@ -35,6 +52,39 @@ const FundingEditor = () => {
           throw new Error("펀딩을 수정할 권한이 없습니다.");
         }
         setFunding(fundingData);
+
+        if (
+          fundingData.estimate_direct_unit_min == null ||
+          fundingData.estimate_direct_unit_max == null ||
+          fundingData.estimate_development_total == null
+        ) {
+          setEstimating(true);
+          void analyzeProductionEstimate({
+            imageUrl: fundingData.image_url,
+            selectedType: fundingData.cloth_type,
+            selectedMaterial: fundingData.material,
+            designContext: fundingData.description || "",
+          })
+            .then((estimate) => {
+              setFunding((current) =>
+                current?.id === fundingData.id
+                  ? {
+                      ...current,
+                      estimate_direct_unit_min:
+                        estimate.totals.directUnitMin,
+                      estimate_direct_unit_max:
+                        estimate.totals.directUnitMax,
+                      estimate_development_total:
+                        estimate.totals.developmentTotal,
+                    }
+                  : current,
+              );
+            })
+            .catch((estimateError) => {
+              console.error("Funding estimate analysis error:", estimateError);
+            })
+            .finally(() => setEstimating(false));
+        }
       } catch (error) {
         console.error(error);
         toast({
@@ -69,6 +119,10 @@ const FundingEditor = () => {
       toast({ title: "사이즈를 한 개 이상 추가해주세요", variant: "destructive" });
       return;
     }
+    if (funding.fabric_unit_cost < 0) {
+      toast({ title: "원단비는 0원 이상이어야 합니다", variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -78,6 +132,10 @@ const FundingEditor = () => {
         description: funding.description,
         moq: funding.moq,
         price: funding.price,
+        estimate_direct_unit_min: funding.estimate_direct_unit_min,
+        estimate_direct_unit_max: funding.estimate_direct_unit_max,
+        estimate_development_total: funding.estimate_development_total,
+        fabric_unit_cost: funding.fabric_unit_cost,
         funding_days: funding.funding_days,
         color_options: funding.color_options,
         size_options: funding.size_options,
@@ -114,6 +172,41 @@ const FundingEditor = () => {
   const canEditSales = funding.status === "pending" || funding.status === "rejected";
   const colors = funding.color_options?.length ? funding.color_options : [funding.color || "기본 색상"];
   const sizes = funding.size_options?.length ? funding.size_options : [funding.size || "FREE"];
+  const targetQuantity = Math.max(0, funding.moq || 0);
+  const sellingPrice = Math.max(0, funding.price || 0);
+  const expectedSales = sellingPrice * targetQuantity;
+  const fabricUnitCost = Math.max(0, funding.fabric_unit_cost || 0);
+  const fabricTotal = fabricUnitCost * targetQuantity;
+  const fundingFee = Math.round(expectedSales * 0.1);
+  const productionFee = Math.round(expectedSales * 0.15);
+  const hasEstimate =
+    funding.estimate_direct_unit_min != null &&
+    funding.estimate_direct_unit_max != null &&
+    funding.estimate_development_total != null;
+  const estimateTotalMin = hasEstimate
+    ? funding.estimate_direct_unit_min! * targetQuantity +
+      funding.estimate_development_total!
+    : null;
+  const estimateTotalMax = hasEstimate
+    ? funding.estimate_direct_unit_max! * targetQuantity +
+      funding.estimate_development_total!
+    : null;
+  const netProfitMin =
+    estimateTotalMax == null
+      ? null
+      : expectedSales -
+        estimateTotalMax -
+        fabricTotal -
+        fundingFee -
+        productionFee;
+  const netProfitMax =
+    estimateTotalMin == null
+      ? null
+      : expectedSales -
+        estimateTotalMin -
+        fabricTotal -
+        fundingFee -
+        productionFee;
 
   const addOption = (kind: "color" | "size") => {
     const rawValue = kind === "color" ? newColor : newSize;
@@ -284,7 +377,7 @@ const FundingEditor = () => {
                   </div>
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="moq">목표 수량</Label>
                   <div className="relative">
@@ -303,12 +396,114 @@ const FundingEditor = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="fabric-unit-cost">원단비 (장당)</Label>
+                  <div className="relative">
+                    <Input
+                      id="fabric-unit-cost"
+                      type="number"
+                      min={0}
+                      disabled={!canEditSales}
+                      value={funding.fabric_unit_cost ?? 0}
+                      onChange={(event) =>
+                        setFunding({
+                          ...funding,
+                          fabric_unit_cost: Math.max(
+                            0,
+                            Number(event.target.value),
+                          ),
+                        })
+                      }
+                      className="h-12 pr-10"
+                    />
+                    <span className="absolute right-3 top-3 text-sm text-gray-400">원</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="funding-days">진행 기간</Label>
                   <div className="relative">
                     <Input id="funding-days" type="number" min={1} max={90} disabled={!canEditSales} value={funding.funding_days}
                       onChange={(event) => setFunding({ ...funding, funding_days: Number(event.target.value) })} className="h-12 pr-10" />
                     <span className="absolute right-3 top-3 text-sm text-gray-400">일</span>
                   </div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-brand/20 bg-white">
+                <div className="flex flex-col justify-between gap-4 bg-brand px-5 py-5 text-white sm:flex-row sm:items-end">
+                  <div>
+                    <p className="flex items-center gap-2 text-sm font-bold text-white/80">
+                      <TrendingUp className="h-4 w-4" />
+                      펀딩 성공 시 예상 순이익
+                    </p>
+                    <p className="mt-2 text-2xl font-black tracking-tight md:text-3xl">
+                      {estimating
+                        ? "이전 견적 불러오는 중"
+                        : netProfitMin == null || netProfitMax == null
+                          ? "제작 견적 확인 필요"
+                          : netProfitMin === netProfitMax
+                            ? formatWon(netProfitMin)
+                            : `${formatWon(netProfitMin)} ~ ${formatWon(netProfitMax)}`}
+                    </p>
+                  </div>
+                  <p className="text-xs font-semibold text-white/75">
+                    판매가·수량·원단비 입력 즉시 자동 계산
+                  </p>
+                </div>
+
+                <div className="grid gap-x-8 gap-y-3 p-5 text-sm sm:grid-cols-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-500">
+                      목표 판매 총액 ({formatWon(sellingPrice)} × {targetQuantity}장)
+                    </span>
+                    <strong>{formatWon(expectedSales)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-500">이전 제작 견적</span>
+                    <strong>
+                      {estimateTotalMin == null || estimateTotalMax == null
+                        ? "확인 중"
+                        : estimateTotalMin === estimateTotalMax
+                          ? formatWon(estimateTotalMin)
+                          : `${formatWon(estimateTotalMin)} ~ ${formatWon(estimateTotalMax)}`}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-500">
+                      원단비 ({formatWon(fabricUnitCost)} × {targetQuantity}장)
+                    </span>
+                    <strong>- {formatWon(fabricTotal)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-500">펀딩 수수료 10%</span>
+                    <strong>- {formatWon(fundingFee)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-gray-500">제작 수수료 15%</span>
+                    <strong>- {formatWon(productionFee)}</strong>
+                  </div>
+                  <div
+                    className={`flex items-center justify-between gap-4 rounded-xl px-3 py-2 ${
+                      netProfitMin != null && netProfitMin < 0
+                        ? "bg-red-50 text-red-700"
+                        : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    <span className="font-bold">내가 가져갈 순이익</span>
+                    <strong>
+                      {netProfitMin == null || netProfitMax == null
+                        ? "견적 확인 필요"
+                        : netProfitMin === netProfitMax
+                          ? formatWon(netProfitMin)
+                          : `${formatWon(netProfitMin)} ~ ${formatWon(netProfitMax)}`}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 border-t border-brand/10 bg-brand/5 px-5 py-3 text-xs leading-5 text-gray-600">
+                  <Calculator className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                  <p>
+                    순이익 = 목표 판매 총액 − 이전 제작 견적 − 원단비 − 펀딩 수수료 10% − 제작 수수료 15%
+                  </p>
                 </div>
               </div>
 

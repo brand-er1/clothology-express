@@ -19,6 +19,9 @@ import { createExactArtworkComposite } from "@/lib/artwork-composite";
 import {
   artworkLocationLabels,
   DEFAULT_ARTWORK_WIDTH,
+  formatArtworkPercent,
+  MAX_ARTWORK_WIDTH,
+  MIN_ARTWORK_WIDTH,
   prepareArtworkReference,
   resolveArtworkSize,
   resolveArtworkPlacementPrompt,
@@ -34,13 +37,17 @@ import type {
   CompositedImageReference,
   ImageModificationEntry,
 } from "@/types/customize";
-import type { UploadedArtworkAnalysis } from "@/types/productionEstimate";
+import type {
+  ProductionEstimateResult,
+  UploadedArtworkAnalysis,
+} from "@/types/productionEstimate";
 
 const placementExamples = [
   "앞면 왼쪽 가슴에 작게 넣어줘",
   "앞면 중앙에 크게 넣어줘",
   "등 중앙에 중간 크기로 넣어줘",
   "오른쪽 소매에 작게 넣어줘",
+  "앞면 중앙에 거의 안 보이게 넣어줘",
 ];
 
 type ArtworkGesture =
@@ -81,6 +88,7 @@ interface ModifyImageStepProps {
   designContext?: string;
   modificationHistory: ImageModificationEntry[];
   currentArtworkAnalysis: UploadedArtworkAnalysis | null;
+  onEstimateChange: (estimate: ProductionEstimateResult | null) => void;
   onModifyImage: (
     prompt: string,
     options?: {
@@ -101,6 +109,7 @@ export const ModifyImageStep = ({
   designContext,
   modificationHistory,
   currentArtworkAnalysis,
+  onEstimateChange,
   onModifyImage,
   onResetModifications,
   onSelectHistoryImage,
@@ -276,7 +285,7 @@ export const ModifyImageStep = ({
           placement.xPercent,
         )}%·세로 ${Math.round(
           placement.yPercent,
-        )}% 지점에 이미지 폭의 약 ${Math.round(
+        )}% 지점에 이미지 폭의 약 ${formatArtworkPercent(
           placement.widthPercent,
         )}% 크기로 정확히 적용했습니다.`,
         {
@@ -339,7 +348,7 @@ export const ModifyImageStep = ({
   };
 
   const handleMovePointerDown = (
-    event: React.PointerEvent<HTMLDivElement>,
+    event: React.PointerEvent<HTMLElement>,
   ) => {
     if (isLoading || isApplyingArtwork) return;
     const point = getPointerPercent(event.clientX, event.clientY);
@@ -394,8 +403,11 @@ export const ModifyImageStep = ({
     const deltaPercent =
       ((event.clientX - gesture.startClientX) / point.canvasWidth) * 100;
     const widthPercent = Math.min(
-      50,
-      Math.max(8, gesture.startWidthPercent + deltaPercent),
+      MAX_ARTWORK_WIDTH,
+      Math.max(
+        MIN_ARTWORK_WIDTH,
+        gesture.startWidthPercent + deltaPercent,
+      ),
     );
     const position = clampArtworkPosition(
       resolvedPlacement.xPercent,
@@ -514,12 +526,27 @@ export const ModifyImageStep = ({
                         draggable={false}
                       />
                       <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-dashed border-brand shadow-lg" />
-                      <span className="pointer-events-none absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
-                        <Move className="h-3.5 w-3.5" />
-                      </span>
+                      {resolvedPlacement.widthPercent > 4 ? (
+                        <span className="pointer-events-none absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
+                          <Move className="h-3.5 w-3.5" />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="absolute right-full top-1/2 mr-2 flex h-7 w-7 -translate-y-1/2 touch-none items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md"
+                          onPointerDown={handleMovePointerDown}
+                          aria-label="매우 작은 이미지 위치 이동"
+                        >
+                          <Move className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className="absolute -bottom-3 -right-3 flex h-7 w-7 touch-none cursor-nwse-resize items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md"
+                        className={`absolute flex h-7 w-7 touch-none cursor-nwse-resize items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md ${
+                          resolvedPlacement.widthPercent <= 4
+                            ? "left-full top-1/2 ml-2 -translate-y-1/2"
+                            : "-bottom-3 -right-3"
+                        }`}
                         onPointerDown={handleResizePointerDown}
                         aria-label="이미지 크기 조절"
                       >
@@ -741,7 +768,8 @@ export const ModifyImageStep = ({
                 <p className="mt-2 text-[11px] leading-4 text-gray-500">
                   왼쪽·오른쪽 가슴, 앞면·뒷면 중앙, 목 뒤, 양쪽 소매와
                   작게·중간·크게 또는 폭 20% 같은 표현을 이해합니다. 프롬프트
-                  적용 뒤에는 드래그로 미세 조절하세요.
+                  적용 뒤에는 드래그로 미세 조절하세요. 최소 폭 0.1%까지 줄일
+                  수 있습니다.
                 </p>
               </div>
 
@@ -794,6 +822,7 @@ export const ModifyImageStep = ({
                 imageUrl={selectedImageUrl}
                 designContext={designContext}
                 uploadedArtwork={currentArtworkAnalysis}
+                onEstimateChange={onEstimateChange}
               />
             )}
             

@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS, clothTypes, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { generateImage, storeSelectedImage } from "@/services/imageGeneration";
 import { createFundingDraft } from "@/services/funding";
+import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type {
   ArtworkPlacement,
   ArtworkReference,
@@ -12,7 +13,10 @@ import type {
   Material,
   SizeTableItem,
 } from "@/types/customize";
-import type { UploadedArtworkAnalysis } from "@/types/productionEstimate";
+import type {
+  ProductionEstimateResult,
+  UploadedArtworkAnalysis,
+} from "@/types/productionEstimate";
 import { supabase } from "@/lib/supabase";
 
 interface ModifyImageOptions {
@@ -66,6 +70,8 @@ export const useCustomizeForm = () => {
   const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
   const [currentArtworkAnalysis, setCurrentArtworkAnalysis] =
     useState<UploadedArtworkAnalysis | null>(null);
+  const [currentProductionEstimate, setCurrentProductionEstimate] =
+    useState<ProductionEstimateResult | null>(null);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -145,6 +151,7 @@ export const useCustomizeForm = () => {
       setModificationHistory([]);
       setActiveHistory([]);
       setCurrentArtworkAnalysis(null);
+      setCurrentProductionEstimate(null);
       
       const result = await generateImage(
         selectedType,
@@ -196,6 +203,7 @@ export const useCustomizeForm = () => {
   ) => {
     try {
       setImageModifying(true);
+      setCurrentProductionEstimate(null);
       
       const imageUrlToModify = currentModifiedImageUrl || 
         (storedImageUrls && selectedImageIndex >= 0 ? 
@@ -330,6 +338,7 @@ export const useCustomizeForm = () => {
     setModificationHistory([]);
     setActiveHistory([]);
     setCurrentArtworkAnalysis(null);
+    setCurrentProductionEstimate(null);
     toast({
       title: "수정 내역 초기화",
       description: "이미지가 원래 상태로 복원되었습니다.",
@@ -346,6 +355,7 @@ export const useCustomizeForm = () => {
     }
     setCurrentModifiedImageUrl(imageUrl);
     setStoredImageUrl(imageUrl);
+    setCurrentProductionEstimate(null);
     if (imagePath) {
       setImagePath(imagePath);
     }
@@ -444,6 +454,23 @@ export const useCustomizeForm = () => {
         `소재: ${materialName}`,
       ].filter(Boolean).join("\n");
 
+      let productionEstimate = currentProductionEstimate;
+      if (!productionEstimate) {
+        try {
+          productionEstimate = await analyzeProductionEstimate({
+            imageUrl: finalImageUrl,
+            selectedType,
+            selectedMaterial,
+            designContext: [generatedPrompt, selectedDetail]
+              .filter(Boolean)
+              .join("\n"),
+            uploadedArtwork: currentArtworkAnalysis,
+          });
+        } catch (estimateError) {
+          console.error("Funding estimate analysis error:", estimateError);
+        }
+      }
+
       const funding = await createFundingDraft({
         productName: productName || clothTypeName,
         clothType: clothTypeName,
@@ -454,6 +481,12 @@ export const useCustomizeForm = () => {
         imageUrl: finalImageUrl,
         imagePath: finalImagePath,
         description,
+        estimateDirectUnitMin:
+          productionEstimate?.totals.directUnitMin ?? null,
+        estimateDirectUnitMax:
+          productionEstimate?.totals.directUnitMax ?? null,
+        estimateDevelopmentTotal:
+          productionEstimate?.totals.developmentTotal ?? null,
       });
 
       toast({
@@ -556,6 +589,8 @@ export const useCustomizeForm = () => {
     modificationHistory,
     currentModifiedImageUrl,
     currentArtworkAnalysis,
+    currentProductionEstimate,
+    setCurrentProductionEstimate,
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,

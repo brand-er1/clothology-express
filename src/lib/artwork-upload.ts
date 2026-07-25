@@ -7,8 +7,8 @@ import type { DecorationLocation } from "@/types/productionEstimate";
 
 export type ArtworkContentType = "logo" | "photo";
 
-const MIN_ARTWORK_WIDTH = 8;
-const MAX_ARTWORK_WIDTH = 50;
+export const MIN_ARTWORK_WIDTH = 0.1;
+export const MAX_ARTWORK_WIDTH = 50;
 export const DEFAULT_ARTWORK_WIDTH = 25;
 
 export const artworkLocationLabels: Record<DecorationLocation, string> = {
@@ -110,7 +110,9 @@ const resolvePosition = (
 };
 
 const resolveWidth = (prompt: string, fallbackWidth: number) => {
-  const explicitWidth = prompt.match(/(?:폭|크기)\s*(\d{1,2})\s*%/);
+  const explicitWidth = prompt.match(
+    /(?:폭|크기)\s*(\d{1,2}(?:\.\d)?)\s*%/,
+  );
   if (explicitWidth) {
     return clamp(
       Number(explicitWidth[1]),
@@ -119,7 +121,9 @@ const resolveWidth = (prompt: string, fallbackWidth: number) => {
     );
   }
 
-  if (/(아주|매우)\s*작|미니|조그맣/.test(prompt)) return 12;
+  if (/거의\s*안\s*보|사라질|점처럼|최소\s*크기/.test(prompt)) return 0.1;
+  if (/(아주|매우)\s*작/.test(prompt)) return 1;
+  if (/미니|조그맣/.test(prompt)) return 3;
   if (/작게|작은|소형/.test(prompt)) return 16;
   if (/(아주|매우)\s*크|전체|가득/.test(prompt)) return 45;
   if (/크게|큰|대형/.test(prompt)) return 36;
@@ -160,12 +164,15 @@ export const resolveArtworkPlacementPrompt = (
   };
 };
 
+export const formatArtworkPercent = (value: number) =>
+  value < 1 ? value.toFixed(1) : String(Math.round(value));
+
 export const summarizeArtworkPlacement = (placement: ArtworkPlacement) =>
   `${artworkLocationLabels[placement.location]} · 화면 기준 가로 ${Math.round(
     placement.xPercent,
   )}% / 세로 ${Math.round(
     placement.yPercent,
-  )}% · 이미지 폭 ${Math.round(placement.widthPercent)}%`;
+  )}% · 이미지 폭 ${formatArtworkPercent(placement.widthPercent)}%`;
 
 type Rgb = { r: number; g: number; b: number };
 

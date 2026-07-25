@@ -73,6 +73,7 @@ const Customize = () => {
     modificationHistory,
     currentModifiedImageUrl,
     currentArtworkAnalysis,
+    setCurrentProductionEstimate,
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,
@@ -233,6 +234,7 @@ const Customize = () => {
                 designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
                 modificationHistory={modificationHistory}
                 currentArtworkAnalysis={currentArtworkAnalysis}
+                onEstimateChange={setCurrentProductionEstimate}
                 onModifyImage={handleModifyImage}
                 onResetModifications={handleResetModifications}
                 onSelectHistoryImage={handleSelectHistoryImage}

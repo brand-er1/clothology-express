@@ -19,6 +19,10 @@ export type Funding = {
   moq: number;
   current_orders: number;
   price: number | null;
+  estimate_direct_unit_min: number | null;
+  estimate_direct_unit_max: number | null;
+  estimate_development_total: number | null;
+  fabric_unit_cost: number;
   funding_days: number;
   status: FundingStatus;
   admin_comment: string | null;
@@ -37,6 +41,9 @@ export type CreateFundingInput = {
   imageUrl: string;
   imagePath: string | null;
   description: string;
+  estimateDirectUnitMin?: number | null;
+  estimateDirectUnitMax?: number | null;
+  estimateDevelopmentTotal?: number | null;
 };
 
 export type FundingParticipation = {

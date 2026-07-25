@@ -56,6 +56,10 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       image_url: input.imageUrl,
       image_path: input.imagePath,
       description: input.description,
+      estimate_direct_unit_min: input.estimateDirectUnitMin ?? null,
+      estimate_direct_unit_max: input.estimateDirectUnitMax ?? null,
+      estimate_development_total: input.estimateDevelopmentTotal ?? null,
+      fabric_unit_cost: 0,
       moq: 20,
       current_orders: 0,
       funding_days: 30,
@@ -106,7 +110,17 @@ export const updateFunding = async (
   id: string,
   updates: Pick<
     Funding,
-    "product_name" | "description" | "moq" | "price" | "funding_days" | "color_options" | "size_options"
+    | "product_name"
+    | "description"
+    | "moq"
+    | "price"
+    | "estimate_direct_unit_min"
+    | "estimate_direct_unit_max"
+    | "estimate_development_total"
+    | "fabric_unit_cost"
+    | "funding_days"
+    | "color_options"
+    | "size_options"
   >
 ): Promise<Funding> => {
   await requireUser();
@@ -116,6 +130,10 @@ export const updateFunding = async (
     p_description: updates.description,
     p_moq: Math.max(20, updates.moq),
     p_price: updates.price,
+    p_estimate_direct_unit_min: updates.estimate_direct_unit_min,
+    p_estimate_direct_unit_max: updates.estimate_direct_unit_max,
+    p_estimate_development_total: updates.estimate_development_total,
+    p_fabric_unit_cost: Math.max(0, updates.fabric_unit_cost),
     p_funding_days: updates.funding_days,
     p_color_options: updates.color_options,
     p_size_options: updates.size_options,

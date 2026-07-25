@@ -98,6 +98,10 @@ export type Database = {
           creator_id: string
           current_orders: number
           description: string | null
+          estimate_development_total: number | null
+          estimate_direct_unit_max: number | null
+          estimate_direct_unit_min: number | null
+          fabric_unit_cost: number
           funding_days: number
           id: string
           image_path: string | null
@@ -123,6 +127,10 @@ export type Database = {
           creator_id: string
           current_orders?: number
           description?: string | null
+          estimate_development_total?: number | null
+          estimate_direct_unit_max?: number | null
+          estimate_direct_unit_min?: number | null
+          fabric_unit_cost?: number
           funding_days?: number
           id?: string
           image_path?: string | null
@@ -148,6 +156,10 @@ export type Database = {
           creator_id?: string
           current_orders?: number
           description?: string | null
+          estimate_development_total?: number | null
+          estimate_direct_unit_max?: number | null
+          estimate_direct_unit_min?: number | null
+          fabric_unit_cost?: number
           funding_days?: number
           id?: string
           image_path?: string | null

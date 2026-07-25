@@ -229,6 +229,7 @@ const Customize = () => {
                 isLoading={imageModifying}
                 selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
                 selectedType={selectedType}
+                selectedMaterial={selectedMaterial}
                 designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
                 modificationHistory={modificationHistory}
                 currentArtworkAnalysis={currentArtworkAnalysis}

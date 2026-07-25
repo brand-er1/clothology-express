@@ -15,6 +15,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { createExactArtworkComposite } from "@/lib/artwork-composite";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { ProductionEstimateCard } from "./ProductionEstimateCard";
@@ -30,6 +31,7 @@ import type {
   ArtworkPlacement,
   ArtworkReference,
   ArtworkSize,
+  CompositedImageReference,
   ImageModificationEntry,
 } from "@/types/customize";
 import type {
@@ -151,8 +153,9 @@ interface ModifyImageStepProps {
     options?: {
       referenceImage?: ArtworkReference;
       placement?: ArtworkPlacement;
+      compositedImage?: CompositedImageReference;
     },
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   onResetModifications: () => void;
   onSelectHistoryImage: (imageUrl: string | null, imagePath?: string | null, index?: number) => void;
 }
@@ -184,6 +187,7 @@ export const ModifyImageStep = ({
   );
   const [baseImageAspectRatio, setBaseImageAspectRatio] = useState(4 / 3);
   const [isPreparingArtwork, setIsPreparingArtwork] = useState(false);
+  const [isApplyingArtwork, setIsApplyingArtwork] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const artworkCanvasRef = useRef<HTMLDivElement>(null);
   const activeGestureRef = useRef<ArtworkGesture | null>(null);
@@ -200,8 +204,10 @@ export const ModifyImageStep = ({
     }
 
     try {
-      await onModifyImage(modificationPrompt);
-      setModificationPrompt("");
+      const modified = await onModifyImage(modificationPrompt);
+      if (modified) {
+        setModificationPrompt("");
+      }
     } catch (error) {
       console.error("Error modifying image:", error);
     }
@@ -260,7 +266,7 @@ export const ModifyImageStep = ({
   };
 
   const handleApplyArtwork = async () => {
-    if (!uploadedArtwork) {
+    if (!uploadedArtwork || !selectedImageUrl) {
       fileInputRef.current?.click();
       return;
     }
@@ -270,25 +276,51 @@ export const ModifyImageStep = ({
         ?.label || "앞면";
     const artworkSize = resolveArtworkSize(artworkWidthPercent);
 
-    await onModifyImage(
-      `업로드한 이미지를 원본 형태와 색상을 유지해 옷의 ${locationLabel}, 화면 기준 왼쪽 ${Math.round(artworkPosition.xPercent)}%·위쪽 ${Math.round(artworkPosition.yPercent)}% 지점에 이미지 폭의 약 ${Math.round(artworkWidthPercent)}% 크기로 자연스럽게 적용해주세요.`,
-      {
-        referenceImage: uploadedArtwork,
-        placement: {
-          location: artworkLocation,
-          size: artworkSize,
-          xPercent: artworkPosition.xPercent,
-          yPercent: artworkPosition.yPercent,
-          widthPercent: artworkWidthPercent,
+    const placement: ArtworkPlacement = {
+      location: artworkLocation,
+      size: artworkSize,
+      xPercent: artworkPosition.xPercent,
+      yPercent: artworkPosition.yPercent,
+      widthPercent: artworkWidthPercent,
+    };
+
+    try {
+      setIsApplyingArtwork(true);
+      const compositedImage = await createExactArtworkComposite({
+        baseImageUrl: selectedImageUrl,
+        artwork: uploadedArtwork,
+        placement,
+      });
+
+      const applied = await onModifyImage(
+        `업로드한 이미지를 원본 형태와 색상을 유지해 옷의 ${locationLabel}, 화면 기준 왼쪽 ${Math.round(artworkPosition.xPercent)}%·위쪽 ${Math.round(artworkPosition.yPercent)}% 지점에 이미지 폭의 약 ${Math.round(artworkWidthPercent)}% 크기로 정확히 적용했습니다.`,
+        {
+          referenceImage: uploadedArtwork,
+          placement,
+          compositedImage,
         },
-      },
-    );
+      );
+      if (applied) {
+        clearArtwork();
+      }
+    } catch (error) {
+      toast({
+        title: "이미지 적용 실패",
+        description:
+          error instanceof Error
+            ? error.message
+            : "이미지를 다시 올린 뒤 적용해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsApplyingArtwork(false);
+    }
   };
 
   const clearArtwork = () => {
     setUploadedArtwork(null);
     setArtworkPreview(null);
-    setArtworkPosition(locationPositionPresets.front);
+    setArtworkPosition(locationPositionPresets[artworkLocation]);
     setArtworkWidthPercent(DEFAULT_ARTWORK_WIDTH);
   };
 
@@ -471,86 +503,93 @@ export const ModifyImageStep = ({
           
           <div className="flex flex-col items-center space-y-4">
             <div
-              ref={artworkCanvasRef}
               className={`relative w-full max-w-xl touch-pan-y select-none overflow-hidden rounded-xl border bg-gray-50 ${
                 artworkPreview
                   ? "cursor-crosshair border-brand/40 shadow-inner"
                   : "border-gray-200"
               }`}
               style={{ aspectRatio: baseImageAspectRatio }}
-              onPointerDown={handleCanvasPointerDown}
-              onPointerMove={handleArtworkPointerMove}
-              onPointerUp={handleArtworkPointerEnd}
-              onPointerCancel={handleArtworkPointerEnd}
-              onDragOver={handleArtworkDragOver}
-              onDrop={(event) => void handleArtworkDrop(event)}
             >
-              {selectedImageUrl && !imageError ? (
-                <img
-                  src={selectedImageUrl}
-                  alt="이미지 배치 대상 의류"
-                  className="pointer-events-none h-full w-full object-contain"
-                  draggable={false}
-                  onError={() => setImageError(true)}
-                  onLoad={(event) => {
-                    const image = event.currentTarget;
-                    if (image.naturalWidth && image.naturalHeight) {
-                      setBaseImageAspectRatio(
-                        image.naturalWidth / image.naturalHeight,
-                      );
-                    }
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100">
-                  <ImageOff className="w-12 h-12 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">이미지를 불러올 수 없습니다</p>
-                </div>
-              )}
-              {artworkPreview && (
-                <>
-                  <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-bold text-white shadow">
-                    로고를 누른 채 원하는 위치로 이동
-                  </div>
-                  <div
-                    className="absolute -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab rounded-lg border-2 border-dashed border-brand bg-white/15 p-1 shadow-lg active:cursor-grabbing"
-                    style={{
-                      left: `${artworkPosition.xPercent}%`,
-                      top: `${artworkPosition.yPercent}%`,
-                      width: `${artworkWidthPercent}%`,
+              <div
+                ref={artworkCanvasRef}
+                className="absolute inset-0"
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleArtworkPointerMove}
+                onPointerUp={handleArtworkPointerEnd}
+                onPointerCancel={handleArtworkPointerEnd}
+                onDragOver={handleArtworkDragOver}
+                onDrop={(event) => void handleArtworkDrop(event)}
+              >
+                {selectedImageUrl && !imageError ? (
+                  <img
+                    src={selectedImageUrl}
+                    alt="이미지 배치 대상 의류"
+                    className="pointer-events-none h-full w-full object-contain"
+                    draggable={false}
+                    onError={() => setImageError(true)}
+                    onLoad={(event) => {
+                      const image = event.currentTarget;
+                      if (image.naturalWidth && image.naturalHeight) {
+                        setBaseImageAspectRatio(
+                          image.naturalWidth / image.naturalHeight,
+                        );
+                      }
                     }}
-                    onPointerDown={handleMovePointerDown}
-                  >
-                    <img
-                      src={artworkPreview}
-                      alt="배치할 업로드 이미지"
-                      className="block h-auto w-full object-contain"
-                      draggable={false}
-                    />
-                    <span className="pointer-events-none absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
-                      <Move className="h-3 w-3" />
-                    </span>
-                    <button
-                      type="button"
-                      className="absolute -bottom-3 -right-3 flex h-7 w-7 touch-none items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md cursor-nwse-resize"
-                      onPointerDown={handleResizePointerDown}
-                      aria-label="이미지 크기 조절"
-                    >
-                      <Maximize2 className="h-3.5 w-3.5" />
-                    </button>
+                  />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center bg-gray-100">
+                    <ImageOff className="mb-2 h-12 w-12 text-gray-400" />
+                    <p className="text-sm text-gray-500">
+                      이미지를 불러올 수 없습니다
+                    </p>
                   </div>
-                </>
-              )}
-              {!artworkPreview && !isLoading && (
-                <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-lg bg-white/90 px-3 py-2 text-center text-xs font-semibold text-gray-600 shadow-sm">
-                  PC에서는 로고 파일을 이 옷 위로 바로 끌어 놓을 수 있습니다.
-                </div>
-              )}
-              {isLoading && (
-                <div className="absolute inset-0 z-20 bg-black bg-opacity-30 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                </div>
-              )}
+                )}
+                {artworkPreview && (
+                  <>
+                    <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-bold text-white shadow">
+                      로고를 누른 채 원하는 위치로 이동
+                    </div>
+                    <div
+                      className="absolute -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab active:cursor-grabbing"
+                      style={{
+                        left: `${artworkPosition.xPercent}%`,
+                        top: `${artworkPosition.yPercent}%`,
+                        width: `${artworkWidthPercent}%`,
+                      }}
+                      onPointerDown={handleMovePointerDown}
+                    >
+                      <img
+                        src={artworkPreview}
+                        alt="배치할 업로드 이미지"
+                        className="block h-auto w-full object-contain"
+                        draggable={false}
+                      />
+                      <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-dashed border-brand shadow-lg" />
+                      <span className="pointer-events-none absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
+                        <Move className="h-3 w-3" />
+                      </span>
+                      <button
+                        type="button"
+                        className="absolute -bottom-3 -right-3 flex h-7 w-7 touch-none cursor-nwse-resize items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md"
+                        onPointerDown={handleResizePointerDown}
+                        aria-label="이미지 크기 조절"
+                      >
+                        <Maximize2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
+                {!artworkPreview && !isLoading && (
+                  <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-lg bg-white/90 px-3 py-2 text-center text-xs font-semibold text-gray-600 shadow-sm">
+                    PC에서는 로고 파일을 이 옷 위로 바로 끌어 놓을 수 있습니다.
+                  </div>
+                )}
+                {(isLoading || isApplyingArtwork) && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30">
+                    <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-white" />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="w-full rounded-2xl border border-brand/15 bg-brand/5 p-4">
@@ -686,12 +725,14 @@ export const ModifyImageStep = ({
                 type="button"
                 className="mt-4 w-full bg-brand hover:bg-brand-dark"
                 onClick={() => void handleApplyArtwork()}
-                disabled={isLoading || isPreparingArtwork}
+                disabled={
+                  isLoading || isPreparingArtwork || isApplyingArtwork
+                }
               >
-                {isLoading ? (
+                {isLoading || isApplyingArtwork ? (
                   <>
                     <span className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
-                    이미지 적용·분석 중...
+                    위치 그대로 적용·분석 중...
                   </>
                 ) : (
                   <>

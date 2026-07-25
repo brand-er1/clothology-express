@@ -40,6 +40,8 @@ export const FundingSizeGuide = ({
   if (!visibleSizes.length) return null;
 
   const numberMap = getStringRecord(measurements.sizeNumberMap) || {};
+  const domesticSizeMap =
+    getStringRecord(measurements.domesticSizeMap) || {};
   const sizeNumberByLabel = Object.fromEntries(
     Object.entries(numberMap).map(([number, label]) => [label, number]),
   );
@@ -80,7 +82,9 @@ export const FundingSizeGuide = ({
                       ? `${sizeNumberByLabel[size]}사이즈`
                       : "출시 사이즈"}
                   </span>
-                  <span className="mt-0.5 block text-base">{size}</span>
+                  <span className="mt-0.5 block text-base">
+                    {domesticSizeMap[size] || size}
+                  </span>
                 </th>
               ))}
             </tr>

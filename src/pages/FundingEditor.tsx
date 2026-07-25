@@ -196,20 +196,22 @@ const FundingEditor = () => {
     ? funding.estimate_direct_unit_max! * targetQuantity +
       funding.estimate_development_total!
     : null;
+  const totalProductionCostMin =
+    estimateTotalMin == null ? null : estimateTotalMin + fabricTotal;
+  const totalProductionCostMax =
+    estimateTotalMax == null ? null : estimateTotalMax + fabricTotal;
   const netProfitMin =
-    estimateTotalMax == null
+    totalProductionCostMax == null
       ? null
       : expectedSales -
-        estimateTotalMax -
-        fabricTotal -
+        totalProductionCostMax -
         fundingFee -
         productionFee;
   const netProfitMax =
-    estimateTotalMin == null
+    totalProductionCostMin == null
       ? null
       : expectedSales -
-        estimateTotalMin -
-        fabricTotal -
+        totalProductionCostMin -
         fundingFee -
         productionFee;
 
@@ -467,7 +469,9 @@ const FundingEditor = () => {
                     <strong>{formatWon(expectedSales)}</strong>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-gray-500">이전 제작 견적</span>
+                    <span className="text-gray-500">
+                      제작 공임·개발비 (원단 제외)
+                    </span>
                     <strong>
                       {estimateTotalMin == null || estimateTotalMax == null
                         ? "확인 중"
@@ -481,6 +485,17 @@ const FundingEditor = () => {
                       원단비 ({formatWon(fabricUnitCost)} × {targetQuantity}장)
                     </span>
                     <strong>- {formatWon(fabricTotal)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-amber-50 px-3 py-2 text-amber-900 sm:col-span-2">
+                    <span className="font-bold">원단 포함 총 제작원가</span>
+                    <strong>
+                      {totalProductionCostMin == null ||
+                      totalProductionCostMax == null
+                        ? "견적 확인 필요"
+                        : totalProductionCostMin === totalProductionCostMax
+                          ? formatWon(totalProductionCostMin)
+                          : `${formatWon(totalProductionCostMin)} ~ ${formatWon(totalProductionCostMax)}`}
+                    </strong>
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-gray-500">펀딩 수수료 10%</span>
@@ -511,7 +526,9 @@ const FundingEditor = () => {
                 <div className="flex gap-2 border-t border-brand/10 bg-brand/5 px-5 py-3 text-xs leading-5 text-gray-600">
                   <Calculator className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                   <p>
-                    순이익 = 목표 판매 총액 − 이전 제작 견적 − 원단비 − 펀딩 수수료 10% − 제작 수수료 15%
+                    총 제작원가 = 이전 견적 + (장당 원단비 × 목표 수량) ·
+                    순이익 = 목표 판매 총액 − 총 제작원가 − 펀딩 수수료 10% −
+                    제작 수수료 15%
                   </p>
                 </div>
               </div>

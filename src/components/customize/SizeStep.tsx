@@ -1,451 +1,339 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Info, Ruler, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
-import { SizeTableItem } from "@/types/customize";
-import { getAppPath } from "@/utils/appUrl";
+import {
+  getProductionSizeGuide,
+  normalizeProductionGender,
+  type ProductionGender,
+  type ProductionSizeColumn,
+  type ProductionSizeSelection,
+} from "@/lib/production-size-guide";
 
 interface SizeStepProps {
-  selectedSize: string;
-  customMeasurements: Record<string, number>;
-  sizeTableData: SizeTableItem[];
-  onSizeChange: (size: string) => void;
-  onCustomMeasurementChange: (label: string, value: string) => void;
-  onSizeTableChange: (updatedItem: SizeTableItem) => void;
   selectedType: string;
-  selectedMaterial: string;
-  selectedDetail: string;
-  generatedPrompt?: string;
   gender?: string;
+  productionSizeSelection: ProductionSizeSelection | null;
+  onProductionSizeChange: (selection: ProductionSizeSelection) => void;
 }
 
-// 서버 응답 형식에 맞게 인터페이스 수정
-interface SizeRecommendation {
-  성별: string;
-  키: number;
-  사이즈: string;
-  카테고리: string;
-  핏: string;
-  사이즈표: {
-    어깨너비?: string;
-    가슴단면?: string;
-    허리단면?: string;
-    소매길이?: string;
-    총장?: string;
-    엉덩이단면?: string;
-    허벅지단면?: string;
-    밑단?: string;
-    인심?: string;
-    "추천 키"?: string;
-    "바지 길이"?: string;
-    밑위?: string;
-  };
-}
+const toNumericValue = (value: string) =>
+  value.replace(/[^0-9.]/g, "");
 
-// 각 의류 타입별 이미지 매핑
-const clothingImages: Record<string, string> = {
-  'short_sleeve': getAppPath('/lovable-uploads/short_sleeve.png'),
-  'long_sleeve': getAppPath('/lovable-uploads/long_sleeve.png'),
-  'sweatshirt': getAppPath('/lovable-uploads/sweatshirt.png'),
-  'jacket': getAppPath('/lovable-uploads/jacket.png'),
-  'hoodie': getAppPath('/lovable-uploads/hoodie.png'),
-  'short_pants': getAppPath('/lovable-uploads/short_pants.png'),
-  'long_pants': getAppPath('/lovable-uploads/long_pants.png')
+const withUnit = (value: string) => {
+  const numericValue = toNumericValue(value);
+  return numericValue ? `${numericValue}cm` : "";
 };
 
 export const SizeStep = ({
-  selectedSize,
-  customMeasurements,
-  sizeTableData,
-  onSizeChange,
-  onCustomMeasurementChange,
-  onSizeTableChange,
   selectedType,
-  selectedMaterial,
-  selectedDetail,
-  generatedPrompt = "",
-  gender = "남성",
+  gender,
+  productionSizeSelection,
+  onProductionSizeChange,
 }: SizeStepProps) => {
-  const [userHeight, setUserHeight] = useState<number | null>(null);
-  const [userGender, setUserGender] = useState<string>("남성");
-  const [isLoading, setIsLoading] = useState(true);
-  const [recommendation, setRecommendation] = useState<SizeRecommendation | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedGender, setSelectedGender] = useState<ProductionGender>(
+    normalizeProductionGender(gender),
+  );
+  const [sizes, setSizes] = useState<ProductionSizeColumn[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
 
   useEffect(() => {
-    const loadUserProfile = async () => {
-      try {
-        setIsLoading(true);
-        const { data } = await supabase.auth.getSession();
-        const user = data.session?.user;
-        
-        if (!user) {
-          console.log("사용자가 로그인하지 않았습니다.");
-          setError("사이즈 추천을 위해 로그인이 필요합니다.");
-          setIsLoading(false);
-          return;
-        }
+    setSelectedGender(normalizeProductionGender(gender));
+  }, [gender]);
 
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('height, gender')
-          .eq('id', user.id)
-          .single();
+  useEffect(() => {
+    const guide = getProductionSizeGuide(selectedGender, selectedType);
+    const nextSelectedSizes = guide.sizes.map((size) => size.label);
 
-        if (error) {
-          console.error("프로필 로드 오류:", error);
-          setError("프로필 정보를 불러오는데 실패했습니다.");
-          setIsLoading(false);
-          return;
-        }
+    setSizes(guide.sizes);
+    setSelectedSizes(nextSelectedSizes);
+    onProductionSizeChange({
+      gender: selectedGender,
+      category: guide.category,
+      selectedSizes: nextSelectedSizes,
+      sizes: guide.sizes,
+    });
+  }, [onProductionSizeChange, selectedGender, selectedType]);
 
-        if (profile) {
-          setUserHeight(profile.height);
-          setUserGender(profile.gender || "남성");
-          if (profile.height && selectedType) {
-            await requestSizeRecommendation(profile.height, profile.gender || "남성", selectedType, selectedMaterial, selectedDetail, generatedPrompt);
-          } else {
-            setIsLoading(false);
-            setError("사이즈 추천을 위해 프로필에서 키 정보를 설정해주세요.");
-          }
-        } else {
-          setError("사이즈 추천을 위해 프로필에서 키와 성별 정보를 설정해주세요.");
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("프로필 로드 중 오류 발생:", error);
-        setError("프로필 정보를 불러오는 중 오류가 발생했습니다.");
-        setIsLoading(false);
-      }
-    };
+  const category =
+    productionSizeSelection?.category ||
+    getProductionSizeGuide(selectedGender, selectedType).category;
 
-    loadUserProfile();
-  }, [selectedType, selectedMaterial, selectedDetail, generatedPrompt]);
+  const measurementKeys = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          sizes.flatMap((size) => Object.keys(size.measurements)),
+        ),
+      ),
+    [sizes],
+  );
 
-  const requestSizeRecommendation = async (
-    height: number, 
-    gender: string, 
-    type: string, 
-    material: string, 
-    detail: string, 
-    prompt: string
+  const emitChange = (
+    nextSizes: ProductionSizeColumn[],
+    nextSelectedSizes: string[],
   ) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // 타입 매핑
-      const typeMapping: { [key: string]: string } = {
-        'jacket': '자켓',
-        'long_pants': '긴바지',
-        'short_pants': '반바지',
-        'short_sleeve': '반팔티셔츠',
-        'long_sleeve': '긴팔티셔츠',
-        'sweatshirt': '맨투맨',
-        'hoodie': '후드티'
-      };
-
-      const mappedType = typeMapping[type] || type;
-      
-      const request = {
-        gender: gender,
-        height: height,
-        type: mappedType,
-        material: material,
-        detail: detail,
-        prompt: prompt
-      };
-      
-      console.log("사이즈 추천 요청 데이터:", request);
-      
-      const { data, error } = await supabase.functions.invoke('size-recommendation2', {
-        body: request
-      });
-
-      if (error) {
-        console.error("사이즈 추천 요청 오류:", error);
-        setError("사이즈 추천을 가져오는데 실패했습니다. 다시 시도해주세요.");
-        setIsLoading(false);
-        return;
-      }
-
-      console.log("사이즈 추천 응답 데이터:", data);
-      
-      if (data.error) {
-        setError(data.error);
-        setIsLoading(false);
-        return;
-      }
-      
-      // 응답 데이터 형식에 맞게 처리
-      setRecommendation(data);
-      
-      // 사이즈가 비어있지 않은 경우에만 설정
-      if (data.사이즈 && data.사이즈.trim() !== '') {
-        onSizeChange(data.사이즈);
-      } else {
-        // 기본 사이즈 설정 (M)
-        onSizeChange("M");
-        toast({
-          title: "기본 사이즈 적용",
-          description: "추천 사이즈를 찾을 수 없어 기본 사이즈 M으로 설정했습니다.",
-        });
-      }
-      
-      // Create editable size table data from recommendation
-      if (data.사이즈표) {
-        const newSizeTableData: SizeTableItem[] = Object.entries(data.사이즈표).map(([key, value]) => ({
-          key,
-          value: value as string,
-          editable: true
-        }));
-        
-        // Update the parent component with size table data
-        newSizeTableData.forEach(item => onSizeTableChange(item));
-      }
-      
-      setError(null);
-    } catch (error) {
-      console.error("사이즈 추천 요청 중 오류 발생:", error);
-      setError("사이즈 추천을 가져오는데 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      setIsLoading(false);
-    }
+    setSizes(nextSizes);
+    setSelectedSizes(nextSelectedSizes);
+    onProductionSizeChange({
+      gender: selectedGender,
+      category,
+      selectedSizes: nextSelectedSizes,
+      sizes: nextSizes,
+    });
   };
 
-  // 사이즈 표시 방식을 한글로 변환
-  const translateKey = (key: string): string => {
-    const keyMap: Record<string, string> = {
-      어깨너비: '어깨너비',
-      가슴단면: '가슴단면',
-      허리단면: '허리단면',
-      소매길이: '소매길이',
-      총장: '총장',
-      엉덩이단면: '엉덩이단면',
-      허벅지단면: '허벅지단면',
-      밑단: '밑단',
-      인심: '인심',
-      "추천 키": '추천 키',
-      "바지 길이": '바지 길이',
-      밑위: '밑위'
-    };
-    
-    return keyMap[key] || key;
-  };
-  
-  // Extract numeric value from measurement string (e.g., "42cm" -> 42)
-  const extractNumericValue = (value: string): number => {
-    const numericValue = parseFloat(value);
-    return isNaN(numericValue) ? 0 : numericValue;
+  const toggleSize = (label: string) => {
+    const isSelected = selectedSizes.includes(label);
+    if (isSelected && selectedSizes.length === 1) return;
+
+    const nextSelectedSizes = isSelected
+      ? selectedSizes.filter((size) => size !== label)
+      : sizes
+          .filter(
+            (size) =>
+              selectedSizes.includes(size.label) || size.label === label,
+          )
+          .map((size) => size.label);
+
+    emitChange(sizes, nextSelectedSizes);
   };
 
-  // Format measurement value to include "cm" suffix if not already present
-  const formatMeasurementValue = (value: string): string => {
-    if (value.includes("cm")) return value;
-    return `${value}cm`;
-  };
-  
-  // Handle size value change with numeric input validation
-  const handleSizeValueChange = (key: string, newValue: string) => {
-    // Extract numeric part only
-    const numericValue = newValue.replace(/[^0-9.]/g, '');
-    
-    // Format with cm suffix
-    const formattedValue = `${numericValue}cm`;
-    
-    const updatedItem: SizeTableItem = {
-      key,
-      value: formattedValue,
-      editable: true
-    };
-    onSizeTableChange(updatedItem);
-  };
-
-  // Increment/decrement numeric value
-  const adjustSizeValue = (key: string, currentValue: string, adjustment: number) => {
-    const numericValue = extractNumericValue(currentValue);
-    const newValue = Math.max(0, numericValue + adjustment);
-    const formattedValue = `${newValue}cm`;
-    
-    const updatedItem: SizeTableItem = {
-      key,
-      value: formattedValue,
-      editable: true
-    };
-    onSizeTableChange(updatedItem);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mb-4"></div>
-        <p className="text-gray-600">사이즈 정보를 불러오는 중...</p>
-      </div>
+  const changeMeasurement = (
+    sizeLabel: string,
+    measurement: string,
+    value: string,
+  ) => {
+    const nextSizes = sizes.map((size) =>
+      size.label === sizeLabel
+        ? {
+            ...size,
+            measurements: {
+              ...size.measurements,
+              [measurement]: withUnit(value),
+            },
+          }
+        : size,
     );
-  }
-
-  if (error) {
-    return (
-      <div className="py-8 px-4">
-        <Card className="border-red-200">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-red-500">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-red-700">사이즈 추천 오류</h3>
-              <p className="text-gray-600">{error}</p>
-              <Button 
-                onClick={() => userHeight && requestSizeRecommendation(userHeight, userGender, selectedType, selectedMaterial, selectedDetail, generatedPrompt)}
-                className="mt-4"
-              >
-                다시 시도
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Check if we have size table data
-  if (sizeTableData.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p>사이즈 추천 데이터가 없습니다. 다시 시도해주세요.</p>
-        <Button 
-          onClick={() => userHeight && requestSizeRecommendation(userHeight, userGender, selectedType, selectedMaterial, selectedDetail, generatedPrompt)}
-          className="mt-4"
-        >
-          다시 시도
-        </Button>
-      </div>
-    );
-  }
-
-  // 이미지 경로 디버깅
-  console.log("Selected Type:", selectedType);
-  console.log("Image Path:", clothingImages[selectedType]);
+    emitChange(nextSizes, selectedSizes);
+  };
 
   return (
-    <div className="space-y-8 p-4">
-      <Card className="border-2 border-gray-100 shadow-sm">
-        <CardContent className="pt-6">
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-              <div>
-                <h3 className="text-xl font-semibold">추천 사이즈: 
-                  <Badge className="ml-2 text-lg">{selectedSize || "M"}</Badge>
-                </h3>
-                <p className="text-gray-500 mt-1">
-                  {recommendation?.성별 || userGender}, 
-                  키 {recommendation?.키 || userHeight}cm
-                  {recommendation?.카테고리 ? `, ${recommendation.카테고리}` : ''}
-                </p>
-                <p className="text-sm mt-2 text-blue-600">아래 사이즈 정보를 수정하여 맞춤 주문이 가능합니다.</p>
-              </div>
-              <div>
-                {recommendation && recommendation.핏 && (
-                  <Badge variant="outline" className="text-sm">{recommendation.핏} 핏</Badge>
-                )}
-              </div>
+    <div className="space-y-5">
+      <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+        <div className="bg-brand px-5 py-6 text-white md:px-7">
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-bold text-white/75">
+                <Ruler className="h-4 w-4" />
+                펀딩 등록 전 마지막 확인
+              </p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">
+                생산 사이즈를 선택하세요
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-white/75">
+                {category} 카테고리 평균 실측을 기준으로 1·2·3 사이즈를
+                한눈에 비교할 수 있습니다.
+              </p>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* 사이즈 표 정보 - 수정 가능하게 변경 */}
-              <div className="bg-gray-50 rounded-lg p-4 flex-1">
-                <h3 className="text-lg font-semibold mb-4">사이즈 세부 정보</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>측정 부위</TableHead>
-                      <TableHead className="text-right">크기</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sizeTableData.map((item) => (
-                      <TableRow key={item.key}>
-                        <TableCell className="font-medium">{translateKey(item.key)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end">
-                            <div className="relative flex items-center">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 rounded-r-none border-r-0"
-                                onClick={() => adjustSizeValue(item.key, item.value, -1)}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M5 12h14"/>
-                                </svg>
-                                <span className="sr-only">감소</span>
-                              </Button>
-                              <Input
-                                type="text"
-                                value={extractNumericValue(item.value)}
-                                onChange={(e) => handleSizeValueChange(item.key, e.target.value)}
-                                className="w-14 h-8 text-right rounded-none"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 rounded-l-none border-l-0"
-                                onClick={() => adjustSizeValue(item.key, item.value, 1)}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 5v14M5 12h14"/>
-                                </svg>
-                                <span className="sr-only">증가</span>
-                              </Button>
-                              <span className="ml-1 text-gray-500">cm</span>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+            <div className="grid grid-cols-2 rounded-2xl bg-white/10 p-1">
+              {(["남성", "여성"] as ProductionGender[]).map((option) => (
+                <Button
+                  key={option}
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setSelectedGender(option)}
+                  className={`h-11 rounded-xl px-5 ${
+                    selectedGender === option
+                      ? "bg-white text-brand hover:bg-white hover:text-brand"
+                      : "text-white hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-              {/* 옷 이미지 표시 */}
-              {clothingImages[selectedType] && (
-                <div className="bg-white rounded-lg p-4 flex items-center justify-center md:w-1/3">
-                  <div className="relative w-full">
-                    <img 
-                      src={clothingImages[selectedType]} 
-                      alt={`${selectedType} 사이즈 가이드`}
-                      className="w-full max-w-[280px] h-auto object-contain mx-auto"
-                      onError={(e) => {
-                        console.error("이미지 로드 오류:", e);
-                        console.log("오류가 발생한 이미지 경로:", clothingImages[selectedType]);
-                        (e.target as HTMLImageElement).src = getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png");
-                      }}
-                    />
-                    <p className="text-center text-xs text-gray-500 mt-2">사이즈 가이드</p>
+        <CardContent className="p-0">
+          <div className="grid border-b bg-stone-50 sm:grid-cols-3">
+            {sizes.map((size) => {
+              const isSelected = selectedSizes.includes(size.label);
+              return (
+                <button
+                  key={size.number}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => toggleSize(size.label)}
+                  className={`flex items-center justify-between gap-4 border-b px-5 py-4 text-left transition-colors last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 ${
+                    isSelected ? "bg-brand/5" : "bg-white opacity-60"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${
+                        isSelected
+                          ? "bg-brand text-white"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {size.number}
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400">
+                        {selectedGender} {size.number}사이즈
+                      </p>
+                      <p className="text-lg font-black text-gray-950">
+                        {size.domesticLabel}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+                      isSelected
+                        ? "border-brand bg-brand text-white"
+                        : "border-gray-300 bg-white text-transparent"
+                    }`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="p-5 md:p-7">
+            <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <h3 className="text-lg font-black text-gray-950">
+                  {category} 평균 사이즈표
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  표준 사이즈 참고표 기준 · 단면 측정 · 단위 cm
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-gray-500">
+                  생산 진행:
+                </span>
+                {selectedSizes.map((size) => (
+                  <Badge
+                    key={size}
+                    className="rounded-full bg-brand/10 px-3 py-1 text-brand hover:bg-brand/10"
+                  >
+                    {size}
+                  </Badge>
+                ))}
+              </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-2">선택한 상품 정보</h3>
-              <div className="space-y-2">
-                <p><strong>의류 종류:</strong> {selectedType}</p>
-                <p><strong>원단:</strong> {selectedMaterial}</p>
-                {selectedDetail && (
-                  <p>
-                    <strong>디테일:</strong> 
-                    <span className="block mt-1 text-sm text-gray-600">{selectedDetail}</span>
-                  </p>
-                )}
+            <div className="overflow-x-auto rounded-2xl border">
+              <table className="w-full min-w-[620px] border-collapse text-sm">
+                <thead>
+                  <tr className="bg-gray-950 text-white">
+                    <th className="w-[28%] px-4 py-4 text-left font-bold">
+                      측정 부위
+                    </th>
+                    {sizes.map((size) => (
+                      <th
+                        key={size.label}
+                        className={`px-4 py-4 text-center font-bold ${
+                          selectedSizes.includes(size.label)
+                            ? "bg-brand"
+                            : "bg-gray-800 text-gray-400"
+                        }`}
+                      >
+                        <span className="block text-xs opacity-70">
+                          {size.number}사이즈
+                        </span>
+                        <span className="mt-0.5 block text-base">
+                          {size.domesticLabel}
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {measurementKeys.map((measurement, index) => (
+                    <tr
+                      key={measurement}
+                      className={index % 2 === 0 ? "bg-white" : "bg-stone-50"}
+                    >
+                      <th className="border-t px-4 py-3 text-left font-semibold text-gray-700">
+                        {measurement}
+                      </th>
+                      {sizes.map((size) => {
+                        const value = size.measurements[measurement] || "";
+                        const isHeight = measurement === "추천 키";
+                        const isSelected = selectedSizes.includes(size.label);
+
+                        return (
+                          <td
+                            key={`${size.label}-${measurement}`}
+                            className={`border-l border-t px-3 py-2 text-center ${
+                              isSelected ? "" : "bg-gray-50/80"
+                            }`}
+                          >
+                            {isHeight ? (
+                              <span
+                                className={
+                                  isSelected
+                                    ? "font-semibold text-gray-800"
+                                    : "text-gray-400"
+                                }
+                              >
+                                {value}
+                              </span>
+                            ) : (
+                              <div className="relative mx-auto max-w-24">
+                                <Input
+                                  aria-label={`${size.label} ${measurement}`}
+                                  inputMode="decimal"
+                                  value={toNumericValue(value)}
+                                  onChange={(event) =>
+                                    changeMeasurement(
+                                      size.label,
+                                      measurement,
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="h-9 rounded-lg pr-8 text-center font-semibold"
+                                />
+                                <span className="pointer-events-none absolute right-2 top-2.5 text-xs text-gray-400">
+                                  cm
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="flex gap-3 rounded-2xl bg-brand/5 p-4 text-sm leading-6 text-gray-700">
+                <Users className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+                <p>
+                  <strong className="text-gray-950">사이즈 번호 기준</strong>
+                  <br />
+                  {selectedGender === "남성"
+                    ? "남성 1=M(95) · 2=L(100) · 3=XL(105)"
+                    : "여성 1=S(85) · 2=M(90) · 3=L(95)"}
+                </p>
+              </div>
+              <div className="flex gap-3 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+                <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <p>
+                  평균 사이즈는 생산 기준 초안이며, 패턴·샘플 제작 과정에서
+                  원단과 핏에 따라 최종 실측이 조정될 수 있습니다.
+                </p>
               </div>
             </div>
           </div>

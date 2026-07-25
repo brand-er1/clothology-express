@@ -54,7 +54,11 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       color: input.color || null,
       size: input.size,
       color_options: input.color ? [input.color] : ["기본 색상"],
-      size_options: input.size ? [input.size] : ["FREE"],
+      size_options: input.sizeOptions?.length
+        ? input.sizeOptions
+        : input.size
+          ? [input.size]
+          : ["FREE"],
       measurements: input.measurements,
       image_url: input.imageUrl,
       image_path: input.imagePath,

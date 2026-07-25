@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -553,6 +554,14 @@ const FundingEditor = () => {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        <div className="mt-6">
+          <FundingSizeGuide
+            measurements={funding.measurements}
+            sizeOptions={sizes}
+            title="생산 진행 사이즈표"
+          />
         </div>
       </main>
     </div>

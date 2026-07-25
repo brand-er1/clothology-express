@@ -18,8 +18,6 @@ import { TOTAL_STEPS } from "@/lib/customize-constants";
 
 const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");
-  const [userHeight, setUserHeight] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const isMobile = useIsMobile();
 
   const {
@@ -58,12 +56,8 @@ const Customize = () => {
     selectedImageIndex,
     storedImageUrl,
     generatedPrompt,
-    selectedSize,
-    setSelectedSize,
-    customMeasurements,
-    setCustomMeasurements,
-    sizeTableData,
-    handleSizeTableChange,
+    productionSizeSelection,
+    handleProductionSizeChange,
     handleAddMaterial,
     handleGenerateImage,
     handleNext,
@@ -97,7 +91,7 @@ const Customize = () => {
 
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('gender, height')
+          .select('gender')
           .eq('id', user.id)
           .single();
 
@@ -107,7 +101,6 @@ const Customize = () => {
 
         if (profile) {
           setUserGender(profile.gender || "남성");
-          setUserHeight(profile.height);
         }
       } catch (error: unknown) {
         console.error('Error loading profile:', error);
@@ -116,8 +109,6 @@ const Customize = () => {
           description: "프로필 정보를 불러오는데 실패했습니다.",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -243,24 +234,9 @@ const Customize = () => {
 
             {currentStep === 6 && (
               <SizeStep
-                selectedSize={selectedSize}
-                customMeasurements={customMeasurements}
-                sizeTableData={sizeTableData}
-                onSizeChange={setSelectedSize}
-                onCustomMeasurementChange={(label, value) => {
-                  const numValue = parseFloat(value);
-                  if (!isNaN(numValue)) {
-                    setCustomMeasurements(prev => ({
-                      ...prev,
-                      [label]: numValue
-                    }));
-                  }
-                }}
-                onSizeTableChange={handleSizeTableChange}
+                productionSizeSelection={productionSizeSelection}
+                onProductionSizeChange={handleProductionSizeChange}
                 selectedType={selectedType}
-                selectedMaterial={selectedMaterial}
-                selectedDetail={selectedDetail}
-                generatedPrompt={generatedPrompt}
                 gender={userGender}
               />
             )}

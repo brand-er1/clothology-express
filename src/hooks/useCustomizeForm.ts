@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS, clothTypes, colorOptions, fitOptions } from "@/lib/customize-constants";
@@ -13,6 +13,10 @@ import type {
   Material,
   SizeTableItem,
 } from "@/types/customize";
+import {
+  createFundingSizeMeasurements,
+  type ProductionSizeSelection,
+} from "@/lib/production-size-guide";
 import type {
   ProductionEstimateResult,
   UploadedArtworkAnalysis,
@@ -62,6 +66,8 @@ export const useCustomizeForm = () => {
   const [customMeasurements, setCustomMeasurements] = useState<Record<string, number>>({});
   const [imageLoading, setImageLoading] = useState(false);
   const [sizeTableData, setSizeTableData] = useState<SizeTableItem[]>([]);
+  const [productionSizeSelection, setProductionSizeSelection] =
+    useState<ProductionSizeSelection | null>(null);
   
   // New state for image modification
   const [imageModifying, setImageModifying] = useState(false);
@@ -109,10 +115,10 @@ export const useCustomizeForm = () => {
         // No validation for modification step - it's optional
         break;
       case 6:
-        if (!selectedSize && sizeTableData.length === 0) {
+        if (!productionSizeSelection?.selectedSizes.length) {
           toast({
             title: "사이즈 필요",
-            description: "사이즈를 선택해주세요.",
+            description: "생산할 사이즈를 한 개 이상 선택해주세요.",
             variant: "destructive",
           });
           return false;
@@ -422,6 +428,7 @@ export const useCustomizeForm = () => {
         selectedColor,
         selectedFit,
         selectedSize,
+        productionSizeSelection,
         customMeasurements,
         finalImageUrl,
         finalImagePath,
@@ -433,20 +440,25 @@ export const useCustomizeForm = () => {
         throw new Error("펀딩에 사용할 이미지 URL이 없습니다.");
       }
 
-      const finalSize = selectedSize || "M";
+      const finalSizeOptions = productionSizeSelection?.selectedSizes.length
+        ? productionSizeSelection.selectedSizes
+        : [selectedSize || "M"];
+      const finalSize = finalSizeOptions[0];
       const clothTypeName = clothTypes.find((type) => type.id === selectedType)?.name || selectedType;
       const materialName = materials.find((material) => material.id === selectedMaterial)?.name || selectedMaterial;
       const colorName = colorOptions.find((color) => color.value === selectedColor)?.label || selectedColor;
       const fitName = fitOptions.find((fit) => fit.value === selectedFit)?.label || selectedFit;
       const productName = [colorName, clothTypeName].filter(Boolean).join(" ");
-      const measurements = sizeTableData.length > 0
-        ? sizeTableData.reduce<Record<string, string | number>>((result, item) => {
-            result[item.key] = item.value;
-            return result;
-          }, {})
-        : Object.keys(customMeasurements).length > 0
-          ? customMeasurements
-          : null;
+      const measurements = productionSizeSelection
+        ? createFundingSizeMeasurements(productionSizeSelection)
+        : sizeTableData.length > 0
+          ? sizeTableData.reduce<Record<string, string | number>>((result, item) => {
+              result[item.key] = item.value;
+              return result;
+            }, {})
+          : Object.keys(customMeasurements).length > 0
+            ? customMeasurements
+            : null;
       const description = [
         `${productName || clothTypeName} 디자인입니다. 목표 인원이 모이면 브랜더가 실제 제품으로 제작합니다.`,
         selectedDetail ? `디자인 특징: ${selectedDetail}` : "",
@@ -477,6 +489,7 @@ export const useCustomizeForm = () => {
         material: materialName,
         color: colorName,
         size: finalSize,
+        sizeOptions: finalSizeOptions,
         measurements,
         imageUrl: finalImageUrl,
         imagePath: finalImagePath,
@@ -537,6 +550,14 @@ export const useCustomizeForm = () => {
     });
   };
 
+  const handleProductionSizeChange = useCallback(
+    (selection: ProductionSizeSelection) => {
+      setProductionSizeSelection(selection);
+      setSelectedSize(selection.selectedSizes[0] || "");
+    },
+    [],
+  );
+
   return {
     currentStep,
     selectedType,
@@ -580,6 +601,8 @@ export const useCustomizeForm = () => {
     setCustomMeasurements,
     sizeTableData,
     handleSizeTableChange,
+    productionSizeSelection,
+    handleProductionSizeChange,
     handleAddMaterial,
     handleGenerateImage,
     handleSelectImage,

@@ -1,6 +1,7 @@
 export type FundingStatus = "pending" | "approved" | "rejected" | "closed";
 export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
 export type FundingPaymentStatus = "unpaid" | "ready" | "paid" | "cancelled" | "failed";
+export type FundingMeasurements = Record<string, unknown>;
 
 export type Funding = {
   id: string;
@@ -12,7 +13,7 @@ export type Funding = {
   size: string;
   color_options: string[];
   size_options: string[];
-  measurements: Record<string, string | number> | null;
+  measurements: FundingMeasurements | null;
   image_url: string;
   image_path: string | null;
   description: string | null;
@@ -37,7 +38,8 @@ export type CreateFundingInput = {
   material: string;
   color: string;
   size: string;
-  measurements: Record<string, string | number> | null;
+  sizeOptions?: string[];
+  measurements: FundingMeasurements | null;
   imageUrl: string;
   imagePath: string | null;
   description: string;

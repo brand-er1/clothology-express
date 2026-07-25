@@ -23,6 +23,7 @@ export interface ArtworkPlacement {
   size: ArtworkSize;
   xPercent: number;
   yPercent: number;
+  widthPercent: number;
 }
 
 export interface ImageModificationEntry {

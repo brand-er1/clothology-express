@@ -20,6 +20,23 @@ export type DecorationLocation =
   | "neck"
   | "other";
 
+export type ArtworkType = "logo" | "photo" | "illustration";
+
+export interface UploadedArtworkAnalysis {
+  artworkType: ArtworkType;
+  artworkTypeLabel: string;
+  recommendedKind: DecorationAnalysisKind;
+  location: DecorationLocation;
+  locationLabel: string;
+  confidence: number;
+  reason: string;
+  priceLabel?: string | null;
+  unitMin?: number | null;
+  unitMax?: number | null;
+  isStartingFrom?: boolean;
+  pricingNote?: string | null;
+}
+
 export interface DecorationEstimateLine {
   kind: DecorationAnalysisKind;
   label: string;
@@ -31,6 +48,8 @@ export interface DecorationEstimateLine {
   lineMax: number;
   isStartingFrom: boolean;
   note?: string | null;
+  source?: "image_analysis" | "uploaded_artwork";
+  artworkType?: ArtworkType | null;
 }
 
 export interface ProductionAnalysis {

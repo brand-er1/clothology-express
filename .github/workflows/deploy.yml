@@ -40,8 +40,9 @@ jobs:
       - name: Apply database migrations
         run: supabase db push --include-all --password "$SUPABASE_DB_PASSWORD"
 
-      - name: Deploy KakaoPay functions
+      - name: Deploy edge functions
         run: |
+          supabase functions deploy analyze-production-estimate --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy kakaopay-ready --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy kakaopay-approve --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy kakaopay-cancel --project-ref "$SUPABASE_PROJECT_ID"

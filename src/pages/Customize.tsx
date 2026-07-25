@@ -228,6 +228,7 @@ const Customize = () => {
                 isLoading={imageModifying}
                 selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
                 selectedType={selectedType}
+                designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
                 modificationHistory={modificationHistory}
                 onModifyImage={handleModifyImage}
                 onResetModifications={handleResetModifications}

@@ -116,6 +116,8 @@ export type Database = {
           size: string
           size_options: string[]
           status: string
+          trademark_screening_id: string | null
+          trademark_screening_required: boolean
           updated_at: string
         }
         Insert: {
@@ -145,6 +147,8 @@ export type Database = {
           size: string
           size_options?: string[]
           status?: string
+          trademark_screening_id?: string | null
+          trademark_screening_required?: boolean
           updated_at?: string
         }
         Update: {
@@ -174,7 +178,71 @@ export type Database = {
           size?: string
           size_options?: string[]
           status?: string
+          trademark_screening_id?: string | null
+          trademark_screening_required?: boolean
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fundings_trademark_screening_id_fkey"
+            columns: ["trademark_screening_id"]
+            isOneToOne: false
+            referencedRelation: "trademark_screenings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trademark_screenings: {
+        Row: {
+          analysis_version: string
+          created_at: string
+          decision: string
+          detected_marks: Json
+          id: string
+          image_sha256: string
+          image_url: string | null
+          kipris_checked: boolean
+          kipris_matches: Json
+          reason: string
+          recognized_text: string[]
+          risk_level: string
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_version?: string
+          created_at?: string
+          decision: string
+          detected_marks?: Json
+          id?: string
+          image_sha256: string
+          image_url?: string | null
+          kipris_checked?: boolean
+          kipris_matches?: Json
+          reason: string
+          recognized_text?: string[]
+          risk_level: string
+          source: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_version?: string
+          created_at?: string
+          decision?: string
+          detected_marks?: Json
+          id?: string
+          image_sha256?: string
+          image_url?: string | null
+          kipris_checked?: boolean
+          kipris_matches?: Json
+          reason?: string
+          recognized_text?: string[]
+          risk_level?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

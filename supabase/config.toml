@@ -49,6 +49,8 @@ verify_jwt = true
 verify_jwt = true
 [functions.analyze-production-estimate]
 verify_jwt = true
+[functions.screen-trademark-image]
+verify_jwt = true
 [functions.kakaopay-ready]
 verify_jwt = true
 [functions.kakaopay-approve]

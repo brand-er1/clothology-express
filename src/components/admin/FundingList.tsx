@@ -3,13 +3,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Funding } from "@/types/funding";
-import { CheckCircle2, Clock3, Eye, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Eye, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
 
 const statusBadge = (status: Funding["status"]) => {
   if (status === "approved") return <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />승인됨</Badge>;
   if (status === "rejected") return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />거절됨</Badge>;
   if (status === "closed") return <Badge variant="secondary">종료</Badge>;
   return <Badge className="bg-amber-500"><Clock3 className="mr-1 h-3 w-3" />승인 대기</Badge>;
+};
+
+const trademarkBadge = (funding: Funding) => {
+  const screening = funding.trademark_screening;
+  if (!screening) {
+    if (!funding.trademark_screening_required) {
+      return <Badge variant="secondary">기존 등록</Badge>;
+    }
+    return <Badge variant="destructive"><ShieldAlert className="mr-1 h-3 w-3" />미검수</Badge>;
+  }
+  if (screening.decision === "blocked") {
+    return <Badge variant="destructive"><ShieldAlert className="mr-1 h-3 w-3" />차단</Badge>;
+  }
+  if (screening.decision === "review") {
+    return <Badge className="bg-amber-500"><ShieldAlert className="mr-1 h-3 w-3" />검토 필요</Badge>;
+  }
+  return <Badge className="bg-emerald-600"><ShieldCheck className="mr-1 h-3 w-3" />통과</Badge>;
 };
 
 export const FundingList = ({ fundings, onReview }: { fundings: Funding[]; onReview: (funding: Funding) => void }) => (
@@ -31,6 +48,7 @@ export const FundingList = ({ fundings, onReview }: { fundings: Funding[]; onRev
                 <TableHead>디자인</TableHead>
                 <TableHead>상품명</TableHead>
                 <TableHead>MOQ</TableHead>
+                <TableHead>상표검수</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead>등록일</TableHead>
                 <TableHead className="text-right">관리</TableHead>
@@ -49,6 +67,7 @@ export const FundingList = ({ fundings, onReview }: { fundings: Funding[]; onRev
                     <p className="text-xs text-gray-500">{funding.cloth_type} · 컬러 {funding.color_options?.length || 1}종 · 사이즈 {funding.size_options?.length || 1}종</p>
                   </TableCell>
                   <TableCell>{funding.moq}장</TableCell>
+                  <TableCell>{trademarkBadge(funding)}</TableCell>
                   <TableCell>{statusBadge(funding.status)}</TableCell>
                   <TableCell>{new Date(funding.created_at).toLocaleDateString("ko-KR")}</TableCell>
                   <TableCell className="text-right">

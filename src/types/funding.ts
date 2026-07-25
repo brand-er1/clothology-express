@@ -1,3 +1,5 @@
+import type { TrademarkScreening } from "@/types/trademark";
+
 export type FundingStatus = "pending" | "approved" | "rejected" | "closed";
 export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
 export type FundingPaymentStatus = "unpaid" | "ready" | "paid" | "cancelled" | "failed";
@@ -16,6 +18,9 @@ export type Funding = {
   measurements: FundingMeasurements | null;
   image_url: string;
   image_path: string | null;
+  trademark_screening_id: string | null;
+  trademark_screening_required: boolean;
+  trademark_screening?: TrademarkScreening | null;
   description: string | null;
   moq: number;
   current_orders: number;
@@ -46,6 +51,7 @@ export type CreateFundingInput = {
   estimateDirectUnitMin?: number | null;
   estimateDirectUnitMax?: number | null;
   estimateDevelopmentTotal?: number | null;
+  trademarkScreeningId: string;
 };
 
 export type FundingParticipation = {

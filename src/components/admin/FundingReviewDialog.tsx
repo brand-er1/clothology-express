@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { Funding } from "@/types/funding";
-import { ExternalLink, Loader2, PackageCheck } from "lucide-react";
+import { ExternalLink, Loader2, PackageCheck, ShieldAlert, ShieldCheck } from "lucide-react";
 
 type Props = {
   funding: Funding | null;
@@ -16,6 +16,7 @@ type Props = {
 };
 export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onReview }: Props) => {
   const [comment, setComment] = useState("");
+  const screening = funding?.trademark_screening || null;
 
   useEffect(() => {
     setComment(funding?.admin_comment || "");
@@ -51,10 +52,113 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
               </div>
             </div>
             <Separator />
+            <div
+              className={`rounded-2xl border p-4 ${
+                !screening || screening.decision === "blocked"
+                  ? "border-red-200 bg-red-50"
+                  : screening.decision === "review"
+                    ? "border-amber-200 bg-amber-50"
+                    : "border-emerald-200 bg-emerald-50"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {screening?.decision === "clear" ? (
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                ) : (
+                  <ShieldAlert
+                    className={`mt-0.5 h-5 w-5 shrink-0 ${
+                      screening?.decision === "review"
+                        ? "text-amber-600"
+                        : "text-red-600"
+                    }`}
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-gray-950">
+                    {!screening
+                      ? funding?.trademark_screening_required
+                        ? "상표 검수 기록 없음"
+                        : "상표 검수 도입 전 등록 건"
+                      : screening.decision === "blocked"
+                        ? "상표 위험 차단"
+                        : screening.decision === "review"
+                          ? "상표 권리 확인 필요"
+                          : "상표 자동 검수 통과"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-gray-700">
+                    {screening?.reason ||
+                      (funding?.trademark_screening_required
+                        ? "최종 이미지 상표 검수가 완료되지 않았습니다."
+                        : "상표 검수 기능 도입 전에 등록된 기존 펀딩입니다.")}
+                  </p>
+                  {screening?.detected_marks?.length ? (
+                    <div className="mt-3 rounded-xl bg-white/75 p-3 text-sm">
+                      <p className="text-xs font-bold text-gray-500">
+                        AI 감지 표지
+                      </p>
+                      <ul className="mt-1 space-y-1">
+                        {screening.detected_marks.map((mark, index) => (
+                          <li key={`${mark.normalizedName}-${index}`}>
+                            <span className="font-bold">
+                              {mark.displayName}
+                            </span>
+                            <span className="ml-2 text-xs text-gray-500">
+                              신뢰도 {Math.round(mark.confidence * 100)}%
+                            </span>
+                            {mark.evidence && (
+                              <p className="text-xs leading-5 text-gray-600">
+                                {mark.evidence}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-gray-600">
+                    <span className="rounded-full bg-white/80 px-2.5 py-1">
+                      KIPRIS 공식 DB{" "}
+                      {screening?.kipris_checked ? "조회 완료" : "추가 확인 필요"}
+                    </span>
+                    {screening?.recognized_text?.length ? (
+                      <span className="rounded-full bg-white/80 px-2.5 py-1">
+                        인식 문자: {screening.recognized_text.join(", ")}
+                      </span>
+                    ) : null}
+                  </div>
+                  {screening?.kipris_matches?.length ? (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-bold text-gray-600">
+                        KIPRIS 유사·동일 검색 결과
+                      </p>
+                      {screening.kipris_matches.slice(0, 5).map((match, index) => (
+                        <div
+                          key={`${match.applicationNumber || match.trademarkName}-${index}`}
+                          className="rounded-lg border border-black/5 bg-white/80 px-3 py-2 text-xs"
+                        >
+                          <p className="font-bold text-gray-900">
+                            {match.trademarkName || match.query}
+                          </p>
+                          <p className="mt-0.5 text-gray-500">
+                            출원번호 {match.applicationNumber || "-"} · 상태{" "}
+                            {match.applicationStatus || "확인 필요"} · 분류{" "}
+                            {match.classification || "확인 필요"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+            <Separator />
             <div>
               <label htmlFor="funding-comment" className="mb-2 block text-sm font-medium">검토 의견</label>
               <Textarea id="funding-comment" value={comment} onChange={(event) => setComment(event.target.value)}
-                placeholder="거절 시 수정할 내용을 구체적으로 적어주세요." className="min-h-24" />
+                placeholder={screening?.decision === "review"
+                  ? "권리 보유 또는 사용 허가 확인 내용을 기록해주세요."
+                  : "거절 시 수정할 내용을 구체적으로 적어주세요."}
+                className="min-h-24" />
             </div>
             <div className="flex items-start gap-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
               <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
@@ -67,7 +171,16 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
           <Button variant="destructive" onClick={() => onReview("rejected", comment)} disabled={saving || !comment.trim()}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}거절하기
           </Button>
-          <Button onClick={() => onReview("approved", comment)} disabled={saving || !funding?.price || (funding?.moq || 0) < 20 || !funding?.color_options?.length || !funding?.size_options?.length}
+          <Button onClick={() => onReview("approved", comment)} disabled={
+            saving ||
+            !funding?.price ||
+            (funding?.moq || 0) < 20 ||
+            !funding?.color_options?.length ||
+            !funding?.size_options?.length ||
+            (funding?.trademark_screening_required && !screening) ||
+            (funding?.trademark_screening_required &&
+              screening?.decision !== "clear")
+          }
             className="bg-brand hover:bg-brand-dark">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}승인하기
           </Button>

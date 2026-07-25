@@ -62,6 +62,8 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       measurements: input.measurements,
       image_url: input.imageUrl,
       image_path: input.imagePath,
+      trademark_screening_id: input.trademarkScreeningId,
+      trademark_screening_required: true,
       description: input.description,
       estimate_direct_unit_min: input.estimateDirectUnitMin ?? null,
       estimate_direct_unit_max: input.estimateDirectUnitMax ?? null,
@@ -153,7 +155,7 @@ export const updateFunding = async (
 export const fetchAllFundings = async (): Promise<Funding[]> => {
   const { data, error } = await supabase
     .from("fundings")
-    .select("*")
+    .select("*, trademark_screening:trademark_screenings(*)")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -166,6 +168,26 @@ export const reviewFunding = async (
   adminComment: string
 ): Promise<void> => {
   const user = await requireUser();
+  if (status === "approved") {
+    const { data: funding, error: screeningError } = await supabase
+      .from("fundings")
+      .select(
+        "trademark_screening_required, trademark_screening:trademark_screenings(decision)",
+      )
+      .eq("id", id)
+      .single();
+    if (screeningError) throw screeningError;
+
+    const screening = Array.isArray(funding?.trademark_screening)
+      ? funding.trademark_screening[0]
+      : funding?.trademark_screening;
+    if (
+      funding.trademark_screening_required !== false &&
+      screening?.decision !== "clear"
+    ) {
+      throw new Error("상표 검수가 완료되지 않았거나 차단된 펀딩입니다.");
+    }
+  }
   const { error } = await supabase
     .from("fundings")
     .update({

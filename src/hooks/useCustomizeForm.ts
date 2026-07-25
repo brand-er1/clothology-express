@@ -22,6 +22,7 @@ import type {
   UploadedArtworkAnalysis,
 } from "@/types/productionEstimate";
 import { supabase } from "@/lib/supabase";
+import { screenTrademarkImage } from "@/services/trademarkScreening";
 
 interface ModifyImageOptions {
   referenceImage?: ArtworkReference;
@@ -440,6 +441,22 @@ export const useCustomizeForm = () => {
         throw new Error("펀딩에 사용할 이미지 URL이 없습니다.");
       }
 
+      const trademarkScreening = await screenTrademarkImage({
+        imageUrl: finalImageUrl,
+        source: "final_design",
+        selectedType,
+        selectedMaterial,
+      });
+      if (trademarkScreening.decision === "blocked") {
+        toast({
+          title: "펀딩 등록이 거절되었습니다",
+          description:
+            "최종 이미지에서 유명 타사 상표 또는 매우 유사한 로고가 감지되었습니다. 해당 요소를 제거한 뒤 다시 시도해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const finalSizeOptions = productionSizeSelection?.selectedSizes.length
         ? productionSizeSelection.selectedSizes
         : [selectedSize || "M"];
@@ -500,11 +517,18 @@ export const useCustomizeForm = () => {
           productionEstimate?.totals.directUnitMax ?? null,
         estimateDevelopmentTotal:
           productionEstimate?.totals.developmentTotal ?? null,
+        trademarkScreeningId: trademarkScreening.id,
       });
 
       toast({
-        title: "펀딩 페이지가 만들어졌습니다",
-        description: "MOQ 20장·관리자 승인 대기 상태로 자동 등록했습니다.",
+        title:
+          trademarkScreening.decision === "review"
+            ? "펀딩이 상표 검토 대기로 등록되었습니다"
+            : "펀딩 페이지가 만들어졌습니다",
+        description:
+          trademarkScreening.decision === "review"
+            ? "감지된 상표의 권리 관계를 관리자가 확인한 뒤 승인 또는 거절합니다."
+            : "MOQ 20장·관리자 승인 대기 상태로 자동 등록했습니다.",
       });
       navigate(`/fundings/${funding.id}/edit`);
     } catch (error) {

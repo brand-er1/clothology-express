@@ -11,6 +11,8 @@ import {
   Move,
   RefreshCw,
   Send,
+  ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Upload,
   X,
@@ -41,6 +43,8 @@ import type {
   ProductionEstimateResult,
   UploadedArtworkAnalysis,
 } from "@/types/productionEstimate";
+import { screenTrademarkImage } from "@/services/trademarkScreening";
+import type { TrademarkScreeningResult } from "@/types/trademark";
 
 const placementExamples = [
   "앞면 왼쪽 가슴에 작게 넣어줘",
@@ -143,6 +147,8 @@ export const ModifyImageStep = ({
   const [baseImageAspectRatio, setBaseImageAspectRatio] = useState(4 / 3);
   const [isPreparingArtwork, setIsPreparingArtwork] = useState(false);
   const [isApplyingArtwork, setIsApplyingArtwork] = useState(false);
+  const [trademarkScreening, setTrademarkScreening] =
+    useState<TrademarkScreeningResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const artworkCanvasRef = useRef<HTMLDivElement>(null);
   const activeGestureRef = useRef<ArtworkGesture | null>(null);
@@ -191,15 +197,43 @@ export const ModifyImageStep = ({
 
     try {
       setIsPreparingArtwork(true);
+      setTrademarkScreening(null);
       const prepared = await prepareArtworkReference(file, contentType);
       setSourceArtworkFile(file);
       setUploadedArtwork(prepared);
       setArtworkPreview(
         `data:${prepared.mimeType};base64,${prepared.base64}`,
       );
+      const screening = await screenTrademarkImage({
+        imageBase64: prepared.base64,
+        mimeType: prepared.mimeType,
+        source: "upload",
+        selectedType,
+        selectedMaterial,
+      });
+      setTrademarkScreening(screening);
+
+      if (screening.decision === "blocked") {
+        toast({
+          title: "상표 위험 이미지 적용 차단",
+          description:
+            "유명 타사 상표로 의심되는 이미지입니다. 다른 이미지를 사용해주세요.",
+          variant: "destructive",
+        });
+      } else if (screening.decision === "review") {
+        toast({
+          title: "상표 검토 필요",
+          description:
+            "이미지는 적용할 수 있지만 펀딩 승인 전에 관리자가 권리 관계를 확인합니다.",
+        });
+      }
     } catch (error) {
+      setSourceArtworkFile(null);
+      setUploadedArtwork(null);
+      setArtworkPreview(null);
+      setTrademarkScreening(null);
       toast({
-        title: "이미지 처리 실패",
+        title: "이미지 검수 실패",
         description:
           error instanceof Error
             ? error.message
@@ -254,6 +288,23 @@ export const ModifyImageStep = ({
   const handleApplyArtwork = async () => {
     if (!uploadedArtwork || !selectedImageUrl) {
       fileInputRef.current?.click();
+      return;
+    }
+    if (!trademarkScreening) {
+      toast({
+        title: "상표 검수 필요",
+        description: "이미지를 다시 선택해 상표 검수를 완료해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (trademarkScreening.decision === "blocked") {
+      toast({
+        title: "이미지 적용 불가",
+        description:
+          "타사 상표 사용 위험이 높아 이 이미지는 의류에 적용할 수 없습니다.",
+        variant: "destructive",
+      });
       return;
     }
     let placement = resolvedPlacement;
@@ -315,6 +366,7 @@ export const ModifyImageStep = ({
     setSourceArtworkFile(null);
     setUploadedArtwork(null);
     setArtworkPreview(null);
+    setTrademarkScreening(null);
   };
 
   const getPointerPercent = (clientX: number, clientY: number) => {
@@ -702,6 +754,65 @@ export const ModifyImageStep = ({
                 </button>
               )}
 
+              {trademarkScreening && (
+                <div
+                  className={`mt-4 rounded-xl border p-3 ${
+                    trademarkScreening.decision === "blocked"
+                      ? "border-red-200 bg-red-50"
+                      : trademarkScreening.decision === "review"
+                        ? "border-amber-200 bg-amber-50"
+                        : "border-emerald-200 bg-emerald-50"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    {trademarkScreening.decision === "clear" ? (
+                      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                    ) : (
+                      <ShieldAlert
+                        className={`mt-0.5 h-5 w-5 shrink-0 ${
+                          trademarkScreening.decision === "blocked"
+                            ? "text-red-600"
+                            : "text-amber-600"
+                        }`}
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p
+                        className={`text-xs font-extrabold ${
+                          trademarkScreening.decision === "blocked"
+                            ? "text-red-700"
+                            : trademarkScreening.decision === "review"
+                              ? "text-amber-700"
+                              : "text-emerald-700"
+                        }`}
+                      >
+                        {trademarkScreening.decision === "blocked"
+                          ? "상표 위험 · 적용 차단"
+                          : trademarkScreening.decision === "review"
+                            ? "상표 검토 필요 · 관리자 확인"
+                            : "상표 자동 검수 통과"}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-gray-700">
+                        {trademarkScreening.reason}
+                      </p>
+                      {trademarkScreening.detected_marks.length > 0 && (
+                        <p className="mt-1 text-[11px] font-semibold text-gray-600">
+                          감지 표지:{" "}
+                          {trademarkScreening.detected_marks
+                            .map((mark) => mark.displayName)
+                            .join(", ")}
+                        </p>
+                      )}
+                      <p className="mt-1 text-[10px] leading-4 text-gray-500">
+                        {trademarkScreening.decision === "review"
+                          ? "등록 후 관리자가 상표권 보유·사용 허가 여부를 확인하고 승인 또는 거절합니다."
+                          : trademarkScreening.disclaimer}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 rounded-xl border border-brand/15 bg-white p-3">
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-gray-700">
                   <MapPin className="h-3.5 w-3.5" />
@@ -778,13 +889,24 @@ export const ModifyImageStep = ({
                 className="mt-4 w-full bg-brand hover:bg-brand-dark"
                 onClick={() => void handleApplyArtwork()}
                 disabled={
-                  isLoading || isPreparingArtwork || isApplyingArtwork
+                  isLoading ||
+                  isPreparingArtwork ||
+                  isApplyingArtwork ||
+                  !trademarkScreening ||
+                  trademarkScreening.decision === "blocked"
                 }
               >
-                {isLoading || isApplyingArtwork ? (
+                {isLoading || isApplyingArtwork || isPreparingArtwork ? (
                   <>
                     <span className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
-                    프롬프트 위치 적용·분석 중...
+                    {isPreparingArtwork
+                      ? "유명 브랜드 로고 검수 중..."
+                      : "프롬프트 위치 적용·분석 중..."}
+                  </>
+                ) : trademarkScreening?.decision === "blocked" ? (
+                  <>
+                    <ShieldAlert className="mr-2 h-4 w-4" />
+                    상표 위험으로 적용할 수 없습니다
                   </>
                 ) : (
                   <>

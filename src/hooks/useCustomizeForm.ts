@@ -77,6 +77,10 @@ export const useCustomizeForm = () => {
   const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
   const [currentArtworkAnalysis, setCurrentArtworkAnalysis] =
     useState<UploadedArtworkAnalysis | null>(null);
+  const [currentArtworkScreeningId, setCurrentArtworkScreeningId] =
+    useState<string | null>(null);
+  const [lastFinalScreeningId, setLastFinalScreeningId] =
+    useState<string | null>(null);
   const [currentProductionEstimate, setCurrentProductionEstimate] =
     useState<ProductionEstimateResult | null>(null);
 
@@ -158,6 +162,8 @@ export const useCustomizeForm = () => {
       setModificationHistory([]);
       setActiveHistory([]);
       setCurrentArtworkAnalysis(null);
+      setCurrentArtworkScreeningId(null);
+      setLastFinalScreeningId(null);
       setCurrentProductionEstimate(null);
       
       const result = await generateImage(
@@ -345,6 +351,7 @@ export const useCustomizeForm = () => {
     setModificationHistory([]);
     setActiveHistory([]);
     setCurrentArtworkAnalysis(null);
+    setCurrentArtworkScreeningId(null);
     setCurrentProductionEstimate(null);
     toast({
       title: "수정 내역 초기화",
@@ -446,7 +453,10 @@ export const useCustomizeForm = () => {
         source: "final_design",
         selectedType,
         selectedMaterial,
+        parentScreeningId: currentArtworkScreeningId,
+        previousScreeningId: lastFinalScreeningId,
       });
+      setLastFinalScreeningId(trademarkScreening.id);
       if (trademarkScreening.decision === "blocked") {
         toast({
           title: "펀딩 등록이 거절되었습니다",
@@ -636,6 +646,7 @@ export const useCustomizeForm = () => {
     modificationHistory,
     currentModifiedImageUrl,
     currentArtworkAnalysis,
+    setCurrentArtworkScreeningId,
     currentProductionEstimate,
     setCurrentProductionEstimate,
     handleModifyImage,

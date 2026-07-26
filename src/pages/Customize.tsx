@@ -12,13 +12,10 @@ import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
-
 
 const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");
-  const isMobile = useIsMobile();
 
   const {
     currentStep,
@@ -74,6 +71,15 @@ const Customize = () => {
     handleSelectHistoryImage,
   } = useCustomizeForm();
 
+  const stepContent = [
+    ["무엇을 만들까요?", "첫 컬렉션으로 제작할 의류 아이템을 선택해주세요."],
+    ["어떤 원단이 좋을까요?", "제품의 분위기와 착용감을 결정할 소재를 선택해주세요."],
+    ["디자인을 구체화해볼까요?", "컬러, 핏과 디테일을 선택하면 AI가 이해할 제작 방향이 완성됩니다."],
+    ["첫 디자인을 생성합니다", "입력한 조건을 바탕으로 앞·뒤 의류 디자인을 확인해보세요."],
+    ["내 디자인으로 완성하세요", "이미지를 편집하고 로고를 배치하면 견적과 상표 분석이 함께 진행됩니다."],
+    ["판매할 사이즈를 정해주세요", "성별·카테고리별 추천표를 참고해 출시 사이즈와 수량을 설정합니다."],
+  ];
+
   // 사용자 정보 가져오기
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -117,46 +123,38 @@ const Customize = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="container mx-auto px-4 pt-16 md:pt-24 pb-12">
-        <div className="max-w-4xl mx-auto">
+      <main className="mx-auto max-w-[1180px] px-4 pb-20 pt-24 sm:px-6 lg:px-8 lg:pt-28">
+        <div>
+          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Brand-er design studio</p>
+              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-stone-950 md:text-5xl">
+                나만의 첫 컬렉션
+              </h1>
+            </div>
+            <p className="max-w-sm text-sm leading-6 text-stone-500">
+              선택한 정보는 AI 디자인과 자동 견적에 함께 반영됩니다. 언제든 이전 단계로 돌아가 수정할 수 있어요.
+            </p>
+          </div>
+
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
-          {/* Navigation Buttons for Mobile - Top */}
-          {isMobile && (
-            <div className="flex flex-col space-y-3 mt-4 mb-6">
-              {currentStep > 1 && (
-                <Button 
-                  variant="outline" 
-                  onClick={handleBack} 
-                  className="w-full"
-                >
-                  이전
-                </Button>
-              )}
-              {currentStep === 4 ? (
-                <Button
-                  onClick={handleNext}
-                  className="w-full bg-brand hover:bg-brand-dark"
-                >
-                  수정하기
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleNext}
-                  disabled={isCreatingFunding}
-                  className="w-full bg-brand hover:bg-brand-dark"
-                >
-                  {currentStep === TOTAL_STEPS
-                    ? (isCreatingFunding ? "펀딩 페이지 만드는 중..." : "이 이미지로 펀딩 만들기")
-                    : "다음"}
-                </Button>
-              )}
+          <section className="mt-6 rounded-[2rem] border border-stone-200 bg-[#fbfaf8] p-5 shadow-[0_24px_80px_rgba(36,26,24,0.06)] sm:p-8 lg:p-10">
+            <div className="mb-8 border-b border-stone-200 pb-6">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
+                Step {String(currentStep).padStart(2, "0")}
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-[-0.025em] text-stone-950 md:text-3xl">
+                {stepContent[currentStep - 1]?.[0]}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-stone-500">
+                {stepContent[currentStep - 1]?.[1]}
+              </p>
             </div>
-          )}
 
-          <div className="mt-4 md:mt-8">
+            <div>
             {currentStep === 1 && (
               <TypeStep
                 selectedType={selectedType}
@@ -242,40 +240,31 @@ const Customize = () => {
                 gender={userGender}
               />
             )}
-          </div>
+            </div>
 
-          {/* Navigation Buttons - Bottom (Desktop or Mobile) */}
-          <div className={`flex ${isMobile ? 'flex-col space-y-3 sticky bottom-4 mt-6 bg-white p-3 rounded-lg shadow-lg' : 'justify-between'} mt-8`}>
-            {!isMobile && currentStep > 1 && (
-              <Button 
-                variant="outline" 
-                onClick={handleBack}
+            <div className="sticky bottom-4 z-20 mt-10 flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/95 p-3 shadow-[0_16px_45px_rgba(36,26,24,0.12)] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+              {currentStep > 1 ? (
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  className="h-12 rounded-full border-stone-300 px-6"
+                >
+                  이전
+                </Button>
+              ) : <div />}
+              <Button
+                onClick={handleNext}
+                disabled={isCreatingFunding}
+                className="h-12 rounded-full bg-brand px-7 font-bold hover:bg-brand-dark"
               >
-                이전
+                {currentStep === 4
+                  ? "이 디자인 편집하기"
+                  : currentStep === TOTAL_STEPS
+                    ? (isCreatingFunding ? "펀딩 페이지 만드는 중..." : "이 디자인으로 펀딩 만들기")
+                    : "다음 단계"}
               </Button>
-            )}
-            {isMobile ? null : <div className="flex-1" />}
-            {!isMobile && (
-              currentStep === 4 ? (
-                <Button
-                  onClick={handleNext}
-                  className="bg-brand hover:bg-brand-dark"
-                >
-                  수정하기
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleNext}
-                  disabled={isCreatingFunding}
-                  className="bg-brand hover:bg-brand-dark"
-                >
-                  {currentStep === TOTAL_STEPS
-                    ? (isCreatingFunding ? "펀딩 페이지 만드는 중..." : "이 이미지로 펀딩 만들기")
-                    : "다음"}
-                </Button>
-              )
-            )}
-          </div>
+            </div>
+          </section>
         </div>
       </main>
     </div>

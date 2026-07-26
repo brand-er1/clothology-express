@@ -79,6 +79,7 @@ export const validateSignUpForm = async (
   height: string,
   weight: string,
   accountType: string,
+  brandName: string,
 ) => {
   if (!passwordMatch) {
     throw new Error("비밀번호가 일치하지 않습니다.");
@@ -101,6 +102,10 @@ export const validateSignUpForm = async (
   }
 
   if (accountType === "seller") {
+    if (!brandName.trim()) {
+      throw new Error("판매자로 활동할 브랜드명을 입력해주세요.");
+    }
+
     if (!height) {
       throw new Error("키를 입력해주세요.");
     }

@@ -1,9 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Check, Plus } from "lucide-react";
 
 interface MaterialStepProps {
   materials: Material[];
@@ -29,52 +27,59 @@ export const MaterialStep = ({
   onNewMaterialNameChange,
   onAddMaterial,
 }: MaterialStepProps) => {
-  const isMobile = useIsMobile();
-  
-  // Find the selected material to display
-  const selectedMaterialItem = materials.find(
-    (material) => material.id === selectedMaterial
-  );
-
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        {materials.map((material) => (
-          <Card
-            key={material.id}
-            className={`p-4 md:p-6 cursor-pointer transition-all ${
-              selectedMaterial === material.id
-                ? "border-brand ring-2 ring-brand/20"
-                : "hover:border-brand/20"
-            } ${material.isCustom ? "border-dashed" : ""}`}
-            onClick={() => onSelectMaterial(material.id)}
-          >
-            <div className="flex flex-col space-y-2">
-              <h3 className="text-base md:text-lg font-semibold">{material.name}</h3>
-              <p className="text-xs md:text-sm text-gray-500">{material.description}</p>
-            </div>
-          </Card>
-        ))}
-
-        {/* Add Custom Material Card */}
-        <Card className="p-4 md:p-6 border-dashed">
-          <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-center space-x-4'}`}>
-            <Input
-              value={newMaterialName}
-              onChange={(e) => onNewMaterialNameChange(e.target.value)}
-              placeholder="새로운 원단 이름"
-              className="flex-1"
-            />
-            <Button
-              onClick={onAddMaterial}
-              disabled={!newMaterialName.trim()}
-              size={isMobile ? "default" : "sm"}
-              className={isMobile ? "w-full" : "flex items-center justify-center"}
+      <div className="grid gap-3 md:grid-cols-2">
+        {materials.map((material) => {
+          const isSelected = selectedMaterial === material.id;
+          return (
+            <Card
+              key={material.id}
+              role="button"
+              tabIndex={0}
+              className={`relative cursor-pointer rounded-2xl p-5 transition-all ${
+                isSelected
+                  ? "border-brand bg-[#fff9f7] shadow-[0_12px_35px_rgba(113,16,17,0.08)] ring-1 ring-brand"
+                  : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-lg"
+              } ${material.isCustom ? "border-dashed" : ""}`}
+              onClick={() => onSelectMaterial(material.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") onSelectMaterial(material.id);
+              }}
             >
-              <Plus className="w-4 h-4 mr-1" /> 추가
-            </Button>
-          </div>
-        </Card>
+              {isSelected && (
+                <span className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
+                  <Check className="h-3.5 w-3.5" />
+                </span>
+              )}
+              <h3 className="pr-8 text-base font-bold">{material.name}</h3>
+              <p className="mt-2 text-xs leading-5 text-stone-500">{material.description}</p>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-5">
+        <div className="mb-3">
+          <p className="text-sm font-bold">원하는 원단이 목록에 없나요?</p>
+          <p className="mt-1 text-xs text-stone-500">알고 있는 원단명을 직접 추가할 수 있어요.</p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Input
+            value={newMaterialName}
+            onChange={(event) => onNewMaterialNameChange(event.target.value)}
+            placeholder="예: 스웨이드, 울 혼방"
+            className="h-12 flex-1 rounded-xl bg-[#fbfaf8]"
+          />
+          <Button
+            type="button"
+            onClick={onAddMaterial}
+            disabled={!newMaterialName.trim()}
+            className="h-12 rounded-xl bg-stone-950 px-6 hover:bg-brand"
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> 원단 추가
+          </Button>
+        </div>
       </div>
     </div>
   );

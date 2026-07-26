@@ -22,6 +22,7 @@ export const OptionalFields = ({ formData, handleChange, handleGenderChange }: O
           value={formData.height}
           onChange={handleChange}
           required
+          className="h-12 rounded-xl bg-[#fbfaf8]"
         />
       </div>
       <div className="space-y-2">
@@ -33,12 +34,13 @@ export const OptionalFields = ({ formData, handleChange, handleGenderChange }: O
           value={formData.weight}
           onChange={handleChange}
           required
+          className="h-12 rounded-xl bg-[#fbfaf8]"
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="gender">성별</Label>
         <Select value={formData.gender} onValueChange={handleGenderChange}>
-          <SelectTrigger id="gender">
+          <SelectTrigger id="gender" className="h-12 rounded-xl bg-[#fbfaf8]">
             <SelectValue placeholder="성별을 선택하세요" />
           </SelectTrigger>
           <SelectContent>

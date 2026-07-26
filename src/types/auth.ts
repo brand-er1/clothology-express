@@ -6,6 +6,7 @@ export interface AuthFormData {
   password: string;
   confirmPassword: string;
   username: string;
+  brandName: string;
   fullName: string;
   phoneNumber: string;
   address: string;

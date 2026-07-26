@@ -15,6 +15,7 @@ export const useProfileForm = () => {
   const [email, setEmail] = useState("");
   const [formData, setFormData] = useState<Partial<AuthFormData>>({
     username: "",
+    brandName: "",
     fullName: "",
     phoneNumber: "",
     address: "",
@@ -71,6 +72,7 @@ export const useProfileForm = () => {
 
         setFormData({
           username: profile.username || "",
+          brandName: profile.brand_name || "",
           fullName: profile.full_name || "",
           phoneNumber: profile.phone_number || "",
           address: baseAddress || "",
@@ -108,6 +110,7 @@ export const useProfileForm = () => {
         .from('profiles')
         .update({
           username: formData.username,
+          brand_name: formData.brandName?.trim() || null,
           phone_number: formData.phoneNumber,
           address: fullAddress,
           height: formData.height ? Number(formData.height) : null,

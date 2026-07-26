@@ -1,15 +1,15 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { useAuthForm } from "@/hooks/useAuthForm";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { Info } from "lucide-react";
+import { ArrowUpRight, Check, Sparkles } from "lucide-react";
+import { getAppPath } from "@/utils/appUrl";
 
 const Auth = () => {
   const {
@@ -50,35 +50,74 @@ const Auth = () => {
     if (formData.password || formData.confirmPassword) {
       setPasswordMatch(formData.password === formData.confirmPassword);
     }
-  }, [formData.password, formData.confirmPassword]);
-
-  // Prevent default form submission to avoid page refresh
-  const handleSocialLoginClick = (provider: 'kakao' | 'google') => (e: React.MouseEvent) => {
-    e.preventDefault();
-    handleSocialLogin(provider);
-  };
+  }, [formData.password, formData.confirmPassword, setPasswordMatch]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="container mx-auto px-4 pt-24 pb-12">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle>{isSignUp ? "회원가입" : "로그인"}</CardTitle>
-            <CardDescription>
-              {isSignUp
-                ? "새로운 계정을 만들어주세요"
-                : "기존 계정으로 로그인하세요"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert className="mb-4 bg-brand/10 border-brand/20">
-              <Info className="h-4 w-4 text-brand" />
-              <AlertDescription className="text-sm">
-                의류 맞춤 제작을 위해서는 BRAND-ER 쇼핑몰과 별개로 회원가입이 필요합니다.
-              </AlertDescription>
-            </Alert>
-            <form onSubmit={handleAuth} className="space-y-4">
+      <main className="mx-auto grid min-h-screen max-w-[1440px] gap-0 px-0 pt-[72px] lg:grid-cols-[0.9fr_1.1fr] lg:px-6 lg:pb-6">
+        <section className="relative hidden overflow-hidden bg-[#201819] px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-[2rem]">
+          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand/40 blur-3xl" />
+          <div className="relative">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-white/55">
+              <Sparkles className="h-4 w-4 text-[#e4b5b0]" /> Brand launch workspace
+            </p>
+            <h1 className="mt-7 max-w-lg text-5xl font-semibold leading-[1.06] tracking-[-0.05em]">
+              아이디어를 브랜드로,
+              <br />첫 제품을 현실로.
+            </h1>
+            <p className="mt-6 max-w-md text-base leading-7 text-white/60">
+              디자인 생성부터 자동 견적, 펀딩과 생산까지 한 계정에서 이어집니다.
+            </p>
+          </div>
+
+          <div className="relative">
+            <div className="mb-8 overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/5 p-3 backdrop-blur">
+              <div className="flex items-center justify-between rounded-t-[1.25rem] bg-[#eee9e2] px-5 py-3 text-[10px] font-bold tracking-[0.16em] text-stone-500">
+                <span>BRAND-ER AI STUDIO</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </div>
+              <div className="h-52 bg-[#eee9e2] p-5">
+                <img
+                  src={getAppPath("/lovable-uploads/jacket.png")}
+                  alt="브랜더 의류 디자인 예시"
+                  className="h-full w-full object-contain drop-shadow-xl"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 text-sm text-white/70">
+              {["브랜드명과 닉네임으로 나만의 프로필", "유명 상표 자동 검수와 안전한 제작", "MOQ 20장부터 시작하는 프리오더"].map((item) => (
+                <p key={item} className="flex items-center gap-3">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10">
+                    <Check className="h-3 w-3 text-[#e4b5b0]" />
+                  </span>
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="flex items-start justify-center px-4 py-10 sm:px-8 lg:px-14 lg:py-16">
+          <Card className={`w-full border-0 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.09)] ${isSignUp ? "max-w-2xl" : "max-w-lg"} rounded-[2rem]`}>
+            <CardHeader className="space-y-3 px-6 pb-4 pt-8 sm:px-10 sm:pt-10">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+                {isSignUp ? "Create your identity" : "Welcome back"}
+              </p>
+              <CardTitle className="text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
+                {isSignUp ? "나만의 브랜드를 시작하세요" : "브랜더에 로그인"}
+              </CardTitle>
+              <p className="text-sm leading-6 text-stone-500">
+                {isSignUp
+                  ? "브랜드명과 닉네임을 정하고 첫 디자인을 만들어보세요."
+                  : "진행 중인 디자인과 펀딩을 이어서 관리하세요."}
+              </p>
+              <div className="rounded-xl bg-[#f8f5f1] px-4 py-3 text-xs leading-5 text-stone-500">
+                BRAND-ER 쇼핑몰 계정과 별도로 가입해야 합니다.
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
+              <form onSubmit={handleAuth} className="space-y-5">
               {isSignUp ? (
                 <SignUpForm
                   formData={formData}
@@ -103,31 +142,31 @@ const Auth = () => {
               <Button
                 type="button"
                 variant="link"
-                className="w-full"
+                className="w-full text-stone-600 hover:text-brand"
                 onClick={resetForm}
               >
                 {isSignUp
                   ? "이미 계정이 있으신가요? 로그인하기"
                   : "계정이 없으신가요? 회원가입하기"}
               </Button>
-            </form>
+              </form>
             
-            {!isSignUp && (
-              <>
-                <div className="relative my-4">
+              {!isSignUp && (
+                <>
+                <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
                     <Separator className="w-full" />
                   </div>
                   <div className="relative flex justify-center">
-                    <span className="bg-white px-2 text-sm text-muted-foreground">소셜 로그인</span>
+                    <span className="bg-white px-3 text-xs font-medium text-stone-400">간편 로그인</span>
                   </div>
                 </div>
                 
-                <div className="grid gap-2">
+                <div className="grid gap-3">
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
+                    className="h-12 rounded-full border-0 bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
                     onClick={() => handleSocialLogin('kakao')}
                     disabled={isLoading}
                   >
@@ -145,7 +184,7 @@ const Auth = () => {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    className="h-12 rounded-full border-stone-200 bg-white text-slate-700 hover:bg-stone-50"
                     onClick={() => handleSocialLogin('google')}
                     disabled={isLoading}
                   >
@@ -162,10 +201,11 @@ const Auth = () => {
                     Google로 시작하기
                   </Button>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </section>
       </main>
     </div>
   );

@@ -19,7 +19,7 @@ export const ReadOnlyFields = ({
           id="email"
           value={email}
           readOnly
-          className="bg-gray-100"
+          className="h-12 rounded-xl bg-stone-100 text-stone-500"
         />
       </div>
 
@@ -30,7 +30,7 @@ export const ReadOnlyFields = ({
           name="fullName"
           value={fullName}
           readOnly
-          className="bg-gray-100"
+          className="h-12 rounded-xl bg-stone-100 text-stone-500"
         />
       </div>
     </>

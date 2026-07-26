@@ -32,12 +32,17 @@ const Profile = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="container mx-auto px-4 pt-24 pb-12">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle>마이페이지</CardTitle>
+      <main className="mx-auto max-w-3xl px-4 pb-20 pt-28 sm:px-6">
+        <div className="mb-8">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">My brand profile</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em]">브랜드 프로필</h1>
+          <p className="mt-3 text-sm leading-6 text-stone-500">고객에게 보이는 브랜드명과 닉네임, 제작·배송 정보를 관리하세요.</p>
+        </div>
+        <Card className="mx-auto rounded-[2rem] border-stone-200 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.06)]">
+          <CardHeader className="px-6 pt-8 sm:px-10">
+            <CardTitle className="text-2xl">기본 정보</CardTitle>
             {isFundingReturn && (
               <p className="flex items-start gap-2 rounded-xl bg-brand/10 p-4 text-sm leading-6 text-brand-dark">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
@@ -45,8 +50,8 @@ const Profile = () => {
               </p>
             )}
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <ReadOnlyFields 
                 email={email}
                 fullName={formData.fullName || ""}
@@ -54,6 +59,7 @@ const Profile = () => {
 
               <EditableFields 
                 username={formData.username || ""}
+                brandName={formData.brandName || ""}
                 phoneNumber={formData.phoneNumber || ""}
                 height={formData.height || ""}
                 weight={formData.weight || ""}
@@ -70,7 +76,7 @@ const Profile = () => {
                 onChange={handleChange}
               />
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="h-14 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark" disabled={isLoading}>
                 {isLoading ? "저장 중..." : "저장하기"}
               </Button>
             </form>

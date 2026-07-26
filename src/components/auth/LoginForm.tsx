@@ -23,6 +23,7 @@ export const LoginForm = ({ formData, handleChange, isLoading }: LoginFormProps)
           value={formData.email}
           onChange={handleChange}
           required
+          className="h-12 rounded-xl bg-[#fbfaf8]"
         />
       </div>
       <div className="space-y-2">
@@ -35,10 +36,11 @@ export const LoginForm = ({ formData, handleChange, isLoading }: LoginFormProps)
           value={formData.password}
           onChange={handleChange}
           required
+          className="h-12 rounded-xl bg-[#fbfaf8]"
         />
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "처리 중..." : "로그인"}
+      <Button type="submit" className="h-14 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark" disabled={isLoading}>
+        {isLoading ? "로그인 중..." : "브랜더 시작하기"}
       </Button>
     </>
   );

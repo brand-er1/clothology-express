@@ -29,11 +29,12 @@ export const AddressFields = ({
           placeholder="우편번호"
           readOnly
           required
+          className="h-12 rounded-xl bg-stone-100"
         />
         <Button
           type="button"
           onClick={onAddressSearch}
-          className="whitespace-nowrap"
+          className="h-12 whitespace-nowrap rounded-xl bg-stone-950 px-4 hover:bg-brand"
         >
           주소 검색
         </Button>
@@ -45,6 +46,7 @@ export const AddressFields = ({
         placeholder="기본주소"
         readOnly
         required
+        className="h-12 rounded-xl bg-stone-100"
       />
       <Input
         id="addressDetail"
@@ -52,6 +54,7 @@ export const AddressFields = ({
         value={addressDetail}
         onChange={onChange}
         placeholder="상세주소를 입력해주세요"
+        className="h-12 rounded-xl bg-[#fbfaf8]"
       />
     </div>
   );

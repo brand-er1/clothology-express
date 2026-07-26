@@ -29,6 +29,7 @@ export const useAuthForm = () => {
     password: "",
     confirmPassword: "",
     username: "",
+    brandName: "",
     fullName: "",
     phoneNumber: "",
     address: "",
@@ -190,6 +191,7 @@ export const useAuthForm = () => {
           formData.height,
           formData.weight,
           formData.accountType,
+          formData.brandName,
         );
         
         // Height와 Weight 값이 유효한 숫자인지 확인
@@ -210,6 +212,7 @@ export const useAuthForm = () => {
           options: {
             data: {
               username: formData.username,
+              brand_name: formData.brandName.trim() || null,
               full_name: formData.fullName,
               phone_number: formData.phoneNumber,
               address: fullAddress,
@@ -253,6 +256,7 @@ export const useAuthForm = () => {
       password: "",
       confirmPassword: "",
       username: "",
+      brandName: "",
       fullName: "",
       phoneNumber: "",
       address: "",

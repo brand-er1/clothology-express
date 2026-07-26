@@ -167,37 +167,12 @@ export const reviewFunding = async (
   status: Extract<FundingStatus, "approved" | "rejected">,
   adminComment: string
 ): Promise<void> => {
-  const user = await requireUser();
-  if (status === "approved") {
-    const { data: funding, error: screeningError } = await supabase
-      .from("fundings")
-      .select(
-        "trademark_screening_required, trademark_screening:trademark_screenings(decision)",
-      )
-      .eq("id", id)
-      .single();
-    if (screeningError) throw screeningError;
-
-    const screening = Array.isArray(funding?.trademark_screening)
-      ? funding.trademark_screening[0]
-      : funding?.trademark_screening;
-    if (
-      funding.trademark_screening_required !== false &&
-      screening?.decision !== "clear"
-    ) {
-      throw new Error("상표 검수가 완료되지 않았거나 차단된 펀딩입니다.");
-    }
-  }
-  const { error } = await supabase
-    .from("fundings")
-    .update({
-      status,
-      admin_comment: adminComment || null,
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+  await requireUser();
+  const { error } = await supabase.rpc("review_funding_with_trademark", {
+    p_funding_id: id,
+    p_status: status,
+    p_admin_comment: adminComment,
+  });
 
   if (error) throw error;
 };

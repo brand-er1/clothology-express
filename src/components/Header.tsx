@@ -99,7 +99,7 @@ export const Header = () => {
               {identity.brandName && <p className="mt-1 text-sm text-stone-500">@{identity.nickname}</p>}
             </>
           ) : (
-            <p className="mt-3 text-lg font-semibold">아이디어를 제품으로 만들어보세요.</p>
+            <p className="mt-3 text-lg font-semibold">새로운 패션을 가장 먼저 만나보세요.</p>
           )}
         </div>
         <nav className="flex flex-col gap-1 py-6">
@@ -128,9 +128,14 @@ export const Header = () => {
               </Button>
             </>
           ) : (
-            <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
-              <Link to="/auth">로그인 · 회원가입</Link>
-            </Button>
+            <div className="space-y-2">
+              <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
+                <Link to="/fundings">펀딩 둘러보기</Link>
+              </Button>
+              <Button asChild variant="ghost" className="h-11 w-full rounded-full text-stone-500">
+                <Link to="/auth">로그인 · 회원가입</Link>
+              </Button>
+            </div>
           )}
         </div>
       </SheetContent>
@@ -184,8 +189,8 @@ export const Header = () => {
                 <Link to="/auth">로그인</Link>
               </Button>
               <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark">
-                <Link to="/auth">
-                  <Sparkles className="mr-2 h-4 w-4" /> 브랜드 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
+                <Link to="/fundings">
+                  <Sparkles className="mr-2 h-4 w-4" /> 펀딩 둘러보기 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </>

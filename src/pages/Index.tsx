@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
@@ -5,8 +6,10 @@ import {
   ArrowRight,
   Calculator,
   Check,
+  Compass,
   Factory,
-  ScanSearch,
+  Heart,
+  ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -17,42 +20,57 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { fetchApprovedFundings } from "@/services/funding";
+import type { Funding } from "@/types/funding";
 
-const processSteps = [
+type ShowcaseProject = Pick<
+  Funding,
+  "id" | "product_name" | "image_url" | "cloth_type" | "current_orders" | "moq" | "price"
+>;
+
+const platformSteps = [
   {
     number: "01",
-    title: "AI 디자인",
-    description: "의류 종류와 원단, 핏을 고르면 아이디어가 앞·뒤 디자인 이미지로 완성됩니다.",
-    icon: Sparkles,
+    title: "마음에 드는 디자인 발견",
+    description: "아직 매장에는 없는 새로운 브랜드와 패션 아이디어를 가장 먼저 만나보세요.",
+    icon: Compass,
   },
   {
     number: "02",
-    title: "자동 견적",
-    description: "생산 공임, 원단과 후가공을 분석해 예상 제작비를 바로 확인합니다.",
-    icon: Calculator,
-  },
-  {
-    number: "03",
-    title: "프리오더",
-    description: "완성된 이미지로 펀딩 페이지를 열고 실제 고객 수요를 먼저 검증합니다.",
+    title: "프리오더로 함께 결정",
+    description: "원하는 컬러와 사이즈를 선택해 참여하면 달성 수량에 실시간으로 반영됩니다.",
     icon: Users,
   },
   {
-    number: "04",
-    title: "생산·배송",
-    description: "목표 수량을 달성하면 브랜더가 원단 컨택부터 생산과 배송까지 진행합니다.",
+    number: "03",
+    title: "목표 달성 후 제작",
+    description: "필요한 수량이 모인 디자인만 브랜더의 생산 네트워크를 통해 실제 제품이 됩니다.",
     icon: Factory,
+  },
+  {
+    number: "04",
+    title: "과정을 확인하고 배송",
+    description: "원단 컨택부터 샘플과 생산까지 진행 상황을 확인하고 완성된 제품을 받아보세요.",
+    icon: ShieldCheck,
   },
 ];
 
 const faqs = [
   {
-    question: "의류를 전혀 몰라도 디자인을 만들 수 있나요?",
-    answer: "가능합니다. 의류 종류, 소재, 색상과 원하는 분위기를 선택하면 AI가 디자인을 시각화합니다. 전문 용어를 몰라도 단계별 선택과 설명을 따라 진행할 수 있습니다.",
+    question: "브랜더 펀딩에는 어떻게 참여하나요?",
+    answer: "마음에 드는 디자인을 선택한 뒤 컬러, 사이즈와 수량을 정해 참여할 수 있습니다. 로그인하면 참여 내역과 제작 진행 상황을 내 펀딩에서 확인할 수 있습니다.",
   },
   {
-    question: "최소 몇 장부터 제작할 수 있나요?",
-    answer: "브랜더의 기본 펀딩 목표는 20장부터 시작합니다. 다만 디자인, 원단, 컬러 수와 공장 조건에 따라 실제 최소 생산수량은 최종 상담에서 조정될 수 있습니다.",
+    question: "펀딩 목표 수량을 달성하지 못하면 어떻게 되나요?",
+    answer: "목표 수량에 도달하지 못한 디자인은 생산하지 않습니다. 참여 및 결제 상태는 내 펀딩에서 확인하고 안내된 정책에 따라 취소할 수 있습니다.",
+  },
+  {
+    question: "목표 달성 후 제품은 언제 받을 수 있나요?",
+    answer: "일반적으로 원단 컨택, 패턴·샘플 확인과 본생산을 거쳐 약 2~3주가 소요됩니다. 디자인 난이도와 원단 수급 상황에 따라 일정이 달라질 수 있습니다.",
+  },
+  {
+    question: "의류를 전혀 몰라도 내 디자인을 만들 수 있나요?",
+    answer: "가능합니다. 의류 종류, 소재, 색상과 원하는 분위기를 선택하면 AI가 디자인을 시각화합니다. 전문 용어를 몰라도 단계별 안내를 따라 첫 펀딩을 만들 수 있습니다.",
   },
   {
     question: "자동 견적이 최종 제작비와 똑같나요?",
@@ -62,87 +80,160 @@ const faqs = [
     question: "다른 브랜드 로고를 넣어도 되나요?",
     answer: "유명 국내·해외 브랜드로 확인되는 고위험 로고는 자동 차단됩니다. 식별이 어렵거나 일반적인 이미지는 우선 통과 후 관리자 검토가 진행되며, 사용 권리에 대한 책임은 업로드한 사용자에게 있습니다.",
   },
-  {
-    question: "펀딩 목표 수량을 달성하지 못하면 어떻게 되나요?",
-    answer: "목표 수량에 도달하지 못한 디자인은 생산을 진행하지 않습니다. 참여 및 결제 상태는 내 펀딩에서 확인하고 안내된 정책에 따라 취소할 수 있습니다.",
-  },
-  {
-    question: "목표 달성 후 제품은 얼마나 걸리나요?",
-    answer: "일반적으로 원단 컨택, 패턴·샘플 확인과 본생산을 거쳐 약 2~3주가 소요됩니다. 디자인 난이도와 원단 수급 상황에 따라 일정이 달라질 수 있습니다.",
-  },
 ];
 
+const projectProgress = (project: ShowcaseProject) =>
+  Math.min(100, Math.round((project.current_orders / Math.max(project.moq, 1)) * 100));
+
 const Index = () => {
+  const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchApprovedFundings()
+      .then((fundings) => {
+        if (active) setApprovedFundings(fundings);
+      })
+      .catch((error) => {
+        console.error("Failed to load homepage fundings:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const projects = useMemo<ShowcaseProject[]>(() => {
+    if (approvedFundings.length) return approvedFundings.slice(0, 4);
+
+    return [
+      {
+        id: "preview-jacket",
+        product_name: "Burgundy Crop Jacket",
+        image_url: getAppPath("/lovable-uploads/jacket.png"),
+        cloth_type: "재킷",
+        current_orders: 14,
+        moq: 20,
+        price: 109000,
+      },
+      {
+        id: "preview-hoodie",
+        product_name: "Daily Graphic Hoodie",
+        image_url: getAppPath("/lovable-uploads/hoodie.png"),
+        cloth_type: "후드티",
+        current_orders: 11,
+        moq: 20,
+        price: 89000,
+      },
+      {
+        id: "preview-pants",
+        product_name: "Relaxed Wide Pants",
+        image_url: getAppPath("/lovable-uploads/long_pants.png"),
+        cloth_type: "팬츠",
+        current_orders: 8,
+        moq: 20,
+        price: 79000,
+      },
+    ];
+  }, [approvedFundings]);
+
+  const heroProject = projects[0];
+  const heroProgress = projectProgress(heroProject);
+  const hasLiveFundings = approvedFundings.length > 0;
+
   return (
     <div className="min-h-screen bg-[#f4f0ea] text-[#201b19]">
       <Header />
       <main className="pt-[72px]">
-        <section className="relative overflow-hidden bg-[#201819] text-white">
-          <div className="absolute -right-40 -top-48 h-[38rem] w-[38rem] rounded-full bg-brand/45 blur-[110px]" />
-          <div className="absolute -bottom-52 left-1/3 h-96 w-96 rounded-full bg-[#6d5050]/30 blur-[120px]" />
-          <div className="relative mx-auto grid min-h-[760px] max-w-[1440px] items-center gap-16 px-5 py-20 sm:px-8 lg:grid-cols-[1.03fr_0.97fr] lg:px-12">
-            <div className="max-w-3xl">
-              <div className="mb-7 inline-flex items-center rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-xs font-semibold tracking-wide text-white/75 backdrop-blur">
-                <Sparkles className="mr-2 h-4 w-4 text-[#e4b5b0]" />
-                AI FASHION LAUNCH PLATFORM
+        <section className="relative overflow-hidden border-b border-stone-200 bg-[#f4f0ea]">
+          <div className="absolute -right-48 -top-56 h-[42rem] w-[42rem] rounded-full bg-[#d6bcb2]/45 blur-[120px]" />
+          <div className="relative mx-auto grid min-h-[760px] max-w-[1440px] items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:px-12 lg:py-20">
+            <div className="max-w-2xl">
+              <div className="mb-7 inline-flex items-center rounded-full border border-stone-300 bg-white/65 px-4 py-2 text-xs font-bold tracking-[0.08em] text-brand backdrop-blur">
+                <Sparkles className="mr-2 h-4 w-4" />
+                DISCOVER THE NEXT FASHION
               </div>
-              <h1 className="text-[3.15rem] font-semibold leading-[1.02] tracking-[-0.055em] sm:text-6xl md:text-7xl">
-                디자인을 만들고,
+              <h1 className="text-[3.15rem] font-semibold leading-[1.02] tracking-[-0.06em] text-stone-950 sm:text-6xl md:text-7xl">
+                당신의 취향이
                 <br />
-                <span className="text-[#dab1ad]">자동 견적까지.</span>
+                <span className="text-brand">다음 브랜드가 됩니다.</span>
               </h1>
-              <p className="mt-7 max-w-xl text-base leading-8 text-white/62 sm:text-lg">
-                아이디어만 입력하세요. 브랜더가 디자인 시각화, 제작비 분석, 펀딩과 실제 생산을 하나의 흐름으로 연결합니다.
+              <p className="mt-7 max-w-xl text-base leading-8 text-stone-600 sm:text-lg">
+                아직 세상에 없는 디자인을 가장 먼저 발견하고 참여해보세요. 사람들의 선택이 모이면 브랜더가 실제 제품으로 만듭니다.
               </p>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" className="h-14 rounded-full bg-brand px-8 text-base font-bold hover:bg-brand-light">
-                  <Link to="/customize">
-                    첫 디자인 만들기 <ArrowRight className="ml-2 h-5 w-5" />
+                  <Link to="/fundings">
+                    지금 펀딩 둘러보기 <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-white/[0.04] px-8 text-base text-white hover:bg-white hover:text-stone-950">
-                  <Link to="/fundings">브랜드 발견하기</Link>
+                <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-stone-300 bg-white/50 px-8 text-base hover:bg-white">
+                  <Link to="/customize">내 아이디어 시작하기</Link>
                 </Button>
               </div>
-              <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/55">
-                {["재고 부담 없이", "MOQ 20장부터", "생산·배송 원스톱"].map((text) => (
+              <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-stone-500">
+                {["새로운 브랜드 발견", "목표 달성 후 제작", "진행 과정을 투명하게"].map((text) => (
                   <span key={text} className="flex items-center">
-                    <Check className="mr-1.5 h-4 w-4 text-[#e4b5b0]" />
+                    <Check className="mr-1.5 h-4 w-4 text-brand" />
                     {text}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="relative mx-auto w-full max-w-xl">
-              <div className="absolute inset-8 rounded-[3rem] bg-brand/35 blur-3xl" />
-              <div className="relative rounded-[2rem] border border-white/12 bg-white/[0.08] p-3 shadow-[0_35px_100px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-                <div className="overflow-hidden rounded-[1.5rem] bg-[#eee9e2]">
-                  <div className="flex items-center justify-between border-b border-black/5 px-5 py-4 text-[10px] font-bold tracking-[0.16em] text-stone-500">
-                    <span>BRAND-ER AI STUDIO</span>
-                    <span>COLLECTION 01</span>
+            <div className="relative mx-auto w-full max-w-2xl pb-8 pt-4">
+              <div className="absolute inset-10 rounded-[3rem] bg-brand/15 blur-3xl" />
+              <Link
+                to={hasLiveFundings ? `/fundings/${heroProject.id}` : "/fundings"}
+                className="group relative block overflow-hidden rounded-[2rem] border border-white/80 bg-white p-3 shadow-[0_35px_90px_rgba(53,37,32,0.18)]"
+              >
+                <div className="relative overflow-hidden rounded-[1.5rem] bg-[#e9e1d9]">
+                  <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-[11px] font-bold text-stone-800 shadow-sm backdrop-blur">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
+                    {hasLiveFundings ? "지금 펀딩 중" : "브랜더 추천 디자인"}
                   </div>
-                  <div className="aspect-[4/3] p-8 md:p-12">
+                  <div className="aspect-[4/3] p-7 sm:p-10">
                     <img
-                      src={getAppPath("/lovable-uploads/jacket.png")}
-                      alt="AI로 생성한 의류 디자인 예시"
-                      className="h-full w-full object-contain drop-shadow-2xl"
+                      src={heroProject.image_url}
+                      alt={heroProject.product_name}
+                      className="h-full w-full object-contain drop-shadow-2xl transition duration-700 group-hover:scale-[1.04]"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 p-3 text-center text-[11px] text-white/75">
-                  <div className="rounded-xl bg-white/[0.07] py-3"><span className="block text-white/35">COLOR</span>BURGUNDY</div>
-                  <div className="rounded-xl bg-white/[0.07] py-3"><span className="block text-white/35">FIT</span>RELAXED</div>
-                  <div className="rounded-xl bg-white/[0.07] py-3"><span className="block text-white/35">MOQ</span>20 PCS</div>
+                <div className="grid gap-5 px-3 pb-3 pt-5 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand">
+                      {heroProject.cloth_type} · BRAND-ER CURATION
+                    </p>
+                    <h2 className="mt-2 text-2xl font-bold tracking-tight text-stone-950">{heroProject.product_name}</h2>
+                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-stone-200">
+                      <div className="h-full rounded-full bg-brand" style={{ width: `${heroProgress}%` }} />
+                    </div>
+                    <p className="mt-2 text-sm">
+                      <strong className="text-brand">{heroProgress}% 달성</strong>
+                      <span className="ml-2 text-stone-400">{heroProject.current_orders}/{heroProject.moq}명 참여</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-5 sm:block sm:text-right">
+                    <p className="text-xs text-stone-400">펀딩 금액</p>
+                    <p className="mt-1 text-xl font-bold text-stone-950">
+                      {heroProject.price ? `${heroProject.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="absolute -bottom-7 -left-3 rounded-2xl border border-white/10 bg-[#38292a]/95 px-5 py-4 shadow-2xl backdrop-blur sm:-left-8">
-                <p className="text-[10px] font-bold tracking-[0.12em] text-white/40">ESTIMATED COST</p>
-                <p className="mt-1 text-lg font-bold text-white">자동 견적 분석 완료</p>
-              </div>
-              <div className="absolute -right-2 top-12 rounded-2xl border border-white/10 bg-white/90 px-4 py-3 text-stone-900 shadow-xl sm:-right-8">
-                <p className="flex items-center text-xs font-semibold"><ScanSearch className="mr-1.5 h-4 w-4 text-emerald-700" /> 상표 자동 검수</p>
-                <p className="mt-1 text-[11px] text-stone-500">위험 후보 없음</p>
+              </Link>
+
+              {projects[1] && (
+                <div className="absolute -bottom-3 -left-2 hidden w-44 rotate-[-4deg] overflow-hidden rounded-2xl border-4 border-white bg-white shadow-xl sm:block lg:-left-10">
+                  <div className="aspect-square bg-[#eee8e1] p-4">
+                    <img src={projects[1].image_url} alt={projects[1].product_name} className="h-full w-full object-contain" />
+                  </div>
+                  <p className="truncate px-3 py-2 text-xs font-bold">{projects[1].product_name}</p>
+                </div>
+              )}
+              <div className="absolute -right-2 top-10 flex items-center gap-2 rounded-full bg-[#201819] px-4 py-3 text-xs font-bold text-white shadow-xl sm:-right-5">
+                <Heart className="h-4 w-4 fill-[#e2aaa4] text-[#e2aaa4]" /> 취향으로 함께 만드는 패션
               </div>
             </div>
           </div>
@@ -151,35 +242,119 @@ const Index = () => {
         <section className="border-b border-stone-200 bg-[#fbfaf8]">
           <div className="mx-auto grid max-w-[1440px] grid-cols-2 divide-x divide-stone-200 px-4 py-8 md:grid-cols-4 md:px-8">
             {[
-              ["20장", "기본 펀딩 MOQ"],
-              ["AI", "디자인·견적 분석"],
-              ["0개", "목표 미달 재고"],
-              ["ONE STOP", "생산부터 배송"],
+              ["DISCOVER", "새로운 디자인 발견"],
+              ["PRE-ORDER", "원하는 제품에 참여"],
+              ["TOGETHER", "목표 달성 후 제작"],
+              ["TRACK", "생산 과정 확인"],
             ].map(([value, label]) => (
               <div key={label} className="px-3 py-3 text-center">
-                <strong className="text-xl font-semibold tracking-tight sm:text-2xl">{value}</strong>
-                <p className="mt-1 text-[11px] text-stone-500 sm:text-xs">{label}</p>
+                <strong className="text-sm font-bold tracking-[0.12em] text-brand sm:text-base">{value}</strong>
+                <p className="mt-1.5 text-[11px] text-stone-500 sm:text-xs">{label}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-[1440px] px-5 py-24 sm:px-8 lg:px-12 lg:py-28">
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Trending now</p>
+              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em] md:text-5xl">지금 주목할 디자인</h2>
+            </div>
+            <Button asChild variant="ghost" className="w-fit rounded-full font-semibold text-stone-600 hover:bg-white hover:text-brand">
+              <Link to="/fundings">전체 펀딩 보기 <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
+
+          <div className="mt-12 grid gap-7 md:grid-cols-3">
+            {projects.slice(0, 3).map((project) => {
+              const progress = projectProgress(project);
+              return (
+                <Link
+                  key={project.id}
+                  to={hasLiveFundings ? `/fundings/${project.id}` : "/fundings"}
+                  className="group"
+                >
+                  <article>
+                    <div className="relative aspect-[4/5] overflow-hidden rounded-[1.75rem] bg-[#e9e1d9] p-7">
+                      <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-bold tracking-wide text-stone-700 backdrop-blur">
+                        {project.cloth_type}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-stone-600 transition hover:text-brand"
+                      >
+                        <Heart className="h-4 w-4" />
+                      </span>
+                      <img
+                        src={project.image_url}
+                        alt={project.product_name}
+                        className="h-full w-full object-contain drop-shadow-xl transition duration-500 group-hover:scale-[1.04]"
+                      />
+                    </div>
+                    <div className="px-1 pt-5">
+                      <p className="text-xs font-bold text-brand">{progress}% 달성</p>
+                      <h3 className="mt-2 truncate text-xl font-bold tracking-tight">{project.product_name}</h3>
+                      <div className="mt-3 flex items-end justify-between">
+                        <p className="font-bold">{project.price ? `${project.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}</p>
+                        <p className="text-xs text-stone-400">{project.current_orders}/{project.moq}명</p>
+                      </div>
+                    </div>
+                  </article>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="bg-[#ded3c9]">
+          <div className="mx-auto grid max-w-[1440px] gap-6 px-5 py-24 sm:px-8 lg:grid-cols-2 lg:px-12 lg:py-28">
+            <article className="flex min-h-[430px] flex-col justify-between rounded-[2rem] bg-[#fbfaf8] p-8 md:p-10">
+              <div>
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#eee5dd] text-brand"><Heart className="h-5 w-5" /></span>
+                <p className="mt-10 text-xs font-bold uppercase tracking-[0.2em] text-brand">For supporters</p>
+                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">구경하는 재미,<br />함께 만드는 경험.</h2>
+                <p className="mt-5 max-w-md text-sm leading-7 text-stone-500">
+                  평범한 쇼핑 대신 새로운 디자이너의 아이디어를 발견하고, 마음에 드는 제품이 탄생하는 과정에 참여하세요.
+                </p>
+              </div>
+              <Button asChild className="mt-10 h-12 w-fit rounded-full bg-brand px-6 hover:bg-brand-dark">
+                <Link to="/fundings">새로운 디자인 발견하기 <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </article>
+
+            <article className="flex min-h-[430px] flex-col justify-between rounded-[2rem] bg-[#201819] p-8 text-white md:p-10">
+              <div>
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-[#e1b2ad]"><Sparkles className="h-5 w-5" /></span>
+                <p className="mt-10 text-xs font-bold uppercase tracking-[0.2em] text-[#e1b2ad]">For makers</p>
+                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">누구나 아이디어를<br />브랜드로.</h2>
+                <p className="mt-5 max-w-md text-sm leading-7 text-white/58">
+                  전문 지식이 없어도 AI 디자인, 자동 견적과 펀딩을 이용해 재고 부담 없이 첫 컬렉션을 시작할 수 있습니다.
+                </p>
+              </div>
+              <Button asChild variant="outline" className="mt-10 h-12 w-fit rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-stone-950">
+                <Link to="/customize">내 아이디어 만들어보기 <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </article>
           </div>
         </section>
 
         <section className="mx-auto max-w-[1440px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">From idea to product</p>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">How Brand-er works</p>
               <h2 className="mt-4 max-w-2xl text-4xl font-semibold tracking-[-0.045em] md:text-5xl">
-                복잡했던 의류 제작을
-                <br />하나의 흐름으로.
+                취향이 모여 제품이 되는
+                <br />새로운 패션 방식.
               </h2>
             </div>
             <p className="max-w-md text-sm leading-7 text-stone-500">
-              제작 지식이 없어도 필요한 선택만 하면 다음 단계와 예상 비용을 브랜더가 안내합니다.
+              고객은 원하는 디자인의 탄생에 참여하고, 메이커는 실제 수요가 확인된 제품만 안전하게 제작합니다.
             </p>
           </div>
 
           <div className="mt-14 grid gap-px overflow-hidden rounded-[2rem] border border-stone-200 bg-stone-200 md:grid-cols-2 xl:grid-cols-4">
-            {processSteps.map(({ icon: Icon, number, title, description }) => (
+            {platformSteps.map(({ icon: Icon, number, title, description }) => (
               <article key={number} className="group bg-[#fbfaf8] p-7 transition hover:bg-white lg:p-8">
                 <div className="flex items-center justify-between">
                   <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#efe7e1] text-brand transition group-hover:bg-brand group-hover:text-white">
@@ -194,36 +369,31 @@ const Index = () => {
           </div>
         </section>
 
-        <section className="bg-[#ded3c9]">
-          <div className="mx-auto grid max-w-[1440px] gap-6 px-5 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:px-12 lg:py-28">
-            <div className="flex flex-col justify-between rounded-[2rem] bg-[#201819] p-8 text-white md:p-10">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#dcb4af]">Why Brand-er</p>
-                <h2 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
-                  예쁜 이미지에서
-                  <br />끝나지 않습니다.
-                </h2>
-                <p className="mt-5 max-w-md text-sm leading-7 text-white/58">
-                  실제로 만들 수 있는 디자인인지, 얼마가 필요한지, 고객이 원하는지까지 한 번에 확인합니다.
-                </p>
-              </div>
-              <Button asChild variant="outline" className="mt-12 h-12 w-fit rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-stone-950">
-                <Link to="/customize">스튜디오 살펴보기 <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
+        <section className="border-y border-stone-200 bg-[#fbfaf8]">
+          <div className="mx-auto grid max-w-[1440px] gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:px-12 lg:py-28">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Professional system</p>
+              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">재미있게 시작하고,<br />전문적으로 완성합니다.</h2>
+              <p className="mt-5 max-w-md text-sm leading-7 text-stone-500">
+                쉬운 화면 뒤에는 실제 제작에 필요한 견적 분석과 안전 검수, 생산 운영 시스템이 연결되어 있습니다.
+              </p>
             </div>
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {[
-                ["01", "제작 가능한 디자인", "원단과 핏, 디테일을 함께 설정해 생산에 필요한 정보를 남깁니다."],
-                ["02", "투명한 예상 비용", "장당 변동비와 패턴·샘플 개발비를 나눠 예상 견적을 제공합니다."],
-                ["03", "안전한 상표 검수", "유명 브랜드 고위험 로고를 차단하고 검토 근거를 함께 보여줍니다."],
-                ["04", "브랜드 수요 검증", "재고를 만들기 전에 펀딩으로 실제 구매 의사를 확인합니다."],
-              ].map(([number, title, text]) => (
-                <article key={number} className="min-h-56 rounded-[2rem] bg-[#fbfaf8] p-7">
-                  <p className="text-xs font-bold tracking-[0.16em] text-brand">{number}</p>
-                  <h3 className="mt-10 text-xl font-bold tracking-tight">{title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-stone-500">{text}</p>
-                </article>
-              ))}
+                [Sparkles, "AI 디자인", "아이디어를 앞·뒤 의류 이미지로 빠르게 시각화합니다."],
+                [Calculator, "자동 견적", "공임, 원단, 후가공과 개발비를 분리해 예상 비용을 계산합니다."],
+                [ShieldCheck, "상표 검수", "유명 브랜드 고위험 로고를 자동으로 감지하고 차단합니다."],
+                [Factory, "원스톱 생산", "원단 컨택, 패턴, 샘플, 본생산과 배송을 단계별로 관리합니다."],
+              ].map(([Icon, title, text]) => {
+                const FeatureIcon = Icon as typeof Sparkles;
+                return (
+                  <article key={String(title)} className="rounded-2xl border border-stone-200 bg-white p-6">
+                    <FeatureIcon className="h-5 w-5 text-brand" />
+                    <h3 className="mt-8 text-lg font-bold">{String(title)}</h3>
+                    <p className="mt-2 text-sm leading-6 text-stone-500">{String(text)}</p>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -231,9 +401,9 @@ const Index = () => {
         <section className="mx-auto grid max-w-[1200px] gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[0.75fr_1.25fr] lg:py-32">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Q&A</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">시작하기 전,<br />많이 묻는 질문</h2>
+            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">참여하기 전,<br />많이 묻는 질문</h2>
             <p className="mt-5 max-w-sm text-sm leading-7 text-stone-500">
-              제작 경험이 없어도 괜찮습니다. 궁금한 부분을 먼저 확인하고 가볍게 디자인부터 시작해보세요.
+              펀딩 참여부터 직접 디자인을 만드는 방법까지, 궁금한 내용을 먼저 확인해보세요.
             </p>
           </div>
           <Accordion type="single" collapsible className="border-t border-stone-300">
@@ -251,15 +421,20 @@ const Index = () => {
           </Accordion>
         </section>
 
-        <section className="border-t border-stone-200 bg-[#fbfaf8]">
+        <section className="border-t border-stone-200 bg-[#201819] text-white">
           <div className="mx-auto flex max-w-[1440px] flex-col items-start justify-between gap-8 px-5 py-20 sm:px-8 md:flex-row md:items-center lg:px-12">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Your first collection</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] md:text-4xl">당신의 이름으로 첫 제품을 시작하세요.</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#dfb1ac]">Fashion made together</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] md:text-4xl">발견하는 사람도, 만드는 사람도 즐겁게.</h2>
             </div>
-            <Button asChild size="lg" className="h-14 rounded-full bg-brand px-8 text-base font-bold hover:bg-brand-dark">
-              <Link to="/auth">브랜드 프로필 만들기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg" className="h-14 rounded-full bg-brand px-8 text-base font-bold hover:bg-brand-light">
+                <Link to="/fundings">펀딩 둘러보기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-transparent px-8 text-base text-white hover:bg-white hover:text-stone-950">
+                <Link to="/customize">디자인 시작하기</Link>
+              </Button>
+            </div>
           </div>
         </section>
       </main>

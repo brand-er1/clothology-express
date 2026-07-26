@@ -54,6 +54,13 @@ const placementExamples = [
   "앞면 중앙에 거의 안 보이게 넣어줘",
 ];
 
+const compactScoreLabels = [
+  ["text", "문자"],
+  ["shape", "도형"],
+  ["transformation", "변형"],
+  ["productClass", "상품류"],
+] as const;
+
 type ArtworkGesture =
   | {
       mode: "move";
@@ -93,6 +100,7 @@ interface ModifyImageStepProps {
   modificationHistory: ImageModificationEntry[];
   currentArtworkAnalysis: UploadedArtworkAnalysis | null;
   onEstimateChange: (estimate: ProductionEstimateResult | null) => void;
+  onArtworkScreeningApplied: (screeningId: string | null) => void;
   onModifyImage: (
     prompt: string,
     options?: {
@@ -114,6 +122,7 @@ export const ModifyImageStep = ({
   modificationHistory,
   currentArtworkAnalysis,
   onEstimateChange,
+  onArtworkScreeningApplied,
   onModifyImage,
   onResetModifications,
   onSelectHistoryImage,
@@ -196,6 +205,7 @@ export const ModifyImageStep = ({
     }
 
     try {
+      const previousScreeningId = trademarkScreening?.id || null;
       setIsPreparingArtwork(true);
       setTrademarkScreening(null);
       const prepared = await prepareArtworkReference(file, contentType);
@@ -210,6 +220,7 @@ export const ModifyImageStep = ({
         source: "upload",
         selectedType,
         selectedMaterial,
+        previousScreeningId,
       });
       setTrademarkScreening(screening);
 
@@ -346,6 +357,7 @@ export const ModifyImageStep = ({
         },
       );
       if (applied) {
+        onArtworkScreeningApplied(trademarkScreening.id);
         clearArtwork();
       }
     } catch (error) {
@@ -795,6 +807,37 @@ export const ModifyImageStep = ({
                       <p className="mt-1 text-xs leading-5 text-gray-700">
                         {trademarkScreening.reason}
                       </p>
+                      <div className="mt-2 rounded-lg bg-white/75 p-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-gray-500">
+                            복합 위험점수
+                          </span>
+                          <span className="text-sm font-black text-gray-900">
+                            {Math.round(
+                              trademarkScreening.composite_risk_score || 0,
+                            )}
+                            /100
+                          </span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-4 gap-1.5">
+                          {compactScoreLabels.map(([key, label]) => (
+                            <div
+                              key={key}
+                              className="rounded-md border border-black/5 bg-white px-1.5 py-1 text-center"
+                            >
+                              <p className="text-[9px] font-bold text-gray-400">
+                                {label}
+                              </p>
+                              <p className="text-[11px] font-extrabold text-gray-700">
+                                {Math.round(
+                                  trademarkScreening.similarity_scores?.[key] ||
+                                    0,
+                                )}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                       {trademarkScreening.detected_marks.length > 0 && (
                         <p className="mt-1 text-[11px] font-semibold text-gray-600">
                           감지 표지:{" "}

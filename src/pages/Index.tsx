@@ -85,6 +85,8 @@ const faqs = [
 const projectProgress = (project: ShowcaseProject) =>
   Math.min(100, Math.round((project.current_orders / Math.max(project.moq, 1)) * 100));
 
+const heroEditorialImage = getAppPath("/brand-er-hero-editorial-v2.webp");
+
 const Index = () => {
   const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
 
@@ -138,8 +140,6 @@ const Index = () => {
     ];
   }, [approvedFundings]);
 
-  const heroProject = projects[0];
-  const heroProgress = projectProgress(heroProject);
   const hasLiveFundings = approvedFundings.length > 0;
 
   return (
@@ -184,54 +184,32 @@ const Index = () => {
 
             <div className="relative mx-auto w-full max-w-2xl pb-8 pt-4">
               <div className="absolute inset-10 rounded-[3rem] bg-brand/15 blur-3xl" />
-              <Link
-                to={hasLiveFundings ? `/fundings/${heroProject.id}` : "/fundings"}
-                className="group relative block overflow-hidden rounded-[2rem] border border-white/80 bg-white p-3 shadow-[0_35px_90px_rgba(53,37,32,0.18)]"
-              >
-                <div className="relative overflow-hidden rounded-[1.5rem] bg-[#e9e1d9]">
-                  <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-[11px] font-bold text-stone-800 shadow-sm backdrop-blur">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
-                    {hasLiveFundings ? "지금 펀딩 중" : "브랜더 추천 디자인"}
+              <div className="relative overflow-hidden rounded-[2.25rem] border border-white/80 bg-[#ded3c9] p-3 shadow-[0_35px_90px_rgba(53,37,32,0.18)]">
+                <div className="relative aspect-[5/4] overflow-hidden rounded-[1.75rem] bg-[#e7dfd5]">
+                  <img
+                    src={heroEditorialImage}
+                    alt="다양한 패션 아이디어를 전시한 브랜더 에디토리얼"
+                    className="h-full w-full object-cover object-[68%_center] transition duration-700 hover:scale-[1.02]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#211a19]/45 via-transparent to-transparent" />
+                  <div className="absolute left-5 top-5 rounded-full border border-white/60 bg-white/80 px-4 py-2 text-[10px] font-bold tracking-[0.18em] text-stone-800 backdrop-blur-md sm:left-7 sm:top-7">
+                    BRAND-ER EDITORIAL
                   </div>
-                  <div className="aspect-[4/3] p-7 sm:p-10">
-                    <img
-                      src={heroProject.image_url}
-                      alt={heroProject.product_name}
-                      className="h-full w-full object-contain drop-shadow-2xl transition duration-700 group-hover:scale-[1.04]"
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-5 px-3 pb-3 pt-5 sm:grid-cols-[1fr_auto] sm:items-end">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand">
-                      {heroProject.cloth_type} · BRAND-ER CURATION
-                    </p>
-                    <h2 className="mt-2 text-2xl font-bold tracking-tight text-stone-950">{heroProject.product_name}</h2>
-                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-stone-200">
-                      <div className="h-full rounded-full bg-brand" style={{ width: `${heroProgress}%` }} />
+                  <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between gap-5 text-white sm:bottom-8 sm:left-8 sm:right-8">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Discover your taste</p>
+                      <p className="mt-2 max-w-sm text-xl font-semibold leading-snug tracking-[-0.025em] sm:text-2xl">
+                        한 가지 상품이 아닌,
+                        <br />
+                        새로운 취향을 발견하는 곳.
+                      </p>
                     </div>
-                    <p className="mt-2 text-sm">
-                      <strong className="text-brand">{heroProgress}% 달성</strong>
-                      <span className="ml-2 text-stone-400">{heroProject.current_orders}/{heroProject.moq}명 참여</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between gap-5 sm:block sm:text-right">
-                    <p className="text-xs text-stone-400">펀딩 금액</p>
-                    <p className="mt-1 text-xl font-bold text-stone-950">
-                      {heroProject.price ? `${heroProject.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
-                    </p>
+                    <span className="hidden h-12 w-12 items-center justify-center rounded-full border border-white/50 bg-white/15 backdrop-blur sm:flex">
+                      <Compass className="h-5 w-5" />
+                    </span>
                   </div>
                 </div>
-              </Link>
-
-              {projects[1] && (
-                <div className="absolute -bottom-3 -left-2 hidden w-44 rotate-[-4deg] overflow-hidden rounded-2xl border-4 border-white bg-white shadow-xl sm:block lg:-left-10">
-                  <div className="aspect-square bg-[#eee8e1] p-4">
-                    <img src={projects[1].image_url} alt={projects[1].product_name} className="h-full w-full object-contain" />
-                  </div>
-                  <p className="truncate px-3 py-2 text-xs font-bold">{projects[1].product_name}</p>
-                </div>
-              )}
+              </div>
               <div className="absolute -right-2 top-10 flex items-center gap-2 rounded-full bg-[#201819] px-4 py-3 text-xs font-bold text-white shadow-xl sm:-right-5">
                 <Heart className="h-4 w-4 fill-[#e2aaa4] text-[#e2aaa4]" /> 취향으로 함께 만드는 패션
               </div>

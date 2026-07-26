@@ -194,57 +194,164 @@ export type Database = {
       }
       trademark_screenings: {
         Row: {
+          analysis_status: string
+          analysis_summary: string
           analysis_version: string
+          automated_decision: string
+          candidate_regions: Json
+          composite_risk_score: number
           created_at: string
           decision: string
+          decision_factors: string[]
           detected_marks: Json
           id: string
           image_sha256: string
           image_url: string | null
           kipris_checked: boolean
           kipris_matches: Json
+          parent_screening_id: string | null
           reason: string
           recognized_text: string[]
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           risk_level: string
+          screening_version: number
+          selected_cloth_type: string | null
+          selected_material: string | null
+          similarity_scores: Json
           source: string
+          source_priority_applied: boolean
+          supersedes_screening_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          analysis_status?: string
+          analysis_summary?: string
           analysis_version?: string
+          automated_decision?: string
+          candidate_regions?: Json
+          composite_risk_score?: number
           created_at?: string
           decision: string
+          decision_factors?: string[]
           detected_marks?: Json
           id?: string
           image_sha256: string
           image_url?: string | null
           kipris_checked?: boolean
           kipris_matches?: Json
+          parent_screening_id?: string | null
           reason: string
           recognized_text?: string[]
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           risk_level: string
+          screening_version?: number
+          selected_cloth_type?: string | null
+          selected_material?: string | null
+          similarity_scores?: Json
           source: string
+          source_priority_applied?: boolean
+          supersedes_screening_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          analysis_status?: string
+          analysis_summary?: string
           analysis_version?: string
+          automated_decision?: string
+          candidate_regions?: Json
+          composite_risk_score?: number
           created_at?: string
           decision?: string
+          decision_factors?: string[]
           detected_marks?: Json
           id?: string
           image_sha256?: string
           image_url?: string | null
           kipris_checked?: boolean
           kipris_matches?: Json
+          parent_screening_id?: string | null
           reason?: string
           recognized_text?: string[]
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           risk_level?: string
+          screening_version?: number
+          selected_cloth_type?: string | null
+          selected_material?: string | null
+          similarity_scores?: Json
           source?: string
+          source_priority_applied?: boolean
+          supersedes_screening_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trademark_screenings_parent_screening_id_fkey"
+            columns: ["parent_screening_id"]
+            isOneToOne: false
+            referencedRelation: "trademark_screenings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trademark_screenings_supersedes_screening_id_fkey"
+            columns: ["supersedes_screening_id"]
+            isOneToOne: false
+            referencedRelation: "trademark_screenings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trademark_screening_events: {
+        Row: {
+          actor_type: string
+          actor_user_id: string | null
+          created_at: string
+          from_decision: string | null
+          id: string
+          metadata: Json
+          reason: string
+          screening_id: string
+          to_decision: string
+        }
+        Insert: {
+          actor_type: string
+          actor_user_id?: string | null
+          created_at?: string
+          from_decision?: string | null
+          id?: string
+          metadata?: Json
+          reason: string
+          screening_id: string
+          to_decision: string
+        }
+        Update: {
+          actor_type?: string
+          actor_user_id?: string | null
+          created_at?: string
+          from_decision?: string | null
+          id?: string
+          metadata?: Json
+          reason?: string
+          screening_id?: string
+          to_decision?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trademark_screening_events_screening_id_fkey"
+            columns: ["screening_id"]
+            isOneToOne: false
+            referencedRelation: "trademark_screenings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generated_images: {
         Row: {
@@ -529,6 +636,14 @@ export type Database = {
           p_size: string
         }
         Returns: string
+      }
+      review_funding_with_trademark: {
+        Args: {
+          p_admin_comment: string
+          p_funding_id: string
+          p_status: string
+        }
+        Returns: undefined
       }
       update_funding_participation_status: {
         Args: { p_participation_id: string; p_status: string }

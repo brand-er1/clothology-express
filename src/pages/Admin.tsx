@@ -12,7 +12,11 @@ import { type Order } from "@/types/order";
 import { type Funding } from "@/types/funding";
 import { FundingList } from "@/components/admin/FundingList";
 import { FundingReviewDialog } from "@/components/admin/FundingReviewDialog";
-import { fetchAllFundings, reviewFunding as saveFundingReview } from "@/services/funding";
+import {
+  fetchAllFundings,
+  getFundingErrorMessage,
+  reviewFunding as saveFundingReview,
+} from "@/services/funding";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -121,7 +125,11 @@ const Admin = () => {
       await loadFundings();
     } catch (error) {
       console.error("Error reviewing funding:", error);
-      toast({ title: "펀딩 상태를 변경하지 못했습니다", variant: "destructive" });
+      toast({
+        title: "펀딩 상태를 변경하지 못했습니다",
+        description: getFundingErrorMessage(error),
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }

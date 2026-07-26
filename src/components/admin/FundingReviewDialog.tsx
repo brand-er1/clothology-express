@@ -7,6 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Funding } from "@/types/funding";
 import { ExternalLink, Loader2, PackageCheck, ShieldAlert, ShieldCheck } from "lucide-react";
 
+const similarityScoreLabels = [
+  ["text", "문자"],
+  ["shape", "도형"],
+  ["color", "색상"],
+  ["placement", "배치"],
+  ["transformation", "변형 복원"],
+  ["productClass", "상품류"],
+] as const;
+
 type Props = {
   funding: Funding | null;
   open: boolean;
@@ -29,8 +38,24 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
         {funding && (
           <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100 p-3">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100 p-3">
                 <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain" />
+                {screening?.candidate_regions?.map((region) => (
+                  <div
+                    key={region.id}
+                    className="pointer-events-none absolute border-2 border-rose-500 bg-rose-500/10"
+                    style={{
+                      left: `${region.boundingBox.x}%`,
+                      top: `${region.boundingBox.y}%`,
+                      width: `${region.boundingBox.width}%`,
+                      height: `${region.boundingBox.height}%`,
+                    }}
+                  >
+                    <span className="absolute -top-6 left-0 whitespace-nowrap rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {region.label}
+                    </span>
+                  </div>
+                ))}
               </div>
               <div>
                 <div className="mb-3 flex items-center gap-2">
@@ -91,6 +116,65 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                         ? "최종 이미지 상표 검수가 완료되지 않았습니다."
                         : "상표 검수 기능 도입 전에 등록된 기존 펀딩입니다.")}
                   </p>
+                  {screening && (
+                    <div className="mt-3 rounded-xl bg-white/80 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-bold text-gray-600">
+                          복합 상표 위험점수
+                        </p>
+                        <p className="text-lg font-black text-gray-950">
+                          {Math.round(screening.composite_risk_score || 0)}
+                          <span className="ml-0.5 text-xs font-bold text-gray-400">
+                            /100
+                          </span>
+                        </p>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className={`h-full rounded-full ${
+                            screening.decision === "blocked"
+                              ? "bg-red-500"
+                              : screening.decision === "review"
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                          }`}
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(0, screening.composite_risk_score || 0),
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {similarityScoreLabels.map(([key, label]) => (
+                          <div
+                            key={key}
+                            className="rounded-lg border border-black/5 bg-white px-2.5 py-2"
+                          >
+                            <p className="text-[10px] font-bold text-gray-400">
+                              {label}
+                            </p>
+                            <p className="mt-0.5 text-sm font-extrabold text-gray-800">
+                              {Math.round(screening.similarity_scores?.[key] || 0)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      {screening.decision_factors?.length ? (
+                        <ul className="mt-3 space-y-1 text-xs leading-5 text-gray-600">
+                          {screening.decision_factors.map((factor, index) => (
+                            <li key={`${factor}-${index}`}>• {factor}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {screening.source_priority_applied && (
+                        <p className="mt-2 text-[11px] font-bold text-violet-700">
+                          사용자 업로드 아트워크 분석 결과를 동일 후보보다 우선 적용
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {screening?.detected_marks?.length ? (
                     <div className="mt-3 rounded-xl bg-white/75 p-3 text-sm">
                       <p className="text-xs font-bold text-gray-500">
@@ -110,6 +194,17 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                                 {mark.evidence}
                               </p>
                             )}
+                            {mark.normalizationResults?.length ? (
+                              <p className="mt-1 text-[11px] leading-4 text-gray-500">
+                                변형 비교:{" "}
+                                {mark.normalizationResults
+                                  .map(
+                                    (result) =>
+                                      `${result.method} ${result.similarity}`,
+                                  )
+                                  .join(" · ")}
+                              </p>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
@@ -179,7 +274,8 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
             !funding?.size_options?.length ||
             (funding?.trademark_screening_required && !screening) ||
             (funding?.trademark_screening_required &&
-              screening?.decision !== "clear")
+              screening?.decision === "blocked") ||
+            (screening?.decision === "review" && !comment.trim())
           }
             className="bg-brand hover:bg-brand-dark">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}승인하기

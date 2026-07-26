@@ -11,6 +11,8 @@ type ScreenTrademarkImageParams = {
   source: TrademarkScreeningSource;
   selectedType?: string;
   selectedMaterial?: string;
+  parentScreeningId?: string | null;
+  previousScreeningId?: string | null;
 };
 
 const readFunctionError = async (error: unknown) => {
@@ -41,6 +43,8 @@ export const screenTrademarkImage = async ({
   source,
   selectedType = "",
   selectedMaterial = "",
+  parentScreeningId = null,
+  previousScreeningId = null,
 }: ScreenTrademarkImageParams): Promise<TrademarkScreeningResult> => {
   if (!imageBase64 && !imageUrl) {
     throw new Error("검수할 이미지가 없습니다.");
@@ -56,6 +60,8 @@ export const screenTrademarkImage = async ({
         source,
         selectedType,
         selectedMaterial,
+        parentScreeningId,
+        previousScreeningId,
       },
     },
   );

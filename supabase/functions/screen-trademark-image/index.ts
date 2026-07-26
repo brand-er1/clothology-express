@@ -45,7 +45,7 @@ type KiprisMatch = {
   apparelClassMatch: boolean;
 };
 
-const analysisVersion = "brand-er-known-famous-logo-v3";
+const analysisVersion = "brand-er-strict-famous-logo-v4";
 const supportedMimeTypes = new Set([
   "image/png",
   "image/jpeg",
@@ -394,9 +394,14 @@ Rules:
 - Do not call a generic geometric shape, ordinary word, decorative pattern,
   illustration, character, or photograph a known brand without specific visual
   evidence.
+- A logo-like appearance alone is never enough to identify a famous brand.
+- When the brand identity is uncertain, ambiguous, or hard to analyze, return
+  an empty detectedMarks array. The platform will approve uncertain images.
 - Set likelyThirdPartyBrand=true only when the image is likely reproducing or
   closely imitating an identifiable existing brand, not merely because it
   contains a logo-like original design.
+- Include a famous-brand wordmark in detectedMarks instead of reporting it only
+  in recognizedText.
 - Treat Korean domestic fashion brands as existing third-party brands too.
   For example, normalize MATIN KIM or 마뗑킴 to "MATIN KIM".
 - Recognize well-known logos even when the brand name is removed, recolored,
@@ -613,37 +618,36 @@ const buildSearchTerms = (marks: DetectedMark[], recognizedText: string[]) =>
 
 const resolveDecision = (
   marks: DetectedMark[],
-  recognizedText: string[],
   kiprisMatches: KiprisMatch[],
+  analysisUnavailable = false,
 ) => {
-  const knownBrandText = recognizedText.find((text) =>
-    blockedFamousBrandAliases.has(comparableName(text))
-  );
   const knownBrandMark = marks.find(
     (mark) =>
       (
         blockedFamousBrandAliases.has(comparableName(mark.normalizedName)) ||
         blockedFamousBrandAliases.has(comparableName(mark.displayName))
       ) &&
-      mark.confidence >= 0.65,
-  );
-  const modelConfirmedFamousMark = marks.find(
-    (mark) =>
-      mark.isGloballyRecognized &&
       mark.likelyThirdPartyBrand &&
-      comparableName(mark.normalizedName).length >= 3 &&
+      mark.matchType !== "unknown" &&
       mark.confidence >= 0.9,
   );
-  const blockedMark = knownBrandMark || modelConfirmedFamousMark;
 
-  if (knownBrandText || blockedMark) {
-    const name = knownBrandText || blockedMark?.displayName ||
-      "유명 브랜드 표지";
+  if (knownBrandMark) {
+    const name = knownBrandMark.displayName || "유명 브랜드 표지";
     return {
       decision: "blocked" as Decision,
       riskLevel: "high" as RiskLevel,
       reason:
         `${name} 등 정확히 식별된 유명 브랜드 로고 또는 매우 유사한 표지가 감지되어 이미지 적용을 차단했습니다.`,
+    };
+  }
+
+  if (analysisUnavailable) {
+    return {
+      decision: "clear" as Decision,
+      riskLevel: "low" as RiskLevel,
+      reason:
+        "AI가 상표를 확실히 식별하지 못해 우선 승인되었습니다. 감지 실패 기록은 관리자 확인용으로 보관됩니다.",
     };
   }
 
@@ -783,7 +787,23 @@ serve(async (req) => {
       });
     }
 
-    const analysis = await analyzeImage(bytes, mimeType, geminiApiKey);
+    let analysis: Awaited<ReturnType<typeof analyzeImage>>;
+    let analysisUnavailable = false;
+    try {
+      analysis = await analyzeImage(bytes, mimeType, geminiApiKey);
+    } catch (analysisError) {
+      analysisUnavailable = true;
+      const message = analysisError instanceof Error
+        ? analysisError.message
+        : "이미지 분석 모델이 결과를 확정하지 못했습니다.";
+      console.warn("Trademark analysis unavailable; approving by policy", message);
+      analysis = {
+        marks: [],
+        recognizedText: [],
+        summary: "AI가 상표를 확실히 식별하지 못해 우선 승인",
+        raw: { analysisUnavailable: true, error: message },
+      };
+    }
     const searchTerms = buildSearchTerms(
       analysis.marks,
       analysis.recognizedText,
@@ -805,8 +825,8 @@ serve(async (req) => {
 
     const resolved = resolveDecision(
       analysis.marks,
-      analysis.recognizedText,
       kiprisMatches,
+      analysisUnavailable,
     );
     const { data: saved, error: saveError } = await adminClient
       .from("trademark_screenings")

@@ -67,6 +67,7 @@ const Customize = () => {
     modificationHistory,
     currentModifiedImageUrl,
     currentArtworkAnalysis,
+    setCurrentArtworkScreeningId,
     setCurrentProductionEstimate,
     handleModifyImage,
     handleResetModifications,
@@ -226,6 +227,7 @@ const Customize = () => {
                 modificationHistory={modificationHistory}
                 currentArtworkAnalysis={currentArtworkAnalysis}
                 onEstimateChange={setCurrentProductionEstimate}
+                onArtworkScreeningApplied={setCurrentArtworkScreeningId}
                 onModifyImage={handleModifyImage}
                 onResetModifications={handleResetModifications}
                 onSelectHistoryImage={handleSelectHistoryImage}

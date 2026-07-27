@@ -139,7 +139,7 @@ function App() {
           windowHeight: window.innerHeight
         }, '*');
       } catch (e) {
-        console.error("Error posting ready message in iframe:", e);
+        console.error("Error posting ready message:", e);
       }
     }
 

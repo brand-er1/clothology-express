@@ -7,7 +7,6 @@ import { MaterialStep } from "@/components/customize/MaterialStep";
 import { DetailStep } from "@/components/customize/DetailStep";
 import { ImageStep } from "@/components/customize/ImageStep";
 import { ModifyImageStep } from "@/components/customize/ModifyImageStep";
-import { Garment3DStudio } from "@/components/customize/Garment3DStudio";
 import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
@@ -228,42 +227,20 @@ const Customize = () => {
             )}
 
             {currentStep === 5 && (
-              <div className="space-y-8">
-                <Garment3DStudio
-                  selectedType={selectedType}
-                  designImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
-                  initialColor={selectedColor}
-                />
-                <div className="rounded-[1.75rem] border border-stone-200 bg-white p-4 sm:p-6">
-                  <div className="mb-6 flex flex-col justify-between gap-3 border-b border-stone-100 pb-5 sm:flex-row sm:items-end">
-                    <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand">
-                        Fine tuning & production
-                      </p>
-                      <h3 className="mt-2 text-xl font-bold tracking-[-0.025em] text-stone-950">
-                        디테일 수정과 자동견적
-                      </h3>
-                    </div>
-                    <p className="max-w-md text-xs leading-5 text-stone-500">
-                      로고·그래픽을 정밀 배치하면 3D 텍스처와 생산 견적에 함께 반영됩니다.
-                    </p>
-                  </div>
-                  <ModifyImageStep
-                    isLoading={imageModifying}
-                    selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
-                    selectedType={selectedType}
-                    selectedMaterial={selectedMaterial}
-                    designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
-                    modificationHistory={modificationHistory}
-                    currentArtworkAnalysis={currentArtworkAnalysis}
-                    onEstimateChange={setCurrentProductionEstimate}
-                    onArtworkScreeningApplied={setCurrentArtworkScreeningId}
-                    onModifyImage={handleModifyImage}
-                    onResetModifications={handleResetModifications}
-                    onSelectHistoryImage={handleSelectHistoryImage}
-                  />
-                </div>
-              </div>
+              <ModifyImageStep
+                isLoading={imageModifying}
+                selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
+                selectedType={selectedType}
+                selectedMaterial={selectedMaterial}
+                designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
+                modificationHistory={modificationHistory}
+                currentArtworkAnalysis={currentArtworkAnalysis}
+                onEstimateChange={setCurrentProductionEstimate}
+                onArtworkScreeningApplied={setCurrentArtworkScreeningId}
+                onModifyImage={handleModifyImage}
+                onResetModifications={handleResetModifications}
+                onSelectHistoryImage={handleSelectHistoryImage}
+              />
             )}
 
             {currentStep === 6 && (

@@ -51,10 +51,11 @@ export const getSupabaseClients = async (req: Request): Promise<{
 };
 
 export const callKakaoPay = async (path: string, body: Record<string, unknown>) => {
-  const secretKey = Deno.env.get("KAKAOPAY_SECRET_KEY");
-  if (!secretKey) {
+  const configuredSecretKey = Deno.env.get("KAKAOPAY_SECRET_KEY");
+  if (!configuredSecretKey) {
     throw new Error("카카오페이 Secret Key가 설정되지 않았습니다.");
   }
+  const secretKey = configuredSecretKey.trim().replace(/^SECRET_KEY\s+/i, "");
 
   const response = await fetch(`https://open-api.kakaopay.com${path}`, {
     method: "POST",
@@ -65,10 +66,20 @@ export const callKakaoPay = async (path: string, body: Record<string, unknown>) 
     body: JSON.stringify(body),
   });
 
-  const payload = await response.json().catch(() => ({}));
+  const rawBody = await response.text();
+  let payload: Record<string, unknown> = {};
+  if (rawBody) {
+    try {
+      payload = JSON.parse(rawBody) as Record<string, unknown>;
+    } catch {
+      throw new Error(`카카오페이 응답 형식을 확인할 수 없습니다. (HTTP ${response.status})`);
+    }
+  }
+
   if (!response.ok) {
-    const message = payload?.error_message || payload?.msg || payload?.message;
-    throw new Error(message || "카카오페이 요청에 실패했습니다.");
+    const message = [payload.error_message, payload.msg, payload.message]
+      .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+    throw new Error(message || `카카오페이 요청에 실패했습니다. (HTTP ${response.status})`);
   }
 
   return payload;
@@ -79,7 +90,7 @@ export const getKakaoPayCid = () => {
   if (!cid) {
     throw new Error("카카오페이 가맹점 CID가 설정되지 않았습니다.");
   }
-  return cid;
+  return cid.trim();
 };
 
 export const getReturnOrigin = (req: Request, requestedUrl?: string) => {

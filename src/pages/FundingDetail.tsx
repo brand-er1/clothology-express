@@ -33,6 +33,7 @@ const FundingDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -94,6 +95,7 @@ const FundingDetail = () => {
       return;
     }
 
+    setPaymentError("");
     setSubmitting(true);
     try {
       const payment = await startKakaoPayFunding(id, selectedColor, selectedSize, quantity);
@@ -122,6 +124,7 @@ const FundingDetail = () => {
         return;
       }
 
+      setPaymentError(message);
       toast({ title: "펀딩 참여에 실패했습니다", description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
@@ -259,6 +262,12 @@ const FundingDetail = () => {
                   {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
                   {isPreview ? "관리자 승인 대기 중" : submitting ? "카카오페이 테스트창 여는 중" : "카카오페이 테스트 결제"}
                 </Button>
+              )}
+              {paymentError && (
+                <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
+                  <p className="font-bold">테스트 결제를 시작하지 못했습니다</p>
+                  <p className="mt-1 break-words">{paymentError}</p>
+                </div>
               )}
               <p className="text-center text-xs font-medium text-amber-700">
                 현재 모의결제 모드이며 실제 금액은 청구되지 않습니다.

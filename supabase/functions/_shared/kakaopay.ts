@@ -14,6 +14,42 @@ export const jsonResponse = (body: unknown, status = 200) =>
 export const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "결제 처리 중 오류가 발생했습니다.";
 
+const unwrapConfigValue = (value: string) => {
+  let normalized = value.trim();
+
+  for (let index = 0; index < 2; index += 1) {
+    const first = normalized[0];
+    const last = normalized[normalized.length - 1];
+    if (normalized.length >= 2 && first === last && ['"', "'", "`"].includes(first)) {
+      normalized = normalized.slice(1, -1).trim();
+    }
+  }
+
+  return normalized;
+};
+
+const getKakaoPaySecretKey = () => {
+  const configuredSecretKey = Deno.env.get("KAKAOPAY_SECRET_KEY");
+  if (!configuredSecretKey) {
+    throw new Error("카카오페이 Secret Key(dev)가 설정되지 않았습니다.");
+  }
+
+  let secretKey = unwrapConfigValue(configuredSecretKey)
+    .replace(/^Authorization\s*:\s*/i, "")
+    .trim()
+    .replace(/^SECRET_KEY(?:\s+|[=:]\s*)/i, "")
+    .trim();
+  secretKey = unwrapConfigValue(secretKey);
+
+  if (!secretKey || /[\s"'`]/.test(secretKey)) {
+    throw new Error(
+      "카카오페이 Secret Key(dev) 형식이 올바르지 않습니다. KAKAOPAY_SECRET_KEY에는 키 값만 저장해주세요.",
+    );
+  }
+
+  return secretKey;
+};
+
 export const getSupabaseClients = async (req: Request): Promise<{
   user: User;
   userClient: ReturnType<typeof createClient>;
@@ -51,11 +87,7 @@ export const getSupabaseClients = async (req: Request): Promise<{
 };
 
 export const callKakaoPay = async (path: string, body: Record<string, unknown>) => {
-  const configuredSecretKey = Deno.env.get("KAKAOPAY_SECRET_KEY");
-  if (!configuredSecretKey) {
-    throw new Error("카카오페이 Secret Key가 설정되지 않았습니다.");
-  }
-  const secretKey = configuredSecretKey.trim().replace(/^SECRET_KEY\s+/i, "");
+  const secretKey = getKakaoPaySecretKey();
 
   const response = await fetch(`https://open-api.kakaopay.com${path}`, {
     method: "POST",
@@ -79,18 +111,42 @@ export const callKakaoPay = async (path: string, body: Record<string, unknown>) 
   if (!response.ok) {
     const message = [payload.error_message, payload.msg, payload.message]
       .find((value): value is string => typeof value === "string" && value.trim().length > 0);
-    throw new Error(message || `카카오페이 요청에 실패했습니다. (HTTP ${response.status})`);
+    const errorCode = [payload.error_code, payload.code]
+      .find((value): value is string | number =>
+        (typeof value === "string" && value.trim().length > 0) || typeof value === "number"
+      );
+    const codeLabel = errorCode === undefined ? "" : ` · 오류코드 ${String(errorCode)}`;
+
+    if (message && /Authorization|인증|지원하지 않는 형식/i.test(message)) {
+      throw new Error(
+        `카카오페이 인증에 실패했습니다. KAKAOPAY_SECRET_KEY에는 Secret Key(dev) 값만 저장해주세요.${codeLabel}`,
+      );
+    }
+
+    throw new Error(
+      message
+        ? `${message}${codeLabel}`
+        : `카카오페이 요청에 실패했습니다. (HTTP ${response.status}${codeLabel})`,
+    );
   }
 
   return payload;
 };
 
 export const getKakaoPayCid = () => {
-  const cid = Deno.env.get("KAKAOPAY_CID");
-  if (!cid) {
+  const configuredCid = Deno.env.get("KAKAOPAY_CID");
+  if (!configuredCid) {
     throw new Error("카카오페이 가맹점 CID가 설정되지 않았습니다.");
   }
-  return cid.trim();
+
+  const cid = unwrapConfigValue(configuredCid)
+    .replace(/^KAKAOPAY_CID\s*=\s*/i, "")
+    .trim();
+  if (!cid || /\s/.test(cid)) {
+    throw new Error("카카오페이 가맹점 CID 형식이 올바르지 않습니다.");
+  }
+
+  return cid;
 };
 
 export const getReturnOrigin = (req: Request, requestedUrl?: string) => {

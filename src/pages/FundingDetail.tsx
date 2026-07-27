@@ -100,8 +100,8 @@ const FundingDetail = () => {
       const payment = await startKakaoPayFunding(id, selectedColor, selectedSize, quantity);
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       const redirectUrl = isMobile
-        ? payment.next_redirect_mobile_url || payment.next_redirect_pc_url
-        : payment.next_redirect_pc_url || payment.next_redirect_mobile_url;
+        ? payment.next_redirect_app_url || payment.next_redirect_mobile_url || payment.next_redirect_pc_url
+        : payment.next_redirect_pc_url || payment.next_redirect_mobile_url || payment.next_redirect_app_url;
 
       if (!redirectUrl) throw new Error("카카오페이 결제창을 열 수 없습니다.");
 

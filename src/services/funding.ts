@@ -216,11 +216,20 @@ const invokePaymentFunction = async <T>(name: string, body: Record<string, unkno
     const context = (error as { context?: Response }).context;
     if (context && typeof context.json === "function") {
       try {
-        const payload = await context.json();
-        message = payload?.error || message;
+        const response = typeof context.clone === "function" ? context.clone() : context;
+        const payload = await response.json();
+        if (typeof payload?.error === "string" && payload.error.trim()) {
+          message = payload.error;
+        } else if (typeof payload?.message === "string" && payload.message.trim()) {
+          message = payload.message;
+        }
       } catch {
         // Supabase의 기본 오류 메시지를 사용합니다.
       }
+    }
+
+    if (/401|unauthorized|invalid jwt|jwt expired/i.test(message)) {
+      throw new Error("로그인 정보가 만료되었습니다. 다시 로그인해주세요.");
     }
     throw new Error(message || "결제 처리 중 오류가 발생했습니다.");
   }

@@ -74,6 +74,7 @@ export const Header = () => {
 
   const navItems = [
     { to: "/fundings", label: "펀딩 둘러보기", visible: true },
+    { to: "/fabric-swatch", label: "원단 스와치", visible: true },
     { to: "/customize?mode=funding", label: "펀딩 만들기", visible: !isAuthenticated || accountType === "seller" },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
     { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated },

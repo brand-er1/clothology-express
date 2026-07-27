@@ -15,6 +15,7 @@ import FundingEditor from './pages/FundingEditor';
 import FundingManager from './pages/FundingManager';
 import MyFundings from './pages/MyFundings';
 import KakaoPayResult from './pages/KakaoPayResult';
+import FabricSwatch from './pages/FabricSwatch';
 import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
@@ -164,6 +165,7 @@ function App() {
           <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
           <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
           <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
+          <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
           <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

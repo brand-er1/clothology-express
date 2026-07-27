@@ -17,6 +17,15 @@ import {
   getFundingErrorMessage,
   reviewFunding as saveFundingReview,
 } from "@/services/funding";
+import { FabricSwatchList } from "@/components/admin/FabricSwatchList";
+import {
+  fetchAllFabricSwatchRequests,
+  updateFabricSwatchRequest,
+} from "@/services/fabricSwatch";
+import type {
+  FabricSwatchRequest,
+  FabricSwatchStatus,
+} from "@/types/fabricSwatch";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -34,6 +43,9 @@ const Admin = () => {
   const [fundings, setFundings] = useState<Funding[]>([]);
   const [selectedFunding, setSelectedFunding] = useState<Funding | null>(null);
   const [isFundingReviewOpen, setIsFundingReviewOpen] = useState(false);
+  const [fabricSwatchRequests, setFabricSwatchRequests] = useState<
+    FabricSwatchRequest[]
+  >([]);
 
   useEffect(() => {
     if (!isCheckingAdmin && !isAdmin) {
@@ -51,6 +63,7 @@ const Admin = () => {
       loadSystemPrompt();
       loadOrders();
       loadFundings();
+      loadFabricSwatchRequests();
     }
   }, [isAdmin]);
 
@@ -109,6 +122,42 @@ const Admin = () => {
     } catch (error) {
       console.error("Error loading fundings:", error);
       toast({ title: "펀딩 목록을 불러오지 못했습니다", variant: "destructive" });
+    }
+  };
+
+  const loadFabricSwatchRequests = async () => {
+    try {
+      setFabricSwatchRequests(await fetchAllFabricSwatchRequests());
+    } catch (error) {
+      console.error("Error loading fabric swatch requests:", error);
+      toast({
+        title: "원단 스와치 신청을 불러오지 못했습니다",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateFabricSwatch = async (
+    request: FabricSwatchRequest,
+    status: FabricSwatchStatus,
+    adminNote: string,
+  ) => {
+    try {
+      setIsSaving(true);
+      await updateFabricSwatchRequest(request.id, status, adminNote);
+      toast({
+        title: "원단 스와치 진행 상태를 저장했습니다",
+      });
+      await loadFabricSwatchRequests();
+    } catch (error) {
+      console.error("Error updating fabric swatch request:", error);
+      toast({
+        title: "원단 스와치 상태를 저장하지 못했습니다",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -232,12 +281,13 @@ const Admin = () => {
           <div className="mb-8">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Brand-er operations</p>
             <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-stone-950 md:text-4xl">브랜더 관리자</h1>
-            <p className="mt-2 text-sm text-stone-500">바로 제작 의뢰와 펀딩 승인 요청을 한곳에서 확인합니다.</p>
+            <p className="mt-2 text-sm text-stone-500">바로 제작 의뢰, 원단 스와치 신청, 펀딩 승인 요청을 한곳에서 확인합니다.</p>
           </div>
 
-          <div className="mb-8 grid gap-4 sm:grid-cols-3">
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
               ["신규 제작 의뢰", orders.filter((order) => order.status === "pending").length],
+              ["신규 스와치 신청", fabricSwatchRequests.filter((request) => request.status === "pending").length],
               ["접수 완료", orders.filter((order) => order.status === "approved").length],
               ["전체 의뢰", orders.length],
             ].map(([label, value]) => (
@@ -255,6 +305,14 @@ const Admin = () => {
               setIsReviewDialogOpen(true);
             }}
           />
+
+          <div className="my-8">
+            <FabricSwatchList
+              requests={fabricSwatchRequests}
+              isSaving={isSaving}
+              onUpdate={handleUpdateFabricSwatch}
+            />
+          </div>
 
           <div className="my-8">
             <FundingList

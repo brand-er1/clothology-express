@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import {
   Bounds,
   ContactShadows,
@@ -10,6 +10,7 @@ import {
   useGLTF,
 } from "@react-three/drei";
 import {
+  CanvasTexture,
   Color,
   DoubleSide,
   Group,
@@ -17,7 +18,6 @@ import {
   Mesh,
   MeshStandardMaterial,
   SRGBColorSpace,
-  TextureLoader,
 } from "three";
 import { Box, ImagePlus, Move3D, RotateCcw, Scan, ZoomIn } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -69,45 +69,213 @@ function LoadingGarment() {
   );
 }
 
+const createGarmentProjection = (
+  image: HTMLImageElement,
+  side: "front" | "back",
+) => {
+  const sourceX = side === "front" ? 0 : image.naturalWidth / 2;
+  const sourceWidth = image.naturalWidth / 2;
+  const sourceHeight = image.naturalHeight;
+  const sample = document.createElement("canvas");
+  sample.width = Math.max(1, Math.round(sourceWidth));
+  sample.height = Math.max(1, sourceHeight);
+  const sampleContext = sample.getContext("2d", { willReadFrequently: true });
+  if (!sampleContext) return null;
+  sampleContext.drawImage(
+    image,
+    sourceX,
+    0,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    sample.width,
+    sample.height,
+  );
+
+  let pixels: ImageData;
+  try {
+    pixels = sampleContext.getImageData(0, 0, sample.width, sample.height);
+  } catch {
+    const texture = new CanvasTexture(sample);
+    texture.colorSpace = SRGBColorSpace;
+    return texture;
+  }
+
+  let minX = sample.width;
+  let minY = sample.height;
+  let maxX = 0;
+  let maxY = 0;
+  for (let y = 0; y < sample.height; y += 1) {
+    for (let x = 0; x < sample.width; x += 1) {
+      const index = (y * sample.width + x) * 4;
+      const red = pixels.data[index];
+      const green = pixels.data[index + 1];
+      const blue = pixels.data[index + 2];
+      const maximum = Math.max(red, green, blue);
+      const minimum = Math.min(red, green, blue);
+      const isBackground = minimum > 238 && maximum - minimum < 13;
+      if (isBackground) {
+        pixels.data[index + 3] = 0;
+      } else if (pixels.data[index + 3] > 12) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  sampleContext.putImageData(pixels, 0, 0);
+
+  const output = document.createElement("canvas");
+  output.width = 1024;
+  output.height = 1024;
+  const outputContext = output.getContext("2d");
+  if (!outputContext) return null;
+  const foundGarment = maxX > minX && maxY > minY;
+  const cropX = foundGarment ? minX : 0;
+  const cropY = foundGarment ? minY : 0;
+  const cropWidth = foundGarment ? maxX - minX + 1 : sample.width;
+  const cropHeight = foundGarment ? maxY - minY + 1 : sample.height;
+  const fitScale = Math.min(900 / cropWidth, 940 / cropHeight);
+  const drawWidth = cropWidth * fitScale;
+  const drawHeight = cropHeight * fitScale;
+  outputContext.drawImage(
+    sample,
+    cropX,
+    cropY,
+    cropWidth,
+    cropHeight,
+    (output.width - drawWidth) / 2,
+    (output.height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+  const texture = new CanvasTexture(output);
+  texture.colorSpace = SRGBColorSpace;
+  texture.minFilter = LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+};
+
+function useDesignProjections(textureUrl: string | null) {
+  const [textures, setTextures] = useState<{
+    front: CanvasTexture | null;
+    back: CanvasTexture | null;
+  }>({ front: null, back: null });
+
+  useEffect(() => {
+    if (!textureUrl) {
+      setTextures({ front: null, back: null });
+      return;
+    }
+    let active = true;
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => {
+      const front = createGarmentProjection(image, "front");
+      const back = createGarmentProjection(image, "back");
+      if (active) setTextures({ front, back });
+    };
+    image.onerror = () => {
+      if (active) setTextures({ front: null, back: null });
+    };
+    image.src = textureUrl;
+    return () => {
+      active = false;
+    };
+  }, [textureUrl]);
+
+  return textures;
+}
+
+function ProjectedDesign({
+  textureUrl,
+  type,
+  scale = 1,
+  offsetX = 0,
+  offsetY = 0,
+}: {
+  textureUrl: string | null;
+  type: string;
+  scale?: number;
+  offsetX?: number;
+  offsetY?: number;
+}) {
+  const { front, back } = useDesignProjections(textureUrl);
+  if (!front && !back) return null;
+  const isBottom = type === "long_pants" || type === "short_pants";
+  const width = isBottom ? 2.45 : 3;
+  const height = isBottom
+    ? type === "short_pants" ? 2.15 : 4.15
+    : 3.6;
+  const y = isBottom
+    ? type === "short_pants" ? -0.2 : -1.2
+    : -0.1;
+  const z = isBottom ? 0.318 : 0.348;
+
+  return (
+    <group position={[offsetX, y + offsetY, 0]} scale={scale}>
+      {front && (
+        <mesh position={[0, 0, z]} renderOrder={3}>
+          <planeGeometry args={[width, height]} />
+          <meshBasicMaterial
+            map={front}
+            transparent
+            alphaTest={0.04}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
+      {back && (
+        <mesh position={[0, 0, -z]} rotation={[0, Math.PI, 0]} renderOrder={3}>
+          <planeGeometry args={[width, height]} />
+          <meshBasicMaterial
+            map={back}
+            transparent
+            alphaTest={0.04}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
 function GLBGarment({
   url,
   textureUrl,
+  type,
   color,
   roughness,
   autoRotate,
 }: {
   url: string;
   textureUrl: string | null;
+  type: string;
   color: string;
   roughness: number;
   autoRotate: boolean;
 }) {
   const { scene } = useGLTF(url);
   const group = useRef<Group>(null);
-  const texture = useLoader(
-    TextureLoader,
-    textureUrl || "/placeholder.svg",
-  );
-
   const model = useMemo(() => {
     const cloned = scene.clone(true);
-    texture.colorSpace = SRGBColorSpace;
-    texture.flipY = false;
-    texture.minFilter = LinearFilter;
     cloned.traverse((object) => {
       if (!(object instanceof Mesh)) return;
       object.castShadow = true;
       object.receiveShadow = true;
       object.material = new MeshStandardMaterial({
         color: new Color(color),
-        map: textureUrl ? texture : null,
         roughness,
         metalness: 0.02,
         side: DoubleSide,
       });
     });
     return cloned;
-  }, [scene, texture, textureUrl, color, roughness]);
+  }, [scene, color, roughness]);
 
   useFrame((_, delta) => {
     if (autoRotate && group.current) group.current.rotation.y += delta * 0.28;
@@ -116,6 +284,7 @@ function GLBGarment({
   return (
     <group ref={group}>
       <primitive object={model} />
+      <ProjectedDesign textureUrl={textureUrl} type={type} />
     </group>
   );
 }
@@ -140,9 +309,6 @@ function FallbackGarment({
   autoRotate: boolean;
 }) {
   const group = useRef<Group>(null);
-  const texture = useLoader(TextureLoader, textureUrl || "/placeholder.svg");
-  texture.colorSpace = SRGBColorSpace;
-
   const material = useMemo(
     () =>
       new MeshStandardMaterial({
@@ -151,16 +317,6 @@ function FallbackGarment({
         metalness: 0.01,
       }),
     [color, roughness],
-  );
-  const printMaterial = useMemo(
-    () =>
-      new MeshStandardMaterial({
-        map: textureUrl ? texture : null,
-        color: textureUrl ? "#ffffff" : color,
-        roughness,
-        transparent: true,
-      }),
-    [texture, textureUrl, color, roughness],
   );
   const isBottom = type === "long_pants" || type === "short_pants";
   const longSleeve = ["long_sleeve", "hoodie", "sweatshirt", "jacket"].includes(type);
@@ -176,10 +332,13 @@ function FallbackGarment({
         <RoundedBox args={[2.5, 1.1, 0.62]} radius={0.18} smoothness={4} material={material} />
         <RoundedBox args={[1.13, legHeight, 0.58]} radius={0.18} smoothness={4} position={[-0.65, -legHeight / 2, 0]} material={material} />
         <RoundedBox args={[1.13, legHeight, 0.58]} radius={0.18} smoothness={4} position={[0.65, -legHeight / 2, 0]} material={material} />
-        <mesh position={[offsetX, -0.15 + offsetY, 0.326]} scale={scale}>
-          <planeGeometry args={[1.6, 0.78]} />
-          <primitive object={printMaterial} attach="material" />
-        </mesh>
+        <ProjectedDesign
+          textureUrl={textureUrl}
+          type={type}
+          scale={scale}
+          offsetX={offsetX}
+          offsetY={offsetY}
+        />
       </group>
     );
   }
@@ -208,10 +367,13 @@ function FallbackGarment({
           <torusGeometry args={[0.95, 0.42, 18, 48, Math.PI]} />
         </mesh>
       )}
-      <mesh position={[offsetX, offsetY, 0.352]} scale={scale}>
-        <planeGeometry args={[2.28, 2.45]} />
-        <primitive object={printMaterial} attach="material" />
-      </mesh>
+      <ProjectedDesign
+        textureUrl={textureUrl}
+        type={type}
+        scale={scale}
+        offsetX={offsetX}
+        offsetY={offsetY}
+      />
     </group>
   );
 }
@@ -250,6 +412,7 @@ function Scene({
             <GLBGarment
               url={modelUrl}
               textureUrl={textureUrl}
+              type={selectedType}
               color={color}
               roughness={roughness}
               autoRotate={autoRotate}

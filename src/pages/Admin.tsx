@@ -59,6 +59,8 @@ const Admin = () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
+        .neq('status', 'draft')
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -67,7 +69,7 @@ const Admin = () => {
       console.error('Error loading orders:', error);
       toast({
         title: "오류",
-        description: "주문 목록을 불러오는데 실패했습니다.",
+        description: "바로 제작 의뢰 목록을 불러오는데 실패했습니다.",
         variant: "destructive",
       });
     }
@@ -184,8 +186,11 @@ const Admin = () => {
       if (error) throw error;
 
       toast({
-        title: "상태 업데이트 완료",
-        description: `주문이 ${status === 'approved' ? '승인' : '거부'}되었습니다.`,
+        title: status === 'approved' ? "제작 의뢰를 접수했습니다" : "진행 불가로 처리했습니다",
+        description:
+          status === 'approved'
+            ? "고객 의뢰 내역에 접수 완료로 표시됩니다."
+            : "고객 의뢰 내역에 검토 결과가 표시됩니다.",
       });
 
       setIsReviewDialogOpen(false);
@@ -194,7 +199,7 @@ const Admin = () => {
       console.error('Error updating order status:', error);
       toast({
         title: "오류",
-        description: "주문 상태 업데이트에 실패했습니다.",
+        description: "제작 의뢰 상태를 변경하지 못했습니다.",
         variant: "destructive",
       });
     } finally {
@@ -220,16 +225,35 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="container mx-auto px-4 pt-24 pb-12">
+      <main className="container mx-auto px-4 pb-16 pt-24">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">브랜더 관리자</h1>
-          
-          <SystemPromptEditor
-            systemPrompt={systemPrompt}
-            isLoading={isLoading}
-            onSave={handleSaveSystemPrompt}
+          <div className="mb-8">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Brand-er operations</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-stone-950 md:text-4xl">브랜더 관리자</h1>
+            <p className="mt-2 text-sm text-stone-500">바로 제작 의뢰와 펀딩 승인 요청을 한곳에서 확인합니다.</p>
+          </div>
+
+          <div className="mb-8 grid gap-4 sm:grid-cols-3">
+            {[
+              ["신규 제작 의뢰", orders.filter((order) => order.status === "pending").length],
+              ["접수 완료", orders.filter((order) => order.status === "approved").length],
+              ["전체 의뢰", orders.length],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold text-stone-500">{label}</p>
+                <p className="mt-3 text-3xl font-black text-stone-950">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <OrderList
+            orders={orders}
+            onReviewOrder={(order) => {
+              setSelectedOrder(order);
+              setIsReviewDialogOpen(true);
+            }}
           />
 
           <div className="my-8">
@@ -242,12 +266,10 @@ const Admin = () => {
             />
           </div>
 
-          <OrderList
-            orders={orders}
-            onReviewOrder={(order) => {
-              setSelectedOrder(order);
-              setIsReviewDialogOpen(true);
-            }}
+          <SystemPromptEditor
+            systemPrompt={systemPrompt}
+            isLoading={isLoading}
+            onSave={handleSaveSystemPrompt}
           />
 
           <OrderReviewDialog

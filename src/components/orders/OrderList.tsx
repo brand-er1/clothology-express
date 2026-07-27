@@ -38,13 +38,13 @@ export const OrderList = ({ orders, onDeleteOrder }: OrderListProps) => {
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'approved':
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> 승인됨</Badge>;
+        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> 접수 완료</Badge>;
       case 'rejected':
-        return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" /> 거부됨</Badge>;
+        return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" /> 진행 불가</Badge>;
       case 'draft':
         return <Badge className="bg-blue-500">임시저장</Badge>;
       default:
-        return <Badge className="bg-yellow-500"><Clock className="h-3 w-3 mr-1" /> 검토중</Badge>;
+        return <Badge className="bg-yellow-500"><Clock className="h-3 w-3 mr-1" /> 검토 중</Badge>;
     }
   };
 
@@ -83,9 +83,9 @@ export const OrderList = ({ orders, onDeleteOrder }: OrderListProps) => {
         <CardContent className="pt-6">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <ShoppingBag className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium">주문 내역이 없습니다</h3>
+            <h3 className="text-lg font-medium">제작 의뢰 내역이 없습니다</h3>
             <p className="text-sm text-gray-500 mt-2">
-              아직 주문한 상품이 없습니다. 맞춤 주문을 통해 나만의 의류를 만들어보세요.
+              제작 수량이 정해졌다면 바로 제작 의뢰를 접수해보세요.
             </p>
           </div>
         </CardContent>
@@ -141,7 +141,7 @@ export const OrderList = ({ orders, onDeleteOrder }: OrderListProps) => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>주문일자</TableHead>
+            <TableHead>의뢰일자</TableHead>
             <TableHead>의류 종류</TableHead>
             <TableHead>상태</TableHead>
             <TableHead>상세정보</TableHead>
@@ -185,7 +185,7 @@ export const OrderList = ({ orders, onDeleteOrder }: OrderListProps) => {
     <div className="space-y-6">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-xl md:text-2xl">나의 주문 내역</CardTitle>
+          <CardTitle className="text-xl md:text-2xl">나의 제작 의뢰 내역</CardTitle>
         </CardHeader>
         <CardContent>
           {isMobile ? <MobileOrderList /> : <DesktopOrderList />}
@@ -203,9 +203,9 @@ export const OrderList = ({ orders, onDeleteOrder }: OrderListProps) => {
       <Dialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
         <DialogContent className="max-w-[90%] md:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg md:text-xl">주문 삭제 확인</DialogTitle>
+            <DialogTitle className="text-lg md:text-xl">제작 의뢰 삭제 확인</DialogTitle>
             <DialogDescription className="text-base">
-              정말로 이 주문을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              이 제작 의뢰를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
             </DialogDescription>
           </DialogHeader>
           
@@ -215,7 +215,7 @@ export const OrderList = ({ orders, onDeleteOrder }: OrderListProps) => {
                 <AlertTriangle className="h-12 w-12" />
               </div>
               <div className="space-y-2 text-base">
-                <p><span className="font-medium">주문일시:</span> {formatDate(orderToDelete.created_at)}</p>
+                <p><span className="font-medium">의뢰일시:</span> {formatDate(orderToDelete.created_at)}</p>
                 <p><span className="font-medium">의류 종류:</span> {orderToDelete.cloth_type}</p>
                 <p><span className="font-medium">상태:</span> {getStatusBadge(orderToDelete.status)}</p>
               </div>

@@ -4,6 +4,51 @@ import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
 
+export interface DirectProductionRequestInput {
+  clothType: string;
+  material: string;
+  detailDescription: string;
+  size: string;
+  measurements: Record<string, unknown> | null;
+  generatedImageUrl: string;
+  imagePath: string | null;
+}
+
+export const createDirectProductionRequest = async (
+  input: DirectProductionRequestInput,
+) => {
+  const { data } = await supabase.auth.getSession();
+  const user = data.session?.user;
+
+  if (!user) {
+    throw new Error("바로 제작 의뢰를 접수하려면 로그인이 필요합니다.");
+  }
+
+  const { data: orderData, error } = await supabase.functions.invoke("save-order", {
+    body: {
+      userId: user.id,
+      clothType: input.clothType,
+      material: input.material,
+      detailDescription: input.detailDescription,
+      size: input.size,
+      measurements: input.measurements,
+      generatedImageUrl: input.generatedImageUrl,
+      imagePath: input.imagePath,
+      status: "pending",
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message || "제작 의뢰를 저장하지 못했습니다.");
+  }
+
+  if (!orderData?.success) {
+    throw new Error(orderData?.error || "제작 의뢰를 저장하지 못했습니다.");
+  }
+
+  return orderData;
+};
+
 // Function to create a draft order when generating an image
 export const createDraftOrder = async (
   selectedType: string,
@@ -77,7 +122,7 @@ export const createDraftOrder = async (
 
     console.log("Draft order created:", orderData);
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Draft order creation error:", error);
     return false;
   }
@@ -221,7 +266,7 @@ export const createOrder = async (
       success: true,
       redirectToConfirmation: true
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Order creation error:", error);
     toast({
       title: "주문 실패",

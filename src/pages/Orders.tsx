@@ -29,7 +29,7 @@ const Orders = () => {
   }, []);
 
   const handleNewOrder = () => {
-    navigate('/customize');
+    navigate('/customize?mode=direct');
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -45,20 +45,20 @@ const Orders = () => {
       <Header />
       <main className="container mx-auto px-4 pt-20 md:pt-24 pb-12">
         <div className={`flex ${isMobile ? 'flex-col' : 'justify-between'} items-center mb-6 md:mb-8 gap-4`}>
-          <h1 className="text-2xl md:text-3xl font-bold">내 주문 내역</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">내 제작 의뢰</h1>
           <Button 
             onClick={handleNewOrder}
             className={`bg-brand hover:bg-brand-dark ${isMobile ? 'w-full h-12 text-base' : ''}`}
           >
             <ShoppingBag className="mr-2 h-5 w-5" />
-            새 주문 만들기
+            새 제작 의뢰
           </Button>
         </div>
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-brand" />
-            <span className="ml-2 text-lg">주문 내역을 불러오는 중...</span>
+            <span className="ml-2 text-lg">제작 의뢰를 불러오는 중...</span>
           </div>
         ) : (
           <OrderList orders={orders} onDeleteOrder={handleDeleteOrder} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Info, Ruler, Users } from "lucide-react";
+import { Check, Info, PackageCheck, Ruler, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,9 @@ interface SizeStepProps {
   gender?: string;
   productionSizeSelection: ProductionSizeSelection | null;
   onProductionSizeChange: (selection: ProductionSizeSelection) => void;
+  mode?: "funding" | "direct";
+  directQuantity?: number;
+  onDirectQuantityChange?: (quantity: number) => void;
 }
 
 const toNumericValue = (value: string) =>
@@ -32,6 +35,9 @@ export const SizeStep = ({
   gender,
   productionSizeSelection,
   onProductionSizeChange,
+  mode = "funding",
+  directQuantity = 20,
+  onDirectQuantityChange,
 }: SizeStepProps) => {
   const [selectedGender, setSelectedGender] = useState<ProductionGender>(
     normalizeProductionGender(gender),
@@ -128,10 +134,14 @@ export const SizeStep = ({
             <div>
               <p className="flex items-center gap-2 text-sm font-bold text-white/75">
                 <Ruler className="h-4 w-4" />
-                펀딩 등록 전 마지막 확인
+                {mode === "direct"
+                  ? "바로 제작 의뢰 전 마지막 확인"
+                  : "펀딩 등록 전 마지막 확인"}
               </p>
               <h2 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">
-                생산 사이즈를 선택하세요
+                {mode === "direct"
+                  ? "제작 수량과 사이즈를 선택하세요"
+                  : "생산 사이즈를 선택하세요"}
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/75">
                 {category} 카테고리 평균 실측을 기준으로 1·2·3 사이즈를
@@ -207,6 +217,38 @@ export const SizeStep = ({
           </div>
 
           <div className="p-5 md:p-7">
+            {mode === "direct" && (
+              <div className="mb-6 grid gap-4 rounded-2xl border border-brand/15 bg-brand/5 p-5 sm:grid-cols-[1fr_220px] sm:items-center">
+                <div className="flex gap-3">
+                  <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+                  <div>
+                    <h3 className="font-black text-gray-950">바로 제작할 총수량</h3>
+                    <p className="mt-1 text-sm leading-6 text-gray-600">
+                      총 20장부터 접수할 수 있습니다. 사이즈별 세부 수량은 담당자 상담에서 최종 확정합니다.
+                    </p>
+                  </div>
+                </div>
+                <div className="relative">
+                  <Input
+                    aria-label="바로 제작 총수량"
+                    type="number"
+                    min={20}
+                    step={10}
+                    value={directQuantity}
+                    onChange={(event) =>
+                      onDirectQuantityChange?.(
+                        Math.max(0, Number(event.target.value) || 0),
+                      )
+                    }
+                    className="h-12 rounded-xl bg-white pr-12 text-right text-lg font-black"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-3.5 text-sm font-bold text-gray-500">
+                    장
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>
                 <h3 className="text-lg font-black text-gray-950">

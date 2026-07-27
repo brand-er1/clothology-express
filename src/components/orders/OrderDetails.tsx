@@ -38,9 +38,9 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'approved':
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> 승인됨</Badge>;
+        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> 접수 완료</Badge>;
       case 'rejected':
-        return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" /> 거부됨</Badge>;
+        return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" /> 진행 불가</Badge>;
       case 'draft':
         return <Badge className="bg-blue-500"><FileEdit className="h-3 w-3 mr-1" /> 임시저장</Badge>;
       default:
@@ -83,9 +83,9 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
     <Dialog open={!!order} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle className="text-lg md:text-xl">주문 상세 정보</DialogTitle>
+          <DialogTitle className="text-lg md:text-xl">제작 의뢰 상세 정보</DialogTitle>
           <DialogDescription className="text-base">
-            주문일시: {formatDate(order.created_at)}
+            의뢰일시: {formatDate(order.created_at)}
             <span className="ml-2">{getStatusBadge(order.status)}</span>
           </DialogDescription>
         </DialogHeader>

@@ -28,13 +28,13 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
         return { 
           color: 'text-green-600',
           icon: <CheckCircle className="h-4 w-4 mr-1" />,
-          text: '승인됨' 
+          text: '접수 완료'
         };
       case 'rejected':
         return { 
           color: 'text-red-600',
           icon: <XCircle className="h-4 w-4 mr-1" />,
-          text: '거부됨' 
+          text: '진행 불가'
         };
       case 'deleted':
         return { 
@@ -46,7 +46,7 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
         return { 
           color: 'text-yellow-600',
           icon: <Clock className="h-4 w-4 mr-1" />,
-          text: '대기 중' 
+          text: '신규 의뢰'
         };
     }
   };
@@ -92,7 +92,7 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                 onClick={() => onReviewOrder(order)}
                 className="w-full h-10 text-base"
               >
-                {order.status === 'pending' ? '검토하기' : '상세보기'}
+                {order.status === 'pending' ? '의뢰 확인하기' : '상세보기'}
               </Button>
             </CardContent>
           </Card>
@@ -106,7 +106,7 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>주문일시</TableHead>
+          <TableHead>의뢰일시</TableHead>
           <TableHead>의류 종류</TableHead>
           <TableHead>상태</TableHead>
           <TableHead>상세</TableHead>
@@ -138,7 +138,7 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                     size="sm"
                     onClick={() => onReviewOrder(order)}
                   >
-                    검토하기
+                    의뢰 확인
                   </Button>
                 ) : (
                   <Button
@@ -158,12 +158,17 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
   );
 
   return (
-    <Card className="p-4 md:p-6">
+    <Card className="border-stone-200 p-4 shadow-sm md:p-6">
       <CardHeader className="px-0 pt-0">
-        <CardTitle className="text-xl md:text-2xl">주문 관리</CardTitle>
+        <CardTitle className="text-xl md:text-2xl">바로 제작 의뢰 관리</CardTitle>
       </CardHeader>
       <CardContent className="px-0 pb-0">
-        {isMobile ? <MobileOrderList /> : <DesktopOrderList />}
+        {orders.length === 0 ? (
+          <div className="rounded-2xl bg-stone-50 px-5 py-12 text-center">
+            <p className="font-semibold text-stone-700">접수된 바로 제작 의뢰가 없습니다.</p>
+            <p className="mt-2 text-sm text-stone-500">새 의뢰가 들어오면 이곳에 표시됩니다.</p>
+          </div>
+        ) : isMobile ? <MobileOrderList /> : <DesktopOrderList />}
       </CardContent>
     </Card>
   );

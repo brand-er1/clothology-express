@@ -21,6 +21,7 @@ export const fetchUserOrders = async (): Promise<Order[] | null> => {
       .from('orders')
       .select('*')
       .eq('user_id', user.id)
+      .neq('status', 'draft')
       .neq('status', 'deleted') // Exclude deleted orders
       .order('created_at', { ascending: false });
 
@@ -35,7 +36,7 @@ export const fetchUserOrders = async (): Promise<Order[] | null> => {
     }
 
     return orders as Order[];
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Order fetching error:", error);
     toast({
       title: "주문 내역 로드 실패",
@@ -119,7 +120,7 @@ export const deleteOrder = async (orderId: string): Promise<boolean> => {
     });
     
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Order deletion error:", error);
     toast({
       title: "주문 삭제 실패",

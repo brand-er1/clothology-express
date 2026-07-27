@@ -11,11 +11,14 @@ import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
 
 const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode") === "direct" ? "direct" : "funding";
 
   const {
     currentStep,
@@ -46,7 +49,7 @@ const Customize = () => {
     setSelectedThickness,
     selectedSeason,
     setSelectedSeason,
-    isLoading: isCreatingFunding,
+    isLoading: isSubmitting,
     imageLoading,
     generatedImageUrls,
     storedImageUrls,
@@ -55,6 +58,8 @@ const Customize = () => {
     generatedPrompt,
     productionSizeSelection,
     handleProductionSizeChange,
+    directQuantity,
+    setDirectQuantity,
     handleAddMaterial,
     handleGenerateImage,
     handleNext,
@@ -69,7 +74,7 @@ const Customize = () => {
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,
-  } = useCustomizeForm();
+  } = useCustomizeForm(mode);
 
   const stepContent = [
     ["무엇을 만들까요?", "첫 컬렉션으로 제작할 의류 아이템을 선택해주세요."],
@@ -77,7 +82,9 @@ const Customize = () => {
     ["디자인을 구체화해볼까요?", "컬러, 핏과 디테일을 선택하면 AI가 이해할 제작 방향이 완성됩니다."],
     ["첫 디자인을 생성합니다", "입력한 조건을 바탕으로 앞·뒤 의류 디자인을 확인해보세요."],
     ["내 디자인으로 완성하세요", "이미지를 편집하고 로고를 배치하면 견적과 상표 분석이 함께 진행됩니다."],
-    ["판매할 사이즈를 정해주세요", "성별·카테고리별 추천표를 참고해 출시 사이즈와 수량을 설정합니다."],
+    mode === "direct"
+      ? ["제작 수량과 사이즈를 정해주세요", "성별·카테고리별 추천표를 참고해 바로 생산할 수량과 사이즈를 설정합니다."]
+      : ["판매할 사이즈를 정해주세요", "성별·카테고리별 추천표를 참고해 출시 사이즈를 설정합니다."],
   ];
 
   // 사용자 정보 가져오기
@@ -129,13 +136,17 @@ const Customize = () => {
         <div>
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Brand-er design studio</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+                {mode === "direct" ? "Direct production request" : "Brand-er funding studio"}
+              </p>
               <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-stone-950 md:text-5xl">
-                나만의 첫 컬렉션
+                {mode === "direct" ? "바로 제작 의뢰" : "나만의 첫 컬렉션"}
               </h1>
             </div>
             <p className="max-w-sm text-sm leading-6 text-stone-500">
-              선택한 정보는 AI 디자인과 자동 견적에 함께 반영됩니다. 언제든 이전 단계로 돌아가 수정할 수 있어요.
+              {mode === "direct"
+                ? "AI 디자인과 자동 견적을 확인한 뒤 제작 의뢰를 접수하면 담당자가 사양을 검토해 연락드립니다."
+                : "선택한 정보는 AI 디자인과 자동 견적에 함께 반영됩니다. 언제든 이전 단계로 돌아가 수정할 수 있어요."}
             </p>
           </div>
 
@@ -238,6 +249,9 @@ const Customize = () => {
                 onProductionSizeChange={handleProductionSizeChange}
                 selectedType={selectedType}
                 gender={userGender}
+                mode={mode}
+                directQuantity={directQuantity}
+                onDirectQuantityChange={setDirectQuantity}
               />
             )}
             </div>
@@ -254,13 +268,15 @@ const Customize = () => {
               ) : <div />}
               <Button
                 onClick={handleNext}
-                disabled={isCreatingFunding}
+                disabled={isSubmitting}
                 className="h-12 rounded-full bg-brand px-7 font-bold hover:bg-brand-dark"
               >
                 {currentStep === 4
                   ? "이 디자인 편집하기"
                   : currentStep === TOTAL_STEPS
-                    ? (isCreatingFunding ? "펀딩 페이지 만드는 중..." : "이 디자인으로 펀딩 만들기")
+                    ? mode === "direct"
+                      ? (isSubmitting ? "제작 의뢰 접수 중..." : "이 디자인으로 바로 제작 의뢰하기")
+                      : (isSubmitting ? "펀딩 페이지 만드는 중..." : "이 디자인으로 펀딩 만들기")
                     : "다음 단계"}
               </Button>
             </div>

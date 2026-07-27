@@ -77,6 +77,10 @@ const faqs = [
     answer: "자동 견적은 이미지와 선택 사양을 기준으로 계산한 예상 범위입니다. 원단 실물, 패턴 난이도와 후가공 사양을 확정한 뒤 최종 금액이 달라질 수 있습니다.",
   },
   {
+    question: "펀딩 없이 바로 제작을 의뢰할 수도 있나요?",
+    answer: "가능합니다. 제작할 수량이 이미 정해졌다면 ‘바로 제작 의뢰하기’를 선택하세요. AI 디자인과 자동 견적을 확인하고 의뢰서를 접수하면 담당자가 사양을 검토해 연락드립니다.",
+  },
+  {
     question: "다른 브랜드 로고를 넣어도 되나요?",
     answer: "유명 국내·해외 브랜드로 확인되는 고위험 로고는 자동 차단됩니다. 식별이 어렵거나 일반적인 이미지는 우선 통과 후 관리자 검토가 진행되며, 사용 권리에 대한 책임은 업로드한 사용자에게 있습니다.",
   },
@@ -169,7 +173,7 @@ const Index = () => {
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-stone-300 bg-white/50 px-8 text-base hover:bg-white">
-                  <Link to="/customize">내 아이디어 시작하기</Link>
+                  <Link to="/customize?mode=direct">바로 제작 의뢰하기</Link>
                 </Button>
               </div>
               <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-stone-500">
@@ -305,14 +309,31 @@ const Index = () => {
               <div>
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-[#e1b2ad]"><Sparkles className="h-5 w-5" /></span>
                 <p className="mt-10 text-xs font-bold uppercase tracking-[0.2em] text-[#e1b2ad]">For makers</p>
-                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">누구나 아이디어를<br />브랜드로.</h2>
+                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">상황에 맞는 방식으로<br />아이디어를 제품으로.</h2>
                 <p className="mt-5 max-w-md text-sm leading-7 text-white/58">
-                  전문 지식이 없어도 AI 디자인, 자동 견적과 펀딩을 이용해 재고 부담 없이 첫 컬렉션을 시작할 수 있습니다.
+                  수요를 먼저 확인하고 싶다면 펀딩으로, 제작 수량이 이미 정해졌다면 바로 제작으로 시작하세요.
                 </p>
+                <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <Users className="h-5 w-5 text-[#e1b2ad]" />
+                    <p className="mt-4 font-bold">펀딩이 필요한 경우</p>
+                    <p className="mt-1 text-xs leading-5 text-white/50">재고 부담 없이 수요를 확인한 뒤 생산</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <Factory className="h-5 w-5 text-[#e1b2ad]" />
+                    <p className="mt-4 font-bold">바로 제작할 경우</p>
+                    <p className="mt-1 text-xs leading-5 text-white/50">확정 수량으로 제작 의뢰를 바로 접수</p>
+                  </div>
+                </div>
               </div>
-              <Button asChild variant="outline" className="mt-10 h-12 w-fit rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-stone-950">
-                <Link to="/customize">내 아이디어 만들어보기 <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button asChild variant="outline" className="h-12 rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-stone-950">
+                  <Link to="/customize?mode=funding">펀딩으로 시작 <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                </Button>
+                <Button asChild className="h-12 rounded-full bg-brand px-6 text-white hover:bg-brand-light">
+                  <Link to="/customize?mode=direct">바로 제작 의뢰 <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                </Button>
+              </div>
             </article>
           </div>
         </section>
@@ -410,7 +431,7 @@ const Index = () => {
                 <Link to="/fundings">펀딩 둘러보기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-transparent px-8 text-base text-white hover:bg-white hover:text-stone-950">
-                <Link to="/customize">디자인 시작하기</Link>
+                <Link to="/customize?mode=direct">바로 제작 의뢰하기</Link>
               </Button>
             </div>
           </div>

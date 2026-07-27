@@ -23,6 +23,15 @@ interface OrderReviewDialogProps {
   onUpdateStatus: (status: 'approved' | 'rejected', comment: string) => Promise<void>;
 }
 
+interface RequestUserProfile {
+  full_name?: string | null;
+  phone_number?: string | null;
+  address?: string | null;
+  gender?: string | null;
+  height?: number | null;
+  weight?: number | null;
+}
+
 export const OrderReviewDialog = ({
   order,
   isOpen,
@@ -33,7 +42,7 @@ export const OrderReviewDialog = ({
   const [adminComment, setAdminComment] = useState(order?.admin_comment || "");
   const [imageError, setImageError] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(order?.generated_image_url || null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<RequestUserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   // 주문 정보가 변경되면 댓글 초기화 및 사용자 정보 가져오기
@@ -123,7 +132,7 @@ export const OrderReviewDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle>주문 검토</DialogTitle>
+          <DialogTitle>바로 제작 의뢰 검토</DialogTitle>
         </DialogHeader>
         
         {order && (
@@ -131,7 +140,7 @@ export const OrderReviewDialog = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2 text-base md:text-lg">주문 정보</h3>
+                  <h3 className="font-semibold mb-2 text-base md:text-lg">제작 의뢰 정보</h3>
                   <dl className="space-y-2 text-sm md:text-base">
                     <div>
                       <dt className="text-sm text-gray-500">의류 종류</dt>
@@ -244,11 +253,11 @@ export const OrderReviewDialog = ({
             </div>
 
             <div>
-              <h3 className="font-semibold mb-2 text-base md:text-lg">검토 의견</h3>
+              <h3 className="font-semibold mb-2 text-base md:text-lg">고객 안내 및 검토 의견</h3>
               <Textarea
                 value={adminComment}
                 onChange={(e) => setAdminComment(e.target.value)}
-                placeholder="승인 또는 거부 사유를 입력하세요"
+                placeholder="제작 가능 여부, 확인할 내용 또는 진행 불가 사유를 입력하세요"
                 className="min-h-[80px] md:min-h-[100px] text-sm"
               />
             </div>
@@ -270,14 +279,14 @@ export const OrderReviewDialog = ({
             disabled={isSaving || !adminComment}
             className="w-full sm:w-auto"
           >
-            거부하기
+            진행 불가
           </Button>
           <Button
             onClick={() => onUpdateStatus('approved', adminComment)}
             disabled={isSaving}
             className="w-full sm:w-auto"
           >
-            승인하기
+            의뢰 접수
           </Button>
         </DialogFooter>
       </DialogContent>

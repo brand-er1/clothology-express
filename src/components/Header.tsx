@@ -74,7 +74,7 @@ export const Header = () => {
 
   const navItems = [
     { to: "/fundings", label: "펀딩 둘러보기", visible: true },
-    { to: "/customize", label: "AI 디자인", visible: !isAuthenticated || accountType === "seller" },
+    { to: "/customize?mode=funding", label: "펀딩 만들기", visible: !isAuthenticated || accountType === "seller" },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
     { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated },
     { to: "/admin", label: "관리자", visible: isAdmin },
@@ -120,6 +120,11 @@ export const Header = () => {
         <div className="mt-auto space-y-2 border-t border-stone-200 pt-5">
           {isAuthenticated ? (
             <>
+              {accountType === "seller" && (
+                <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
+                  <Link to="/customize?mode=direct">바로 제작 의뢰하기</Link>
+                </Button>
+              )}
               <Button asChild variant="outline" className="h-11 w-full rounded-full border-stone-300">
                 <Link to="/profile">프로필 관리</Link>
               </Button>
@@ -172,6 +177,13 @@ export const Header = () => {
         <div className="ml-auto hidden items-center gap-2 md:flex">
           {isAuthenticated ? (
             <>
+              {accountType === "seller" && (
+                <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark">
+                  <Link to="/customize?mode=direct">
+                    바로 제작 의뢰 <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
               <Link
                 to="/profile"
                 className="flex items-center gap-2 rounded-full border border-stone-200 bg-white py-1.5 pl-1.5 pr-3 transition hover:border-brand/30"

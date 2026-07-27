@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS, clothTypes, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { generateImage, storeSelectedImage } from "@/services/imageGeneration";
 import { createFundingDraft } from "@/services/funding";
+import { createDirectProductionRequest } from "@/services/orderCreation";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type {
   ArtworkPlacement,
@@ -30,7 +31,9 @@ interface ModifyImageOptions {
   compositedImage?: CompositedImageReference;
 }
 
-export const useCustomizeForm = () => {
+export type CustomizeMode = "funding" | "direct";
+
+export const useCustomizeForm = (mode: CustomizeMode = "funding") => {
   const navigate = useNavigate();
   
   // Initialize all state
@@ -69,6 +72,7 @@ export const useCustomizeForm = () => {
   const [sizeTableData, setSizeTableData] = useState<SizeTableItem[]>([]);
   const [productionSizeSelection, setProductionSizeSelection] =
     useState<ProductionSizeSelection | null>(null);
+  const [directQuantity, setDirectQuantity] = useState(20);
   
   // New state for image modification
   const [imageModifying, setImageModifying] = useState(false);
@@ -553,13 +557,195 @@ export const useCustomizeForm = () => {
     }
   };
 
+  const handleCreateDirectRequest = async () => {
+    try {
+      setIsLoading(true);
+
+      if (!generatedImageUrls || generatedImageUrls.length === 0) {
+        toast({
+          title: "이미지 선택 필요",
+          description: "제작을 의뢰하기 전에 이미지를 생성해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (directQuantity < 20) {
+        toast({
+          title: "최소 제작 수량을 확인해주세요",
+          description: "바로 제작 의뢰는 총 20장부터 접수할 수 있습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const selectedImageUrl =
+        currentModifiedImageUrl ||
+        generatedImageUrls[selectedImageIndex >= 0 ? selectedImageIndex : 0];
+      let finalImageUrl = selectedImageUrl;
+      let finalImagePath = imagePath;
+      const selectedIdx = selectedImageIndex >= 0 ? selectedImageIndex : 0;
+
+      try {
+        const imageResult = await storeSelectedImage(
+          selectedType,
+          selectedMaterial,
+          selectedDetail,
+          selectedImageUrl,
+          currentModifiedImageUrl || storedImageUrl,
+          imagePath,
+          generatedImageUrls,
+          storedImageUrls,
+          imagePaths,
+          selectedIdx,
+          generatedPrompt,
+          materials,
+          true,
+          modificationHistory,
+        );
+
+        if (imageResult) {
+          finalImageUrl = imageResult.storedImageUrl || selectedImageUrl;
+          finalImagePath = imageResult.imagePath;
+        }
+      } catch (imageError) {
+        console.error("Error storing direct request image:", imageError);
+      }
+
+      if (!finalImageUrl) {
+        throw new Error("제작 의뢰에 사용할 이미지 URL이 없습니다.");
+      }
+
+      const trademarkScreening = await screenTrademarkImage({
+        imageUrl: finalImageUrl,
+        source: "final_design",
+        selectedType,
+        selectedMaterial,
+        parentScreeningId: currentArtworkScreeningId,
+        previousScreeningId: lastFinalScreeningId,
+      });
+      setLastFinalScreeningId(trademarkScreening.id);
+
+      if (trademarkScreening.decision === "blocked") {
+        toast({
+          title: "제작 의뢰가 거절되었습니다",
+          description:
+            "최종 이미지에서 유명 타사 상표 또는 매우 유사한 로고가 감지되었습니다. 해당 요소를 제거한 뒤 다시 시도해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const finalSizeOptions = productionSizeSelection?.selectedSizes.length
+        ? productionSizeSelection.selectedSizes
+        : [selectedSize || "M"];
+      const clothTypeName =
+        clothTypes.find((type) => type.id === selectedType)?.name || selectedType;
+      const materialName =
+        materials.find((material) => material.id === selectedMaterial)?.name ||
+        selectedMaterial;
+      const colorName =
+        colorOptions.find((color) => color.value === selectedColor)?.label ||
+        selectedColor;
+      const fitName =
+        fitOptions.find((fit) => fit.value === selectedFit)?.label || selectedFit;
+
+      let productionEstimate = currentProductionEstimate;
+      if (!productionEstimate) {
+        try {
+          productionEstimate = await analyzeProductionEstimate({
+            imageUrl: finalImageUrl,
+            selectedType,
+            selectedMaterial,
+            designContext: [generatedPrompt, selectedDetail]
+              .filter(Boolean)
+              .join("\n"),
+            uploadedArtwork: currentArtworkAnalysis,
+          });
+        } catch (estimateError) {
+          console.error("Direct request estimate analysis error:", estimateError);
+        }
+      }
+
+      const formatWon = (amount?: number | null) =>
+        typeof amount === "number"
+          ? `${Math.round(amount).toLocaleString("ko-KR")}원`
+          : "분석 후 안내";
+      const directUnitRange = productionEstimate
+        ? `${formatWon(productionEstimate.totals.directUnitMin)} ~ ${formatWon(
+            productionEstimate.totals.directUnitMax,
+          )}`
+        : "상담 후 안내";
+      const developmentTotal = productionEstimate
+        ? formatWon(productionEstimate.totals.developmentTotal)
+        : "상담 후 안내";
+      const detailDescription = [
+        "의뢰 방식: 바로 제작",
+        `제작 희망 수량: ${directQuantity}장`,
+        colorName ? `컬러: ${colorName}` : "",
+        fitName ? `핏: ${fitName}` : "",
+        selectedDetail ? `디자인 특징: ${selectedDetail}` : "",
+        `자동 견적 장당 변동비: ${directUnitRange}`,
+        `자동 견적 1회 개발비: ${developmentTotal}`,
+        trademarkScreening.decision === "review"
+          ? "상표 분석: 관리자 추가 확인 필요"
+          : "상표 분석: 자동 확인 완료",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await createDirectProductionRequest({
+        clothType: clothTypeName,
+        material: materialName,
+        detailDescription,
+        size: finalSizeOptions.join(", "),
+        measurements: {
+          "제작 수량": `${directQuantity}장`,
+          "선택 사이즈": finalSizeOptions.join(", "),
+          "사이즈 기준": productionSizeSelection
+            ? `${productionSizeSelection.gender} · ${productionSizeSelection.category}`
+            : "기본 사이즈",
+          "예상 장당 변동비": directUnitRange,
+          "예상 1회 개발비": developmentTotal,
+        },
+        generatedImageUrl: finalImageUrl,
+        imagePath: finalImagePath,
+      });
+
+      toast({
+        title: "바로 제작 의뢰가 접수되었습니다",
+        description:
+          trademarkScreening.decision === "review"
+            ? "관리자가 상표와 제작 사양을 확인한 뒤 연락드립니다."
+            : "관리자가 제작 사양과 견적을 확인한 뒤 연락드립니다.",
+      });
+      navigate("/orders?submitted=1");
+    } catch (error) {
+      console.error("Error creating direct production request:", error);
+      toast({
+        title: "제작 의뢰 접수 실패",
+        description:
+          error instanceof Error
+            ? error.message
+            : "제작 의뢰를 접수하는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleNext = () => {
     if (!validateCurrentStep()) {
       return;
     }
 
     if (currentStep === TOTAL_STEPS) {
-      handleCreateFunding();
+      if (mode === "direct") {
+        void handleCreateDirectRequest();
+      } else {
+        void handleCreateFunding();
+      }
       return;
     }
 
@@ -637,6 +823,8 @@ export const useCustomizeForm = () => {
     handleSizeTableChange,
     productionSizeSelection,
     handleProductionSizeChange,
+    directQuantity,
+    setDirectQuantity,
     handleAddMaterial,
     handleGenerateImage,
     handleSelectImage,

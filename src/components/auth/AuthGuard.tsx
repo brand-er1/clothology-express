@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { getAccountType, type AccountType } from "@/utils/accountRouting";
 
@@ -11,6 +11,7 @@ interface AuthGuardProps {
 
 export const AuthGuard = ({ children, requiredAccountType }: AuthGuardProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -18,7 +19,8 @@ export const AuthGuard = ({ children, requiredAccountType }: AuthGuardProps) => 
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) {
-        navigate("/auth");
+        const returnTo = `${location.pathname}${location.search}`;
+        navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`);
         return;
       }
 
@@ -34,14 +36,15 @@ export const AuthGuard = ({ children, requiredAccountType }: AuthGuardProps) => 
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
-        navigate("/auth");
+        const returnTo = `${location.pathname}${location.search}`;
+        navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate, requiredAccountType]);
+  }, [location.pathname, location.search, navigate, requiredAccountType]);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

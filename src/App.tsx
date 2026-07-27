@@ -22,6 +22,7 @@ import { WelcomeNotification } from './components/WelcomeNotification';
 import { refreshSessionAfterSocialLogin, isInIframe } from './utils/authUtils';
 import { getAppUrl, routerBasename } from './utils/appUrl';
 import { useIsMobile } from './hooks/use-mobile';
+import { Footer } from './components/Footer';
 
 // Kakao 타입 선언
 declare global {
@@ -138,7 +139,7 @@ function App() {
           windowHeight: window.innerHeight
         }, '*');
       } catch (e) {
-        console.error("Error posting ready message:", e);
+        console.error("Error posting ready message in iframe:", e);
       }
     }
 
@@ -169,6 +170,7 @@ function App() {
           <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Footer />
       </BrowserRouter>
       <Toaster />
     </div>

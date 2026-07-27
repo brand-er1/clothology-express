@@ -83,8 +83,7 @@ const FundingDetail = () => {
   const handleParticipate = async () => {
     if (!funding || !id) return;
 
-    const { data } = await supabase.auth.getSession();
-    if (!data.session?.user) {
+    if (!currentUserId) {
       toast({ title: "로그인이 필요합니다", description: "로그인 후 펀딩에 참여할 수 있습니다." });
       navigate(`/auth?returnTo=${encodeURIComponent(`/fundings/${id}`)}`);
       return;
@@ -144,6 +143,7 @@ const FundingDetail = () => {
   const isPreview = funding.status !== "approved";
   const isCreator = currentUserId === funding.creator_id;
   const totalPrice = (funding.price || 0) * quantity;
+  const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
 
   return (
     <div className="min-h-screen bg-[#f7f5f2]">
@@ -245,12 +245,24 @@ const FundingDetail = () => {
                 <span className="text-sm text-gray-500">총 참여 금액</span>
                 <strong className="text-2xl">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "가격 준비 중"}</strong>
               </div>
-              <Button disabled={isPreview || !funding.price || submitting} onClick={handleParticipate}
-                className="h-14 w-full rounded-full bg-[#FEE500] text-base font-bold text-[#191919] hover:bg-[#f5dc00]">
-                {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
-                {isPreview ? "관리자 승인 대기 중" : submitting ? "카카오페이 결제창 여는 중" : currentUserId ? "카카오페이로 펀딩 참여" : "로그인하고 펀딩 참여"}
-              </Button>
+              {!isPreview && funding.price && !currentUserId ? (
+                <Button asChild
+                  className="h-14 w-full rounded-full bg-[#FEE500] text-base font-bold text-[#191919] hover:bg-[#f5dc00]">
+                  <Link to={loginReturnTo}>
+                    <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 테스트 결제
+                  </Link>
+                </Button>
+              ) : (
+                <Button disabled={isPreview || !funding.price || submitting} onClick={handleParticipate}
+                  className="h-14 w-full rounded-full bg-[#FEE500] text-base font-bold text-[#191919] hover:bg-[#f5dc00]">
+                  {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                  {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
+                  {isPreview ? "관리자 승인 대기 중" : submitting ? "카카오페이 테스트창 여는 중" : "카카오페이 테스트 결제"}
+                </Button>
+              )}
+              <p className="text-center text-xs font-medium text-amber-700">
+                현재 모의결제 모드이며 실제 금액은 청구되지 않습니다.
+              </p>
               <p className="flex items-center justify-center text-xs text-gray-400">
                 <ShieldCheck className="mr-1 h-4 w-4" /> 결제 완료 수량만 반영되며, 내 펀딩에서 결제 취소·환불할 수 있습니다.
               </p>

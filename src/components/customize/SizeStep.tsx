@@ -17,7 +17,6 @@ interface SizeStepProps {
   gender?: string;
   productionSizeSelection: ProductionSizeSelection | null;
   onProductionSizeChange: (selection: ProductionSizeSelection) => void;
-  mode?: "funding" | "direct";
   directQuantity?: number;
   onDirectQuantityChange?: (quantity: number) => void;
 }
@@ -35,7 +34,6 @@ export const SizeStep = ({
   gender,
   productionSizeSelection,
   onProductionSizeChange,
-  mode = "funding",
   directQuantity = 20,
   onDirectQuantityChange,
 }: SizeStepProps) => {
@@ -134,14 +132,10 @@ export const SizeStep = ({
             <div>
               <p className="flex items-center gap-2 text-sm font-bold text-white/75">
                 <Ruler className="h-4 w-4" />
-                {mode === "direct"
-                  ? "바로 제작 의뢰 전 마지막 확인"
-                  : "펀딩 등록 전 마지막 확인"}
+                등록 방식 선택 전 마지막 확인
               </p>
               <h2 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">
-                {mode === "direct"
-                  ? "제작 수량과 사이즈를 선택하세요"
-                  : "생산 사이즈를 선택하세요"}
+                생산 사이즈와 수량을 확인하세요
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/75">
                 {category} 카테고리 평균 실측을 기준으로 1·2·3 사이즈를
@@ -217,37 +211,37 @@ export const SizeStep = ({
           </div>
 
           <div className="p-5 md:p-7">
-            {mode === "direct" && (
-              <div className="mb-6 grid gap-4 rounded-2xl border border-brand/15 bg-brand/5 p-5 sm:grid-cols-[1fr_220px] sm:items-center">
-                <div className="flex gap-3">
-                  <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-                  <div>
-                    <h3 className="font-black text-gray-950">바로 제작할 총수량</h3>
-                    <p className="mt-1 text-sm leading-6 text-gray-600">
-                      총 20장부터 접수할 수 있습니다. 사이즈별 세부 수량은 담당자 상담에서 최종 확정합니다.
-                    </p>
-                  </div>
-                </div>
-                <div className="relative">
-                  <Input
-                    aria-label="바로 제작 총수량"
-                    type="number"
-                    min={20}
-                    step={10}
-                    value={directQuantity}
-                    onChange={(event) =>
-                      onDirectQuantityChange?.(
-                        Math.max(0, Number(event.target.value) || 0),
-                      )
-                    }
-                    className="h-12 rounded-xl bg-white pr-12 text-right text-lg font-black"
-                  />
-                  <span className="pointer-events-none absolute right-4 top-3.5 text-sm font-bold text-gray-500">
-                    장
-                  </span>
+            <div className="mb-6 grid gap-4 rounded-2xl border border-brand/15 bg-brand/5 p-5 sm:grid-cols-[1fr_220px] sm:items-center">
+              <div className="flex gap-3">
+                <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+                <div>
+                  <h3 className="font-black text-gray-950">제작 의뢰 수량</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-600">
+                    제작 의뢰를 선택하면 이 수량이 관리자에게 전달됩니다.
+                    총 20장부터 접수할 수 있으며, 펀딩을 선택하면 펀딩
+                    페이지에서 MOQ와 순이익을 별도로 계산합니다.
+                  </p>
                 </div>
               </div>
-            )}
+              <div className="relative">
+                <Input
+                  aria-label="제작 의뢰 총수량"
+                  type="number"
+                  min={20}
+                  step={10}
+                  value={directQuantity}
+                  onChange={(event) =>
+                    onDirectQuantityChange?.(
+                      Math.max(0, Number(event.target.value) || 0),
+                    )
+                  }
+                  className="h-12 rounded-xl bg-white pr-12 text-right text-lg font-black"
+                />
+                <span className="pointer-events-none absolute right-4 top-3.5 text-sm font-bold text-gray-500">
+                  장
+                </span>
+              </div>
+            </div>
 
             <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>

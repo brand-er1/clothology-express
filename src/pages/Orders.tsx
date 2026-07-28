@@ -29,7 +29,7 @@ const Orders = () => {
   }, []);
 
   const handleNewOrder = () => {
-    navigate('/customize?mode=direct');
+    navigate('/customize');
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -51,7 +51,7 @@ const Orders = () => {
             className={`bg-brand hover:bg-brand-dark ${isMobile ? 'w-full h-12 text-base' : ''}`}
           >
             <ShoppingBag className="mr-2 h-5 w-5" />
-            새 제작 의뢰
+            새 컬렉션 시작
           </Button>
         </div>
 

@@ -75,7 +75,7 @@ export const Header = () => {
   const navItems = [
     { to: "/fundings", label: "펀딩 둘러보기", visible: true },
     { to: "/fabric-swatch", label: "원단 스와치", visible: true },
-    { to: "/customize?mode=funding", label: "펀딩 만들기", visible: !isAuthenticated || accountType === "seller" },
+    { to: "/customize", label: "컬렉션 시작하기", visible: !isAuthenticated || accountType === "seller" },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
     { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated },
     { to: "/admin", label: "관리자", visible: isAdmin },
@@ -123,7 +123,7 @@ export const Header = () => {
             <>
               {accountType === "seller" && (
                 <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
-                  <Link to="/customize?mode=direct">바로 제작 의뢰하기</Link>
+                  <Link to="/customize">컬렉션 시작하기</Link>
                 </Button>
               )}
               <Button asChild variant="outline" className="h-11 w-full rounded-full border-stone-300">
@@ -180,8 +180,8 @@ export const Header = () => {
             <>
               {accountType === "seller" && (
                 <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark">
-                  <Link to="/customize?mode=direct">
-                    바로 제작 의뢰 <ArrowRight className="ml-2 h-4 w-4" />
+                  <Link to="/customize">
+                    컬렉션 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               )}

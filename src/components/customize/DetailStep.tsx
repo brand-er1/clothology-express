@@ -3,6 +3,7 @@ import { DetailInput } from "./detail/DetailInput";
 
 interface DetailStepProps {
   detailInput: string;
+  selectedType?: string;
   selectedStyle: string;
   selectedPocket: string;
   selectedColor: string;
@@ -26,6 +27,7 @@ interface DetailStepProps {
 
 export const DetailStep = ({
   detailInput,
+  selectedType = "",
   onDetailInputChange,
 }: DetailStepProps) => {
   const handleTextAreaChange = (
@@ -38,6 +40,7 @@ export const DetailStep = ({
     <div className="mx-auto w-full max-w-3xl">
       <DetailInput
         detailInput={detailInput}
+        selectedType={selectedType}
         onChange={handleTextAreaChange}
         onExampleUse={onDetailInputChange}
       />

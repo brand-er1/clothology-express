@@ -11,14 +11,11 @@ import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
 
 const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");
-  const [searchParams] = useSearchParams();
-  const mode = searchParams.get("mode") === "direct" ? "direct" : "funding";
 
   const {
     currentStep,
@@ -64,6 +61,8 @@ const Customize = () => {
     handleGenerateImage,
     handleNext,
     handleBack,
+    handleCreateFunding,
+    handleCreateDirectRequest,
     // New properties for image modification
     imageModifying,
     modificationHistory,
@@ -74,7 +73,7 @@ const Customize = () => {
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,
-  } = useCustomizeForm(mode);
+  } = useCustomizeForm();
 
   const stepContent = [
     ["무엇을 만들까요?", "첫 컬렉션으로 제작할 의류 아이템을 선택해주세요."],
@@ -82,9 +81,7 @@ const Customize = () => {
     ["원하는 디자인을 설명해주세요", "예시처럼 색상, 핏, 프린트 위치와 분위기를 문장으로 적으면 AI가 디자인에 반영합니다."],
     ["첫 디자인을 생성합니다", "입력한 조건을 바탕으로 앞·뒤 의류 디자인을 확인해보세요."],
     ["내 디자인으로 완성하세요", "이미지를 편집하고 로고를 배치하면 견적과 상표 분석이 함께 진행됩니다."],
-    mode === "direct"
-      ? ["제작 수량과 사이즈를 정해주세요", "성별·카테고리별 추천표를 참고해 바로 생산할 수량과 사이즈를 설정합니다."]
-      : ["판매할 사이즈를 정해주세요", "성별·카테고리별 추천표를 참고해 출시 사이즈를 설정합니다."],
+    ["생산 정보를 확인해주세요", "사이즈와 수량을 확인한 뒤 펀딩 페이지를 만들거나 제작만 바로 의뢰할 수 있습니다."],
   ];
 
   // 사용자 정보 가져오기
@@ -137,16 +134,15 @@ const Customize = () => {
           <div className="mb-6 flex flex-col justify-between gap-3 px-1 sm:mb-8 md:flex-row md:items-end">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand sm:text-xs sm:tracking-[0.2em]">
-                {mode === "direct" ? "Direct production request" : "Brand-er funding studio"}
+                Brand-er design studio
               </p>
               <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-[-0.045em] text-stone-950 sm:mt-3 md:text-5xl">
-                {mode === "direct" ? "바로 제작 의뢰" : "나만의 첫 컬렉션"}
+                나만의 첫 컬렉션
               </h1>
             </div>
             <p className="max-w-md text-[15px] leading-6 text-stone-500 md:max-w-sm md:text-sm">
-              {mode === "direct"
-                ? "AI 디자인과 자동 견적을 확인한 뒤 제작 의뢰를 접수하면 담당자가 사양을 검토해 연락드립니다."
-                : "선택한 정보는 AI 디자인과 자동 견적에 함께 반영됩니다. 언제든 이전 단계로 돌아가 수정할 수 있어요."}
+              AI 디자인을 완성한 뒤 펀딩 페이지를 만들거나, 펀딩 없이
+              관리자에게 제작을 바로 의뢰할 수 있습니다.
             </p>
           </div>
 
@@ -191,6 +187,7 @@ const Customize = () => {
             {currentStep === 3 && (
               <DetailStep
                 detailInput={selectedDetail}
+                selectedType={selectedType}
                 selectedStyle={selectedStyle}
                 selectedPocket={selectedPocket}
                 selectedColor={selectedColor}
@@ -253,7 +250,6 @@ const Customize = () => {
                 onProductionSizeChange={handleProductionSizeChange}
                 selectedType={selectedType}
                 gender={userGender}
-                mode={mode}
                 directQuantity={directQuantity}
                 onDirectQuantityChange={setDirectQuantity}
               />
@@ -270,19 +266,35 @@ const Customize = () => {
                   이전
                 </Button>
               ) : <div />}
-              <Button
-                onClick={handleNext}
-                disabled={isSubmitting}
-                className="h-12 min-w-0 flex-1 rounded-full bg-brand px-4 text-[15px] font-bold hover:bg-brand-dark sm:flex-none sm:px-7 sm:text-sm"
-              >
-                {currentStep === 4
-                  ? "이 디자인 편집하기"
-                  : currentStep === TOTAL_STEPS
-                    ? mode === "direct"
-                      ? (isSubmitting ? "제작 의뢰 접수 중..." : "이 디자인으로 바로 제작 의뢰하기")
-                      : (isSubmitting ? "펀딩 페이지 만드는 중..." : "이 디자인으로 펀딩 만들기")
-                    : "다음 단계"}
-              </Button>
+              {currentStep === TOTAL_STEPS ? (
+                <div className="grid min-w-0 flex-1 gap-2 sm:flex sm:flex-none sm:gap-3">
+                  <Button
+                    onClick={() => void handleCreateFunding()}
+                    disabled={isSubmitting}
+                    className="h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark sm:px-7 sm:text-sm"
+                  >
+                    {isSubmitting
+                      ? "처리 중..."
+                      : "이 이미지로 펀딩 만들기"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleCreateDirectRequest()}
+                    disabled={isSubmitting}
+                    className="h-12 rounded-full border-brand px-5 text-[14px] font-bold text-brand hover:bg-brand/5 hover:text-brand sm:px-7 sm:text-sm"
+                  >
+                    {isSubmitting ? "처리 중..." : "제작 의뢰하기"}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                  className="h-12 min-w-0 flex-1 rounded-full bg-brand px-4 text-[15px] font-bold hover:bg-brand-dark sm:flex-none sm:px-7 sm:text-sm"
+                >
+                  {currentStep === 4 ? "이 디자인 편집하기" : "다음 단계"}
+                </Button>
+              )}
             </div>
           </section>
         </div>

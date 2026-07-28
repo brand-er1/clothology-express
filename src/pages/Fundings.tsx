@@ -153,7 +153,7 @@ const Fundings = () => {
                   )}
                 </TabsList>
                 <Button asChild className="rounded-full bg-brand hover:bg-brand-dark">
-                  <Link to="/customize">AI 디자인으로 펀딩 만들기</Link>
+                  <Link to="/customize">컬렉션 시작하기</Link>
                 </Button>
               </div>
               <TabsContent value="open"><FundingCards fundings={approved} /></TabsContent>

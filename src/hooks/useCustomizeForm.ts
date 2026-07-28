@@ -31,9 +31,7 @@ interface ModifyImageOptions {
   compositedImage?: CompositedImageReference;
 }
 
-export type CustomizeMode = "funding" | "direct";
-
-export const useCustomizeForm = (mode: CustomizeMode = "funding") => {
+export const useCustomizeForm = () => {
   const navigate = useNavigate();
   
   // Initialize all state
@@ -741,11 +739,6 @@ export const useCustomizeForm = (mode: CustomizeMode = "funding") => {
     }
 
     if (currentStep === TOTAL_STEPS) {
-      if (mode === "direct") {
-        void handleCreateDirectRequest();
-      } else {
-        void handleCreateFunding();
-      }
       return;
     }
 
@@ -830,6 +823,8 @@ export const useCustomizeForm = (mode: CustomizeMode = "funding") => {
     handleSelectImage,
     handleNext,
     handleBack,
+    handleCreateFunding,
+    handleCreateDirectRequest,
     imageModifying,
     modificationHistory,
     currentModifiedImageUrl,

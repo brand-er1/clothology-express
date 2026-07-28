@@ -78,7 +78,7 @@ const faqs = [
   },
   {
     question: "펀딩 없이 바로 제작을 의뢰할 수도 있나요?",
-    answer: "가능합니다. 제작할 수량이 이미 정해졌다면 ‘바로 제작 의뢰하기’를 선택하세요. AI 디자인과 자동 견적을 확인하고 의뢰서를 접수하면 담당자가 사양을 검토해 연락드립니다.",
+    answer: "가능합니다. ‘컬렉션 시작하기’에서 AI 디자인을 완성한 뒤 마지막 단계의 ‘제작 의뢰하기’를 선택하세요. 관리자가 제작 사양과 견적을 확인한 뒤 연락드립니다.",
   },
   {
     question: "다른 브랜드 로고를 넣어도 되나요?",
@@ -173,7 +173,7 @@ const Index = () => {
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-stone-300 bg-white/50 px-8 text-base hover:bg-white">
-                  <Link to="/customize?mode=direct">바로 제작 의뢰하기</Link>
+                  <Link to="/customize">컬렉션 시작하기</Link>
                 </Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2.5 text-[13px] text-stone-500 sm:mt-10 sm:gap-x-6 sm:gap-y-3 sm:text-sm">
@@ -319,7 +319,9 @@ const Index = () => {
                   아이디어를 제품으로.
                 </h2>
                 <p className="mt-5 max-w-md text-[15px] leading-7 text-white/58 sm:text-sm">
-                  수요를 먼저 확인하고 싶다면 펀딩으로, 제작 수량이 이미 정해졌다면 바로 제작으로 시작하세요.
+                  먼저 하나의 컬렉션을 완성하세요. 마지막 단계에서 수요를
+                  확인할 펀딩과 바로 제작 의뢰 중 원하는 방식을 선택할 수
+                  있습니다.
                 </p>
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -334,12 +336,11 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button asChild variant="outline" className="h-12 rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-stone-950">
-                  <Link to="/customize?mode=funding">펀딩으로 시작 <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                </Button>
-                <Button asChild className="h-12 rounded-full bg-brand px-6 text-white hover:bg-brand-light">
-                  <Link to="/customize?mode=direct">바로 제작 의뢰 <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <div className="mt-8">
+                <Button asChild className="h-12 rounded-full bg-brand px-7 text-white hover:bg-brand-light">
+                  <Link to="/customize">
+                    컬렉션 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
                 </Button>
               </div>
             </article>
@@ -447,7 +448,7 @@ const Index = () => {
                 <Link to="/fundings">펀딩 둘러보기 <ArrowRight className="ml-2 h-5 w-5" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-transparent px-8 text-base text-white hover:bg-white hover:text-stone-950">
-                <Link to="/customize?mode=direct">바로 제작 의뢰하기</Link>
+                <Link to="/customize">컬렉션 시작하기</Link>
               </Button>
             </div>
           </div>

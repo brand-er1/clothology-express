@@ -26,6 +26,8 @@ import type {
   FabricSwatchRequest,
   FabricSwatchStatus,
 } from "@/types/fabricSwatch";
+import { GeneratedImageList } from "@/components/admin/GeneratedImageList";
+import type { AdminGeneratedImage } from "@/types/generatedImage";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -46,6 +48,8 @@ const Admin = () => {
   const [fabricSwatchRequests, setFabricSwatchRequests] = useState<
     FabricSwatchRequest[]
   >([]);
+  const [generatedImages, setGeneratedImages] = useState<AdminGeneratedImage[]>([]);
+  const [isLoadingGeneratedImages, setIsLoadingGeneratedImages] = useState(true);
 
   useEffect(() => {
     if (!isCheckingAdmin && !isAdmin) {
@@ -64,6 +68,7 @@ const Admin = () => {
       loadOrders();
       loadFundings();
       loadFabricSwatchRequests();
+      loadGeneratedImages();
     }
   }, [isAdmin]);
 
@@ -134,6 +139,24 @@ const Admin = () => {
         title: "원단 스와치 신청을 불러오지 못했습니다",
         variant: "destructive",
       });
+    }
+  };
+
+  const loadGeneratedImages = async () => {
+    try {
+      setIsLoadingGeneratedImages(true);
+      const { data, error } = await supabase.rpc("get_admin_generated_images");
+
+      if (error) throw error;
+      setGeneratedImages((data || []) as AdminGeneratedImage[]);
+    } catch (error) {
+      console.error("Error loading generated images:", error);
+      toast({
+        title: "AI 생성 이미지 내역을 불러오지 못했습니다",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingGeneratedImages(false);
     }
   };
 
@@ -281,11 +304,12 @@ const Admin = () => {
           <div className="mb-8">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Brand-er operations</p>
             <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-stone-950 md:text-4xl">브랜더 관리자</h1>
-            <p className="mt-2 text-sm text-stone-500">바로 제작 의뢰, 원단 스와치 신청, 펀딩 승인 요청을 한곳에서 확인합니다.</p>
+            <p className="mt-2 text-sm text-stone-500">AI 이미지 생성 내역부터 제작 의뢰, 원단 스와치, 펀딩 승인 요청까지 한곳에서 확인합니다.</p>
           </div>
 
-          <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {[
+              ["이미지만 생성", generatedImages.filter((image) => image.conversion_status === "image_only").length],
               ["신규 제작 의뢰", orders.filter((order) => order.status === "pending").length],
               ["신규 스와치 신청", fabricSwatchRequests.filter((request) => request.status === "pending").length],
               ["접수 완료", orders.filter((order) => order.status === "approved").length],
@@ -296,6 +320,13 @@ const Admin = () => {
                 <p className="mt-3 text-3xl font-black text-stone-950">{value}</p>
               </div>
             ))}
+          </div>
+
+          <div className="mb-8">
+            <GeneratedImageList
+              images={generatedImages}
+              isLoading={isLoadingGeneratedImages}
+            />
           </div>
 
           <OrderList

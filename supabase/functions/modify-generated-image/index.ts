@@ -396,7 +396,12 @@ Printing recommendation:
     ${hasReferenceImage
       ? `The second supplied image is the customer's exact artwork. Preserve its composition, colors, lettering, and proportions. The customer dragged it to a precise target centered ${xPercent.toFixed(1)}% from the left edge and ${yPercent.toFixed(1)}% from the top edge of the source image, and resized it to span approximately ${widthPercent.toFixed(1)}% of the source image width. Apply it only to that dragged position on the ${artworkLocationLabels[safeArtworkLocation]}. The coordinates and width are authoritative. Do not invent, redraw, replace, or add any other logo or graphic.`
       : ""}
-    Generate a photorealistic, high-quality product image of the modified design.
+    Preserve the premium photorealistic 3D garment-render style. Keep convincing
+    three-dimensional volume, realistic fabric thickness, natural drape and
+    folds, precise seams and material texture, soft studio lighting, and subtle
+    contact shadows. Keep the large front and back garment views on a clean
+    white background. Generate a high-resolution ecommerce product image of the
+    modified design, not a flat illustration.
     `;
     
     console.log("Sending prompt to Gemini:", fullPrompt);

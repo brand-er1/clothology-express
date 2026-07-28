@@ -39,7 +39,7 @@ serve(async (req) => {
     console.log("Using system prompt:", systemPrompt);
 
     // Step 1: 시스템 프롬프트 + 스타일 가이드 + 사용자 입력 결합
-    const stylePrimer = `White background, photorealistic product photo like a real shopping mall listing. No models or mannequins. Show two large views in one frame: left = garment front, right = garment back. Make both garments fill most of the canvas with minimal empty margins while keeping every edge visible. Clean lighting, no props, no shadows that obscure details. High resolution, ecommerce ready.`;
+    const stylePrimer = `White background, premium photorealistic 3D garment visualization like a high-end fashion ecommerce product render. The garment must have convincing three-dimensional volume, realistic fabric thickness, natural drape and folds, precise seams, hems, stitching, collars, cuffs, and material texture. Use soft studio lighting and subtle contact shadows to reveal depth without hiding design details. No models or mannequins. Show two large views in one frame: left = garment front, right = garment back. Make both garments fill most of the canvas with minimal empty margins while keeping every edge visible. No props, text overlays, or flat illustration styling. High resolution, production-ready and ecommerce ready.`;
     const optimizedPrompt = `${stylePrimer}\n\nSystem guidance:\n${systemPrompt}\n\nUser request:\n${prompt}`;
 
     // Step 2: Gemini 3 pro image preview로 단일 이미지 생성

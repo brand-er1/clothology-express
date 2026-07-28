@@ -42,6 +42,7 @@ jobs:
 
       - name: Deploy edge functions
         run: |
+          supabase functions deploy generate-optimized-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy analyze-production-estimate --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy modify-generated-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy screen-trademark-image --project-ref "$SUPABASE_PROJECT_ID"
@@ -50,6 +51,7 @@ jobs:
           supabase functions deploy kakaopay-cancel --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Allow GitHub Pages auth callback
+        continue-on-error: true
         shell: bash
         run: |
           config="$(curl --fail --silent --show-error \

@@ -437,7 +437,10 @@ Printing recommendation:
           ],
           generationConfig: {
             responseModalities: ["IMAGE", "TEXT"],
-            imageConfig: { imageSize: "1K" },
+            imageConfig: {
+              aspectRatio: "4:3",
+              imageSize: "2K",
+            },
           },
         }),
       },

@@ -39,7 +39,7 @@ serve(async (req) => {
     console.log("Using system prompt:", systemPrompt);
 
     // Step 1: 시스템 프롬프트 + 스타일 가이드 + 사용자 입력 결합
-    const stylePrimer = `White background, photorealistic product photo like a real shopping mall listing. No models or mannequins. Show two views in one frame: left = garment front, right = garment back. Clean lighting, no props, no shadows that obscure details. High resolution, ecommerce ready.`;
+    const stylePrimer = `White background, photorealistic product photo like a real shopping mall listing. No models or mannequins. Show two large views in one frame: left = garment front, right = garment back. Make both garments fill most of the canvas with minimal empty margins while keeping every edge visible. Clean lighting, no props, no shadows that obscure details. High resolution, ecommerce ready.`;
     const optimizedPrompt = `${stylePrimer}\n\nSystem guidance:\n${systemPrompt}\n\nUser request:\n${prompt}`;
 
     // Step 2: Gemini 3 pro image preview로 단일 이미지 생성
@@ -57,7 +57,10 @@ serve(async (req) => {
           contents: [{ role: "user", parts: [{ text: optimizedPrompt }] }],
           generationConfig: {
             responseModalities: ["IMAGE", "TEXT"],
-            imageConfig: { imageSize: "1K" },
+            imageConfig: {
+              aspectRatio: "4:3",
+              imageSize: "2K",
+            },
           },
         }),
       },

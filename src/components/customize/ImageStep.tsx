@@ -89,13 +89,13 @@ export const ImageStep = ({
                       <button
                         type="button"
                         onClick={() => setPreviewImageUrl(resolvedImageUrl)}
-                        className="group relative flex min-h-[420px] w-full cursor-zoom-in items-center justify-center sm:min-h-[560px] lg:min-h-[680px]"
+                        className="group relative flex min-h-[460px] w-full cursor-zoom-in items-center justify-center sm:min-h-[620px] lg:min-h-[760px]"
                         aria-label={`생성된 의류 디자인 ${index + 1} 크게 보기`}
                       >
                         <img
                           src={resolvedImageUrl}
                           alt={`Generated clothing design ${index + 1}`}
-                          className="h-full max-h-[760px] w-full object-contain object-center"
+                          className="h-full max-h-[860px] w-full object-contain object-center"
                           onLoad={() => console.log(`Image ${index + 1} loaded successfully`)}
                           onError={() => {
                             console.error(`Image ${index + 1} loading error:`, imageUrl);
@@ -117,7 +117,7 @@ export const ImageStep = ({
                         )}
                       </button>
                     ) : (
-                      <div className="flex min-h-[420px] w-full flex-col items-center justify-center bg-gray-100 sm:min-h-[560px] lg:min-h-[680px]">
+                      <div className="flex min-h-[460px] w-full flex-col items-center justify-center bg-gray-100 sm:min-h-[620px] lg:min-h-[760px]">
                         <ImageOff className="w-8 h-8 text-gray-400 mb-2" />
                         <p className="text-sm text-gray-500">이미지를 불러올 수 없습니다</p>
                       </div>

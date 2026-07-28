@@ -20,7 +20,7 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
               key={type.id}
               role="button"
               tabIndex={0}
-              className={`group relative cursor-pointer rounded-2xl p-5 transition-all duration-200 ${
+              className={`group relative cursor-pointer rounded-2xl p-6 transition-all duration-200 ${
                 isSelected
                   ? "border-brand bg-[#fff9f7] shadow-[0_12px_35px_rgba(113,16,17,0.08)] ring-1 ring-brand"
                   : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-lg"
@@ -35,11 +35,11 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
                   <Check className="h-3.5 w-3.5" />
                 </span>
               )}
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3ede8] text-brand transition group-hover:bg-brand group-hover:text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f3ede8] text-brand transition group-hover:bg-brand group-hover:text-white">
                 {type.icon}
               </div>
-              <h3 className="mt-5 text-base font-bold">{type.name}</h3>
-              <p className="mt-1.5 text-xs leading-5 text-stone-500">{type.description}</p>
+              <h3 className="mt-5 text-lg font-bold">{type.name}</h3>
+              <p className="mt-2 text-sm leading-6 text-stone-500">{type.description}</p>
             </Card>
           );
         })}

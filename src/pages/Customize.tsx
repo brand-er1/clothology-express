@@ -132,7 +132,7 @@ const Customize = () => {
   return (
     <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="mx-auto max-w-[1180px] px-4 pb-20 pt-24 sm:px-6 lg:px-8 lg:pt-28">
+      <main className="mx-auto max-w-[1320px] px-4 pb-24 pt-24 sm:px-6 lg:px-8 lg:pt-28">
         <div>
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
@@ -152,7 +152,7 @@ const Customize = () => {
 
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
-          <section className="mt-6 rounded-[2rem] border border-stone-200 bg-[#fbfaf8] p-5 shadow-[0_24px_80px_rgba(36,26,24,0.06)] sm:p-8 lg:p-10">
+          <section className="mt-6 rounded-[2rem] border border-stone-200 bg-[#fbfaf8] p-5 shadow-[0_24px_80px_rgba(36,26,24,0.06)] sm:p-9 lg:p-12">
             <div className="mb-8 border-b border-stone-200 pb-6">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
                 Step {String(currentStep).padStart(2, "0")}

@@ -1,8 +1,21 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, RefreshCw, WandSparkles } from "lucide-react";
+import {
+  ExternalLink,
+  Lightbulb,
+  LoaderCircle,
+  RefreshCw,
+  TrendingUp,
+  WandSparkles,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  FASHION_TREND_REFRESH_MS,
+  fetchFashionTrends,
+  type FashionTrendResponse,
+  type GarmentTrendType,
+} from "@/services/fashionTrends";
 
 interface DetailInputProps {
   detailInput: string;
@@ -58,20 +71,97 @@ const TYPE_PROMPT_EXAMPLES: Record<string, string[]> = {
 
 const EXAMPLE_ROTATION_MS = 7000;
 
+const GARMENT_TYPE_LABELS: Record<GarmentTrendType, string> = {
+  short_sleeve: "반팔 티셔츠",
+  long_sleeve: "긴팔 티셔츠",
+  hoodie: "후드",
+  sweatshirt: "맨투맨",
+  jacket: "자켓",
+  short_pants: "반바지",
+  long_pants: "팬츠",
+};
+
+interface PromptExample {
+  text: string;
+  isTrend: boolean;
+  keyword?: string;
+  rank?: number;
+}
+
+const isGarmentTrendType = (value: string): value is GarmentTrendType =>
+  Object.prototype.hasOwnProperty.call(GARMENT_TYPE_LABELS, value);
+
+const buildTrendPrompt = (
+  keyword: string,
+  selectedType: GarmentTrendType,
+) =>
+  `현재 무신사 상품 랭킹에서 주목받는 “${keyword}” 트렌드를 반영한 ${GARMENT_TYPE_LABELS[selectedType]} 디자인으로 만들어주세요. 트렌드의 실루엣과 디테일은 살리되 특정 브랜드의 로고, 문구, 상품 디자인은 복제하지 말고 독창적인 컬러와 그래픽으로 재해석해주세요. 의류 전체가 화면을 크게 채우는 고품질 3D 제품 렌더링으로 표현해주세요.`;
+
 export const DetailInput = ({
   detailInput,
   selectedType = "",
   onChange,
   onExampleUse,
 }: DetailInputProps) => {
-  const promptExamples = useMemo(
-    () => TYPE_PROMPT_EXAMPLES[selectedType] ?? DEFAULT_PROMPT_EXAMPLES,
-    [selectedType],
+  const [trendData, setTrendData] = useState<FashionTrendResponse | null>(
+    null,
   );
+  const [isTrendLoading, setIsTrendLoading] = useState(true);
+  const [trendLoadFailed, setTrendLoadFailed] = useState(false);
   const [exampleIndex, setExampleIndex] = useState(0);
 
   useEffect(() => {
-    setExampleIndex(Math.floor(Math.random() * promptExamples.length));
+    let isActive = true;
+
+    const loadTrends = async () => {
+      try {
+        const response = await fetchFashionTrends();
+        if (!isActive) return;
+        setTrendData(response);
+        setTrendLoadFailed(false);
+      } catch (error) {
+        console.warn("Unable to load fashion trends:", error);
+        if (isActive) setTrendLoadFailed(true);
+      } finally {
+        if (isActive) setIsTrendLoading(false);
+      }
+    };
+
+    void loadTrends();
+    const refreshTimer = window.setInterval(() => {
+      void loadTrends();
+    }, FASHION_TREND_REFRESH_MS);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
+
+  const promptExamples = useMemo<PromptExample[]>(() => {
+    const selectedTypeExamples =
+      TYPE_PROMPT_EXAMPLES[selectedType] ?? DEFAULT_PROMPT_EXAMPLES;
+    const localExamples = selectedTypeExamples.map((text) => ({
+      text,
+      isTrend: false,
+    }));
+
+    if (!isGarmentTrendType(selectedType)) return localExamples;
+
+    const trendExamples = (trendData?.trends[selectedType] ?? []).map(
+      ({ keyword, rank }) => ({
+        text: buildTrendPrompt(keyword, selectedType),
+        keyword,
+        rank,
+        isTrend: true,
+      }),
+    );
+
+    return [...trendExamples, ...localExamples];
+  }, [selectedType, trendData]);
+
+  useEffect(() => {
+    setExampleIndex(0);
   }, [promptExamples]);
 
   useEffect(() => {
@@ -106,49 +196,121 @@ export const DetailInput = ({
           />
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+        <div
+          className={`rounded-xl border p-4 transition-colors ${
+            promptExample.isTrend
+              ? "border-brand/25 bg-brand/5"
+              : "border-amber-200 bg-amber-50/70"
+          }`}
+        >
           <div className="flex items-start gap-3">
-            <Lightbulb
-              className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
-              aria-hidden="true"
-            />
+            {promptExample.isTrend ? (
+              <TrendingUp
+                className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                aria-hidden="true"
+              />
+            ) : (
+              <Lightbulb
+                className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
+                aria-hidden="true"
+              />
+            )}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-bold text-stone-900">
-                  선택 의류 맞춤 예시
+                  {promptExample.isTrend
+                    ? "지금 뜨는 디자인 트렌드"
+                    : "선택 의류 맞춤 예시"}
                 </p>
-                <span className="shrink-0 text-[11px] font-semibold text-amber-700">
-                  7초마다 자동 변경
+                <span
+                  className={`shrink-0 text-[11px] font-semibold ${
+                    promptExample.isTrend ? "text-brand" : "text-amber-700"
+                  }`}
+                >
+                  {promptExample.isTrend
+                    ? "30분 갱신 · 7초 전환"
+                    : "7초마다 자동 변경"}
                 </span>
               </div>
+              {promptExample.isTrend && promptExample.keyword && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold text-white">
+                    {promptExample.keyword}
+                  </span>
+                  {typeof promptExample.rank === "number" &&
+                    promptExample.rank < 900 && (
+                      <span className="text-[11px] font-semibold text-stone-500">
+                        카테고리 랭킹 {promptExample.rank}위 기반
+                      </span>
+                    )}
+                </div>
+              )}
               <p className="mt-2 min-h-[4.5rem] text-sm leading-6 text-stone-600">
-                {promptExample}
+                {promptExample.text}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => onExampleUse?.(promptExample)}
-                  className="h-9 rounded-full border-amber-300 bg-white px-4 text-xs font-bold text-stone-700 hover:bg-amber-100 hover:text-stone-950"
+                  onClick={() => onExampleUse?.(promptExample.text)}
+                  className={`h-9 rounded-full bg-white px-4 text-xs font-bold text-stone-700 ${
+                    promptExample.isTrend
+                      ? "border-brand/35 hover:bg-brand/10 hover:text-brand"
+                      : "border-amber-300 hover:bg-amber-100 hover:text-stone-950"
+                  }`}
                 >
-                  예시 사용하기
+                  {promptExample.isTrend
+                    ? "이 트렌드로 만들기"
+                    : "예시 사용하기"}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={showNextExample}
-                  className="h-9 rounded-full px-3 text-xs font-bold text-amber-800 hover:bg-amber-100 hover:text-amber-950"
+                  className={`h-9 rounded-full px-3 text-xs font-bold ${
+                    promptExample.isTrend
+                      ? "text-brand hover:bg-brand/10 hover:text-brand"
+                      : "text-amber-800 hover:bg-amber-100 hover:text-amber-950"
+                  }`}
                 >
                   <RefreshCw className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                  다른 예시
+                  {promptExample.isTrend ? "다른 트렌드" : "다른 예시"}
                 </Button>
+                {promptExample.isTrend && trendData?.sourceUrl && (
+                  <a
+                    href={trendData.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-9 items-center rounded-full px-2 text-[11px] font-semibold text-stone-500 transition hover:text-stone-900"
+                  >
+                    무신사 상품 랭킹 기반
+                    <ExternalLink
+                      className="ml-1 h-3 w-3"
+                      aria-hidden="true"
+                    />
+                  </a>
+                )}
                 <span className="ml-auto text-[11px] tabular-nums text-stone-400">
                   {String(exampleIndex + 1).padStart(2, "0")} /{" "}
                   {String(promptExamples.length).padStart(2, "0")}
                 </span>
               </div>
+              {!promptExample.isTrend &&
+                (isTrendLoading || trendLoadFailed) && (
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] text-stone-400">
+                    {isTrendLoading && (
+                      <LoaderCircle
+                        className="h-3 w-3 animate-spin"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {isTrendLoading
+                      ? "실시간 의류 트렌드를 연결하고 있어요."
+                      : "트렌드 연결이 지연되어 맞춤 예시를 보여드려요."}
+                  </div>
+                )}
             </div>
           </div>
         </div>

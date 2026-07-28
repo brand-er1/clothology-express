@@ -132,18 +132,18 @@ const Customize = () => {
   return (
     <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="mx-auto max-w-[1320px] px-4 pb-24 pt-24 sm:px-6 lg:px-8 lg:pt-28">
+      <main className="mx-auto max-w-[1320px] px-3 pb-24 pt-20 sm:px-6 sm:pt-24 lg:px-8 lg:pt-28">
         <div>
-          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div className="mb-6 flex flex-col justify-between gap-3 px-1 sm:mb-8 md:flex-row md:items-end">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand sm:text-xs sm:tracking-[0.2em]">
                 {mode === "direct" ? "Direct production request" : "Brand-er funding studio"}
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-stone-950 md:text-5xl">
+              <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-[-0.045em] text-stone-950 sm:mt-3 md:text-5xl">
                 {mode === "direct" ? "바로 제작 의뢰" : "나만의 첫 컬렉션"}
               </h1>
             </div>
-            <p className="max-w-sm text-sm leading-6 text-stone-500">
+            <p className="max-w-md text-[15px] leading-6 text-stone-500 md:max-w-sm md:text-sm">
               {mode === "direct"
                 ? "AI 디자인과 자동 견적을 확인한 뒤 제작 의뢰를 접수하면 담당자가 사양을 검토해 연락드립니다."
                 : "선택한 정보는 AI 디자인과 자동 견적에 함께 반영됩니다. 언제든 이전 단계로 돌아가 수정할 수 있어요."}
@@ -152,15 +152,19 @@ const Customize = () => {
 
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
-          <section className="mt-6 rounded-[2rem] border border-stone-200 bg-[#fbfaf8] p-5 shadow-[0_24px_80px_rgba(36,26,24,0.06)] sm:p-9 lg:p-12">
-            <div className="mb-8 border-b border-stone-200 pb-6">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
+          <section
+            className={`mt-4 rounded-[1.5rem] border border-stone-200 bg-[#fbfaf8] shadow-[0_24px_80px_rgba(36,26,24,0.06)] sm:mt-6 sm:rounded-[2rem] sm:p-9 lg:p-12 ${
+              currentStep === 4 || currentStep === 5 ? "p-2.5" : "p-4"
+            }`}
+          >
+            <div className="mb-6 border-b border-stone-200 px-1 pb-5 pt-2 sm:mb-8 sm:px-0 sm:pb-6 sm:pt-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand sm:text-xs sm:tracking-[0.16em]">
                 Step {String(currentStep).padStart(2, "0")}
               </p>
-              <h2 className="mt-2 text-2xl font-bold tracking-[-0.025em] text-stone-950 md:text-3xl">
+              <h2 className="mt-2 text-[1.55rem] font-bold leading-tight tracking-[-0.035em] text-stone-950 md:text-3xl">
                 {stepContent[currentStep - 1]?.[0]}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-stone-500">
+              <p className="mt-2 text-[15px] leading-6 text-stone-500 sm:text-sm">
                 {stepContent[currentStep - 1]?.[1]}
               </p>
             </div>
@@ -256,12 +260,12 @@ const Customize = () => {
             )}
             </div>
 
-            <div className="sticky bottom-4 z-20 mt-10 flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/95 p-3 shadow-[0_16px_45px_rgba(36,26,24,0.12)] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+            <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 mt-8 flex items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-white/95 p-2.5 shadow-[0_16px_45px_rgba(36,26,24,0.12)] backdrop-blur sm:static sm:mt-10 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
               {currentStep > 1 ? (
                 <Button
                   variant="outline"
                   onClick={handleBack}
-                  className="h-12 rounded-full border-stone-300 px-6"
+                  className="h-12 shrink-0 rounded-full border-stone-300 px-5 sm:px-6"
                 >
                   이전
                 </Button>
@@ -269,7 +273,7 @@ const Customize = () => {
               <Button
                 onClick={handleNext}
                 disabled={isSubmitting}
-                className="h-12 rounded-full bg-brand px-7 font-bold hover:bg-brand-dark"
+                className="h-12 min-w-0 flex-1 rounded-full bg-brand px-4 text-[15px] font-bold hover:bg-brand-dark sm:flex-none sm:px-7 sm:text-sm"
               >
                 {currentStep === 4
                   ? "이 디자인 편집하기"

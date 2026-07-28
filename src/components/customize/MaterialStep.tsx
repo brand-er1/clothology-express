@@ -37,7 +37,7 @@ export const MaterialStep = ({
               key={material.id}
               role="button"
               tabIndex={0}
-              className={`relative cursor-pointer rounded-2xl p-6 transition-all ${
+              className={`relative cursor-pointer rounded-2xl p-4 transition-all sm:p-6 ${
                 isSelected
                   ? "border-brand bg-[#fff9f7] shadow-[0_12px_35px_rgba(113,16,17,0.08)] ring-1 ring-brand"
                   : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-lg"
@@ -52,17 +52,17 @@ export const MaterialStep = ({
                   <Check className="h-3.5 w-3.5" />
                 </span>
               )}
-              <h3 className="pr-8 text-lg font-bold">{material.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-stone-500">{material.description}</p>
+              <h3 className="pr-8 text-[17px] font-bold sm:text-lg">{material.name}</h3>
+              <p className="mt-1.5 text-[14px] leading-6 text-stone-500 sm:mt-2 sm:text-sm">{material.description}</p>
             </Card>
           );
         })}
       </div>
 
-      <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-6">
+      <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-4 sm:p-6">
         <div className="mb-3">
-          <p className="text-sm font-bold">원하는 원단이 목록에 없나요?</p>
-          <p className="mt-1 text-xs text-stone-500">알고 있는 원단명을 직접 추가할 수 있어요.</p>
+          <p className="text-[15px] font-bold sm:text-sm">원하는 원단이 목록에 없나요?</p>
+          <p className="mt-1 text-[13px] text-stone-500 sm:text-xs">알고 있는 원단명을 직접 추가할 수 있어요.</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Input

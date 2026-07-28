@@ -87,13 +87,13 @@ export const Header = () => {
   const mobileMenu = (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full md:hidden" aria-label="메뉴">
-          <Menu className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full md:hidden" aria-label="메뉴">
+          <Menu className="h-5.5 w-5.5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[310px] border-l-stone-200 bg-[#fbfaf8] px-5">
+      <SheetContent side="right" className="w-[min(88vw,340px)] border-l-stone-200 bg-[#fbfaf8] px-5">
         <div className="border-b border-stone-200 pb-6 pt-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">BRAND-ER</p>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">BRAND-ER</p>
           {isAuthenticated ? (
             <>
               <p className="mt-3 text-xl font-bold text-stone-950">{displayName}</p>
@@ -109,7 +109,7 @@ export const Header = () => {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                `rounded-xl px-4 py-3.5 text-base font-semibold transition ${
                   isActive ? "bg-brand text-white" : "text-stone-700 hover:bg-stone-100"
                 }`
               }
@@ -150,12 +150,12 @@ export const Header = () => {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-stone-200/80 bg-[#fbfaf8]/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center gap-8 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-8 px-4 sm:h-[72px] sm:px-6 lg:px-8">
         <Link to={accountType === "buyer" ? "/fundings" : "/"} className="flex shrink-0 items-center">
           <img
             src={getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png")}
             alt="BRAND-ER"
-            className="h-7 w-auto"
+            className="h-8 w-auto sm:h-7"
           />
         </Link>
 

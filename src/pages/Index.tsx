@@ -149,12 +149,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-[#f4f0ea] text-[#201b19]">
       <Header />
-      <main className="pt-[72px]">
+      <main className="pt-16 sm:pt-[72px]">
         <section className="relative overflow-hidden border-b border-stone-200 bg-[#f4f0ea]">
           <div className="absolute -right-48 -top-56 h-[42rem] w-[42rem] rounded-full bg-[#d6bcb2]/45 blur-[120px]" />
           <div className="relative mx-auto grid min-h-[760px] max-w-[1440px] items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:px-12 lg:py-20">
             <div className="max-w-2xl">
-              <div className="mb-7 inline-flex items-center rounded-full border border-stone-300 bg-white/65 px-4 py-2 text-xs font-bold tracking-[0.08em] text-brand backdrop-blur">
+              <div className="mb-6 inline-flex items-center rounded-full border border-stone-300 bg-white/65 px-3.5 py-2 text-[11px] font-bold tracking-[0.06em] text-brand backdrop-blur sm:mb-7 sm:px-4 sm:text-xs sm:tracking-[0.08em]">
                 <Sparkles className="mr-2 h-4 w-4" />
                 DISCOVER THE NEXT FASHION
               </div>
@@ -163,10 +163,10 @@ const Index = () => {
                 <br />
                 <span className="text-brand">다음 브랜드가 됩니다.</span>
               </h1>
-              <p className="mt-7 max-w-xl text-base leading-8 text-stone-600 sm:text-lg">
+              <p className="mt-6 max-w-xl text-[15px] leading-7 text-stone-600 sm:mt-7 sm:text-lg sm:leading-8">
                 아직 세상에 없는 디자인을 가장 먼저 발견하고 참여해보세요. 사람들의 선택이 모이면 브랜더가 실제 제품으로 만듭니다.
               </p>
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row">
                 <Button asChild size="lg" className="h-14 rounded-full bg-brand px-8 text-base font-bold hover:bg-brand-light">
                   <Link to="/fundings">
                     지금 펀딩 둘러보기 <ArrowRight className="ml-2 h-5 w-5" />
@@ -176,7 +176,7 @@ const Index = () => {
                   <Link to="/customize?mode=direct">바로 제작 의뢰하기</Link>
                 </Button>
               </div>
-              <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-stone-500">
+              <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2.5 text-[13px] text-stone-500 sm:mt-10 sm:gap-x-6 sm:gap-y-3 sm:text-sm">
                 {["새로운 브랜드 발견", "목표 달성 후 제작", "진행 과정을 투명하게"].map((text) => (
                   <span key={text} className="flex items-center">
                     <Check className="mr-1.5 h-4 w-4 text-brand" />
@@ -231,13 +231,13 @@ const Index = () => {
             ].map(([value, label]) => (
               <div key={label} className="px-3 py-3 text-center">
                 <strong className="text-sm font-bold tracking-[0.12em] text-brand sm:text-base">{value}</strong>
-                <p className="mt-1.5 text-[11px] text-stone-500 sm:text-xs">{label}</p>
+                <p className="mt-1.5 text-[12px] text-stone-500 sm:text-xs">{label}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="mx-auto max-w-[1440px] px-5 py-24 sm:px-8 lg:px-12 lg:py-28">
+        <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Trending now</p>
@@ -300,7 +300,7 @@ const Index = () => {
                   <br className="hidden sm:block" />
                   함께 만드는 경험.
                 </h2>
-                <p className="mt-5 max-w-md text-sm leading-7 text-stone-500">
+                <p className="mt-5 max-w-md text-[15px] leading-7 text-stone-500 sm:text-sm">
                   평범한 쇼핑 대신 새로운 디자이너의 아이디어를 발견하고, 마음에 드는 제품이 탄생하는 과정에 참여하세요.
                 </p>
               </div>
@@ -318,7 +318,7 @@ const Index = () => {
                   <br className="hidden sm:block" />
                   아이디어를 제품으로.
                 </h2>
-                <p className="mt-5 max-w-md text-sm leading-7 text-white/58">
+                <p className="mt-5 max-w-md text-[15px] leading-7 text-white/58 sm:text-sm">
                   수요를 먼저 확인하고 싶다면 펀딩으로, 제작 수량이 이미 정해졌다면 바로 제작으로 시작하세요.
                 </p>
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">

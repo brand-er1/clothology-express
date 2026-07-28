@@ -55,7 +55,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="mx-auto grid min-h-screen max-w-[1440px] gap-0 px-0 pt-[72px] lg:grid-cols-[0.9fr_1.1fr] lg:px-6 lg:pb-6">
+      <main className="mx-auto grid min-h-screen max-w-[1440px] gap-0 px-0 pt-16 sm:pt-[72px] lg:grid-cols-[0.9fr_1.1fr] lg:px-6 lg:pb-6">
         <section className="relative hidden overflow-hidden bg-[#201819] px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-[2rem]">
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand/40 blur-3xl" />
           <div className="relative">
@@ -98,25 +98,25 @@ const Auth = () => {
           </div>
         </section>
 
-        <section className="flex items-start justify-center px-4 py-10 sm:px-8 lg:px-14 lg:py-16">
+        <section className="flex items-start justify-center px-3 py-8 sm:px-8 sm:py-10 lg:px-14 lg:py-16">
           <Card className={`w-full border-0 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.09)] ${isSignUp ? "max-w-2xl" : "max-w-lg"} rounded-[2rem]`}>
-            <CardHeader className="space-y-3 px-6 pb-4 pt-8 sm:px-10 sm:pt-10">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+            <CardHeader className="space-y-3 px-5 pb-4 pt-7 sm:px-10 sm:pt-10">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand sm:text-xs sm:tracking-[0.2em]">
                 {isSignUp ? "Create your identity" : "Welcome back"}
               </p>
               <CardTitle className="text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
                 {isSignUp ? "나만의 브랜드를 시작하세요" : "브랜더에 로그인"}
               </CardTitle>
-              <p className="text-sm leading-6 text-stone-500">
+              <p className="text-[15px] leading-6 text-stone-500 sm:text-sm">
                 {isSignUp
                   ? "브랜드명과 닉네임을 정하고 첫 디자인을 만들어보세요."
                   : "진행 중인 디자인과 펀딩을 이어서 관리하세요."}
               </p>
-              <div className="rounded-xl bg-[#f8f5f1] px-4 py-3 text-xs leading-5 text-stone-500">
+              <div className="rounded-xl bg-[#f8f5f1] px-4 py-3 text-[13px] leading-5 text-stone-500 sm:text-xs">
                 BRAND-ER 쇼핑몰 계정과 별도로 가입해야 합니다.
               </div>
             </CardHeader>
-            <CardContent className="px-6 pb-8 sm:px-10 sm:pb-10">
+            <CardContent className="px-5 pb-7 sm:px-10 sm:pb-10">
               <form onSubmit={handleAuth} className="space-y-5">
               {isSignUp ? (
                 <SignUpForm

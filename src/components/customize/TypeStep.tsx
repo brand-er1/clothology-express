@@ -20,7 +20,7 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
               key={type.id}
               role="button"
               tabIndex={0}
-              className={`group relative cursor-pointer rounded-2xl p-6 transition-all duration-200 ${
+              className={`group relative cursor-pointer rounded-2xl p-4 transition-all duration-200 sm:p-6 ${
                 isSelected
                   ? "border-brand bg-[#fff9f7] shadow-[0_12px_35px_rgba(113,16,17,0.08)] ring-1 ring-brand"
                   : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-lg"
@@ -35,11 +35,11 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
                   <Check className="h-3.5 w-3.5" />
                 </span>
               )}
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f3ede8] text-brand transition group-hover:bg-brand group-hover:text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#f3ede8] text-brand transition group-hover:bg-brand group-hover:text-white sm:h-14 sm:w-14 sm:rounded-2xl">
                 {type.icon}
               </div>
-              <h3 className="mt-5 text-lg font-bold">{type.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-stone-500">{type.description}</p>
+              <h3 className="mt-4 text-[17px] font-bold sm:mt-5 sm:text-lg">{type.name}</h3>
+              <p className="mt-1.5 text-[14px] leading-6 text-stone-500 sm:mt-2 sm:text-sm">{type.description}</p>
             </Card>
           );
         })}
@@ -48,7 +48,7 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
 
   return (
     <Tabs defaultValue="tops" className="w-full">
-      <TabsList className="mb-6 grid h-12 w-full grid-cols-2 rounded-full bg-[#eee9e3] p-1 sm:w-64">
+      <TabsList className="mb-5 grid h-12 w-full grid-cols-2 rounded-full bg-[#eee9e3] p-1 sm:mb-6 sm:w-64">
         <TabsTrigger value="tops" className="rounded-full font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">상의</TabsTrigger>
         <TabsTrigger value="bottoms" className="rounded-full font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">하의</TabsTrigger>
       </TabsList>

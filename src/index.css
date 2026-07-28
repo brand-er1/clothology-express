@@ -137,6 +137,11 @@
 }
 
 @media (max-width: 767px) {
+  body {
+    font-size: 15px;
+    letter-spacing: -0.018em;
+  }
+
   input,
   textarea,
   select {
@@ -144,19 +149,24 @@
   }
 
   .mobile-view main h1 {
-    font-size: clamp(2rem, 9vw, 2.5rem) !important;
-    line-height: 1.12 !important;
-    letter-spacing: -0.04em !important;
+    font-size: clamp(2rem, 8.6vw, 2.3rem) !important;
+    line-height: 1.13 !important;
+    letter-spacing: -0.045em !important;
   }
 
   .mobile-view h2[class*="text-4xl"],
   .mobile-view h2[class*="text-5xl"] {
-    font-size: 2rem !important;
-    line-height: 1.18 !important;
-    letter-spacing: -0.035em !important;
+    font-size: 1.8rem !important;
+    line-height: 1.22 !important;
+    letter-spacing: -0.04em !important;
   }
 
   .mobile-view main p {
-    line-height: 1.65;
+    line-height: 1.68;
+  }
+
+  .mobile-view main button,
+  .mobile-view main a {
+    letter-spacing: -0.02em;
   }
 }

@@ -517,19 +517,21 @@ export const ModifyImageStep = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-8">
       {/* Image and modification input area - occupies 2/3 of the space */}
-      <Card className="p-6 md:col-span-2">
+      <Card className="border-0 bg-transparent p-0 shadow-none sm:border sm:bg-card sm:p-6 sm:shadow-sm md:col-span-2">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">이미지 수정</h3>
-          <p className="text-sm text-gray-500">
-            AI에게 선택한 이미지를 어떻게 수정할지 설명해주세요. 
-            디테일, 컬러, 스타일 등 변경하고 싶은 부분을 자세히 설명하세요.
-          </p>
+          <div className="px-1 sm:px-0">
+            <h3 className="text-[17px] font-semibold sm:text-lg">이미지 수정</h3>
+            <p className="mt-1.5 text-[14px] leading-6 text-gray-500 sm:text-sm">
+              AI에게 선택한 이미지를 어떻게 수정할지 설명해주세요.
+              디테일, 컬러, 스타일 등 변경하고 싶은 부분을 자세히 설명하세요.
+            </p>
+          </div>
           
           <div className="flex flex-col items-center space-y-4">
             <div
-              className={`relative w-full max-w-xl select-none overflow-hidden rounded-xl border bg-gray-50 ${
+              className={`relative w-full max-w-3xl select-none overflow-hidden rounded-[1.35rem] border bg-gray-50 shadow-[0_18px_55px_rgba(36,26,24,0.08)] sm:rounded-xl ${
                 artworkPreview
                   ? "border-brand/40 shadow-inner"
                   : "border-gray-200"
@@ -620,7 +622,7 @@ export const ModifyImageStep = ({
                   </>
                 )}
                 {!artworkPreview && !isLoading && (
-                  <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-lg bg-white/90 px-3 py-2 text-center text-xs font-semibold text-gray-600 shadow-sm">
+                  <div className="pointer-events-none absolute inset-x-2 bottom-2 rounded-lg bg-white/92 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-gray-600 shadow-sm sm:inset-x-3 sm:bottom-3 sm:text-xs">
                     이미지 선택 또는 파일 드롭 후 프롬프트·드래그를 모두 사용할
                     수 있습니다.
                   </div>
@@ -633,7 +635,7 @@ export const ModifyImageStep = ({
               </div>
             </div>
 
-            <div className="w-full rounded-2xl border border-brand/15 bg-brand/5 p-4">
+            <div className="w-full rounded-2xl border border-brand/15 bg-brand/5 p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h4 className="flex items-center gap-2 font-extrabold text-gray-950">
@@ -999,10 +1001,10 @@ export const ModifyImageStep = ({
                 className="min-h-[120px] resize-none"
                 disabled={isLoading}
               />
-              <div className="flex space-x-2">
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <Button
                   type="submit"
-                  className="bg-brand hover:bg-brand-dark flex-1"
+                  className="h-12 rounded-xl bg-brand hover:bg-brand-dark"
                   disabled={isLoading || !modificationPrompt.trim()}
                 >
                   {isLoading ? (
@@ -1021,6 +1023,7 @@ export const ModifyImageStep = ({
                   variant="outline"
                   onClick={onResetModifications}
                   disabled={isLoading || modificationHistory.length === 0}
+                  className="h-12 rounded-xl"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" /> 처음으로
                 </Button>
@@ -1031,9 +1034,9 @@ export const ModifyImageStep = ({
       </Card>
 
       {/* Chat history - occupies 1/3 of the space */}
-      <Card className="p-6 overflow-hidden flex flex-col">
+      <Card className="flex flex-col overflow-hidden rounded-2xl p-4 sm:p-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">수정 챗봇</h3>
+          <h3 className="text-[17px] font-semibold sm:text-lg">수정 챗봇</h3>
           
           {modificationHistory.length > 0 ? (
             <div className="overflow-y-auto max-h-[500px] flex flex-col space-y-4 pr-2">

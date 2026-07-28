@@ -95,6 +95,13 @@
     @apply border-border;
   }
 
+  html {
+    min-width: 320px;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: Pretendard, "SUIT Variable", SUIT, "Noto Sans KR", "Apple SD Gothic Neo", Inter, system-ui, sans-serif;
@@ -102,10 +109,54 @@
     letter-spacing: -0.012em;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
+
+  p,
+  li,
+  label,
+  button,
+  a {
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
 
   ::selection {
     background: rgba(113, 16, 17, 0.16);
     color: #3f0c0d;
+  }
+}
+
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  .mobile-view main h1 {
+    font-size: clamp(2rem, 9vw, 2.5rem) !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  .mobile-view h2[class*="text-4xl"],
+  .mobile-view h2[class*="text-5xl"] {
+    font-size: 2rem !important;
+    line-height: 1.18 !important;
+    letter-spacing: -0.035em !important;
+  }
+
+  .mobile-view main p {
+    line-height: 1.65;
   }
 }

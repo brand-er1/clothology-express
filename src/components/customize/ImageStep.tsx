@@ -1,7 +1,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ImageOff } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ImageOff, Maximize2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface ImageStepProps {
@@ -34,6 +39,7 @@ export const ImageStep = ({
   onGenerateImage,
 }: ImageStepProps) => {
   const [imageErrors, setImageErrors] = useState<boolean[]>([]);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   
   // Reset error state when image URLs array changes
   useEffect(() => {
@@ -45,9 +51,9 @@ export const ImageStep = ({
   }, [generatedImageUrls]);
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {/* Image generation area - occupies 2/3 of the space */}
-      <Card className="p-6 md:col-span-2">
+    <>
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <Card className="p-4 sm:p-6">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">이미지 생성</h3>
           <p className="text-sm text-gray-500">
@@ -63,18 +69,33 @@ export const ImageStep = ({
             </div>
           ) : generatedImageUrls && generatedImageUrls.length > 0 ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {generatedImageUrls.map((imageUrl, index) => (
-                  <div 
+              <div className={`grid gap-4 ${
+                generatedImageUrls.length > 1
+                  ? "grid-cols-1 2xl:grid-cols-2"
+                  : "grid-cols-1"
+              }`}>
+                {generatedImageUrls.map((imageUrl, index) => {
+                  const resolvedImageUrl =
+                    storedImageUrls && storedImageUrls[index]
+                      ? storedImageUrls[index]
+                      : imageUrl;
+
+                  return (
+                  <div
                     key={index}
-                    className="relative border-2 rounded-lg overflow-hidden transition-all border-gray-200"
+                    className="relative overflow-hidden rounded-2xl border-2 border-gray-200 bg-gray-50 transition-all"
                   >
                     {!imageErrors[index] ? (
-                      <div className="relative w-full min-h-[260px] sm:min-h-[320px] max-h-[420px] bg-gray-50 flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImageUrl(resolvedImageUrl)}
+                        className="group relative flex min-h-[420px] w-full cursor-zoom-in items-center justify-center sm:min-h-[560px] lg:min-h-[680px]"
+                        aria-label={`생성된 의류 디자인 ${index + 1} 크게 보기`}
+                      >
                         <img
-                          src={storedImageUrls && storedImageUrls[index] ? storedImageUrls[index] : imageUrl}
+                          src={resolvedImageUrl}
                           alt={`Generated clothing design ${index + 1}`}
-                          className="max-h-[420px] w-full h-full object-contain object-center"
+                          className="h-full max-h-[760px] w-full object-contain object-center"
                           onLoad={() => console.log(`Image ${index + 1} loaded successfully`)}
                           onError={() => {
                             console.error(`Image ${index + 1} loading error:`, imageUrl);
@@ -85,20 +106,25 @@ export const ImageStep = ({
                             });
                           }}
                         />
+                        <span className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-xs font-bold text-white opacity-100 shadow-lg backdrop-blur transition sm:opacity-0 sm:group-hover:opacity-100">
+                          <Maximize2 className="h-4 w-4" />
+                          크게 보기
+                        </span>
                         {selectedImageIndex === index && (
-                          <div className="absolute top-2 right-2 bg-brand text-white text-xs px-2 py-1 rounded">
+                          <span className="absolute right-4 top-4 rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white shadow-md">
                             선택됨
-                          </div>
+                          </span>
                         )}
-                      </div>
+                      </button>
                     ) : (
-                      <div className="w-full min-h-[260px] sm:min-h-[320px] max-h-[420px] bg-gray-100 flex flex-col items-center justify-center">
+                      <div className="flex min-h-[420px] w-full flex-col items-center justify-center bg-gray-100 sm:min-h-[560px] lg:min-h-[680px]">
                         <ImageOff className="w-8 h-8 text-gray-400 mb-2" />
                         <p className="text-sm text-gray-500">이미지를 불러올 수 없습니다</p>
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
               
               <Button 
@@ -136,8 +162,7 @@ export const ImageStep = ({
         </div>
       </Card>
 
-      {/* Selected options summary - occupies 1/3 of the space */}
-      <Card className="p-6">
+      <Card className="h-fit p-6 xl:sticky xl:top-28">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">선택한 옵션</h3>
           <div className="space-y-2">
@@ -158,5 +183,23 @@ export const ImageStep = ({
         </div>
       </Card>
     </div>
+    <Dialog
+      open={Boolean(previewImageUrl)}
+      onOpenChange={(open) => {
+        if (!open) setPreviewImageUrl(null);
+      }}
+    >
+      <DialogContent className="h-[94vh] w-[96vw] max-w-[96vw] border-white/15 bg-black p-3 sm:rounded-2xl">
+        <DialogTitle className="sr-only">생성된 의류 디자인 크게 보기</DialogTitle>
+        {previewImageUrl && (
+          <img
+            src={previewImageUrl}
+            alt="생성된 의류 디자인 원본 크기 미리보기"
+            className="h-full w-full object-contain"
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };

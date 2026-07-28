@@ -158,7 +158,7 @@ const Index = () => {
                 <Sparkles className="mr-2 h-4 w-4" />
                 DISCOVER THE NEXT FASHION
               </div>
-              <h1 className="text-[3.15rem] font-semibold leading-[1.02] tracking-[-0.06em] text-stone-950 sm:text-6xl md:text-7xl">
+              <h1 className="text-[2.35rem] font-semibold leading-[1.08] tracking-[-0.045em] text-stone-950 sm:text-6xl sm:leading-[1.02] sm:tracking-[-0.06em] md:text-7xl">
                 당신의 취향이
                 <br />
                 <span className="text-brand">다음 브랜드가 됩니다.</span>
@@ -202,9 +202,9 @@ const Index = () => {
                   <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between gap-5 text-white sm:bottom-8 sm:left-8 sm:right-8">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Discover your taste</p>
-                      <p className="mt-2 max-w-sm text-xl font-semibold leading-snug tracking-[-0.025em] sm:text-2xl">
-                        한 가지 상품이 아닌,
-                        <br />
+                      <p className="mt-2 max-w-sm text-lg font-semibold leading-snug tracking-[-0.025em] sm:text-2xl">
+                        한 가지 상품이 아닌,{" "}
+                        <br className="hidden sm:block" />
                         새로운 취향을 발견하는 곳.
                       </p>
                     </div>
@@ -295,7 +295,11 @@ const Index = () => {
               <div>
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#eee5dd] text-brand"><Heart className="h-5 w-5" /></span>
                 <p className="mt-10 text-xs font-bold uppercase tracking-[0.2em] text-brand">For supporters</p>
-                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">구경하는 재미,<br />함께 만드는 경험.</h2>
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl sm:tracking-[-0.045em]">
+                  구경하는 재미,{" "}
+                  <br className="hidden sm:block" />
+                  함께 만드는 경험.
+                </h2>
                 <p className="mt-5 max-w-md text-sm leading-7 text-stone-500">
                   평범한 쇼핑 대신 새로운 디자이너의 아이디어를 발견하고, 마음에 드는 제품이 탄생하는 과정에 참여하세요.
                 </p>
@@ -309,7 +313,11 @@ const Index = () => {
               <div>
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-[#e1b2ad]"><Sparkles className="h-5 w-5" /></span>
                 <p className="mt-10 text-xs font-bold uppercase tracking-[0.2em] text-[#e1b2ad]">For makers</p>
-                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">상황에 맞는 방식으로<br />아이디어를 제품으로.</h2>
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl sm:tracking-[-0.045em]">
+                  상황에 맞는 방식으로{" "}
+                  <br className="hidden sm:block" />
+                  아이디어를 제품으로.
+                </h2>
                 <p className="mt-5 max-w-md text-sm leading-7 text-white/58">
                   수요를 먼저 확인하고 싶다면 펀딩으로, 제작 수량이 이미 정해졌다면 바로 제작으로 시작하세요.
                 </p>
@@ -372,7 +380,11 @@ const Index = () => {
           <div className="mx-auto grid max-w-[1440px] gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:px-12 lg:py-28">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Professional system</p>
-              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">재미있게 시작하고,<br />전문적으로 완성합니다.</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl sm:tracking-[-0.045em]">
+                재미있게 시작하고,{" "}
+                <br className="hidden sm:block" />
+                전문적으로 완성합니다.
+              </h2>
               <p className="mt-5 max-w-md text-sm leading-7 text-stone-500">
                 쉬운 화면 뒤에는 실제 제작에 필요한 견적 분석과 안전 검수, 생산 운영 시스템이 연결되어 있습니다.
               </p>
@@ -400,7 +412,11 @@ const Index = () => {
         <section className="mx-auto grid max-w-[1200px] gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[0.75fr_1.25fr] lg:py-32">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Q&A</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.045em]">참여하기 전,<br />많이 묻는 질문</h2>
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl sm:tracking-[-0.045em]">
+              참여하기 전,{" "}
+              <br className="hidden sm:block" />
+              많이 묻는 질문
+            </h2>
             <p className="mt-5 max-w-sm text-sm leading-7 text-stone-500">
               펀딩 참여부터 직접 디자인을 만드는 방법까지, 궁금한 내용을 먼저 확인해보세요.
             </p>

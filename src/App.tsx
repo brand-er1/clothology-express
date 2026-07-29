@@ -16,16 +16,14 @@ import FundingManager from './pages/FundingManager';
 import MyFundings from './pages/MyFundings';
 import KakaoPayResult from './pages/KakaoPayResult';
 import FabricSwatch from './pages/FabricSwatch';
-import { toast } from './components/ui/use-toast';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
-import { refreshSessionAfterSocialLogin, isInIframe } from './utils/authUtils';
+import { isInIframe } from './utils/authUtils';
 import { getAppUrl, routerBasename } from './utils/appUrl';
 import { useIsMobile } from './hooks/use-mobile';
 import { Footer } from './components/Footer';
 import { SiteVisitTracker } from './components/SiteVisitTracker';
 
-// Kakao 타입 선언
 declare global {
   interface Window {
     Kakao?: {
@@ -37,115 +35,61 @@ declare global {
 
 function App() {
   const [isInIframeContext, setIsInIframeContext] = useState(false);
-  
-  // 모바일 상태 확인
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Check if we're in an iframe
     const inIframe = isInIframe();
     setIsInIframeContext(inIframe);
-    
-    // iframe 상태를 콘솔에 기록
     console.log("App mounted in iframe:", inIframe, "Mobile:", isMobile);
-    
-    // iframe 내에서 실행 중인 경우 스타일 조정
-    if (inIframe) {
-      // iframe용 최적화 스타일 적용 (선택 사항)
-      document.body.classList.add('in-iframe');
-    }
-    
-    // Kakao SDK 스크립트 동적 로딩
+
+    if (inIframe) document.body.classList.add('in-iframe');
+
     const script = document.createElement('script');
     script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
     script.async = true;
     script.onload = () => {
-      // Kakao SDK 초기화 (JavaScript 키 사용)
       const kakaoApiKey = '65949909b86a9401ca9559ea3c184659';
-      if (kakaoApiKey && window.Kakao) {
-        // Kakao SDK 초기화는 한 번만 실행되도록
-        if (!window.Kakao.isInitialized()) {
-          window.Kakao.init(kakaoApiKey);
-          console.log('Kakao SDK initialized.');
-        } else {
-          console.log('Kakao SDK already initialized.');
-        }
+      if (kakaoApiKey && window.Kakao && !window.Kakao.isInitialized()) {
+        window.Kakao.init(kakaoApiKey);
       }
     };
     document.body.appendChild(script);
-    
-    // URL 파라미터 체크
-    const urlParams = new URLSearchParams(window.location.search);
-    const isMobileParam = urlParams.get('isMobile');
-    
-    if (isMobileParam === 'true') {
-      // URL 파라미터로 모바일 모드가 명시되었을 경우 처리
-      document.body.classList.add('force-mobile');
-      console.log("Forced mobile mode by URL parameter");
-    }
 
-    // 부모 창으로부터 메시지 수신 핸들러
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('isMobile') === 'true') document.body.classList.add('force-mobile');
+
     const handleParentMessage = async (event: MessageEvent) => {
-      // iframe 내에서만 처리
-      if (inIframe) {
-        try {
-          const message = event.data;
-          
-          // 인증 관련 메시지
-          if (message && message.type === 'SESSION_DATA' && message.data) {
-            console.log("Received session data in iframe:", message.data);
-            
-            // Set the session using the received data
-            const { error } = await supabase.auth.setSession({
-              access_token: message.data.access_token,
-              refresh_token: message.data.refresh_token
-            });
-            
-            if (error) {
-              console.error("Error setting session in iframe:", error);
-            } else {
-              console.log("Successfully set session in iframe");
-              // Force a reload if needed
-              window.location.href = getAppUrl();
-            }
-          }
-          
-          // 부모 창 크기 정보 메시지
-          else if (message && message.type === 'PARENT_WINDOW_SIZE') {
-            console.log("Received parent window size:", message);
-            
-            // 부모 창이 모바일 크기라면 모바일 최적화를 위한 클래스 추가
-            if (message.isMobile) {
-              document.body.classList.add('parent-is-mobile');
-            } else {
-              document.body.classList.remove('parent-is-mobile');
-            }
-          }
-        } catch (e) {
-          console.error("Error processing message in iframe:", e);
+      if (!inIframe) return;
+      try {
+        const message = event.data;
+        if (message && message.type === 'SESSION_DATA' && message.data) {
+          const { error } = await supabase.auth.setSession({
+            access_token: message.data.access_token,
+            refresh_token: message.data.refresh_token
+          });
+          if (!error) window.location.href = getAppUrl();
+        } else if (message && message.type === 'PARENT_WINDOW_SIZE') {
+          document.body.classList.toggle('parent-is-mobile', Boolean(message.isMobile));
         }
+      } catch (error) {
+        console.error("Error processing message in iframe:", error);
       }
     };
-    
+
     window.addEventListener('message', handleParentMessage);
 
-    // 부모 창에 현재 상태 알림
     if (inIframe) {
-      try {
-        window.parent.postMessage({
-          type: 'IFRAME_READY',
-          isMobile: isMobile,
-          userAgent: navigator.userAgent,
-          windowWidth: window.innerWidth,
-          windowHeight: window.innerHeight
-        }, '*');
-      } catch (e) {
-        console.error("Error posting ready message:", e);
-      }
+      window.parent.postMessage({
+        type: 'IFRAME_READY',
+        isMobile,
+        userAgent: navigator.userAgent,
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight
+      }, '*');
     }
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) document.body.removeChild(script);
       window.removeEventListener('message', handleParentMessage);
     };
   }, [isMobile]);
@@ -169,7 +113,7 @@ function App() {
           <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
           <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
           <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
-          <Route path="/admin" element={<AuthGuard><Admin /></AuthGuard>} />
+          <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Footer />

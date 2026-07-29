@@ -636,27 +636,59 @@ export const ProductionEstimateCard = ({
 
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Scissors className="h-4 w-4" /> 샘플비 (별도 · 1회)
+            <Scissors className="h-4 w-4" /> 샘플비 합계 (별도 · 1회)
           </p>
           <p className="mt-2 font-bold text-gray-950">
             {formatWon(totals.sampleCost)}
           </p>
+          <div className="mt-3 space-y-1.5 border-t border-stone-100 pt-3 text-[11px]">
+            <div className="flex items-center justify-between gap-3 text-stone-600">
+              <span>기존 의류 샘플비</span>
+              <span className="font-bold text-stone-900">
+                {formatWon(totals.baseSampleCost)}
+              </span>
+            </div>
           {estimate.materialPremium && totals.sampleSurcharge > 0 && (
-            <p className="mt-1 text-[11px] font-semibold text-brand">
-              {estimate.materialPremium.label} 프리미엄 샘플비{" "}
-              +{formatWon(totals.sampleSurcharge)} 포함
-            </p>
+              <div className="flex items-center justify-between gap-3 text-brand">
+                <span>{estimate.materialPremium.label} 소재 추가</span>
+                <span className="font-bold">
+                  +{formatWon(totals.sampleSurcharge)}
+                </span>
+              </div>
           )}
           {totals.printPlateCost > 0 && (
-            <p className="mt-1 text-[11px] font-semibold text-brand">
-              프린팅 샘플 판비 +{formatWon(totals.printPlateCost)} 포함
-            </p>
+              <div className="flex items-center justify-between gap-3 text-brand">
+                <span>나염·프린팅 샘플 판비</span>
+                <span className="font-bold">
+                  +{formatWon(totals.printPlateCost)}
+                </span>
+              </div>
           )}
           {totals.embroiderySampleCost > 0 && (
-            <p className="mt-1 text-[11px] font-semibold text-brand">
-              자수 샘플비 +{formatWon(totals.embroiderySampleCost)} 포함
-            </p>
+              <div className="flex items-center justify-between gap-3 text-brand">
+                <span>자수 샘플 판비</span>
+                <span className="font-bold">
+                  +{formatWon(totals.embroiderySampleCost)}
+                </span>
+              </div>
           )}
+            {totals.dyeingSampleCost > 0 && (
+              <div className="flex items-center justify-between gap-3 text-brand">
+                <span>염색 샘플 추가비</span>
+                <span className="font-bold">
+                  +{formatWon(totals.dyeingSampleCost)}
+                </span>
+              </div>
+            )}
+            {totals.washingSampleCost > 0 && (
+              <div className="flex items-center justify-between gap-3 text-brand">
+                <span>워싱 샘플 추가비</span>
+                <span className="font-bold">
+                  +{formatWon(totals.washingSampleCost)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -800,7 +832,7 @@ export const ProductionEstimateCard = ({
             </p>
             {totals.decorationDevelopmentCost > 0 && (
               <p className="mt-1 text-[11px] font-semibold leading-4 text-brand">
-                샘플비에 프린팅 판비·자수 샘플비{" "}
+                기존 샘플비에 나염·자수·염색·워싱 추가 샘플비{" "}
                 {formatWon(totals.decorationDevelopmentCost)} 포함
               </p>
             )}

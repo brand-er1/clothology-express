@@ -409,6 +409,10 @@ export type Database = {
           image_path: string | null
           material: string
           measurements: Json | null
+          estimate_snapshot: Json | null
+          request_source: string
+          request_title: string | null
+          requested_quantity: number | null
           reviewed_at: string | null
           reviewed_by: string | null
           size: string | null
@@ -426,6 +430,10 @@ export type Database = {
           image_path?: string | null
           material: string
           measurements?: Json | null
+          estimate_snapshot?: Json | null
+          request_source?: string
+          request_title?: string | null
+          requested_quantity?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           size?: string | null
@@ -443,6 +451,10 @@ export type Database = {
           image_path?: string | null
           material?: string
           measurements?: Json | null
+          estimate_snapshot?: Json | null
+          request_source?: string
+          request_title?: string | null
+          requested_quantity?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           size?: string | null

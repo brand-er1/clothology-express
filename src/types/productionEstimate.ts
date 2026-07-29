@@ -87,6 +87,7 @@ export interface ProductionAnalysis {
   difficultyReason: string;
   hasPrinting: boolean;
   hasEmbroidery: boolean;
+  hasDyeing: boolean;
   hasWashing: boolean;
   detectedDecorationCount: number;
   detectedAccessoryCount: number;
@@ -134,10 +135,13 @@ export interface ProductionEstimateTotals {
   productionTotalMin: number;
   productionTotalMax: number;
   patternCost: number;
+  baseSampleCost: number;
   sampleCost: number;
   sampleSurcharge: number;
   printPlateCost: number;
   embroiderySampleCost: number;
+  dyeingSampleCost: number;
+  washingSampleCost: number;
   decorationDevelopmentCost: number;
   developmentTotal: number;
   decorationMin: number;

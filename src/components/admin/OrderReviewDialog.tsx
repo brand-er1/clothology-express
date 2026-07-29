@@ -11,7 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { type Order } from "@/types/order";
-import { ImageOff } from "lucide-react";
+import {
+  Calculator,
+  ImageOff,
+  PackageCheck,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,6 +38,11 @@ interface RequestUserProfile {
   weight?: number | null;
 }
 
+const formatWonRange = (minimum: number, maximum: number) =>
+  minimum === maximum
+    ? `${minimum.toLocaleString("ko-KR")}원`
+    : `${minimum.toLocaleString("ko-KR")}원 ~ ${maximum.toLocaleString("ko-KR")}원`;
+
 export const OrderReviewDialog = ({
   order,
   isOpen,
@@ -44,6 +55,7 @@ export const OrderReviewDialog = ({
   const [imageUrl, setImageUrl] = useState<string | null>(order?.generated_image_url || null);
   const [userProfile, setUserProfile] = useState<RequestUserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const estimate = order?.estimate_snapshot || null;
 
   // 주문 정보가 변경되면 댓글 초기화 및 사용자 정보 가져오기
   useEffect(() => {
@@ -132,15 +144,65 @@ export const OrderReviewDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle>바로 제작 의뢰 검토</DialogTitle>
+          <DialogTitle className="text-xl">
+            {order?.request_title || "제작 의뢰 상세"}
+          </DialogTitle>
         </DialogHeader>
         
         {order && (
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-brand text-white hover:bg-brand">
+                <PackageCheck className="mr-1 h-3.5 w-3.5" />
+                {order.status === "pending"
+                  ? "신규 의뢰"
+                  : order.status === "approved"
+                  ? "접수 완료"
+                  : "진행 불가"}
+              </Badge>
+              {order.request_source === "design_upload" && (
+                <Badge variant="outline" className="border-brand/30 bg-brand/5 text-brand">
+                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                  내 디자인 자동견적
+                </Badge>
+              )}
+            </div>
+
+            {estimate && (
+              <div className="grid gap-3 rounded-2xl border border-brand/15 bg-brand/5 p-4 sm:grid-cols-3">
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-stone-500">
+                    <Calculator className="h-3.5 w-3.5 text-brand" />
+                    예상 제작비
+                  </p>
+                  <p className="mt-1 font-black text-brand">
+                    {formatWonRange(
+                      estimate.totals.totalMin,
+                      estimate.totals.totalMax,
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-stone-500">기준 수량</p>
+                  <p className="mt-1 font-black text-stone-950">
+                    {order.requested_quantity || estimate.totals.quantity}장
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-stone-500">샘플비 합계</p>
+                  <p className="mt-1 font-black text-stone-950">
+                    {estimate.totals.sampleCost.toLocaleString("ko-KR")}원
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2 text-base md:text-lg">제작 의뢰 정보</h3>
+                  <h3 className="font-semibold mb-2 text-base md:text-lg">
+                    제작 사양
+                  </h3>
                   <dl className="space-y-2 text-sm md:text-base">
                     <div>
                       <dt className="text-sm text-gray-500">의류 종류</dt>
@@ -183,7 +245,9 @@ export const OrderReviewDialog = ({
               </div>
 
               <div>
-                <h3 className="font-semibold mb-2 text-base md:text-lg">생성된 이미지</h3>
+                <h3 className="font-semibold mb-2 text-base md:text-lg">
+                  고객 디자인 이미지
+                </h3>
                 <div className="w-full h-auto min-h-32 md:min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
                   {imageUrl && !imageError ? (
                     <img
@@ -213,7 +277,10 @@ export const OrderReviewDialog = ({
 
             {/* 사용자 정보 섹션 - 엣지 함수 사용으로 개선 */}
             <div>
-              <h3 className="font-semibold mb-2 text-base md:text-lg">고객 정보</h3>
+              <h3 className="mb-2 flex items-center gap-2 text-base font-semibold md:text-lg">
+                <UserRound className="h-4 w-4 text-brand" />
+                고객 정보
+              </h3>
               {isLoadingProfile ? (
                 <p className="text-sm text-gray-500">고객 정보를 불러오는 중...</p>
               ) : userProfile ? (
@@ -286,7 +353,7 @@ export const OrderReviewDialog = ({
             disabled={isSaving}
             className="w-full sm:w-auto"
           >
-            의뢰 접수
+            제작 상담 접수
           </Button>
         </DialogFooter>
       </DialogContent>

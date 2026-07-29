@@ -51,7 +51,8 @@ export const decorationOptions: Array<{
   { value: "pu", label: "PU" },
   { value: "patch", label: "패치" },
   { value: "label", label: "라벨" },
-  { value: "washing", label: "워싱 / 피그먼트" },
+  { value: "pigment", label: "염색 / 피그먼트" },
+  { value: "washing", label: "워싱" },
   { value: "unknown_print", label: "기타 프린팅" },
 ];
 

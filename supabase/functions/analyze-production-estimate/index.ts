@@ -389,10 +389,6 @@ const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
       kind = "screen_print_multi_color";
     }
 
-    if (kind === "pigment") {
-      kind = "washing";
-    }
-
     const locations = (
       rawDecoration.locations ||
       (rawDecoration.location ? [rawDecoration.location] : [])
@@ -841,9 +837,14 @@ ${String(designContext).slice(0, 3000)}
     const hasWashing = normalizedDecorations.some(
       (decoration) => decoration.kind === "washing",
     );
+    const hasDyeing = normalizedDecorations.some(
+      (decoration) => decoration.kind === "pigment",
+    );
     const decorationLines = normalizedDecorations.flatMap((decoration) => {
+      const pricingKind =
+        decoration.kind === "pigment" ? "washing" : decoration.kind;
       const price = decorationRows.find((row) =>
-        row.analysis_kinds.includes(decoration.kind)
+        row.analysis_kinds.includes(pricingKind)
       );
       if (!price) {
         return [{
@@ -866,10 +867,13 @@ ${String(designContext).slice(0, 3000)}
 
       return [{
         kind: decoration.kind,
-        label: price.price_label,
+        label:
+          decoration.kind === "pigment"
+            ? "염색 / 피그먼트 가공"
+            : price.price_label,
         location: decoration.location,
         locationLabel:
-          decoration.kind === "washing"
+          decoration.kind === "washing" || decoration.kind === "pigment"
             ? "전체 의류"
             : locationLabels[decoration.location],
         size: decoration.size,
@@ -921,15 +925,21 @@ ${String(designContext).slice(0, 3000)}
         decoration.kind !== "embroidery" &&
         decoration.kind !== "patch" &&
         decoration.kind !== "label" &&
-        decoration.kind !== "washing",
+        decoration.kind !== "washing" &&
+        decoration.kind !== "pigment",
     );
     const hasEmbroidery = normalizedDecorations.some(
       (decoration) => decoration.kind === "embroidery",
     );
     const printPlateCost = hasPrinting ? 30000 : 0;
     const embroiderySampleCost = hasEmbroidery ? 50000 : 0;
+    const dyeingSampleCost = hasDyeing ? 50000 : 0;
+    const washingSampleCost = hasWashing ? 50000 : 0;
     const decorationDevelopmentCost =
-      printPlateCost + embroiderySampleCost;
+      printPlateCost +
+      embroiderySampleCost +
+      dyeingSampleCost +
+      washingSampleCost;
     const productionUnitSurcharge =
       materialPremium?.production_unit_surcharge || 0;
     const productionMin = garment.production_min === null
@@ -1028,6 +1038,7 @@ ${String(designContext).slice(0, 3000)}
           "기본 봉제 난이도로 판단했습니다.",
         hasPrinting,
         hasEmbroidery,
+        hasDyeing,
         hasWashing,
         detectedDecorationCount: decorationLines.length,
         detectedAccessoryCount: accessoryLines.reduce(
@@ -1071,10 +1082,13 @@ ${String(designContext).slice(0, 3000)}
         productionTotalMin,
         productionTotalMax,
         patternCost: garment.pattern_cost,
+        baseSampleCost: garment.sample_cost,
         sampleCost,
         sampleSurcharge,
         printPlateCost,
         embroiderySampleCost,
+        dyeingSampleCost,
+        washingSampleCost,
         decorationDevelopmentCost,
         developmentTotal,
         decorationMin,

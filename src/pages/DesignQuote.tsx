@@ -2,16 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  CheckCircle2,
+  ClipboardCheck,
   FileImage,
   ImagePlus,
+  Loader2,
+  RotateCcw,
+  Send,
   Sparkles,
   Upload,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { ProductionEstimateCard } from "@/components/customize/ProductionEstimateCard";
 import { toast } from "@/components/ui/use-toast";
+import { createDirectProductionRequest } from "@/services/orderCreation";
+import type { ProductionEstimateResult } from "@/types/productionEstimate";
 
 const allowedImageTypes = new Set([
   "image/png",
@@ -19,6 +27,11 @@ const allowedImageTypes = new Set([
   "image/webp",
 ]);
 const maxFileSize = 10 * 1024 * 1024;
+
+const formatWonRange = (minimum: number, maximum: number) =>
+  minimum === maximum
+    ? `${minimum.toLocaleString("ko-KR")}원`
+    : `${minimum.toLocaleString("ko-KR")}원 ~ ${maximum.toLocaleString("ko-KR")}원`;
 
 type AnalysisInput = {
   base64: string;
@@ -43,6 +56,10 @@ const DesignQuote = () => {
   const [analysisInput, setAnalysisInput] = useState<AnalysisInput | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [estimate, setEstimate] = useState<ProductionEstimateResult | null>(null);
+  const [requestNote, setRequestNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(
@@ -74,6 +91,9 @@ const DesignQuote = () => {
     setFile(nextFile);
     setPreviewUrl(URL.createObjectURL(nextFile));
     setAnalysisInput(null);
+    setEstimate(null);
+    setRequestNote("");
+    setSubmittedOrderId(null);
   };
 
   const startAnalysis = async () => {
@@ -101,6 +121,81 @@ const DesignQuote = () => {
       });
     } finally {
       setIsPreparing(false);
+    }
+  };
+
+  const submitProductionRequest = async () => {
+    if (!analysisInput || !estimate) {
+      toast({
+        title: "견적 확인이 필요합니다",
+        description: "AI 분석과 견적 계산이 끝난 뒤 제작 의뢰를 접수해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const decorationSummary = estimate.decorations.length
+      ? estimate.decorations
+          .map(
+            (item) =>
+              `${item.locationLabel} ${item.label}`,
+          )
+          .join(", ")
+      : "없음";
+    const accessorySummary = estimate.accessories.length
+      ? estimate.accessories
+          .map((item) => `${item.label} ${item.count}개`)
+          .join(", ")
+      : "없음";
+    const detailDescription = [
+      "[내 디자인 자동견적 제작 의뢰]",
+      `의류 종류: ${estimate.garment.label}`,
+      `소재: ${estimate.material.composition}`,
+      `후가공: ${decorationSummary}`,
+      `부자재: ${accessorySummary}`,
+      `제작 수량: ${estimate.totals.quantity}장`,
+      `예상 제작비: ${formatWonRange(
+        estimate.totals.totalMin,
+        estimate.totals.totalMax,
+      )} (원단 제외)`,
+      requestNote.trim() ? `추가 요청: ${requestNote.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      setIsSubmitting(true);
+      const result = await createDirectProductionRequest({
+        clothType: estimate.garment.label,
+        material: estimate.material.composition,
+        detailDescription,
+        size: "상담 후 확정",
+        measurements: null,
+        generatedImageUrl: null,
+        imagePath: null,
+        imageBase64: analysisInput.base64,
+        imageMimeType: analysisInput.mimeType,
+        requestSource: "design_upload",
+        requestTitle: `${estimate.garment.label} 내 디자인 견적`,
+        requestedQuantity: estimate.totals.quantity,
+        estimateSnapshot: estimate,
+      });
+      setSubmittedOrderId(String(result.id || "submitted"));
+      toast({
+        title: "제작 의뢰 접수 완료",
+        description: "관리자가 이미지와 견적을 확인한 뒤 연락드립니다.",
+      });
+    } catch (error) {
+      toast({
+        title: "제작 의뢰 접수 실패",
+        description:
+          error instanceof Error
+            ? error.message
+            : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -137,6 +232,26 @@ const DesignQuote = () => {
               내 디자인으로 견적받기
             </Button>
           </div>
+        </div>
+
+        <div className="mb-6 grid gap-2 sm:grid-cols-3">
+          {[
+            { label: "1. 디자인 업로드", done: Boolean(file) },
+            { label: "2. AI 분석·견적", done: Boolean(estimate) },
+            { label: "3. 제작 의뢰 접수", done: Boolean(submittedOrderId) },
+          ].map((step) => (
+            <div
+              key={step.label}
+              className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
+                step.done
+                  ? "border-brand bg-brand text-white"
+                  : "border-stone-200 bg-white text-stone-400"
+              }`}
+            >
+              {step.done && <CheckCircle2 className="mr-2 inline h-4 w-4" />}
+              {step.label}
+            </div>
+          ))}
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[0.78fr_1.22fr]">
@@ -227,15 +342,112 @@ const DesignQuote = () => {
 
           <div>
             {analysisInput ? (
-              <ProductionEstimateCard
-                key={`${analysisInput.fileName}-${analysisInput.base64.length}`}
-                selectedType=""
-                selectedMaterial=""
-                imageBase64={analysisInput.base64}
-                imageMimeType={analysisInput.mimeType}
-                designContext="사용자가 기존에 보유한 의류 디자인 이미지"
-                editable
-              />
+              <div className="space-y-5">
+                <ProductionEstimateCard
+                  key={`${analysisInput.fileName}-${analysisInput.base64.length}`}
+                  selectedType=""
+                  selectedMaterial=""
+                  imageBase64={analysisInput.base64}
+                  imageMimeType={analysisInput.mimeType}
+                  designContext="사용자가 기존에 보유한 의류 디자인 이미지"
+                  editable
+                  onEstimateChange={setEstimate}
+                />
+
+                {estimate &&
+                  (submittedOrderId ? (
+                    <Card className="rounded-[1.75rem] border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                          <CheckCircle2 className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <h2 className="text-xl font-black text-emerald-950">
+                            제작 의뢰가 접수되었습니다
+                          </h2>
+                          <p className="mt-2 text-sm leading-6 text-emerald-800">
+                            관리자에게 업로드 이미지, 수정된 분석 결과와 견적서가
+                            함께 전달되었습니다. 확인 후 등록된 연락처로 안내드립니다.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                        <Button asChild className="h-11 rounded-full bg-emerald-700 hover:bg-emerald-800">
+                          <Link to="/orders">내 제작 의뢰 확인</Link>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 rounded-full border-emerald-300 bg-white"
+                          onClick={() => inputRef.current?.click()}
+                        >
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          다른 디자인 견적받기
+                        </Button>
+                      </div>
+                    </Card>
+                  ) : (
+                    <Card className="rounded-[1.75rem] border-brand/20 bg-white p-6 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                          <ClipboardCheck className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <h2 className="text-xl font-black text-stone-950">
+                            이 견적으로 제작 의뢰하기
+                          </h2>
+                          <p className="mt-1 text-sm leading-6 text-stone-500">
+                            접수하면 관리자 페이지에 이미지와 견적서가 함께 저장됩니다.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-5 rounded-2xl bg-stone-50 p-4">
+                        <div className="flex items-center justify-between gap-4 text-sm">
+                          <span className="font-semibold text-stone-500">
+                            {estimate.totals.quantity}장 기준 예상 제작비
+                          </span>
+                          <span className="text-lg font-black text-brand">
+                            {formatWonRange(
+                              estimate.totals.totalMin,
+                              estimate.totals.totalMax,
+                            )}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-right text-xs font-semibold text-stone-400">
+                          원단비 제외
+                        </p>
+                      </div>
+                      <label className="mt-5 block text-sm font-bold text-stone-700">
+                        관리자에게 전달할 추가 요청사항
+                        <Textarea
+                          value={requestNote}
+                          onChange={(event) => setRequestNote(event.target.value)}
+                          placeholder="희망 수량, 일정, 수정할 부분이 있으면 적어주세요. (선택)"
+                          maxLength={1000}
+                          className="mt-2 min-h-24 resize-none bg-white"
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        className="mt-4 h-12 w-full rounded-full bg-brand text-base font-black hover:bg-brand-dark"
+                        onClick={() => void submitProductionRequest()}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            제작 의뢰 접수 중...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="mr-2 h-4 w-4" />
+                            이 견적으로 제작 의뢰 접수
+                          </>
+                        )}
+                      </Button>
+                    </Card>
+                  ))}
+              </div>
             ) : (
               <Card className="flex min-h-[430px] flex-col items-center justify-center rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-8 text-center shadow-sm">
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 text-stone-400">

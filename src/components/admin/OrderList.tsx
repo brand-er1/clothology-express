@@ -1,175 +1,256 @@
-
-import { useIsMobile } from "@/hooks/use-mobile";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  CheckCircle2,
+  Clock3,
+  Eye,
+  ImageOff,
+  PackageCheck,
+  Search,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { type Order } from "@/types/order";
-import { Clock, CheckCircle, XCircle, Trash2 } from "lucide-react";
 
 interface OrderListProps {
   orders: Order[];
   onReviewOrder: (order: Order) => void;
 }
 
+type OrderFilter = "all" | "pending" | "approved" | "rejected";
+
+const statusMeta = {
+  pending: {
+    label: "신규 의뢰",
+    icon: Clock3,
+    badgeClass: "border-amber-200 bg-amber-50 text-amber-700",
+  },
+  approved: {
+    label: "접수 완료",
+    icon: CheckCircle2,
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  rejected: {
+    label: "진행 불가",
+    icon: XCircle,
+    badgeClass: "border-rose-200 bg-rose-50 text-rose-700",
+  },
+} as const;
+
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const formatWonRange = (minimum: number, maximum: number) =>
+  minimum === maximum
+    ? `${minimum.toLocaleString("ko-KR")}원`
+    : `${minimum.toLocaleString("ko-KR")}원 ~ ${maximum.toLocaleString("ko-KR")}원`;
+
 export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
-  const isMobile = useIsMobile();
+  const [filter, setFilter] = useState<OrderFilter>("pending");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // 상태에 따른 스타일 및 텍스트
-  const getStatusDisplay = (status: string) => {
-    switch(status) {
-      case 'approved':
-        return { 
-          color: 'text-green-600',
-          icon: <CheckCircle className="h-4 w-4 mr-1" />,
-          text: '접수 완료'
-        };
-      case 'rejected':
-        return { 
-          color: 'text-red-600',
-          icon: <XCircle className="h-4 w-4 mr-1" />,
-          text: '진행 불가'
-        };
-      case 'deleted':
-        return { 
-          color: 'text-gray-600',
-          icon: <Trash2 className="h-4 w-4 mr-1" />,
-          text: '삭제됨' 
-        };
-      default:
-        return { 
-          color: 'text-yellow-600',
-          icon: <Clock className="h-4 w-4 mr-1" />,
-          text: '신규 의뢰'
-        };
-    }
-  };
-  
-  // 날짜 포맷팅
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return isMobile 
-      ? date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
-      : date.toLocaleDateString('ko-KR', { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric', 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
+  const counts = {
+    all: orders.length,
+    pending: orders.filter((order) => order.status === "pending").length,
+    approved: orders.filter((order) => order.status === "approved").length,
+    rejected: orders.filter((order) => order.status === "rejected").length,
   };
 
-  // 모바일 카드 뷰
-  const MobileOrderList = () => (
-    <div className="space-y-3">
-      {orders.map((order) => {
-        const status = getStatusDisplay(order.status);
-        return (
-          <Card key={order.id} className="w-full">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div className="text-lg font-medium">{order.cloth_type}</div>
-                <div className={`flex items-center ${status.color}`}>
-                  {status.icon}
-                  <span className="text-sm">{status.text}</span>
-                </div>
-              </div>
-              <div className="text-sm text-gray-600 mb-3">
-                {formatDate(order.created_at)}
-              </div>
-              <div className="mb-3 text-sm text-gray-700 line-clamp-2">
-                {order.detail_description || '-'}
-              </div>
-              <Button
-                variant={order.status === 'pending' ? "default" : "ghost"}
-                size="sm"
-                onClick={() => onReviewOrder(order)}
-                className="w-full h-10 text-base"
-              >
-                {order.status === 'pending' ? '의뢰 확인하기' : '상세보기'}
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  );
+  const filteredOrders = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    return orders
+      .filter((order) => filter === "all" || order.status === filter)
+      .filter((order) => {
+        if (!normalizedSearch) return true;
+        return [
+          order.request_title,
+          order.cloth_type,
+          order.material,
+          order.detail_description,
+        ].some((value) => String(value || "").toLowerCase().includes(normalizedSearch));
+      })
+      .sort((a, b) => {
+        if (a.status === "pending" && b.status !== "pending") return -1;
+        if (a.status !== "pending" && b.status === "pending") return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+  }, [filter, orders, searchQuery]);
 
-  // 데스크탑 테이블 뷰
-  const DesktopOrderList = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>의뢰일시</TableHead>
-          <TableHead>의류 종류</TableHead>
-          <TableHead>상태</TableHead>
-          <TableHead>상세</TableHead>
-          <TableHead>관리</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {orders.map((order) => {
-          const status = getStatusDisplay(order.status);
-          return (
-            <TableRow key={order.id}>
-              <TableCell>
-                {formatDate(order.created_at)}
-              </TableCell>
-              <TableCell>{order.cloth_type}</TableCell>
-              <TableCell>
-                <span className={`flex items-center ${status.color}`}>
-                  {status.icon}
-                  <span>{status.text}</span>
-                </span>
-              </TableCell>
-              <TableCell className="max-w-xs truncate">
-                {order.detail_description || '-'}
-              </TableCell>
-              <TableCell>
-                {order.status === 'pending' ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onReviewOrder(order)}
-                  >
-                    의뢰 확인
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onReviewOrder(order)}
-                  >
-                    상세보기
-                  </Button>
-                )}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  );
+  const filterOptions: Array<{
+    value: OrderFilter;
+    label: string;
+    icon: typeof Clock3;
+  }> = [
+    { value: "pending", label: "신규", icon: Clock3 },
+    { value: "approved", label: "접수 완료", icon: CheckCircle2 },
+    { value: "rejected", label: "진행 불가", icon: XCircle },
+    { value: "all", label: "전체", icon: PackageCheck },
+  ];
 
   return (
-    <Card className="border-stone-200 p-4 shadow-sm md:p-6">
-      <CardHeader className="px-0 pt-0">
-        <CardTitle className="text-xl md:text-2xl">바로 제작 의뢰 관리</CardTitle>
-      </CardHeader>
-      <CardContent className="px-0 pb-0">
-        {orders.length === 0 ? (
-          <div className="rounded-2xl bg-stone-50 px-5 py-12 text-center">
-            <p className="font-semibold text-stone-700">접수된 바로 제작 의뢰가 없습니다.</p>
-            <p className="mt-2 text-sm text-stone-500">새 의뢰가 들어오면 이곳에 표시됩니다.</p>
+    <div className="space-y-4">
+      <Card className="border-stone-200 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl md:text-2xl">제작 의뢰 관리</CardTitle>
+          <p className="text-sm leading-6 text-stone-500">
+            신규 의뢰부터 먼저 확인하세요. 업로드 디자인은 이미지와 자동견적이
+            한 화면에 함께 표시됩니다.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {filterOptions.map(({ value, label, icon: Icon }) => {
+              const active = filter === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFilter(value)}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    active
+                      ? "border-brand bg-brand text-white shadow-sm"
+                      : "border-stone-200 bg-stone-50 text-stone-700 hover:border-brand/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <Icon className="h-4 w-4" />
+                    <span className="text-2xl font-black">
+                      {counts[value].toLocaleString()}
+                    </span>
+                  </div>
+                  <p className={`mt-2 text-xs font-bold ${active ? "text-white/80" : "text-stone-500"}`}>
+                    {label}
+                  </p>
+                </button>
+              );
+            })}
           </div>
-        ) : isMobile ? <MobileOrderList /> : <DesktopOrderList />}
-      </CardContent>
-    </Card>
+
+          <label className="relative mt-4 block">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="의류 종류, 소재, 요청 내용 검색"
+              className="h-12 rounded-2xl border-stone-200 bg-stone-50 pl-11"
+            />
+          </label>
+        </CardContent>
+      </Card>
+
+      {filteredOrders.length === 0 ? (
+        <Card className="border-stone-200 px-5 py-14 text-center shadow-sm">
+          <PackageCheck className="mx-auto h-8 w-8 text-stone-300" />
+          <p className="mt-4 font-bold text-stone-700">
+            조건에 맞는 제작 의뢰가 없습니다
+          </p>
+          <p className="mt-1 text-sm text-stone-500">
+            다른 상태를 선택하거나 검색어를 지워보세요.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {filteredOrders.map((order) => {
+            const estimate = order.estimate_snapshot;
+            const status =
+              statusMeta[order.status as keyof typeof statusMeta] ||
+              statusMeta.pending;
+            const StatusIcon = status.icon;
+            const isDesignUpload = order.request_source === "design_upload";
+
+            return (
+              <Card
+                key={order.id}
+                className={`overflow-hidden shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                  order.status === "pending"
+                    ? "border-brand/40 ring-1 ring-brand/10"
+                    : "border-stone-200"
+                }`}
+              >
+                <CardContent className="p-0">
+                  <div className="grid min-h-52 grid-cols-[116px_minmax(0,1fr)] sm:grid-cols-[150px_minmax(0,1fr)]">
+                    <div className="flex items-center justify-center bg-stone-100">
+                      {order.generated_image_url ? (
+                        <img
+                          src={order.generated_image_url}
+                          alt={order.request_title || order.cloth_type}
+                          className="h-full max-h-64 w-full object-cover"
+                        />
+                      ) : (
+                        <ImageOff className="h-7 w-7 text-stone-300" />
+                      )}
+                    </div>
+
+                    <div className="flex min-w-0 flex-col p-4 sm:p-5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={status.badgeClass}
+                        >
+                          <StatusIcon className="mr-1 h-3 w-3" />
+                          {status.label}
+                        </Badge>
+                        {isDesignUpload && (
+                          <Badge className="bg-brand/10 text-brand hover:bg-brand/10">
+                            <Sparkles className="mr-1 h-3 w-3" />
+                            내 디자인 견적
+                          </Badge>
+                        )}
+                      </div>
+
+                      <h3 className="mt-3 truncate text-lg font-black text-stone-950">
+                        {order.request_title || `${order.cloth_type} 제작 의뢰`}
+                      </h3>
+                      <p className="mt-1 truncate text-sm font-semibold text-stone-500">
+                        {order.cloth_type} · {order.material}
+                      </p>
+                      <p className="mt-2 text-xs text-stone-400">
+                        {formatDate(order.created_at)}
+                      </p>
+
+                      {estimate && (
+                        <div className="mt-4 rounded-xl bg-stone-50 px-3 py-2.5">
+                          <p className="text-[11px] font-bold text-stone-400">
+                            {order.requested_quantity || estimate.totals.quantity}장 예상 제작비
+                          </p>
+                          <p className="mt-1 font-black text-brand">
+                            {formatWonRange(
+                              estimate.totals.totalMin,
+                              estimate.totals.totalMax,
+                            )}
+                          </p>
+                        </div>
+                      )}
+
+                      <Button
+                        type="button"
+                        onClick={() => onReviewOrder(order)}
+                        className={`mt-4 h-10 w-full rounded-full ${
+                          order.status === "pending"
+                            ? "bg-brand hover:bg-brand-dark"
+                            : "bg-stone-900 hover:bg-stone-800"
+                        }`}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        {order.status === "pending" ? "신규 의뢰 검토" : "상세 확인"}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 };

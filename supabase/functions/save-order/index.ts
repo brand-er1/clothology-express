@@ -14,8 +14,30 @@ interface OrderData {
   measurements?: Record<string, any> | null;
   generatedImageUrl?: string | null;
   imagePath?: string | null;
+  imageBase64?: string | null;
+  imageMimeType?: string | null;
+  requestSource?: 'ai_design' | 'design_upload';
+  requestTitle?: string | null;
+  requestedQuantity?: number | null;
+  estimateSnapshot?: Record<string, unknown> | null;
   status: 'pending' | 'approved' | 'rejected' | 'draft' | 'deleted';
 }
+
+const allowedImageMimeTypes = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+]);
+
+const decodeBase64Image = (value: string) => {
+  const normalized = value.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '');
+  const binary = atob(normalized);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+};
 
 Deno.serve(async (req) => {
   // Handle CORS preflight request
@@ -35,8 +57,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    const authorization = req.headers.get('Authorization') || '';
+    const accessToken = authorization.replace(/^Bearer\s+/i, '');
+    const { data: userData, error: userError } = await supabase.auth.getUser(
+      accessToken,
+    );
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const orderData: OrderData = await req.json();
-    console.log('Received order data:', orderData);
+    orderData.userId = userData.user.id;
+    console.log('Received order data:', {
+      userId: orderData.userId,
+      clothType: orderData.clothType,
+      requestSource: orderData.requestSource,
+      requestedQuantity: orderData.requestedQuantity,
+      hasUploadedImage: Boolean(orderData.imageBase64),
+      status: orderData.status,
+    });
 
     // Validate required fields
     if (!orderData.userId) {
@@ -110,6 +152,63 @@ Deno.serve(async (req) => {
       }
     }
 
+    let storedImagePath = orderData.imagePath || null;
+    let storedImageUrl = orderData.generatedImageUrl || null;
+    let uploadedNewImage = false;
+
+    if (orderData.imageBase64) {
+      const imageMimeType = String(orderData.imageMimeType || '').toLowerCase();
+      if (!allowedImageMimeTypes.has(imageMimeType)) {
+        return new Response(
+          JSON.stringify({ error: 'PNG, JPG, JPEG, WEBP 이미지만 업로드할 수 있습니다.' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          },
+        );
+      }
+
+      const imageBytes = decodeBase64Image(orderData.imageBase64);
+      if (imageBytes.byteLength > 10 * 1024 * 1024) {
+        return new Response(
+          JSON.stringify({ error: '10MB 이하 이미지만 업로드할 수 있습니다.' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          },
+        );
+      }
+
+      const extension =
+        imageMimeType === 'image/png'
+          ? 'png'
+          : imageMimeType === 'image/webp'
+          ? 'webp'
+          : 'jpg';
+      storedImagePath =
+        `design-quotes/${orderData.userId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('generated_images')
+        .upload(storedImagePath, imageBytes, {
+          contentType: imageMimeType,
+          cacheControl: '3600',
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('generated_images')
+        .getPublicUrl(storedImagePath);
+      storedImageUrl = publicUrlData.publicUrl;
+      uploadedNewImage = true;
+    }
+
+    const requestedQuantity = Number(orderData.requestedQuantity);
+    const normalizedRequestedQuantity =
+      Number.isFinite(requestedQuantity) && requestedQuantity > 0
+        ? Math.round(requestedQuantity)
+        : null;
+
     // Create the order object with extracted data
     const orderObject = {
       user_id: orderData.userId,
@@ -118,8 +217,12 @@ Deno.serve(async (req) => {
       detail_description: orderData.detailDescription || null,
       size: orderData.size || null,
       measurements: orderData.measurements || null,
-      generated_image_url: orderData.generatedImageUrl || null,
-      image_path: orderData.imagePath || null,
+      generated_image_url: storedImageUrl,
+      image_path: storedImagePath,
+      request_source: orderData.requestSource || 'ai_design',
+      request_title: orderData.requestTitle || null,
+      requested_quantity: normalizedRequestedQuantity,
+      estimate_snapshot: orderData.estimateSnapshot || null,
       status: orderData.status
     };
 
@@ -134,6 +237,9 @@ Deno.serve(async (req) => {
         .select();
       
       if (error) {
+        if (uploadedNewImage && storedImagePath) {
+          await supabase.storage.from('generated_images').remove([storedImagePath]);
+        }
         throw error;
       }
       
@@ -147,6 +253,9 @@ Deno.serve(async (req) => {
         .select();
       
       if (error) {
+        if (uploadedNewImage && storedImagePath) {
+          await supabase.storage.from('generated_images').remove([storedImagePath]);
+        }
         throw error;
       }
       

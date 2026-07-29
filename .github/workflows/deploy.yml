@@ -44,6 +44,7 @@ jobs:
         run: |
           supabase functions deploy generate-optimized-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy analyze-production-estimate --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy save-order --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy modify-generated-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy screen-trademark-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy kakaopay-ready --project-ref "$SUPABASE_PROJECT_ID"

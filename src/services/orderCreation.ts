@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
+import type { ProductionEstimateResult } from "@/types/productionEstimate";
 
 export interface DirectProductionRequestInput {
   clothType: string;
@@ -10,8 +11,14 @@ export interface DirectProductionRequestInput {
   detailDescription: string;
   size: string;
   measurements: Record<string, unknown> | null;
-  generatedImageUrl: string;
+  generatedImageUrl?: string | null;
   imagePath: string | null;
+  imageBase64?: string | null;
+  imageMimeType?: string | null;
+  requestSource?: "ai_design" | "design_upload";
+  requestTitle?: string | null;
+  requestedQuantity?: number | null;
+  estimateSnapshot?: ProductionEstimateResult | null;
 }
 
 export const createDirectProductionRequest = async (
@@ -34,6 +41,12 @@ export const createDirectProductionRequest = async (
       measurements: input.measurements,
       generatedImageUrl: input.generatedImageUrl,
       imagePath: input.imagePath,
+      imageBase64: input.imageBase64,
+      imageMimeType: input.imageMimeType,
+      requestSource: input.requestSource || "ai_design",
+      requestTitle: input.requestTitle,
+      requestedQuantity: input.requestedQuantity,
+      estimateSnapshot: input.estimateSnapshot,
       status: "pending",
     },
   });

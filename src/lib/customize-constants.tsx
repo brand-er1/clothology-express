@@ -34,6 +34,28 @@ export const clothTypes: ClothType[] = [
     category: "tops",
   },
   {
+    id: "tights_short_sleeve",
+    name: "상의형 타이즈 (반팔)",
+    icon: <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 3h10l3 4-3 4-2-2v12H9V9l-2 2-3-4 3-4z"/>
+      <path d="M9 7c2 1 4 1 6 0"/>
+      <path d="M12 8v13"/>
+    </svg>,
+    description: "반팔 컴프레션·기능성 타이즈",
+    category: "tops",
+  },
+  {
+    id: "tights_long_sleeve",
+    name: "긴팔 타이즈",
+    icon: <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 3h10l4 5-3 12h-3V9H9v11H6L3 8l4-5z"/>
+      <path d="M9 7c2 1 4 1 6 0"/>
+      <path d="M12 8v13"/>
+    </svg>,
+    description: "긴팔 컴프레션 퍼포먼스 타이즈",
+    category: "tops",
+  },
+  {
     id: "hoodie",
     name: "후드티",
     icon: <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -93,6 +115,27 @@ export const clothTypes: ClothType[] = [
       <path d="M18 3l2 19h-4l-2-14"/>
     </svg>,
     description: "편안하고 세련된 긴바지",
+    category: "bottoms",
+  },
+  {
+    id: "leggings",
+    name: "레깅스",
+    icon: <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 3h10l-1 7-1 11h-3V10h0v11H9L8 10 7 3z"/>
+      <path d="M8 6h8"/>
+    </svg>,
+    description: "신축성 있는 스포츠·데일리 레깅스",
+    category: "bottoms",
+  },
+  {
+    id: "tights_bottom",
+    name: "하의형 타이즈",
+    icon: <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 3h10l1 7-2 11h-3l-1-11-1 11H8L6 10l1-7z"/>
+      <path d="M7 7h10"/>
+      <path d="M12 8v2"/>
+    </svg>,
+    description: "바지 단가를 적용하는 하의 컴프레션 타이즈",
     category: "bottoms",
   },
 ];

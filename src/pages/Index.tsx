@@ -11,6 +11,7 @@ import {
   Heart,
   ShieldCheck,
   Sparkles,
+  Upload,
   Users,
 } from "lucide-react";
 import { getAppPath } from "@/utils/appUrl";
@@ -336,10 +337,15 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-              <div className="mt-8">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="h-12 rounded-full bg-brand px-7 text-white hover:bg-brand-light">
                   <Link to="/customize">
-                    컬렉션 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
+                    AI 디자인 생성하기 <Sparkles className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="h-12 rounded-full border-white/20 bg-white/5 px-7 text-white hover:bg-white hover:text-stone-950">
+                  <Link to="/design-quote">
+                    내 디자인으로 견적받기 <Upload className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </div>

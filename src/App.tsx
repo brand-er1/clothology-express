@@ -16,6 +16,7 @@ import FundingManager from './pages/FundingManager';
 import MyFundings from './pages/MyFundings';
 import KakaoPayResult from './pages/KakaoPayResult';
 import FabricSwatch from './pages/FabricSwatch';
+import DesignQuote from './pages/DesignQuote';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
 import { isInIframe } from './utils/authUtils';
@@ -105,6 +106,7 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
           <Route path="/customize" element={<AuthGuard requiredAccountType="seller"><Customize /></AuthGuard>} />
+          <Route path="/design-quote" element={<AuthGuard requiredAccountType="seller"><DesignQuote /></AuthGuard>} />
           <Route path="/fundings" element={<Fundings />} />
           <Route path="/fundings/:id" element={<FundingDetail />} />
           <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />

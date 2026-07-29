@@ -10,7 +10,9 @@ export type DecorationAnalysisKind =
   | "embroidery"
   | "patch"
   | "transfer"
+  | "label"
   | "washing"
+  | "pigment"
   | "unknown_print";
 
 export type DecorationLocation =
@@ -22,6 +24,7 @@ export type DecorationLocation =
   | "other";
 
 export type ArtworkType = "logo" | "photo" | "illustration";
+export type PrintSize = "small" | "medium" | "large" | "unknown";
 
 export type AccessoryAnalysisKind =
   | "stud"
@@ -53,6 +56,8 @@ export interface DecorationEstimateLine {
   label: string;
   location: DecorationLocation;
   locationLabel: string;
+  size: PrintSize;
+  confidence: number;
   unitMin: number;
   unitMax: number;
   lineMin: number;
@@ -85,6 +90,39 @@ export interface ProductionAnalysis {
   hasWashing: boolean;
   detectedDecorationCount: number;
   detectedAccessoryCount: number;
+  features: string[];
+}
+
+export interface ProductionEstimateMaterial {
+  key: string;
+  label: string;
+  confidence: number;
+  composition: string;
+}
+
+export interface ManualProductionAnalysis {
+  categoryKey: string;
+  categoryConfidence: number;
+  materialKey: string;
+  materialLabel: string;
+  materialConfidence: number;
+  materialComposition: string;
+  hasLining: boolean;
+  hasWashing: boolean;
+  difficulty: EstimateDifficulty;
+  difficultyReason: string;
+  decorations: Array<{
+    kind: DecorationAnalysisKind;
+    location: DecorationLocation;
+    size: PrintSize;
+    confidence: number;
+  }>;
+  accessories: Array<{
+    kind: AccessoryAnalysisKind;
+    count: number;
+    confidence: number;
+  }>;
+  features: string[];
 }
 
 export interface ProductionEstimateTotals {
@@ -98,6 +136,9 @@ export interface ProductionEstimateTotals {
   patternCost: number;
   sampleCost: number;
   sampleSurcharge: number;
+  printPlateCost: number;
+  embroiderySampleCost: number;
+  decorationDevelopmentCost: number;
   developmentTotal: number;
   decorationMin: number;
   decorationMax: number;
@@ -126,6 +167,7 @@ export interface ProductionEstimateResult {
     moq: number;
     note?: string | null;
   };
+  material: ProductionEstimateMaterial;
   materialPremium: {
     key: string;
     label: string;

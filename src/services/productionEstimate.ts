@@ -1,15 +1,19 @@
 import { supabase } from "@/lib/supabase";
 import type {
+  ManualProductionAnalysis,
   ProductionEstimateResult,
   UploadedArtworkAnalysis,
 } from "@/types/productionEstimate";
 
 interface AnalyzeProductionEstimateParams {
-  imageUrl: string;
+  imageUrl?: string;
+  imageBase64?: string;
+  imageMimeType?: string;
   selectedType: string;
   selectedMaterial: string;
   designContext?: string;
   uploadedArtwork?: UploadedArtworkAnalysis | null;
+  manualAnalysis?: ManualProductionAnalysis | null;
 }
 
 const estimateRequestCache = new Map<
@@ -18,18 +22,24 @@ const estimateRequestCache = new Map<
 >();
 
 export const analyzeProductionEstimate = async ({
-  imageUrl,
+  imageUrl = "",
+  imageBase64 = "",
+  imageMimeType = "",
   selectedType,
   selectedMaterial,
   designContext = "",
   uploadedArtwork = null,
+  manualAnalysis = null,
 }: AnalyzeProductionEstimateParams): Promise<ProductionEstimateResult> => {
   const cacheKey = JSON.stringify([
     imageUrl,
+    imageBase64 ? `${imageBase64.slice(0, 48)}:${imageBase64.length}` : "",
+    imageMimeType,
     selectedType,
     selectedMaterial,
     designContext,
     uploadedArtwork,
+    manualAnalysis,
   ]);
   const cachedRequest = estimateRequestCache.get(cacheKey);
   if (cachedRequest) return cachedRequest;
@@ -40,10 +50,13 @@ export const analyzeProductionEstimate = async ({
       {
         body: {
           imageUrl,
+          imageBase64,
+          imageMimeType,
           selectedType,
           selectedMaterial,
           designContext,
           uploadedArtwork,
+          manualAnalysis,
         },
       },
     );

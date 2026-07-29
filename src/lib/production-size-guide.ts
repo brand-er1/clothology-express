@@ -24,9 +24,13 @@ const categoryMap: Record<string, string> = {
   hoodie: "후드티",
   long_sleeve: "긴팔티셔츠",
   short_sleeve: "반팔티셔츠",
+  tights_short_sleeve: "반팔티셔츠",
+  tights_long_sleeve: "긴팔티셔츠",
   sweatshirt: "맨투맨",
   short_pants: "반바지",
   long_pants: "바지",
+  leggings: "바지",
+  tights_bottom: "바지",
 };
 
 const maleJacket: StandardSizeGuide = {

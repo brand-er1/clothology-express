@@ -10,24 +10,43 @@ import {
   Scissors,
   Shirt,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type {
   ArtworkType,
   EstimateDifficulty,
+  ManualProductionAnalysis,
   ProductionEstimateResult,
   UploadedArtworkAnalysis,
 } from "@/types/productionEstimate";
+import {
+  accessoryOptions,
+  decorationOptions,
+  estimateGarmentOptions,
+  estimateMaterialOptions,
+  printSizeLabels,
+} from "@/lib/production-estimate-options";
 
 interface ProductionEstimateCardProps {
   selectedType: string;
   selectedMaterial: string;
-  imageUrl: string;
+  imageUrl?: string;
+  imageBase64?: string;
+  imageMimeType?: string;
   designContext?: string;
   uploadedArtwork?: UploadedArtworkAnalysis | null;
+  editable?: boolean;
   onEstimateChange?: (estimate: ProductionEstimateResult | null) => void;
 }
 
@@ -63,6 +82,33 @@ const artworkTypeLabel: Record<ArtworkType, string> = {
   illustration: "일러스트형",
 };
 
+const toManualAnalysis = (
+  estimate: ProductionEstimateResult,
+): ManualProductionAnalysis => ({
+  categoryKey: estimate.analysis.categoryKey,
+  categoryConfidence: 1,
+  materialKey: estimate.material.key,
+  materialLabel: estimate.material.label,
+  materialConfidence: 1,
+  materialComposition: estimate.material.composition,
+  hasLining: estimate.analysis.hasLining,
+  hasWashing: estimate.analysis.hasWashing,
+  difficulty: estimate.analysis.difficulty,
+  difficultyReason: estimate.analysis.difficultyReason,
+  decorations: estimate.decorations.map((decoration) => ({
+    kind: decoration.kind,
+    location: decoration.location,
+    size: decoration.size,
+    confidence: 1,
+  })),
+  accessories: estimate.accessories.map((accessory) => ({
+    kind: accessory.kind,
+    count: accessory.count,
+    confidence: 1,
+  })),
+  features: estimate.analysis.features || [],
+});
+
 const EstimateLoading = () => (
   <Card className="w-full overflow-hidden border-brand/20">
     <div className="flex min-h-48 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
@@ -82,14 +128,19 @@ const EstimateLoading = () => (
 export const ProductionEstimateCard = ({
   selectedType,
   selectedMaterial,
-  imageUrl,
+  imageUrl = "",
+  imageBase64 = "",
+  imageMimeType = "",
   designContext = "",
   uploadedArtwork = null,
+  editable = false,
   onEstimateChange,
 }: ProductionEstimateCardProps) => {
   const [estimate, setEstimate] = useState<ProductionEstimateResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [manualAnalysis, setManualAnalysis] =
+    useState<ManualProductionAnalysis | null>(null);
   const requestIdRef = useRef(0);
 
   const loadEstimate = useCallback(async () => {
@@ -102,10 +153,13 @@ export const ProductionEstimateCard = ({
     try {
       const result = await analyzeProductionEstimate({
         imageUrl,
+        imageBase64,
+        imageMimeType,
         selectedType,
         selectedMaterial,
         designContext,
         uploadedArtwork,
+        manualAnalysis,
       });
       if (requestIdRef.current !== requestId) return;
       setEstimate(result);
@@ -127,7 +181,10 @@ export const ProductionEstimateCard = ({
     }
   }, [
     designContext,
+    imageBase64,
+    imageMimeType,
     imageUrl,
+    manualAnalysis,
     onEstimateChange,
     selectedMaterial,
     selectedType,
@@ -141,7 +198,7 @@ export const ProductionEstimateCard = ({
     };
   }, [loadEstimate]);
 
-  if (isLoading) return <EstimateLoading />;
+  if (isLoading && !estimate) return <EstimateLoading />;
 
   if (error || !estimate) {
     return (
@@ -176,6 +233,58 @@ export const ProductionEstimateCard = ({
   const totalLabel = estimate.isPartial
     ? `${totals.quantity}장 기준 확인 가능한 합계`
     : `${totals.quantity}장 기준 예상 제작비`;
+
+  const updateManualAnalysis = (
+    updater: (draft: ManualProductionAnalysis) => ManualProductionAnalysis,
+  ) => {
+    const base = manualAnalysis || toManualAnalysis(estimate);
+    setManualAnalysis(updater(base));
+  };
+
+  const changeDecoration = (index: number, kind: string) => {
+    updateManualAnalysis((draft) => {
+      const decorations = draft.decorations.map((decoration, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...decoration,
+              kind: kind as ManualProductionAnalysis["decorations"][number]["kind"],
+              confidence: 1,
+            }
+          : decoration,
+      );
+      return {
+        ...draft,
+        decorations,
+        hasWashing: decorations.some(
+          (decoration) => decoration.kind === "washing",
+        ),
+      };
+    });
+  };
+
+  const removeDecoration = (index: number) => {
+    updateManualAnalysis((draft) => {
+      const decorations = draft.decorations.filter(
+        (_, itemIndex) => itemIndex !== index,
+      );
+      return {
+        ...draft,
+        decorations,
+        hasWashing: decorations.some(
+          (decoration) => decoration.kind === "washing",
+        ),
+      };
+    });
+  };
+
+  const removeAccessory = (index: number) => {
+    updateManualAnalysis((draft) => ({
+      ...draft,
+      accessories: draft.accessories.filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
+    }));
+  };
 
   return (
     <Card className="w-full overflow-hidden border-brand/20 bg-gradient-to-br from-white via-white to-brand/5 shadow-sm">
@@ -212,6 +321,247 @@ export const ProductionEstimateCard = ({
         </div>
       </div>
 
+      {editable && (
+        <div className="border-b border-stone-200 bg-[#fbfaf8] p-5">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <div>
+              <p className="font-extrabold text-stone-950">AI 분석 결과 확인</p>
+              <p className="mt-1 text-xs leading-5 text-stone-500">
+                잘못 인식된 항목을 수정하면 기존 계산식으로 견적이 즉시 다시 계산됩니다.
+              </p>
+            </div>
+            {isLoading && (
+              <span className="flex items-center gap-1.5 text-xs font-bold text-brand" aria-live="polite">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                견적 재계산 중
+              </span>
+            )}
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1.5 text-xs font-bold text-stone-600">
+              의류 종류
+              <Select
+                value={analysis.categoryKey}
+                onValueChange={(categoryKey) =>
+                  updateManualAnalysis((draft) => ({
+                    ...draft,
+                    categoryKey,
+                    categoryConfidence: 1,
+                  }))
+                }
+              >
+                <SelectTrigger className="h-11 bg-white text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {estimateGarmentOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+
+            <label className="space-y-1.5 text-xs font-bold text-stone-600">
+              소재
+              <Select
+                value={estimate.material.key}
+                onValueChange={(materialKey) => {
+                  const materialLabel =
+                    estimateMaterialOptions.find(
+                      (option) => option.value === materialKey,
+                    )?.label || materialKey;
+                  updateManualAnalysis((draft) => ({
+                    ...draft,
+                    materialKey,
+                    materialLabel,
+                    materialComposition: materialLabel,
+                    materialConfidence: 1,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11 bg-white text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {estimateMaterialOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          </div>
+
+          {decorations.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-bold text-stone-600">프린팅·후가공</p>
+              <div className="mt-2 grid gap-2">
+                {decorations.map((decoration, index) => (
+                  <div
+                    key={`${decoration.kind}-${decoration.location}-${index}`}
+                    className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white p-2"
+                  >
+                    <Select
+                      value={decoration.kind}
+                      onValueChange={(kind) => changeDecoration(index, kind)}
+                    >
+                      <SelectTrigger className="h-10 flex-1 border-0 bg-stone-50 text-sm shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {decorationOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="hidden text-xs text-stone-400 sm:inline">
+                      {decoration.locationLabel}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 shrink-0 text-stone-400 hover:text-rose-600"
+                      onClick={() => removeDecoration(index)}
+                      aria-label={`${decoration.label} 제거`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {accessories.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-bold text-stone-600">부자재</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {accessories.map((accessory, index) => (
+                  <div
+                    key={`${accessory.kind}-${index}`}
+                    className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white p-2"
+                  >
+                    <Select
+                      value={accessory.kind}
+                      onValueChange={(kind) =>
+                        updateManualAnalysis((draft) => ({
+                          ...draft,
+                          accessories: draft.accessories.map(
+                            (item, itemIndex) =>
+                              itemIndex === index
+                                ? {
+                                    ...item,
+                                    kind: kind as ManualProductionAnalysis["accessories"][number]["kind"],
+                                    confidence: 1,
+                                  }
+                                : item,
+                          ),
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 min-w-0 flex-1 border-0 bg-stone-50 text-sm shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accessoryOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={accessory.count}
+                      onChange={(event) => {
+                        const count = Math.min(
+                          50,
+                          Math.max(1, Number(event.target.value) || 1),
+                        );
+                        updateManualAnalysis((draft) => ({
+                          ...draft,
+                          accessories: draft.accessories.map(
+                            (item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, count, confidence: 1 }
+                                : item,
+                          ),
+                        }));
+                      }}
+                      className="h-9 w-16 rounded-lg border border-stone-200 bg-stone-50 px-2 text-center text-sm"
+                      aria-label={`${accessory.label} 개수`}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-stone-400 hover:text-rose-600"
+                      onClick={() => removeAccessory(index)}
+                      aria-label={`${accessory.label} 제거`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full bg-white"
+              onClick={() =>
+                updateManualAnalysis((draft) => ({
+                  ...draft,
+                  decorations: [
+                    ...draft.decorations,
+                    {
+                      kind: "screen_print_1_color",
+                      location: "front",
+                      size: "medium",
+                      confidence: 1,
+                    },
+                  ],
+                }))
+              }
+            >
+              <CirclePlus className="mr-1.5 h-4 w-4" />
+              후가공 추가
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full bg-white"
+              onClick={() =>
+                updateManualAnalysis((draft) => ({
+                  ...draft,
+                  accessories: [
+                    ...draft.accessories,
+                    { kind: "zipper", count: 1, confidence: 1 },
+                  ],
+                }))
+              }
+            >
+              <CirclePlus className="mr-1.5 h-4 w-4" />
+              부자재 추가
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-3 p-5 sm:grid-cols-2">
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <div className="flex items-start justify-between gap-3">
@@ -234,6 +584,23 @@ export const ProductionEstimateCard = ({
               난이도 {difficultyLabel[analysis.difficulty]}
             </Badge>
           </div>
+        </div>
+
+        <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <p className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Sparkles className="h-4 w-4" /> AI 분석 소재
+          </p>
+          <p className="mt-2 font-extrabold text-gray-950">
+            {estimate.material.composition}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            소재 신뢰도 {Math.round(estimate.material.confidence * 100)}%
+          </p>
+          {(analysis.features || []).length > 0 && (
+            <p className="mt-2 text-xs leading-5 text-gray-500">
+              디테일 · {analysis.features.join(" · ")}
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
@@ -280,6 +647,16 @@ export const ProductionEstimateCard = ({
               +{formatWon(totals.sampleSurcharge)} 포함
             </p>
           )}
+          {totals.printPlateCost > 0 && (
+            <p className="mt-1 text-[11px] font-semibold text-brand">
+              프린팅 샘플 판비 +{formatWon(totals.printPlateCost)} 포함
+            </p>
+          )}
+          {totals.embroiderySampleCost > 0 && (
+            <p className="mt-1 text-[11px] font-semibold text-brand">
+              자수 샘플비 +{formatWon(totals.embroiderySampleCost)} 포함
+            </p>
+          )}
         </div>
       </div>
 
@@ -287,7 +664,7 @@ export const ProductionEstimateCard = ({
         <div className="flex items-center justify-between gap-3">
           <p className="flex items-center gap-2 font-bold text-gray-950">
             <Printer className="h-4 w-4 text-brand" />
-            프린팅·후가공 (장당)
+            프린팅·후가공 {decorations.length > 0 && `(${decorations.length}개)`} (장당)
           </p>
           <p className="font-extrabold text-brand">
             {decorations.length
@@ -307,6 +684,10 @@ export const ProductionEstimateCard = ({
                   <p className="font-semibold text-gray-800">
                     {decoration.locationLabel} · {decoration.label}
                   </p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-gray-500">
+                    {printSizeLabels[decoration.size]} · AI 신뢰도{" "}
+                    {Math.round(decoration.confidence * 100)}%
+                  </p>
                   {decoration.source === "uploaded_artwork" &&
                     decoration.artworkType && (
                       <p className="mt-0.5 text-[11px] font-bold text-brand">
@@ -322,11 +703,15 @@ export const ProductionEstimateCard = ({
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-bold text-gray-950">
-                    {formatRange(
-                      decoration.lineMin,
-                      decoration.lineMax,
-                      decoration.isStartingFrom,
-                    )}
+                    {decoration.lineMin === 0 &&
+                    decoration.lineMax === 0 &&
+                    decoration.kind === "label"
+                      ? "상담 후 확정"
+                      : formatRange(
+                          decoration.lineMin,
+                          decoration.lineMax,
+                          decoration.isStartingFrom,
+                        )}
                   </p>
                   <p className="mt-0.5 text-[11px] font-semibold text-gray-500">
                     장당
@@ -413,6 +798,12 @@ export const ProductionEstimateCard = ({
               패턴비 {formatWon(totals.patternCost)} + 샘플비{" "}
               {formatWon(totals.sampleCost)}
             </p>
+            {totals.decorationDevelopmentCost > 0 && (
+              <p className="mt-1 text-[11px] font-semibold leading-4 text-brand">
+                샘플비에 프린팅 판비·자수 샘플비{" "}
+                {formatWon(totals.decorationDevelopmentCost)} 포함
+              </p>
+            )}
           </div>
         </div>
 

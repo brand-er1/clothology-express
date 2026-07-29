@@ -19,7 +19,9 @@ type DecorationKind =
   | "embroidery"
   | "patch"
   | "transfer"
+  | "label"
   | "washing"
+  | "pigment"
   | "unknown_print";
 type DecorationLocation =
   | "front"
@@ -29,6 +31,7 @@ type DecorationLocation =
   | "neck"
   | "other";
 type ArtworkType = "logo" | "photo" | "illustration";
+type PrintSize = "small" | "medium" | "large" | "unknown";
 type AccessoryKind =
   | "stud"
   | "zipper"
@@ -86,6 +89,8 @@ type AccessoryPriceRow = {
 type RawDecoration = {
   kind?: string;
   locations?: string[];
+  location?: string;
+  size?: string;
   colorCount?: number;
   confidence?: number;
 };
@@ -99,6 +104,10 @@ type RawAccessory = {
 type RawAnalysis = {
   categoryKey?: string;
   categoryConfidence?: number;
+  materialKey?: string;
+  materialLabel?: string;
+  materialConfidence?: number;
+  materialComposition?: string;
   hasLining?: boolean;
   difficulty?: string;
   difficultyReason?: string;
@@ -106,6 +115,7 @@ type RawAnalysis = {
   washingConfidence?: number;
   decorations?: RawDecoration[];
   accessories?: RawAccessory[];
+  features?: string[];
 };
 
 type UploadedArtworkHint = {
@@ -118,6 +128,8 @@ type UploadedArtworkHint = {
 type NormalizedDecoration = {
   kind: DecorationKind;
   location: DecorationLocation;
+  size: PrintSize;
+  confidence: number;
   source: "image_analysis" | "uploaded_artwork";
   artworkType: ArtworkType | null;
 };
@@ -132,7 +144,9 @@ const validDecorationKinds = new Set<DecorationKind>([
   "embroidery",
   "patch",
   "transfer",
+  "label",
   "washing",
+  "pigment",
   "unknown_print",
 ]);
 const validAccessoryKinds = new Set<AccessoryKind>([
@@ -153,6 +167,12 @@ const validLocations = new Set<DecorationLocation>([
   "right_sleeve",
   "neck",
   "other",
+]);
+const validPrintSizes = new Set<PrintSize>([
+  "small",
+  "medium",
+  "large",
+  "unknown",
 ]);
 const validArtworkTypes = new Set<ArtworkType>([
   "logo",
@@ -181,6 +201,34 @@ const selectedTypeAliases: Record<string, string> = {
   long_pants: "pants",
 };
 
+const virtualGarmentCategories = [
+  { key: "tights_short_sleeve", label: "상의형 타이즈 (반팔)", priceKey: "short_sleeve" },
+  { key: "tights_long_sleeve", label: "긴팔 타이즈", priceKey: "long_sleeve" },
+  { key: "tights_bottom", label: "하의형 타이즈", priceKey: "pants" },
+] as const;
+
+const virtualGarmentMap = new Map(
+  virtualGarmentCategories.map((category) => [category.key, category]),
+);
+
+const materialLabels: Record<string, string> = {
+  cotton: "면",
+  polyester: "폴리",
+  poly: "폴리",
+  functional: "기능성 원단",
+  linen: "린넨",
+  denim: "데님",
+  leather: "레더",
+  knit: "니트",
+  other: "기타",
+};
+
+const allowedImageMimeTypes = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+
 const parseJsonResponse = (text: string): RawAnalysis => {
   const normalized = text
     .trim()
@@ -188,6 +236,16 @@ const parseJsonResponse = (text: string): RawAnalysis => {
     .replace(/^```\s*/, "")
     .replace(/\s*```$/, "");
   return JSON.parse(normalized);
+};
+
+const decodeBase64Image = (value: string) => {
+  const normalized = value.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, "");
+  const binary = atob(normalized);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 };
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
@@ -213,6 +271,41 @@ const clampConfidence = (value: unknown) => {
 
 const normalizeDifficulty = (value: unknown): Difficulty =>
   value === "easy" || value === "hard" ? value : "medium";
+
+const normalizePrintSize = (value: unknown): PrintSize => {
+  const size = String(value || "") as PrintSize;
+  return validPrintSizes.has(size) ? size : "unknown";
+};
+
+const normalizeManualAnalysis = (value: unknown): RawAnalysis | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const categoryKey = String(record.categoryKey || "").trim();
+  if (!categoryKey) return null;
+
+  return {
+    categoryKey,
+    categoryConfidence: clampConfidence(record.categoryConfidence ?? 1),
+    materialKey: String(record.materialKey || "other"),
+    materialLabel: String(record.materialLabel || ""),
+    materialConfidence: clampConfidence(record.materialConfidence ?? 1),
+    materialComposition: String(record.materialComposition || ""),
+    hasLining: Boolean(record.hasLining),
+    hasWashing: Boolean(record.hasWashing),
+    washingConfidence: 1,
+    difficulty: normalizeDifficulty(record.difficulty),
+    difficultyReason: String(record.difficultyReason || ""),
+    decorations: Array.isArray(record.decorations)
+      ? (record.decorations as RawDecoration[])
+      : [],
+    accessories: Array.isArray(record.accessories)
+      ? (record.accessories as RawAccessory[])
+      : [],
+    features: Array.isArray(record.features)
+      ? record.features.map((feature) => String(feature)).slice(0, 12)
+      : [],
+  };
+};
 
 const normalizeUploadedArtwork = (
   value: unknown,
@@ -241,16 +334,23 @@ const normalizeUploadedArtwork = (
   };
 };
 
-const resolveGarmentKey = (
+const resolveGarmentCategory = (
   rawAnalysis: RawAnalysis,
   selectedType: string,
   availableKeys: Set<string>,
 ) => {
-  let categoryKey = String(rawAnalysis.categoryKey || "");
+  const selectedKey = selectedTypeAliases[selectedType] || selectedType;
+  const selectedSpecialCategory =
+    selectedKey === "leggings" || virtualGarmentMap.has(selectedKey);
+  let categoryKey = selectedSpecialCategory
+    ? selectedKey
+    : String(rawAnalysis.categoryKey || "");
   const fallbackKey = selectedTypeAliases[selectedType] || selectedType;
+  const isAvailable = (key: string) =>
+    availableKeys.has(key) || virtualGarmentMap.has(key);
 
-  if (!availableKeys.has(categoryKey)) {
-    categoryKey = availableKeys.has(fallbackKey) ? fallbackKey : "";
+  if (!isAvailable(categoryKey)) {
+    categoryKey = isAvailable(fallbackKey) ? fallbackKey : "";
   }
 
   if (
@@ -261,7 +361,15 @@ const resolveGarmentKey = (
     categoryKey = `${categoryKey}_lined`;
   }
 
-  return categoryKey;
+  const virtualCategory = virtualGarmentMap.get(categoryKey);
+  return {
+    categoryKey,
+    priceKey: virtualCategory?.priceKey || categoryKey,
+    label: virtualCategory?.label || null,
+    referenceNote: virtualCategory
+      ? `${virtualCategory.label}은 ${virtualCategory.priceKey === "pants" ? "일반 팬츠" : virtualCategory.priceKey === "long_sleeve" ? "긴팔 티셔츠" : "반팔 티셔츠"}의 패턴비·샘플비·생산공임을 그대로 적용합니다.`
+      : null,
+  };
 };
 
 const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
@@ -271,7 +379,8 @@ const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
   for (const rawDecoration of rawDecorations || []) {
     let kind = String(rawDecoration.kind || "") as DecorationKind;
     if (!validDecorationKinds.has(kind)) continue;
-    if (clampConfidence(rawDecoration.confidence) < 0.45) continue;
+    const confidence = clampConfidence(rawDecoration.confidence);
+    if (confidence < 0.45) continue;
 
     if (
       kind === "screen_print_1_color" &&
@@ -280,7 +389,14 @@ const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
       kind = "screen_print_multi_color";
     }
 
-    const locations = (rawDecoration.locations || [])
+    if (kind === "pigment") {
+      kind = "washing";
+    }
+
+    const locations = (
+      rawDecoration.locations ||
+      (rawDecoration.location ? [rawDecoration.location] : [])
+    )
       .map((location) => String(location) as DecorationLocation)
       .filter((location) => validLocations.has(location));
     const safeLocations = locations.length > 0 ? locations : ["other" as const];
@@ -292,6 +408,8 @@ const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
       normalized.push({
         kind,
         location,
+        size: normalizePrintSize(rawDecoration.size),
+        confidence,
         source: "image_analysis",
         artworkType: null,
       });
@@ -342,15 +460,19 @@ serve(async (req) => {
 
   try {
     const {
-      imageUrl,
-      selectedType,
+      imageUrl = "",
+      imageBase64 = "",
+      imageMimeType = "",
+      selectedType = "",
       selectedMaterial = "",
       designContext = "",
       uploadedArtwork,
+      manualAnalysis,
     } = await req.json();
-    if (!imageUrl || !selectedType) {
+    const normalizedManualAnalysis = normalizeManualAnalysis(manualAnalysis);
+    if (!normalizedManualAnalysis && !imageUrl && !imageBase64) {
       return new Response(
-        JSON.stringify({ error: "imageUrl과 selectedType이 필요합니다." }),
+        JSON.stringify({ error: "분석할 이미지가 필요합니다." }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -361,27 +483,21 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
-    if (!supabaseUrl || !serviceRoleKey || !geminiApiKey) {
+    if (
+      !supabaseUrl ||
+      !serviceRoleKey ||
+      (!normalizedManualAnalysis && !geminiApiKey)
+    ) {
       throw new Error("자동 견적 서비스 환경변수가 설정되지 않았습니다.");
     }
 
     const uploadedArtworkHint = normalizeUploadedArtwork(uploadedArtwork);
-    const parsedImageUrl = new URL(imageUrl);
-    const storageHostname = new URL(supabaseUrl).hostname;
-    if (
-      parsedImageUrl.protocol !== "https:" ||
-      parsedImageUrl.hostname !== storageHostname
-    ) {
-      throw new Error("분석할 수 없는 이미지 주소입니다.");
-    }
-
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const [
       garmentResult,
       decorationResult,
       materialResult,
       accessoryResult,
-      imageResponse,
     ] = await Promise.all([
       supabase
         .from("quote_garment_prices")
@@ -407,21 +523,12 @@ serve(async (req) => {
           "accessory_key,accessory_label,unit_price,pricing_note,source_label,source_version",
         )
         .eq("active", true),
-      fetch(parsedImageUrl.toString()),
     ]);
 
     if (garmentResult.error) throw garmentResult.error;
     if (decorationResult.error) throw decorationResult.error;
     if (materialResult.error) throw materialResult.error;
     if (accessoryResult.error) throw accessoryResult.error;
-    if (!imageResponse.ok) {
-      throw new Error(`이미지를 불러오지 못했습니다: ${imageResponse.status}`);
-    }
-
-    const contentLength = Number(imageResponse.headers.get("content-length") || 0);
-    if (contentLength > 10 * 1024 * 1024) {
-      throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
-    }
 
     const garmentRows = (garmentResult.data || []) as GarmentPriceRow[];
     const decorationRows = (decorationResult.data || []) as DecorationPriceRow[];
@@ -431,15 +538,60 @@ serve(async (req) => {
       throw new Error("의류 단가 데이터가 없습니다.");
     }
 
-    const imageBuffer = await imageResponse.arrayBuffer();
-    if (imageBuffer.byteLength > 10 * 1024 * 1024) {
-      throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+    let imageBuffer: ArrayBuffer | null = null;
+    let resolvedImageMimeType = "image/png";
+
+    if (!normalizedManualAnalysis && imageBase64) {
+      resolvedImageMimeType = String(imageMimeType || "").toLowerCase();
+      if (!allowedImageMimeTypes.has(resolvedImageMimeType)) {
+        throw new Error("PNG, JPG, JPEG, WEBP 이미지만 분석할 수 있습니다.");
+      }
+      const bytes = decodeBase64Image(String(imageBase64));
+      if (bytes.byteLength > 10 * 1024 * 1024) {
+        throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+      }
+      imageBuffer = bytes.buffer;
+    } else if (!normalizedManualAnalysis && imageUrl) {
+      const parsedImageUrl = new URL(imageUrl);
+      const storageHostname = new URL(supabaseUrl).hostname;
+      if (
+        parsedImageUrl.protocol !== "https:" ||
+        parsedImageUrl.hostname !== storageHostname
+      ) {
+        throw new Error("분석할 수 없는 이미지 주소입니다.");
+      }
+
+      const imageResponse = await fetch(parsedImageUrl.toString());
+      if (!imageResponse.ok) {
+        throw new Error(`이미지를 불러오지 못했습니다: ${imageResponse.status}`);
+      }
+      const contentLength = Number(
+        imageResponse.headers.get("content-length") || 0,
+      );
+      if (contentLength > 10 * 1024 * 1024) {
+        throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+      }
+      resolvedImageMimeType =
+        imageResponse.headers.get("content-type") || "image/png";
+      imageBuffer = await imageResponse.arrayBuffer();
+      if (imageBuffer.byteLength > 10 * 1024 * 1024) {
+        throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+      }
     }
 
-    const availableCategories = garmentRows
-      .map((row) => `${row.category_key}: ${row.category_label}`)
-      .join("\n");
-    const analysisPrompt = `
+    const availableCategories = [
+      ...garmentRows.map((row) => `${row.category_key}: ${row.category_label}`),
+      ...virtualGarmentCategories.map(
+        (category) => `${category.key}: ${category.label}`,
+      ),
+    ].join("\n");
+    let rawAnalysis = normalizedManualAnalysis;
+
+    if (!rawAnalysis) {
+      if (!imageBuffer) {
+        throw new Error("AI가 분석할 이미지 데이터가 없습니다.");
+      }
+      const analysisPrompt = `
 You are a Korean apparel production specialist. Inspect the supplied ecommerce
 garment image. It may show front and back views in one frame.
 
@@ -447,6 +599,10 @@ Return JSON only, with this exact shape:
 {
   "categoryKey": "one allowed category key",
   "categoryConfidence": 0.0,
+  "materialKey": "cotton | polyester | functional | linen | denim | leather | knit | other",
+  "materialLabel": "short Korean material label",
+  "materialConfidence": 0.0,
+  "materialComposition": "visible/estimated composition such as 면 100% or 기능성 폴리 혼방",
   "hasLining": false,
   "hasWashing": false,
   "washingConfidence": 0.0,
@@ -454,8 +610,9 @@ Return JSON only, with this exact shape:
   "difficultyReason": "short Korean reason",
   "decorations": [
     {
-      "kind": "screen_print_1_color | screen_print_multi_color | dtf | dtg | pu | silicone_print | embroidery | patch | transfer | unknown_print",
+      "kind": "screen_print_1_color | screen_print_multi_color | dtf | dtg | pu | silicone_print | embroidery | patch | transfer | label | pigment | unknown_print",
       "locations": ["front | back | left_sleeve | right_sleeve | neck | other"],
+      "size": "small | medium | large | unknown",
       "colorCount": 1,
       "confidence": 0.0
     }
@@ -466,7 +623,8 @@ Return JSON only, with this exact shape:
       "count": 1,
       "confidence": 0.0
     }
-  ]
+  ],
+  "features": ["short Korean visible construction feature, for example 캥거루 포켓"]
 }
 
 Allowed garment categories:
@@ -474,11 +632,18 @@ ${availableCategories}
 
 Rules:
 - The image is authoritative. Use the selected type only as a fallback hint.
+- Distinguish leggings from bottom tights. For tights, choose the exact
+  short-sleeve, long-sleeve, or bottom tights category.
+- Estimate the most likely material from visible texture and garment purpose.
+  Use functional for compression and performance fabrics. Do not claim an exact
+  fiber percentage unless it is visually clear; otherwise describe it as 추정.
 - Count every visibly separate front, back, sleeve, and neck decoration.
 - A visible graphic, logo, lettering, or motif is a decoration even when the
   exact technique is uncertain. Use unknown_print in that case.
 - If the design context explicitly names a printing technique or location, use
   it to distinguish visually similar methods unless the image contradicts it.
+- Return pigment for a visible pigment-dyed or pigment-washed finish, label for
+  a visibly attached brand/care label, and include print size for each item.
 - Do not mark fabric texture, seams, pockets, buttons, or zippers as printing.
 - Inspect the actual image for every visible accessory and return its per-garment
   count in accessories.
@@ -500,6 +665,8 @@ Rules:
   or leather color without these effects is not washing.
 - Use hard for complex paneling, lining, tailoring, padding, layered
   construction, numerous pockets, unusual cut lines, or difficult sewing.
+- List visible construction features such as 캥거루 포켓, 포켓, 안감, 후드,
+  절개, 패널링 in features. Do not duplicate priced accessories there.
 - If front and back garments appear side by side, inspect both.
 ${uploadedArtworkHint
       ? `- A separately verified customer-uploaded ${uploadedArtworkHint.artworkType} artwork was applied at ${uploadedArtworkHint.location}. Treat it as ${uploadedArtworkHint.recommendedKind} even if the composite image makes the technique visually ambiguous.`
@@ -511,95 +678,125 @@ Design context:
 ${String(designContext).slice(0, 3000)}
 `.trim();
 
-    const geminiModels = [
-      "gemini-3-flash-preview",
-      "gemini-3-pro-preview",
-      "gemini-3-pro-image-preview",
-    ];
-    const geminiRequestBody = JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: analysisPrompt },
-            {
-              inlineData: {
-                data: arrayBufferToBase64(imageBuffer),
-                mimeType:
-                  imageResponse.headers.get("content-type") || "image/png",
+      const geminiModels = [
+        "gemini-3-flash-preview",
+        "gemini-3-pro-preview",
+        "gemini-3-pro-image-preview",
+      ];
+      const geminiRequestBody = JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: analysisPrompt },
+              {
+                inlineData: {
+                  data: arrayBufferToBase64(imageBuffer),
+                  mimeType: resolvedImageMimeType,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
         },
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.1,
-      },
-    });
+      });
 
-    let geminiResponse: Response | null = null;
-    const modelErrors: string[] = [];
+      let geminiResponse: Response | null = null;
+      const modelErrors: string[] = [];
 
-    for (const model of geminiModels) {
-      const candidateResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: geminiRequestBody,
-        },
-      );
+      for (const model of geminiModels) {
+        const candidateResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: geminiRequestBody,
+          },
+        );
 
-      if (candidateResponse.ok) {
-        geminiResponse = candidateResponse;
-        break;
+        if (candidateResponse.ok) {
+          geminiResponse = candidateResponse;
+          break;
+        }
+
+        const responseBody = await candidateResponse.text();
+        modelErrors.push(
+          `${model}: ${candidateResponse.status} ${responseBody}`,
+        );
+
+        if (![400, 404].includes(candidateResponse.status)) {
+          break;
+        }
       }
 
-      const responseBody = await candidateResponse.text();
-      modelErrors.push(`${model}: ${candidateResponse.status} ${responseBody}`);
-
-      if (![400, 404].includes(candidateResponse.status)) {
-        break;
+      if (!geminiResponse) {
+        throw new Error(`AI 이미지 분석 실패: ${modelErrors.join(" | ")}`);
       }
-    }
 
-    if (!geminiResponse) {
-      throw new Error(`AI 이미지 분석 실패: ${modelErrors.join(" | ")}`);
-    }
+      const geminiData = await geminiResponse.json();
+      const responseText = (geminiData?.candidates?.[0]?.content?.parts || [])
+        .map((part: { text?: string }) => part.text || "")
+        .join("")
+        .trim();
+      if (!responseText) {
+        throw new Error("AI가 이미지 분석 결과를 반환하지 않았습니다.");
+      }
 
-    const geminiData = await geminiResponse.json();
-    const responseText = (geminiData?.candidates?.[0]?.content?.parts || [])
-      .map((part: { text?: string }) => part.text || "")
-      .join("")
-      .trim();
-    if (!responseText) {
-      throw new Error("AI가 이미지 분석 결과를 반환하지 않았습니다.");
+      rawAnalysis = parseJsonResponse(responseText);
     }
-
-    const rawAnalysis = parseJsonResponse(responseText);
     const availableKeys = new Set(
       garmentRows.map((row) => row.category_key),
     );
-    const resolvedGarmentKey = resolveGarmentKey(
+    const garmentResolution = resolveGarmentCategory(
       rawAnalysis,
       selectedType,
       availableKeys,
     );
-    const garment = garmentRows.find(
-      (row) => row.category_key === resolvedGarmentKey,
+    const garmentPrice = garmentRows.find(
+      (row) => row.category_key === garmentResolution.priceKey,
     );
-    if (!garment) {
+    if (!garmentPrice) {
       throw new Error("분석된 의류 종류의 단가를 찾지 못했습니다.");
     }
+    const garment: GarmentPriceRow = {
+      ...garmentPrice,
+      category_key: garmentResolution.categoryKey,
+      category_label:
+        garmentResolution.label || garmentPrice.category_label,
+      pricing_note: [garmentResolution.referenceNote, garmentPrice.pricing_note]
+        .filter(Boolean)
+        .join(" ") || null,
+    };
 
-    const materialSearchValue = String(selectedMaterial).trim().toLowerCase();
+    const selectedMaterialValue = String(selectedMaterial).trim().toLowerCase();
+    const normalizedSelectedMaterial =
+      selectedMaterialValue === "poly" ? "polyester" : selectedMaterialValue;
+    const rawMaterialKey = String(rawAnalysis.materialKey || "other")
+      .trim()
+      .toLowerCase();
+    const resolvedMaterialKey =
+      normalizedSelectedMaterial || rawMaterialKey || "other";
+    const resolvedMaterialLabel =
+      materialLabels[resolvedMaterialKey] ||
+      String(rawAnalysis.materialLabel || "").trim() ||
+      resolvedMaterialKey;
+    const resolvedMaterialConfidence = normalizedSelectedMaterial
+      ? 1
+      : clampConfidence(rawAnalysis.materialConfidence);
+    const resolvedMaterialComposition = normalizedSelectedMaterial
+      ? resolvedMaterialLabel
+      : String(rawAnalysis.materialComposition || "").trim() ||
+        `${resolvedMaterialLabel} 추정`;
+    const materialSearchValue =
+      `${resolvedMaterialKey} ${resolvedMaterialLabel}`.toLowerCase();
     const materialPremium = materialRows.find((row) => {
-      if (row.material_key.toLowerCase() === materialSearchValue) return true;
+      if (row.material_key.toLowerCase() === resolvedMaterialKey) return true;
       return row.aliases.some((alias) => {
         const normalizedAlias = alias.trim().toLowerCase();
         return (
-          normalizedAlias === materialSearchValue ||
           materialSearchValue.includes(normalizedAlias)
         );
       });
@@ -608,11 +805,11 @@ ${String(designContext).slice(0, 3000)}
     let normalizedDecorations = normalizeDecorations(
       rawAnalysis.decorations,
     );
-    const hasWashing =
+    const hasWashingSignal =
       Boolean(rawAnalysis.hasWashing) &&
       clampConfidence(rawAnalysis.washingConfidence) >= 0.55;
     if (
-      hasWashing &&
+      hasWashingSignal &&
       !normalizedDecorations.some(
         (decoration) => decoration.kind === "washing",
       )
@@ -620,6 +817,8 @@ ${String(designContext).slice(0, 3000)}
       normalizedDecorations.push({
         kind: "washing",
         location: "other",
+        size: "unknown",
+        confidence: clampConfidence(rawAnalysis.washingConfidence),
         source: "image_analysis",
         artworkType: null,
       });
@@ -633,15 +832,37 @@ ${String(designContext).slice(0, 3000)}
       normalizedDecorations.push({
         kind: uploadedArtworkHint.recommendedKind,
         location: uploadedArtworkHint.location,
+        size: "unknown",
+        confidence: uploadedArtworkHint.confidence,
         source: "uploaded_artwork",
         artworkType: uploadedArtworkHint.artworkType,
       });
     }
+    const hasWashing = normalizedDecorations.some(
+      (decoration) => decoration.kind === "washing",
+    );
     const decorationLines = normalizedDecorations.flatMap((decoration) => {
       const price = decorationRows.find((row) =>
         row.analysis_kinds.includes(decoration.kind)
       );
-      if (!price) return [];
+      if (!price) {
+        return [{
+          kind: decoration.kind,
+          label: decoration.kind === "label" ? "라벨 부착" : "기타 후가공",
+          location: decoration.location,
+          locationLabel: locationLabels[decoration.location],
+          size: decoration.size,
+          confidence: decoration.confidence,
+          unitMin: 0,
+          unitMax: 0,
+          lineMin: 0,
+          lineMax: 0,
+          isStartingFrom: false,
+          note: "자동 단가가 없어 상담 후 금액이 추가됩니다.",
+          source: decoration.source,
+          artworkType: decoration.artworkType,
+        }];
+      }
 
       return [{
         kind: decoration.kind,
@@ -651,6 +872,8 @@ ${String(designContext).slice(0, 3000)}
           decoration.kind === "washing"
             ? "전체 의류"
             : locationLabels[decoration.location],
+        size: decoration.size,
+        confidence: decoration.confidence,
         unitMin: price.unit_min,
         unitMax: price.unit_max,
         lineMin: price.unit_min,
@@ -693,6 +916,20 @@ ${String(designContext).slice(0, 3000)}
       (sum, line) => sum + line.lineTotal,
       0,
     );
+    const hasPrinting = normalizedDecorations.some(
+      (decoration) =>
+        decoration.kind !== "embroidery" &&
+        decoration.kind !== "patch" &&
+        decoration.kind !== "label" &&
+        decoration.kind !== "washing",
+    );
+    const hasEmbroidery = normalizedDecorations.some(
+      (decoration) => decoration.kind === "embroidery",
+    );
+    const printPlateCost = hasPrinting ? 30000 : 0;
+    const embroiderySampleCost = hasEmbroidery ? 50000 : 0;
+    const decorationDevelopmentCost =
+      printPlateCost + embroiderySampleCost;
     const productionUnitSurcharge =
       materialPremium?.production_unit_surcharge || 0;
     const productionMin = garment.production_min === null
@@ -704,7 +941,10 @@ ${String(designContext).slice(0, 3000)}
     const knownProductionMin = productionMin ?? 0;
     const knownProductionMax = productionMax ?? 0;
     const sampleSurcharge = materialPremium?.sample_surcharge || 0;
-    const sampleCost = garment.sample_cost + sampleSurcharge;
+    const sampleCost =
+      garment.sample_cost +
+      sampleSurcharge +
+      decorationDevelopmentCost;
     const quantity = 20;
     const productionTotalMin = knownProductionMin * quantity;
     const productionTotalMax = knownProductionMax * quantity;
@@ -752,16 +992,21 @@ ${String(designContext).slice(0, 3000)}
         "기법이 불분명한 프린팅은 실크스크린 1도 기준으로 계산했습니다.",
       );
     }
+    if (
+      normalizedDecorations.some(
+        (decoration) => decoration.kind === "label",
+      )
+    ) {
+      manualReviewReasons.push(
+        "라벨 부착은 사양에 따라 단가가 달라 상담 후 금액이 추가됩니다.",
+      );
+    }
+    if (resolvedMaterialConfidence < 0.6) {
+      manualReviewReasons.push(
+        "소재 판단 신뢰도가 낮아 실제 원단 확인 후 견적이 달라질 수 있습니다.",
+      );
+    }
 
-    const hasPrinting = normalizedDecorations.some(
-      (decoration) =>
-        decoration.kind !== "embroidery" &&
-        decoration.kind !== "patch" &&
-        decoration.kind !== "washing",
-    );
-    const hasEmbroidery = normalizedDecorations.some(
-      (decoration) => decoration.kind === "embroidery",
-    );
     const sourceRow = garment || decorationRows[0];
     const totalIsStartingFrom =
       garment.production_is_starting_from ||
@@ -789,12 +1034,22 @@ ${String(designContext).slice(0, 3000)}
           (sum, line) => sum + line.count,
           0,
         ),
+        features: (rawAnalysis.features || [])
+          .map((feature) => String(feature).trim())
+          .filter(Boolean)
+          .slice(0, 12),
       },
       garment: {
         key: garment.category_key,
         label: garment.category_label,
         moq: garment.moq,
         note: garment.pricing_note,
+      },
+      material: {
+        key: resolvedMaterialKey,
+        label: resolvedMaterialLabel,
+        confidence: resolvedMaterialConfidence,
+        composition: resolvedMaterialComposition,
       },
       materialPremium: materialPremium
         ? {
@@ -818,6 +1073,9 @@ ${String(designContext).slice(0, 3000)}
         patternCost: garment.pattern_cost,
         sampleCost,
         sampleSurcharge,
+        printPlateCost,
+        embroiderySampleCost,
+        decorationDevelopmentCost,
         developmentTotal,
         decorationMin,
         decorationMax,

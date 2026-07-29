@@ -76,6 +76,7 @@ export const Header = () => {
     { to: "/fundings", label: "펀딩 둘러보기", visible: true },
     { to: "/fabric-swatch", label: "원단 스와치", visible: true },
     { to: "/customize", label: "컬렉션 시작하기", visible: !isAuthenticated || accountType === "seller" },
+    { to: "/design-quote", label: "내 디자인 견적", visible: !isAuthenticated || accountType === "seller" },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
     { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated },
     { to: "/admin", label: "관리자", visible: isAdmin },

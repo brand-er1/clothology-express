@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Calculator,
@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -37,6 +38,10 @@ import {
   estimateMaterialOptions,
   printSizeLabels,
 } from "@/lib/production-estimate-options";
+import {
+  normalizeEstimateQuantity,
+  recalculateEstimateQuantity,
+} from "@/lib/production-estimate-quantity";
 
 interface ProductionEstimateCardProps {
   selectedType: string;
@@ -47,6 +52,8 @@ interface ProductionEstimateCardProps {
   designContext?: string;
   uploadedArtwork?: UploadedArtworkAnalysis | null;
   editable?: boolean;
+  quantity?: number;
+  onQuantityChange?: (quantity: number) => void;
   onEstimateChange?: (estimate: ProductionEstimateResult | null) => void;
 }
 
@@ -134,21 +141,42 @@ export const ProductionEstimateCard = ({
   designContext = "",
   uploadedArtwork = null,
   editable = false,
+  quantity,
+  onQuantityChange,
   onEstimateChange,
 }: ProductionEstimateCardProps) => {
-  const [estimate, setEstimate] = useState<ProductionEstimateResult | null>(null);
+  const [baseEstimate, setBaseEstimate] =
+    useState<ProductionEstimateResult | null>(null);
+  const [internalQuantity, setInternalQuantity] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [manualAnalysis, setManualAnalysis] =
     useState<ManualProductionAnalysis | null>(null);
   const requestIdRef = useRef(0);
+  const activeQuantity = normalizeEstimateQuantity(
+    quantity ?? internalQuantity,
+  );
+  const estimate = useMemo(
+    () =>
+      baseEstimate
+        ? recalculateEstimateQuantity(baseEstimate, activeQuantity)
+        : null,
+    [activeQuantity, baseEstimate],
+  );
+
+  const changeQuantity = (value: number) => {
+    const nextQuantity = normalizeEstimateQuantity(value);
+    if (quantity === undefined) {
+      setInternalQuantity(nextQuantity);
+    }
+    onQuantityChange?.(nextQuantity);
+  };
 
   const loadEstimate = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setIsLoading(true);
     setError(null);
-    onEstimateChange?.(null);
 
     try {
       const result = await analyzeProductionEstimate({
@@ -160,15 +188,14 @@ export const ProductionEstimateCard = ({
         designContext,
         uploadedArtwork,
         manualAnalysis,
+        quantity: 20,
       });
       if (requestIdRef.current !== requestId) return;
-      setEstimate(result);
-      onEstimateChange?.(result);
+      setBaseEstimate(result);
     } catch (analysisError) {
       if (requestIdRef.current !== requestId) return;
       console.error("Production estimate analysis error:", analysisError);
-      setEstimate(null);
-      onEstimateChange?.(null);
+      setBaseEstimate(null);
       setError(
         analysisError instanceof Error
           ? analysisError.message
@@ -185,7 +212,6 @@ export const ProductionEstimateCard = ({
     imageMimeType,
     imageUrl,
     manualAnalysis,
-    onEstimateChange,
     selectedMaterial,
     selectedType,
     uploadedArtwork,
@@ -197,6 +223,10 @@ export const ProductionEstimateCard = ({
       requestIdRef.current += 1;
     };
   }, [loadEstimate]);
+
+  useEffect(() => {
+    onEstimateChange?.(estimate);
+  }, [estimate, onEstimateChange]);
 
   if (isLoading && !estimate) return <EstimateLoading />;
 
@@ -297,7 +327,7 @@ export const ProductionEstimateCard = ({
                 AI 이미지 분석
               </Badge>
               <span className="text-xs font-medium text-white/75">
-                {garment.label} · MOQ {garment.moq}장
+                {garment.label} · 견적 수량 직접 조절
               </span>
             </div>
             <h3 className="mt-3 flex items-center gap-2 text-xl font-extrabold">
@@ -319,6 +349,38 @@ export const ProductionEstimateCard = ({
             <p className="mt-1 text-xs font-bold text-white/80">(원단 제외)</p>
           </div>
         </div>
+      </div>
+
+      <div className="border-b border-brand/10 bg-white px-5 py-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-extrabold text-stone-950">견적 수량</p>
+            <p className="mt-1 text-xs leading-5 text-stone-500">
+              100장 이상 생산공임 5% · 200장 이상 7% · 300장 이상 10% 할인
+            </p>
+          </div>
+          <div className="relative w-full sm:w-48">
+            <Input
+              aria-label="견적 수량"
+              type="number"
+              min={1}
+              max={100000}
+              step={1}
+              value={activeQuantity}
+              onChange={(event) => changeQuantity(Number(event.target.value))}
+              className="h-12 rounded-xl pr-12 text-right text-lg font-black"
+            />
+            <span className="pointer-events-none absolute right-4 top-3.5 text-sm font-bold text-stone-500">
+              장
+            </span>
+          </div>
+        </div>
+        {totals.productionDiscountRate > 0 && (
+          <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+            {activeQuantity.toLocaleString("ko-KR")}장 기준 생산공임{" "}
+            {Math.round(totals.productionDiscountRate * 100)}% 할인이 적용되었습니다.
+          </div>
+        )}
       </div>
 
       {editable && (
@@ -616,6 +678,21 @@ export const ProductionEstimateCard = ({
                   totals.productionIsStartingFrom,
                 )}
           </p>
+          {totals.productionDiscountRate > 0 &&
+            totals.productionOriginalMin != null &&
+            totals.productionOriginalMax != null && (
+              <p className="mt-1 text-[11px] font-semibold text-emerald-700">
+                기존{" "}
+                <span className="line-through">
+                  {formatRange(
+                    totals.productionOriginalMin,
+                    totals.productionOriginalMax,
+                    totals.productionIsStartingFrom,
+                  )}
+                </span>{" "}
+                · {Math.round(totals.productionDiscountRate * 100)}% 할인
+              </p>
+            )}
           {estimate.materialPremium &&
             totals.productionUnitSurcharge > 0 && (
               <p className="mt-1 text-[11px] font-semibold text-brand">
@@ -658,7 +735,9 @@ export const ProductionEstimateCard = ({
           )}
           {totals.printPlateCost > 0 && (
               <div className="flex items-center justify-between gap-3 text-brand">
-                <span>나염·프린팅 샘플 판비</span>
+                <span>
+                  나염·프린팅 샘플 판비 ({totals.printPlateCount}개 × 30,000원)
+                </span>
                 <span className="font-bold">
                   +{formatWon(totals.printPlateCost)}
                 </span>
@@ -666,7 +745,9 @@ export const ProductionEstimateCard = ({
           )}
           {totals.embroiderySampleCost > 0 && (
               <div className="flex items-center justify-between gap-3 text-brand">
-                <span>자수 샘플 판비</span>
+                <span>
+                  자수 샘플 판비 ({totals.embroiderySampleCount}개 × 50,000원)
+                </span>
                 <span className="font-bold">
                   +{formatWon(totals.embroiderySampleCost)}
                 </span>
@@ -674,7 +755,10 @@ export const ProductionEstimateCard = ({
           )}
             {totals.dyeingSampleCost > 0 && (
               <div className="flex items-center justify-between gap-3 text-brand">
-                <span>염색 샘플 추가비</span>
+                <span>
+                  염색·피그먼트 샘플 추가비 ({totals.dyeingSampleCount}개 ×
+                  50,000원)
+                </span>
                 <span className="font-bold">
                   +{formatWon(totals.dyeingSampleCost)}
                 </span>
@@ -682,7 +766,9 @@ export const ProductionEstimateCard = ({
             )}
             {totals.washingSampleCost > 0 && (
               <div className="flex items-center justify-between gap-3 text-brand">
-                <span>워싱 샘플 추가비</span>
+                <span>
+                  워싱 샘플 추가비 ({totals.washingSampleCount}개 × 50,000원)
+                </span>
                 <span className="font-bold">
                   +{formatWon(totals.washingSampleCost)}
                 </span>
@@ -847,6 +933,8 @@ export const ProductionEstimateCard = ({
             <div className="flex items-center justify-between gap-4">
               <span className="text-gray-600">
                 생산공임 × {totals.quantity}장
+                {totals.productionDiscountRate > 0 &&
+                  ` (${Math.round(totals.productionDiscountRate * 100)}% 할인)`}
               </span>
               <span className="font-bold text-gray-950">
                 {formatRange(
@@ -930,6 +1018,10 @@ export const ProductionEstimateCard = ({
           <p>
             산출 기준: 생산·프린팅·부자재 공임은 장당 단가이며,
             패턴·샘플비는 수량과 곱하지 않는 별도 1회 개발비입니다.
+          </p>
+          <p>
+            ※ 수량 할인은 생산공임에만 적용됩니다. 100장 이상 5%, 200장
+            이상 7%, 300장 이상 10% 할인됩니다.
           </p>
           <p className="font-extrabold text-brand">※ 원단 가격은 별도입니다.</p>
           <p>※ 위 금액은 예상 제작 단가(About Price)입니다.</p>

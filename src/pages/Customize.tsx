@@ -236,6 +236,8 @@ const Customize = () => {
                 designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
                 modificationHistory={modificationHistory}
                 currentArtworkAnalysis={currentArtworkAnalysis}
+                quantity={directQuantity}
+                onQuantityChange={setDirectQuantity}
                 onEstimateChange={setCurrentProductionEstimate}
                 onArtworkScreeningApplied={setCurrentArtworkScreeningId}
                 onModifyImage={handleModifyImage}

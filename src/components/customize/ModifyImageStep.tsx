@@ -99,6 +99,8 @@ interface ModifyImageStepProps {
   designContext?: string;
   modificationHistory: ImageModificationEntry[];
   currentArtworkAnalysis: UploadedArtworkAnalysis | null;
+  quantity: number;
+  onQuantityChange: (quantity: number) => void;
   onEstimateChange: (estimate: ProductionEstimateResult | null) => void;
   onArtworkScreeningApplied: (screeningId: string | null) => void;
   onModifyImage: (
@@ -121,6 +123,8 @@ export const ModifyImageStep = ({
   designContext,
   modificationHistory,
   currentArtworkAnalysis,
+  quantity,
+  onQuantityChange,
   onEstimateChange,
   onArtworkScreeningApplied,
   onModifyImage,
@@ -989,6 +993,8 @@ export const ModifyImageStep = ({
                 imageUrl={selectedImageUrl}
                 designContext={designContext}
                 uploadedArtwork={currentArtworkAnalysis}
+                quantity={quantity}
+                onQuantityChange={onQuantityChange}
                 onEstimateChange={onEstimateChange}
               />
             )}

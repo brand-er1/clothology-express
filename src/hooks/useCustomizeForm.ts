@@ -24,6 +24,7 @@ import type {
 } from "@/types/productionEstimate";
 import { supabase } from "@/lib/supabase";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
+import { recalculateEstimateQuantity } from "@/lib/production-estimate-quantity";
 
 interface ModifyImageOptions {
   referenceImage?: ArtworkReference;
@@ -496,6 +497,12 @@ export const useCustomizeForm = () => {
       ].filter(Boolean).join("\n");
 
       let productionEstimate = currentProductionEstimate;
+      if (productionEstimate) {
+        productionEstimate = recalculateEstimateQuantity(
+          productionEstimate,
+          directQuantity,
+        );
+      }
       if (!productionEstimate) {
         try {
           productionEstimate = await analyzeProductionEstimate({
@@ -506,6 +513,7 @@ export const useCustomizeForm = () => {
               .filter(Boolean)
               .join("\n"),
             uploadedArtwork: currentArtworkAnalysis,
+            quantity: directQuantity,
           });
         } catch (estimateError) {
           console.error("Funding estimate analysis error:", estimateError);
@@ -568,10 +576,10 @@ export const useCustomizeForm = () => {
         return;
       }
 
-      if (directQuantity < 20) {
+      if (directQuantity < 1) {
         toast({
-          title: "최소 제작 수량을 확인해주세요",
-          description: "바로 제작 의뢰는 총 20장부터 접수할 수 있습니다.",
+          title: "제작 수량을 확인해주세요",
+          description: "제작 의뢰 수량은 1장 이상 입력해주세요.",
           variant: "destructive",
         });
         return;
@@ -649,6 +657,12 @@ export const useCustomizeForm = () => {
         fitOptions.find((fit) => fit.value === selectedFit)?.label || selectedFit;
 
       let productionEstimate = currentProductionEstimate;
+      if (productionEstimate) {
+        productionEstimate = recalculateEstimateQuantity(
+          productionEstimate,
+          directQuantity,
+        );
+      }
       if (!productionEstimate) {
         try {
           productionEstimate = await analyzeProductionEstimate({
@@ -659,6 +673,7 @@ export const useCustomizeForm = () => {
               .filter(Boolean)
               .join("\n"),
             uploadedArtwork: currentArtworkAnalysis,
+            quantity: directQuantity,
           });
         } catch (estimateError) {
           console.error("Direct request estimate analysis error:", estimateError);
@@ -708,6 +723,10 @@ export const useCustomizeForm = () => {
         },
         generatedImageUrl: finalImageUrl,
         imagePath: finalImagePath,
+        requestSource: "ai_design",
+        requestTitle: `${clothTypeName} AI 디자인 제작 의뢰`,
+        requestedQuantity: directQuantity,
+        estimateSnapshot: productionEstimate,
       });
 
       toast({

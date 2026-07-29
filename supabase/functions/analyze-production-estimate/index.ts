@@ -223,6 +223,19 @@ const materialLabels: Record<string, string> = {
   other: "기타",
 };
 
+const normalizeEstimateQuantity = (value: unknown) =>
+  Math.min(
+    100000,
+    Math.max(1, Math.round(Number(value) || 20)),
+  );
+
+const getProductionDiscountRate = (quantity: number) => {
+  if (quantity >= 300) return 0.1;
+  if (quantity >= 200) return 0.07;
+  if (quantity >= 100) return 0.05;
+  return 0;
+};
+
 const allowedImageMimeTypes = new Set([
   "image/png",
   "image/jpeg",
@@ -464,6 +477,7 @@ serve(async (req) => {
       designContext = "",
       uploadedArtwork,
       manualAnalysis,
+      quantity: requestedQuantity = 20,
     } = await req.json();
     const normalizedManualAnalysis = normalizeManualAnalysis(manualAnalysis);
     if (!normalizedManualAnalysis && !imageUrl && !imageBase64) {
@@ -920,21 +934,29 @@ ${String(designContext).slice(0, 3000)}
       (sum, line) => sum + line.lineTotal,
       0,
     );
-    const hasPrinting = normalizedDecorations.some(
-      (decoration) =>
-        decoration.kind !== "embroidery" &&
-        decoration.kind !== "patch" &&
-        decoration.kind !== "label" &&
-        decoration.kind !== "washing" &&
-        decoration.kind !== "pigment",
-    );
-    const hasEmbroidery = normalizedDecorations.some(
-      (decoration) => decoration.kind === "embroidery",
-    );
-    const printPlateCost = hasPrinting ? 30000 : 0;
-    const embroiderySampleCost = hasEmbroidery ? 50000 : 0;
-    const dyeingSampleCost = hasDyeing ? 50000 : 0;
-    const washingSampleCost = hasWashing ? 50000 : 0;
+    const printPlateCount = decorationLines.filter(
+      (line) =>
+        line.kind !== "embroidery" &&
+        line.kind !== "patch" &&
+        line.kind !== "label" &&
+        line.kind !== "washing" &&
+        line.kind !== "pigment",
+    ).length;
+    const embroiderySampleCount = decorationLines.filter(
+      (line) => line.kind === "embroidery",
+    ).length;
+    const dyeingSampleCount = decorationLines.filter(
+      (line) => line.kind === "pigment",
+    ).length;
+    const washingSampleCount = decorationLines.filter(
+      (line) => line.kind === "washing",
+    ).length;
+    const hasPrinting = printPlateCount > 0;
+    const hasEmbroidery = embroiderySampleCount > 0;
+    const printPlateCost = printPlateCount * 30000;
+    const embroiderySampleCost = embroiderySampleCount * 50000;
+    const dyeingSampleCost = dyeingSampleCount * 50000;
+    const washingSampleCost = washingSampleCount * 50000;
     const decorationDevelopmentCost =
       printPlateCost +
       embroiderySampleCost +
@@ -942,12 +964,20 @@ ${String(designContext).slice(0, 3000)}
       washingSampleCost;
     const productionUnitSurcharge =
       materialPremium?.production_unit_surcharge || 0;
-    const productionMin = garment.production_min === null
+    const productionOriginalMin = garment.production_min === null
       ? null
       : garment.production_min + productionUnitSurcharge;
-    const productionMax = garment.production_max === null
+    const productionOriginalMax = garment.production_max === null
       ? null
       : garment.production_max + productionUnitSurcharge;
+    const quantity = normalizeEstimateQuantity(requestedQuantity);
+    const productionDiscountRate = getProductionDiscountRate(quantity);
+    const productionMin = productionOriginalMin === null
+      ? null
+      : Math.round(productionOriginalMin * (1 - productionDiscountRate));
+    const productionMax = productionOriginalMax === null
+      ? null
+      : Math.round(productionOriginalMax * (1 - productionDiscountRate));
     const knownProductionMin = productionMin ?? 0;
     const knownProductionMax = productionMax ?? 0;
     const sampleSurcharge = materialPremium?.sample_surcharge || 0;
@@ -955,7 +985,6 @@ ${String(designContext).slice(0, 3000)}
       garment.sample_cost +
       sampleSurcharge +
       decorationDevelopmentCost;
-    const quantity = 20;
     const productionTotalMin = knownProductionMin * quantity;
     const productionTotalMax = knownProductionMax * quantity;
     const decorationTotalMin = decorationMin * quantity;
@@ -1075,9 +1104,12 @@ ${String(designContext).slice(0, 3000)}
       accessories: accessoryLines,
       totals: {
         quantity,
+        productionOriginalMin,
+        productionOriginalMax,
         productionMin,
         productionMax,
         productionIsStartingFrom: garment.production_is_starting_from,
+        productionDiscountRate,
         productionUnitSurcharge,
         productionTotalMin,
         productionTotalMax,
@@ -1085,9 +1117,13 @@ ${String(designContext).slice(0, 3000)}
         baseSampleCost: garment.sample_cost,
         sampleCost,
         sampleSurcharge,
+        printPlateCount,
         printPlateCost,
+        embroiderySampleCount,
         embroiderySampleCost,
+        dyeingSampleCount,
         dyeingSampleCost,
+        washingSampleCount,
         washingSampleCost,
         decorationDevelopmentCost,
         developmentTotal,

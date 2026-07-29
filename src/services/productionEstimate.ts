@@ -14,6 +14,7 @@ interface AnalyzeProductionEstimateParams {
   designContext?: string;
   uploadedArtwork?: UploadedArtworkAnalysis | null;
   manualAnalysis?: ManualProductionAnalysis | null;
+  quantity?: number;
 }
 
 const estimateRequestCache = new Map<
@@ -30,6 +31,7 @@ export const analyzeProductionEstimate = async ({
   designContext = "",
   uploadedArtwork = null,
   manualAnalysis = null,
+  quantity = 20,
 }: AnalyzeProductionEstimateParams): Promise<ProductionEstimateResult> => {
   const cacheKey = JSON.stringify([
     imageUrl,
@@ -40,6 +42,7 @@ export const analyzeProductionEstimate = async ({
     designContext,
     uploadedArtwork,
     manualAnalysis,
+    quantity,
   ]);
   const cachedRequest = estimateRequestCache.get(cacheKey);
   if (cachedRequest) return cachedRequest;
@@ -57,6 +60,7 @@ export const analyzeProductionEstimate = async ({
           designContext,
           uploadedArtwork,
           manualAnalysis,
+          quantity,
         },
       },
     );

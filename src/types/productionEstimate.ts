@@ -128,9 +128,12 @@ export interface ManualProductionAnalysis {
 
 export interface ProductionEstimateTotals {
   quantity: number;
+  productionOriginalMin?: number | null;
+  productionOriginalMax?: number | null;
   productionMin: number | null;
   productionMax: number | null;
   productionIsStartingFrom: boolean;
+  productionDiscountRate: number;
   productionUnitSurcharge: number;
   productionTotalMin: number;
   productionTotalMax: number;
@@ -138,9 +141,13 @@ export interface ProductionEstimateTotals {
   baseSampleCost: number;
   sampleCost: number;
   sampleSurcharge: number;
+  printPlateCount: number;
   printPlateCost: number;
+  embroiderySampleCount: number;
   embroiderySampleCost: number;
+  dyeingSampleCount: number;
   dyeingSampleCost: number;
+  washingSampleCount: number;
   washingSampleCost: number;
   decorationDevelopmentCost: number;
   developmentTotal: number;

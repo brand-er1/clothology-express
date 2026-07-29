@@ -226,7 +226,7 @@ const materialLabels: Record<string, string> = {
 const normalizeEstimateQuantity = (value: unknown) =>
   Math.min(
     100000,
-    Math.max(1, Math.round(Number(value) || 20)),
+    Math.max(20, Math.round(Number(value) || 20)),
   );
 
 const getProductionDiscountRate = (quantity: number) => {

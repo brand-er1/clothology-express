@@ -218,7 +218,8 @@ export const SizeStep = ({
                   <h3 className="font-black text-gray-950">제작 의뢰 수량</h3>
                   <p className="mt-1 text-sm leading-6 text-gray-600">
                     제작 의뢰를 선택하면 이 수량이 관리자에게 전달됩니다.
-                    수량에 따라 자동 견적과 생산공임 할인이 다시 계산됩니다.
+                    MOQ는 20장이며, 수량에 따라 자동 견적과 생산공임 할인이
+                    다시 계산됩니다.
                   </p>
                 </div>
               </div>
@@ -226,7 +227,7 @@ export const SizeStep = ({
                 <Input
                   aria-label="제작 의뢰 총수량"
                   type="number"
-                  min={1}
+                  min={20}
                   max={100000}
                   step={1}
                   value={directQuantity}
@@ -234,7 +235,7 @@ export const SizeStep = ({
                     onDirectQuantityChange?.(
                       Math.min(
                         100000,
-                        Math.max(1, Math.round(Number(event.target.value) || 1)),
+                        Math.max(20, Math.round(Number(event.target.value) || 20)),
                       ),
                     )
                   }

@@ -361,9 +361,9 @@ export const ProductionEstimateCard = ({
           </div>
           <div className="relative w-full sm:w-48">
             <Input
-              aria-label="견적 수량"
+              aria-label="견적 수량 (최소 20장)"
               type="number"
-              min={1}
+              min={20}
               max={100000}
               step={1}
               value={activeQuantity}
@@ -375,6 +375,9 @@ export const ProductionEstimateCard = ({
             </span>
           </div>
         </div>
+        <p className="mt-2 text-xs font-bold text-brand">
+          MOQ 20장부터 견적을 계산할 수 있습니다.
+        </p>
         {totals.productionDiscountRate > 0 && (
           <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
             {activeQuantity.toLocaleString("ko-KR")}장 기준 생산공임{" "}

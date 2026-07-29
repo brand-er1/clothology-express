@@ -576,10 +576,10 @@ export const useCustomizeForm = () => {
         return;
       }
 
-      if (directQuantity < 1) {
+      if (directQuantity < 20) {
         toast({
-          title: "제작 수량을 확인해주세요",
-          description: "제작 의뢰 수량은 1장 이상 입력해주세요.",
+          title: "최소 제작 수량을 확인해주세요",
+          description: "제작 의뢰는 MOQ 20장부터 접수할 수 있습니다.",
           variant: "destructive",
         });
         return;

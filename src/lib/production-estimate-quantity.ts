@@ -1,7 +1,7 @@
 import type { ProductionEstimateResult } from "@/types/productionEstimate";
 
 export const normalizeEstimateQuantity = (value: number) =>
-  Math.min(100000, Math.max(1, Math.round(Number(value) || 1)));
+  Math.min(100000, Math.max(20, Math.round(Number(value) || 20)));
 
 export const getProductionDiscountRate = (quantity: number) => {
   const normalizedQuantity = normalizeEstimateQuantity(quantity);

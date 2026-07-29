@@ -28,6 +28,7 @@ import type {
 } from "@/types/fabricSwatch";
 import { GeneratedImageList } from "@/components/admin/GeneratedImageList";
 import type { AdminGeneratedImage } from "@/types/generatedImage";
+import { CustomerManagement } from "@/components/admin/CustomerManagement";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -304,7 +305,11 @@ const Admin = () => {
           <div className="mb-8">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Brand-er operations</p>
             <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-stone-950 md:text-4xl">브랜더 관리자</h1>
-            <p className="mt-2 text-sm text-stone-500">AI 이미지 생성 내역부터 제작 의뢰, 원단 스와치, 펀딩 승인 요청까지 한곳에서 확인합니다.</p>
+            <p className="mt-2 text-sm text-stone-500">고객 방문과 활동부터 AI 이미지, 제작 의뢰, 원단 스와치, 펀딩 승인 요청까지 한곳에서 확인합니다.</p>
+          </div>
+
+          <div className="mb-8">
+            <CustomerManagement />
           </div>
 
           <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

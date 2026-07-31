@@ -3,11 +3,15 @@ import { supabase } from "@/lib/supabase";
 export type GarmentTrendType =
   | "short_sleeve"
   | "long_sleeve"
+  | "tights_short_sleeve"
+  | "tights_long_sleeve"
   | "hoodie"
   | "sweatshirt"
   | "jacket"
   | "short_pants"
-  | "long_pants";
+  | "long_pants"
+  | "leggings"
+  | "tights_bottom";
 
 export interface FashionTrendItem {
   keyword: string;
@@ -43,4 +47,3 @@ export const fetchFashionTrends =
 
     return data as FashionTrendResponse;
   };
-

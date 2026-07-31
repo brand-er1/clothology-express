@@ -22,17 +22,21 @@ const CACHE_DURATION_MS = 30 * 60 * 1000;
 type GarmentType =
   | "short_sleeve"
   | "long_sleeve"
+  | "tights_short_sleeve"
+  | "tights_long_sleeve"
   | "hoodie"
   | "sweatshirt"
   | "jacket"
   | "short_pants"
-  | "long_pants";
+  | "long_pants"
+  | "leggings"
+  | "tights_bottom";
 
 type RankingProduct = {
   productName: string;
   brandName: string;
   rank: number;
-  category: "top" | "outer" | "pants";
+  category: "top" | "outer" | "pants" | "sports";
 };
 
 type TrendItem = {
@@ -45,11 +49,15 @@ type TrendMap = Record<GarmentType, TrendItem[]>;
 const GARMENT_LABELS: Record<GarmentType, string> = {
   short_sleeve: "반팔 티셔츠",
   long_sleeve: "긴팔 티셔츠",
+  tights_short_sleeve: "상의형 타이즈 (반팔)",
+  tights_long_sleeve: "긴팔 타이즈",
   hoodie: "후드",
   sweatshirt: "맨투맨",
   jacket: "자켓",
   short_pants: "반바지",
   long_pants: "팬츠",
+  leggings: "레깅스",
+  tights_bottom: "하의형 타이즈",
 };
 
 const FALLBACK_KEYWORDS: Record<GarmentType, string[]> = {
@@ -62,6 +70,16 @@ const FALLBACK_KEYWORDS: Record<GarmentType, string[]> = {
     "래글런 배색 긴팔 티셔츠",
     "빈티지 워싱 긴팔 티셔츠",
     "슬림 크롭 긴팔 티셔츠",
+  ],
+  tights_short_sleeve: [
+    "컴프레션 반팔 타이즈",
+    "퍼포먼스 베이스레이어 반팔 타이즈",
+    "심리스 반팔 타이즈",
+  ],
+  tights_long_sleeve: [
+    "컴프레션 긴팔 타이즈",
+    "기모 베이스레이어 긴팔 타이즈",
+    "심리스 퍼포먼스 긴팔 타이즈",
   ],
   hoodie: [
     "라이트웨이트 집업 후드",
@@ -87,6 +105,16 @@ const FALLBACK_KEYWORDS: Record<GarmentType, string[]> = {
     "린넨 세미 와이드 팬츠",
     "원턱 커브드 팬츠",
     "나일론 스트링 팬츠",
+  ],
+  leggings: [
+    "하이웨이스트 심리스 레깅스",
+    "부츠컷 요가 레깅스",
+    "포켓 퍼포먼스 레깅스",
+  ],
+  tights_bottom: [
+    "러닝 하프 타이즈",
+    "컴프레션 롱 타이즈",
+    "베이스레이어 하의 타이즈",
   ],
 };
 
@@ -134,6 +162,14 @@ const STYLE_TERMS: Array<[RegExp, string]> = [
   [/(스웨트|sweat)/i, "스웨트"],
   [/(버뮤다|bermuda)/i, "버뮤다"],
   [/(롤업|roll[\s-]*up)/i, "롤업"],
+  [/(컴프레션|compression)/i, "컴프레션"],
+  [/(심리스|seamless)/i, "심리스"],
+  [/(퍼포먼스|performance)/i, "퍼포먼스"],
+  [/(베이스\s*레이어|베이스레이어|base[\s-]*layer)/i, "베이스레이어"],
+  [/(하이\s*웨이스트|하이웨이스트|high[\s-]*waist)/i, "하이웨이스트"],
+  [/(요가|yoga)/i, "요가"],
+  [/(러닝|running)/i, "러닝"],
+  [/(하프\s*(타이즈|타이츠)|half[\s-]*tights?)/i, "하프"],
 ];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -181,6 +217,27 @@ const collectProductColumns = (
 
 const inferGarmentType = (product: RankingProduct): GarmentType | null => {
   const name = product.productName.toLowerCase();
+  const isLeggings = /(레깅스|leggings?)/i.test(name);
+  const isTights =
+    /(타이즈|타이츠|tights?|컴프레션|compression|베이스\s*레이어|베이스레이어|base[\s-]*layer)/i.test(
+      name,
+    );
+  const isLongSleeve =
+    /(긴팔|긴소매|long[\s-]*sleeve|long\s*tee|l\/s\s*(tee|t-shirt))/i.test(
+      name,
+    );
+  const isShortSleeve =
+    /(반팔|반소매|숏\s*슬리브|short[\s-]*sleeve|half[\s-]*sleeve|half\s*(tee|t-shirt))/i.test(
+      name,
+    );
+
+  if (isLeggings) return "leggings";
+
+  if (isTights) {
+    if (isLongSleeve) return "tights_long_sleeve";
+    if (isShortSleeve) return "tights_short_sleeve";
+    if (product.category === "pants") return "tights_bottom";
+  }
 
   if (product.category === "pants") {
     if (
@@ -214,11 +271,7 @@ const inferGarmentType = (product: RankingProduct): GarmentType | null => {
     return "jacket";
   }
 
-  if (
-    /(긴팔|긴소매|long[\s-]*sleeve|long\s*tee|l\/s\s*(tee|t-shirt))/i.test(
-      name,
-    )
-  ) {
+  if (isLongSleeve) {
     return "long_sleeve";
   }
 
@@ -289,6 +342,12 @@ const buildTrendMap = (products: RankingProduct[]): TrendMap => {
   return trends;
 };
 
+const GARMENT_TYPES = Object.keys(GARMENT_LABELS) as GarmentType[];
+
+const hasCompleteTrendMap = (value: unknown): value is TrendMap =>
+  isRecord(value) &&
+  GARMENT_TYPES.every((garmentType) => Array.isArray(value[garmentType]));
+
 const fetchRankingCategory = async (
   categoryCode: string,
   category: RankingProduct["category"],
@@ -358,7 +417,7 @@ Deno.serve(async (request) => {
     .maybeSingle();
 
   if (
-    cached?.trends &&
+    hasCompleteTrendMap(cached?.trends) &&
     typeof cached.expires_at === "string" &&
     new Date(cached.expires_at) > now
   ) {
@@ -377,12 +436,21 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const categoryProducts = await Promise.all([
+    const categoryResults = await Promise.allSettled([
       fetchRankingCategory("001", "top"),
       fetchRankingCategory("002", "outer"),
       fetchRankingCategory("003", "pants"),
+      fetchRankingCategory("017", "sports"),
     ]);
-    const trends = buildTrendMap(categoryProducts.flat());
+    const categoryProducts = categoryResults.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
+    );
+
+    if (categoryProducts.length === 0) {
+      throw new Error("No ranking products were returned.");
+    }
+
+    const trends = buildTrendMap(categoryProducts);
     const fetchedAt = now.toISOString();
     const expiresAt = new Date(
       now.getTime() + CACHE_DURATION_MS,
@@ -419,7 +487,7 @@ Deno.serve(async (request) => {
   } catch (error) {
     console.error("Unable to refresh fashion trends:", error);
 
-    if (cached?.trends) {
+    if (hasCompleteTrendMap(cached?.trends)) {
       return new Response(
         JSON.stringify({
           source: SOURCE,

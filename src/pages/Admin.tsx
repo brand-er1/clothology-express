@@ -151,11 +151,15 @@ const Admin = () => {
     } finally { setIsSaving(false); }
   };
 
-  const handleReviewFunding = async (status: "approved" | "rejected", comment: string) => {
+  const handleReviewFunding = async (
+    status: "approved" | "rejected",
+    comment: string,
+    reviewValues: Pick<Funding, "moq" | "price">,
+  ) => {
     if (!selectedFunding) return;
     setIsSaving(true);
     try {
-      await saveFundingReview(selectedFunding.id, status, comment);
+      await saveFundingReview(selectedFunding.id, status, comment, reviewValues);
       toast({ title: status === "approved" ? "펀딩을 승인했습니다" : "펀딩을 거절했습니다" });
       setIsFundingReviewOpen(false);
       setSelectedFunding(null);

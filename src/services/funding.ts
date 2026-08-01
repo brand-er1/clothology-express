@@ -82,6 +82,11 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
 };
 
 export const fetchFunding = async (id: string): Promise<Funding> => {
+  // 승인 전 펀딩은 작성자와 관리자만 조회할 수 있습니다. 새 탭에서 바로
+  // 진입해도 Supabase가 저장된 세션을 먼저 복원한 뒤 RLS 조회를 수행하도록
+  // 세션 초기화를 명시적으로 기다립니다.
+  await supabase.auth.getSession();
+
   const { data, error } = await supabase
     .from("fundings")
     .select("*")
@@ -165,13 +170,16 @@ export const fetchAllFundings = async (): Promise<Funding[]> => {
 export const reviewFunding = async (
   id: string,
   status: Extract<FundingStatus, "approved" | "rejected">,
-  adminComment: string
+  adminComment: string,
+  reviewValues: Pick<Funding, "moq" | "price">
 ): Promise<void> => {
   await requireUser();
   const { error } = await supabase.rpc("review_funding_with_trademark", {
     p_funding_id: id,
     p_status: status,
     p_admin_comment: adminComment,
+    p_moq: reviewValues.moq,
+    p_price: reviewValues.price,
   });
 
   if (error) throw error;

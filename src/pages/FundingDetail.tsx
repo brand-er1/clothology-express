@@ -40,10 +40,10 @@ const FundingDetail = () => {
 
     const load = async () => {
       try {
-        const [{ data: sessionData }, fundingData] = await Promise.all([
-          supabase.auth.getSession(),
-          fetchFunding(id),
-        ]);
+        // 새 탭에서도 세션을 먼저 복원해야 승인 전 펀딩의 RLS 조회가
+        // 작성자/관리자 권한으로 실행됩니다.
+        const { data: sessionData } = await supabase.auth.getSession();
+        const fundingData = await fetchFunding(id);
         setCurrentUserId(sessionData.session?.user.id || null);
         setFunding(fundingData);
 
@@ -158,7 +158,7 @@ const FundingDetail = () => {
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             {isPreview && (
-              <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">작성자 미리보기 · 승인 전 비공개</Badge>
+              <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">관리자·작성자 미리보기 · 승인 전 비공개</Badge>
             )}
             {isCreator && (
               <>

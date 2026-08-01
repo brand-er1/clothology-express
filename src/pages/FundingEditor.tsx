@@ -49,10 +49,8 @@ const FundingEditor = () => {
 
     const load = async () => {
       try {
-        const [{ data: sessionData }, fundingData] = await Promise.all([
-          supabase.auth.getSession(),
-          fetchFunding(id),
-        ]);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const fundingData = await fetchFunding(id);
         if (!sessionData.session?.user || sessionData.session.user.id !== fundingData.creator_id) {
           throw new Error("펀딩을 수정할 권한이 없습니다.");
         }

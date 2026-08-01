@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { Funding } from "@/types/funding";
-import { ExternalLink, Loader2, PackageCheck, ShieldAlert, ShieldCheck } from "lucide-react";
+import { CircleAlert, ExternalLink, Loader2, PackageCheck, ShieldAlert, ShieldCheck } from "lucide-react";
 
 const similarityScoreLabels = [
   ["text", "문자"],
@@ -21,15 +24,49 @@ type Props = {
   open: boolean;
   saving: boolean;
   onOpenChange: (open: boolean) => void;
-  onReview: (status: "approved" | "rejected", comment: string) => Promise<void>;
+  onReview: (
+    status: "approved" | "rejected",
+    comment: string,
+    reviewValues: Pick<Funding, "moq" | "price">,
+  ) => Promise<void>;
 };
 export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onReview }: Props) => {
   const [comment, setComment] = useState("");
+  const [moq, setMoq] = useState("20");
+  const [price, setPrice] = useState("");
   const screening = funding?.trademark_screening || null;
 
   useEffect(() => {
     setComment(funding?.admin_comment || "");
+    setMoq(String(funding?.moq || 20));
+    setPrice(funding?.price == null ? "" : String(funding.price));
   }, [funding]);
+
+  const parsedMoq = Number(moq);
+  const parsedPrice = price.trim() ? Number(price) : null;
+  const approvalIssues = funding
+    ? [
+        !Number.isInteger(parsedMoq) || parsedMoq < 20
+          ? "MOQ를 20장 이상으로 입력해주세요."
+          : null,
+        parsedPrice == null ||
+        !Number.isInteger(parsedPrice) ||
+        parsedPrice <= 0
+          ? "공개 전에 판매가를 1원 이상 입력해주세요."
+          : null,
+        funding.trademark_screening_required && !screening
+          ? "연결된 상표 검수 기록이 없습니다."
+          : null,
+        funding.trademark_screening_required && screening?.decision === "blocked"
+          ? "상표 고위험 차단 건은 승인할 수 없습니다."
+          : null,
+      ].filter((issue): issue is string => Boolean(issue))
+    : ["펀딩 정보를 불러오지 못했습니다."];
+
+  const reviewValues: Pick<Funding, "moq" | "price"> = {
+    moq: Number.isFinite(parsedMoq) ? parsedMoq : 0,
+    price: parsedPrice != null && Number.isInteger(parsedPrice) ? parsedPrice : null,
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,8 +109,43 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                   <div className="col-span-2"><dt className="text-gray-400">판매가</dt><dd className="mt-1 text-lg font-bold">{funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "미입력"}</dd></div>
                 </dl>
                 <Button asChild variant="outline" className="mt-4 w-full">
-                  <a href={`/fundings/${funding.id}`} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" /> 펀딩 페이지 미리보기</a>
+                  <Link to={`/fundings/${funding.id}`} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" /> 펀딩 페이지 미리보기</Link>
                 </Button>
+              </div>
+            </div>
+            <div className="grid gap-4 rounded-2xl border bg-stone-50 p-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="funding-review-moq">승인 MOQ</Label>
+                <div className="relative">
+                  <Input
+                    id="funding-review-moq"
+                    type="number"
+                    min={20}
+                    step={1}
+                    value={moq}
+                    onChange={(event) => setMoq(event.target.value)}
+                    className="h-11 pr-10 bg-white"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-3 text-sm text-gray-400">장</span>
+                </div>
+                <p className="text-xs text-gray-500">20장 이상이면 관리자 화면에서 바로 보완 후 승인할 수 있습니다.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="funding-review-price">승인 판매가</Label>
+                <div className="relative">
+                  <Input
+                    id="funding-review-price"
+                    type="number"
+                    min={1}
+                    step={1000}
+                    value={price}
+                    onChange={(event) => setPrice(event.target.value)}
+                    placeholder="판매가 입력"
+                    className="h-11 pr-10 bg-white"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-3 text-sm text-gray-400">원</span>
+                </div>
+                <p className="text-xs text-gray-500">판매가가 비어 있던 기존 승인 요청도 여기서 입력할 수 있습니다.</p>
               </div>
             </div>
             <Separator />
@@ -259,24 +331,25 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
               <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
               승인하면 공개 펀딩 목록에 즉시 노출됩니다. MOQ는 20장 미만으로 승인할 수 없습니다.
             </div>
+            {approvalIssues.length > 0 && (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <CircleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <p className="font-bold">승인 전 확인이 필요합니다</p>
+                  <ul className="mt-1 space-y-1">
+                    {approvalIssues.map((issue) => <li key={issue}>• {issue}</li>)}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         )}
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>닫기</Button>
-          <Button variant="destructive" onClick={() => onReview("rejected", comment)} disabled={saving || !comment.trim()}>
+          <Button variant="destructive" onClick={() => onReview("rejected", comment, reviewValues)} disabled={saving || !comment.trim()}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}거절하기
           </Button>
-          <Button onClick={() => onReview("approved", comment)} disabled={
-            saving ||
-            !funding?.price ||
-            (funding?.moq || 0) < 20 ||
-            !funding?.color_options?.length ||
-            !funding?.size_options?.length ||
-            (funding?.trademark_screening_required && !screening) ||
-            (funding?.trademark_screening_required &&
-              screening?.decision === "blocked") ||
-            (screening?.decision === "review" && !comment.trim())
-          }
+          <Button onClick={() => onReview("approved", comment, reviewValues)} disabled={saving || approvalIssues.length > 0}
             className="bg-brand hover:bg-brand-dark">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}승인하기
           </Button>

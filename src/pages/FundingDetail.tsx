@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { fetchFunding, getFundingErrorMessage, startKakaoPayFunding } from "@/services/funding";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import type { Funding } from "@/types/funding";
 import {
   ArrowLeft,
@@ -105,6 +106,11 @@ const FundingDetail = () => {
         : payment.next_redirect_pc_url || payment.next_redirect_mobile_url || payment.next_redirect_app_url;
 
       if (!redirectUrl) throw new Error("카카오페이 결제창을 열 수 없습니다.");
+
+      void trackSiteEvent("funding_checkout_started", {
+        funding_id: id,
+        quantity,
+      });
 
       if (window.top && window.top !== window.self) {
         window.top.location.href = redirectUrl;

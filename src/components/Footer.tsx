@@ -1,7 +1,10 @@
+import { Link } from "react-router-dom";
+
 const legalLinks = [
-  { href: "https://brand-er.store/member/agreement.html", label: "이용약관" },
-  { href: "https://brand-er.store/member/privacy.html", label: "개인정보처리방침" },
-  { href: "https://brand-er.store/shopinfo/guide.html", label: "배송·교환·환불 안내" },
+  { href: "https://brand-er.store/member/agreement.html", label: "이용약관", internal: false },
+  { href: "https://brand-er.store/member/privacy.html", label: "개인정보처리방침", internal: false },
+  { href: "/visit-data-policy", label: "방문정보 수집 안내", internal: true },
+  { href: "https://brand-er.store/shopinfo/guide.html", label: "배송·교환·환불 안내", internal: false },
 ];
 
 export const Footer = () => (
@@ -32,14 +35,15 @@ export const Footer = () => (
 
         <nav aria-label="정책 안내" className="flex flex-wrap content-start gap-x-5 gap-y-3 text-sm">
           {legalLinks.map((link) => (
-            <a
-              key={link.href}
-              className="underline-offset-4 hover:text-white hover:underline"
-              href={link.href}
-              target="_top"
-            >
-              {link.label}
-            </a>
+            link.internal ? (
+              <Link key={link.href} className="underline-offset-4 hover:text-white hover:underline" to={link.href}>
+                {link.label}
+              </Link>
+            ) : (
+              <a key={link.href} className="underline-offset-4 hover:text-white hover:underline" href={link.href} target="_top">
+                {link.label}
+              </a>
+            )
           ))}
         </nav>
       </div>

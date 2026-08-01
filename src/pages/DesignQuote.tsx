@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProductionEstimateCard } from "@/components/customize/ProductionEstimateCard";
 import { toast } from "@/components/ui/use-toast";
 import { createDirectProductionRequest } from "@/services/orderCreation";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import type { ProductionEstimateResult } from "@/types/productionEstimate";
 
 const allowedImageTypes = new Set([
@@ -184,6 +185,10 @@ const DesignQuote = () => {
       toast({
         title: "제작 의뢰 접수 완료",
         description: "관리자가 이미지와 견적을 확인한 뒤 연락드립니다.",
+      });
+      void trackSiteEvent("design_quote_submitted", {
+        garment: estimate.garment.label,
+        quantity: estimate.totals.quantity,
       });
     } catch (error) {
       toast({

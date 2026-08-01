@@ -1,31 +1,13 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-
-const VISITOR_STORAGE_KEY = "brander_visitor_id";
-const SESSION_STORAGE_KEY = "brander_visit_session_id";
-
-const createId = () => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (character) =>
-    (
-      Number(character) ^
-      (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(character) / 4)))
-    ).toString(16),
-  );
-};
-
-const getStoredId = (storage: Storage, key: string) => {
-  const saved = storage.getItem(key);
-  if (saved) return saved;
-
-  const created = createId();
-  storage.setItem(key, created);
-  return created;
-};
+import {
+  ATTRIBUTION_STORAGE_KEY,
+  getStoredAnalyticsId,
+  SESSION_STORAGE_KEY,
+  type VisitAttribution,
+  VISITOR_STORAGE_KEY,
+} from "@/lib/site-analytics";
 
 const getDeviceType = () => {
   const agent = navigator.userAgent;
@@ -55,6 +37,45 @@ const getSafeReferrer = () => {
   }
 };
 
+const sanitizeParameter = (value: string | null, maxLength: number) => {
+  if (!value) return null;
+  const normalized = value.trim().slice(0, maxLength);
+  return normalized || null;
+};
+
+const readAttribution = () => {
+  const params = new URLSearchParams(window.location.search);
+  const incoming: VisitAttribution = {
+    leadCode: sanitizeParameter(params.get("lead"), 64),
+    utmSource: sanitizeParameter(params.get("utm_source"), 100),
+    utmMedium: sanitizeParameter(params.get("utm_medium"), 100),
+    utmCampaign: sanitizeParameter(params.get("utm_campaign"), 150),
+    utmContent: sanitizeParameter(params.get("utm_content"), 150),
+  };
+
+  const hasIncoming = Object.values(incoming).some(Boolean);
+  if (hasIncoming) {
+    sessionStorage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(incoming));
+    return incoming;
+  }
+
+  try {
+    const saved = sessionStorage.getItem(ATTRIBUTION_STORAGE_KEY);
+    if (!saved) return incoming;
+    const parsed = JSON.parse(saved) as Partial<VisitAttribution>;
+    return {
+      leadCode: sanitizeParameter(parsed.leadCode || null, 64),
+      utmSource: sanitizeParameter(parsed.utmSource || null, 100),
+      utmMedium: sanitizeParameter(parsed.utmMedium || null, 100),
+      utmCampaign: sanitizeParameter(parsed.utmCampaign || null, 150),
+      utmContent: sanitizeParameter(parsed.utmContent || null, 150),
+    };
+  } catch {
+    sessionStorage.removeItem(ATTRIBUTION_STORAGE_KEY);
+    return incoming;
+  }
+};
+
 export const SiteVisitTracker = () => {
   const location = useLocation();
   const latestPathRef = useRef(location.pathname);
@@ -64,10 +85,11 @@ export const SiteVisitTracker = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    const visitorId = getStoredId(localStorage, VISITOR_STORAGE_KEY);
-    const sessionId = getStoredId(sessionStorage, SESSION_STORAGE_KEY);
+    const visitorId = getStoredAnalyticsId(localStorage, VISITOR_STORAGE_KEY);
+    const sessionId = getStoredAnalyticsId(sessionStorage, SESSION_STORAGE_KEY);
 
     const track = async (isPageView: boolean) => {
+      const attribution = readAttribution();
       const { error } = await supabase.rpc("track_site_visit", {
         p_session_id: sessionId,
         p_visitor_id: visitorId,
@@ -76,6 +98,11 @@ export const SiteVisitTracker = () => {
         p_device_type: getDeviceType(),
         p_browser: getBrowser(),
         p_is_page_view: isPageView,
+        p_lead_code: attribution.leadCode,
+        p_utm_source: attribution.utmSource,
+        p_utm_medium: attribution.utmMedium,
+        p_utm_campaign: attribution.utmCampaign,
+        p_utm_content: attribution.utmContent,
       });
 
       if (error) {
@@ -85,8 +112,14 @@ export const SiteVisitTracker = () => {
 
     void track(true);
     const heartbeat = window.setInterval(() => void track(false), 60_000);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      void track(false);
+    });
 
-    return () => window.clearInterval(heartbeat);
+    return () => {
+      window.clearInterval(heartbeat);
+      subscription.unsubscribe();
+    };
   }, [location.pathname]);
 
   return null;

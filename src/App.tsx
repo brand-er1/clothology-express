@@ -24,6 +24,8 @@ import { getAppUrl, routerBasename } from './utils/appUrl';
 import { useIsMobile } from './hooks/use-mobile';
 import { Footer } from './components/Footer';
 import { SiteVisitTracker } from './components/SiteVisitTracker';
+import { VisitDataNotice } from './components/VisitDataNotice';
+import VisitDataPolicy from './pages/VisitDataPolicy';
 
 declare global {
   interface Window {
@@ -99,6 +101,7 @@ function App() {
     <div className={isMobile ? 'mobile-view' : 'desktop-view'}>
       <BrowserRouter basename={routerBasename}>
         <SiteVisitTracker />
+        <VisitDataNotice />
         <WelcomeNotification />
         <Routes>
           <Route path="/" element={<Index />} />
@@ -115,6 +118,7 @@ function App() {
           <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
           <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
           <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
+          <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
           <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

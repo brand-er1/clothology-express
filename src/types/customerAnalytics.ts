@@ -3,6 +3,9 @@ export interface CustomerOverview {
   today_visitors: number;
   active_now: number;
   repeat_visitors: number;
+  confirmed_today: number;
+  lead_today: number;
+  anonymous_today: number;
 }
 
 export interface AdminCustomer {
@@ -33,13 +36,45 @@ export interface AdminVisitSession {
   email: string | null;
   display_name: string;
   account_type: string | null;
+  identity_status: "confirmed" | "lead" | "anonymous";
+  lead_code: string | null;
+  lead_name: string | null;
+  lead_channel: string | null;
   started_at: string;
   last_seen_at: string;
   entry_path: string;
   last_path: string;
   referrer: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
   device_type: string;
   browser: string;
   page_view_count: number;
+  event_count: number;
+  last_event_name: string | null;
+  journey: VisitJourneyEvent[];
   is_active: boolean;
+}
+
+export interface VisitJourneyEvent {
+  event_name: string;
+  path: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export type VisitPeriod = "today" | "7d" | "all";
+
+export interface SalesTrackingLink {
+  id: string;
+  lead_code: string;
+  lead_name: string;
+  channel: string;
+  destination_path: string;
+  created_at: string;
+  is_active: boolean;
+  click_count: number;
+  last_clicked_at: string | null;
 }

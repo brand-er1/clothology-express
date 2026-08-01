@@ -25,6 +25,7 @@ import type {
 import { supabase } from "@/lib/supabase";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { recalculateEstimateQuantity } from "@/lib/production-estimate-quantity";
+import { trackSiteEvent } from "@/lib/site-analytics";
 
 interface ModifyImageOptions {
   referenceImage?: ArtworkReference;
@@ -200,6 +201,10 @@ export const useCustomizeForm = () => {
         }
         // 생성 직후 수정 단계로 이동
         setCurrentStep(5);
+        void trackSiteEvent("design_generated", {
+          cloth_type: selectedType,
+          material: selectedMaterial,
+        });
       }
     } catch (err) {
       console.error("Error generating images:", err);
@@ -330,6 +335,9 @@ export const useCustomizeForm = () => {
         description: options.compositedImage
           ? "미리보기에서 지정한 위치와 크기를 그대로 반영했습니다."
           : "수정된 결과가 아래 챗창에 반영되었습니다.",
+      });
+      void trackSiteEvent("design_modified", {
+        has_artwork: Boolean(options.referenceImage),
       });
       return true;
       
@@ -550,6 +558,10 @@ export const useCustomizeForm = () => {
             ? "감지된 상표의 권리 관계를 관리자가 확인한 뒤 승인 또는 거절합니다."
             : "MOQ 20장·관리자 승인 대기 상태로 자동 등록했습니다.",
       });
+      void trackSiteEvent("funding_draft_created", {
+        funding_id: funding.id,
+        cloth_type: selectedType,
+      });
       navigate(`/fundings/${funding.id}/edit`);
     } catch (error) {
       console.error("Error creating funding:", error);
@@ -735,6 +747,10 @@ export const useCustomizeForm = () => {
           trademarkScreening.decision === "review"
             ? "관리자가 상표와 제작 사양을 확인한 뒤 연락드립니다."
             : "관리자가 제작 사양과 견적을 확인한 뒤 연락드립니다.",
+      });
+      void trackSiteEvent("production_request_submitted", {
+        source: "ai_design",
+        quantity: directQuantity,
       });
       navigate("/orders?submitted=1");
     } catch (error) {

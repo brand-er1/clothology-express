@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { createFabricSwatchRequest } from "@/services/fabricSwatch";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import {
   fabricFeelingOptions,
   type FabricFeeling,
@@ -129,6 +130,9 @@ const FabricSwatch = () => {
         fabricFeeling,
         colorNames: selectedColors,
         referenceImage,
+      });
+      void trackSiteEvent("fabric_swatch_submitted", {
+        color_count: selectedColors.length,
       });
       setIsSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });

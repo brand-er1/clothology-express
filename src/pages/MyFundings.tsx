@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
 import {
   cancelFundingParticipation,
+  deleteFunding,
   fetchMyFundingPaymentIntents,
   fetchMyFundingParticipations,
   fetchMyFundings,
@@ -22,7 +23,7 @@ import type {
 } from "@/types/funding";
 import {
   ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, RotateCcw, Settings2,
-  ShoppingBag, SquarePen, Users, WalletCards,
+  ShoppingBag, SquarePen, Trash2, Users, WalletCards,
 } from "lucide-react";
 
 const paymentLabel: Record<FundingPaymentStatus, string> = {
@@ -58,6 +59,8 @@ const MyFundings = () => {
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MyFundingParticipation | null>(null);
+  const [deletingFundingId, setDeletingFundingId] = useState<string | null>(null);
+  const [fundingToDelete, setFundingToDelete] = useState<Funding | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -105,6 +108,31 @@ const MyFundings = () => {
     } finally {
       setCancellingId(null);
       setSelectedItem(null);
+    }
+  };
+
+  const removeFunding = async () => {
+    if (!fundingToDelete) return;
+
+    setDeletingFundingId(fundingToDelete.id);
+    try {
+      const result = await deleteFunding(fundingToDelete.id);
+      setCreatedFundings((current) => current.filter((funding) => funding.id !== fundingToDelete.id));
+      toast({
+        title: "펀딩을 삭제했습니다",
+        description: result.warnings?.length
+          ? "펀딩은 삭제되었지만 일부 이미지 정리가 완료되지 않았습니다."
+          : "관련 펀딩 데이터와 전용 이미지도 함께 삭제되었습니다.",
+      });
+    } catch (error) {
+      toast({
+        title: "펀딩을 삭제하지 못했습니다",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingFundingId(null);
+      setFundingToDelete(null);
     }
   };
 
@@ -157,6 +185,18 @@ const MyFundings = () => {
                         <div className="mt-5 grid grid-cols-2 gap-2">
                           <Button asChild variant="outline" className="rounded-full"><Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-2 h-4 w-4" />정보 수정</Link></Button>
                           <Button asChild className="rounded-full bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />참여자 관리</Link></Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="col-span-2 rounded-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                            disabled={deletingFundingId === funding.id}
+                            onClick={() => setFundingToDelete(funding)}
+                          >
+                            {deletingFundingId === funding.id
+                              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              : <Trash2 className="mr-2 h-4 w-4" />}
+                            펀딩 삭제
+                          </Button>
                         </div>
                       </div>
                     </article>
@@ -197,6 +237,42 @@ const MyFundings = () => {
         <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>펀딩 참여를 취소할까요?</AlertDialogTitle>
           <AlertDialogDescription>{selectedItem?.payment_status === "paid" ? `${selectedItem.total_amount.toLocaleString("ko-KR")}원이 카카오페이로 전액 취소됩니다.` : "진행 중인 참여 내역이 취소됩니다."}</AlertDialogDescription>
         </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>계속 참여하기</AlertDialogCancel><AlertDialogAction onClick={cancelParticipation} className="bg-red-600 hover:bg-red-700">{selectedItem?.payment_status === "paid" ? "취소 및 환불" : "참여 취소"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!fundingToDelete}
+        onOpenChange={(open) => {
+          if (!open && !deletingFundingId) setFundingToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 펀딩을 영구 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block font-medium text-gray-800">{fundingToDelete?.product_name}</span>
+              <span className="block">
+                펀딩 정보, 결제 예정 내역, 취소된 참여 내역과 전용 샘플 이미지가 함께 삭제되며 복구할 수 없습니다.
+                진행 중인 결제나 참여자가 있으면 고객 보호를 위해 삭제가 제한됩니다.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingFundingId}>펀딩 유지하기</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={!!deletingFundingId}
+              onClick={(event) => {
+                event.preventDefault();
+                void removeFunding();
+              }}
+            >
+              {deletingFundingId
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <Trash2 className="mr-2 h-4 w-4" />}
+              영구 삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );

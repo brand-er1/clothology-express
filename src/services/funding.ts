@@ -217,7 +217,11 @@ export const participateInFunding = async (
   return data as string;
 };
 
-const invokePaymentFunction = async <T>(name: string, body: Record<string, unknown>): Promise<T> => {
+const invokeAuthenticatedFunction = async <T>(
+  name: string,
+  body: Record<string, unknown>,
+  fallbackMessage: string,
+): Promise<T> => {
   await requireUser();
   const { data, error } = await supabase.functions.invoke(name, { body });
 
@@ -241,12 +245,17 @@ const invokePaymentFunction = async <T>(name: string, body: Record<string, unkno
     if (/401|unauthorized|invalid jwt|jwt expired/i.test(message)) {
       throw new Error("로그인 정보가 만료되었습니다. 다시 로그인해주세요.");
     }
-    throw new Error(message || "결제 처리 중 오류가 발생했습니다.");
+    throw new Error(message || fallbackMessage);
   }
 
   if (data?.error) throw new Error(data.error);
   return data as T;
 };
+
+export const deleteFunding = async (
+  fundingId: string,
+): Promise<{ success: boolean; warnings?: string[] }> =>
+  invokeAuthenticatedFunction("delete-funding", { fundingId }, "펀딩을 삭제하지 못했습니다.");
 
 export const startKakaoPayFunding = async (
   fundingId: string,
@@ -266,26 +275,34 @@ export const startKakaoPayFunding = async (
     throw new Error("결제 전에 마이페이지에서 전화번호와 배송지를 입력해주세요.");
   }
 
-  return invokePaymentFunction<KakaoPayReadyResult>("kakaopay-ready", {
+  return invokeAuthenticatedFunction<KakaoPayReadyResult>("kakaopay-ready", {
     fundingId,
     color,
     size,
     quantity,
     returnUrl: getAppUrl(),
-  });
+  }, "결제 처리 중 오류가 발생했습니다.");
 };
 
 export const approveKakaoPayFunding = async (
   participationId: string,
   pgToken: string
 ): Promise<{ success: boolean; funding_id: string }> =>
-  invokePaymentFunction("kakaopay-approve", { participationId, pgToken });
+  invokeAuthenticatedFunction(
+    "kakaopay-approve",
+    { participationId, pgToken },
+    "결제 승인 중 오류가 발생했습니다.",
+  );
 
 export const cancelFundingParticipation = async (
   participationId: string,
   reason = "사용자 펀딩 참여 취소"
 ): Promise<{ success: boolean; refunded: boolean; funding_id?: string }> =>
-  invokePaymentFunction("kakaopay-cancel", { participationId, reason });
+  invokeAuthenticatedFunction(
+    "kakaopay-cancel",
+    { participationId, reason },
+    "결제 취소 중 오류가 발생했습니다.",
+  );
 
 export const fetchMyFundingParticipations = async (): Promise<MyFundingParticipation[]> => {
   await requireUser();

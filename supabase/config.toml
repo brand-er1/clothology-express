@@ -57,5 +57,7 @@ verify_jwt = true
 verify_jwt = true
 [functions.kakaopay-cancel]
 verify_jwt = true
+[functions.delete-funding]
+verify_jwt = true
 [functions.get-fashion-trends]
 verify_jwt = false

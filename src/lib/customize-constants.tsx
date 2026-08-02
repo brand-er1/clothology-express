@@ -1,4 +1,4 @@
-import { Shirt, Scissors, PanelBottomClose } from "lucide-react";
+import { Shirt } from "lucide-react";
 import React from 'react';
 
 export type ClothType = {
@@ -78,6 +78,13 @@ export const clothTypes: ClothType[] = [
       <path d="M10 12a2 2 0 0 0 4 0"/>
     </svg>,
     description: "포근하고 세련된 맨투맨",
+    category: "tops",
+  },
+  {
+    id: "knit",
+    name: "니트",
+    icon: <Shirt width={40} height={40} strokeWidth={1.5} />,
+    description: "조직감과 실루엣을 살린 니트웨어 · MOQ 100장",
     category: "tops",
   },
   {

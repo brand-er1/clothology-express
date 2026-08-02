@@ -11,7 +11,7 @@ interface OrderData {
   material: string;
   detailDescription?: string;
   size?: string | null;
-  measurements?: Record<string, any> | null;
+  measurements?: Record<string, unknown> | null;
   generatedImageUrl?: string | null;
   imagePath?: string | null;
   imageBase64?: string | null;
@@ -28,6 +28,16 @@ const allowedImageMimeTypes = new Set([
   'image/jpeg',
   'image/webp',
 ]);
+
+const getMinimumOrderQuantity = (clothType: string, material: string) => {
+  const isKnit = /(?:니트|knit)/i.test(clothType);
+  const isLeatherJacket =
+    /(?:자켓|재킷|jacket)/i.test(clothType) &&
+    (/(?:레더|가죽|leather)/i.test(clothType) ||
+      /(?:레더|가죽|leather)/i.test(material));
+
+  return isKnit || isLeatherJacket ? 100 : 20;
+};
 
 const decodeBase64Image = (value: string) => {
   const normalized = value.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '');
@@ -100,6 +110,31 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
+    }
+
+    if (
+      orderData.status === 'pending' &&
+      orderData.requestedQuantity != null
+    ) {
+      const minimumOrderQuantity = getMinimumOrderQuantity(
+        orderData.clothType,
+        orderData.material,
+      );
+      const requestedQuantity = Number(orderData.requestedQuantity);
+      if (
+        !Number.isFinite(requestedQuantity) ||
+        requestedQuantity < minimumOrderQuantity
+      ) {
+        return new Response(
+          JSON.stringify({
+            error: `선택한 품목은 MOQ ${minimumOrderQuantity}장부터 제작을 의뢰할 수 있습니다.`,
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          },
+        );
+      }
     }
 
     // If this is a finalized order (pending), look for a draft to update

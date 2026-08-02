@@ -11,6 +11,7 @@ import type {
   FundingStatus,
 } from "@/types/funding";
 import { getAppUrl } from "@/utils/appUrl";
+import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 
 const requireUser = async () => {
   const { data } = await supabase.auth.getSession();
@@ -46,6 +47,10 @@ const throwFundingError = (error: unknown, fallback?: string): never => {
 
 export const createFundingDraft = async (input: CreateFundingInput): Promise<Funding> => {
   const user = await requireUser();
+  const minimumOrderQuantity = getMinimumOrderQuantity(
+    input.clothType,
+    input.material,
+  );
   const { data, error } = await supabase
     .from("fundings")
     .insert({
@@ -71,7 +76,7 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       estimate_direct_unit_max: input.estimateDirectUnitMax ?? null,
       estimate_development_total: input.estimateDevelopmentTotal ?? null,
       fabric_unit_cost: resolveDefaultFabricUnitCost(input.material),
-      moq: 20,
+      moq: minimumOrderQuantity,
       current_orders: 0,
       funding_days: 30,
       status: "pending",
@@ -128,6 +133,8 @@ export const updateFunding = async (
     Funding,
     | "product_name"
     | "description"
+    | "cloth_type"
+    | "material"
     | "moq"
     | "price"
     | "estimate_direct_unit_min"
@@ -144,7 +151,10 @@ export const updateFunding = async (
     p_funding_id: id,
     p_product_name: updates.product_name,
     p_description: updates.description,
-    p_moq: Math.max(20, updates.moq),
+    p_moq: Math.max(
+      getMinimumOrderQuantity(updates.cloth_type, updates.material),
+      updates.moq,
+    ),
     p_price: updates.price,
     p_estimate_direct_unit_min: updates.estimate_direct_unit_min,
     p_estimate_direct_unit_max: updates.estimate_direct_unit_max,

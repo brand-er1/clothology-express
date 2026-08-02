@@ -27,6 +27,7 @@ const categoryMap: Record<string, string> = {
   tights_short_sleeve: "반팔티셔츠",
   tights_long_sleeve: "긴팔티셔츠",
   sweatshirt: "맨투맨",
+  knit: "니트",
   short_pants: "반바지",
   long_pants: "바지",
   leggings: "바지",
@@ -145,6 +146,7 @@ const guides: Record<ProductionGender, Record<string, StandardSizeGuide>> = {
   남성: {
     자켓: maleJacket,
     맨투맨: maleSweatshirt,
+    니트: maleSweatshirt,
     후드티: maleHoodie,
     긴팔티셔츠: maleSweatshirt,
     반팔티셔츠: maleShortSleeve,
@@ -154,6 +156,7 @@ const guides: Record<ProductionGender, Record<string, StandardSizeGuide>> = {
   여성: {
     자켓: femaleJacket,
     맨투맨: femaleSweatshirt,
+    니트: femaleSweatshirt,
     후드티: femaleHoodie,
     긴팔티셔츠: femaleSweatshirt,
     반팔티셔츠: femaleShortSleeve,

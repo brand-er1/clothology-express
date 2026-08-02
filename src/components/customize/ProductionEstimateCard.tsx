@@ -153,8 +153,10 @@ export const ProductionEstimateCard = ({
   const [manualAnalysis, setManualAnalysis] =
     useState<ManualProductionAnalysis | null>(null);
   const requestIdRef = useRef(0);
+  const minimumQuantity = baseEstimate?.garment.moq ?? 20;
   const activeQuantity = normalizeEstimateQuantity(
     quantity ?? internalQuantity,
+    minimumQuantity,
   );
   const estimate = useMemo(
     () =>
@@ -165,7 +167,7 @@ export const ProductionEstimateCard = ({
   );
 
   const changeQuantity = (value: number) => {
-    const nextQuantity = normalizeEstimateQuantity(value);
+    const nextQuantity = normalizeEstimateQuantity(value, minimumQuantity);
     if (quantity === undefined) {
       setInternalQuantity(nextQuantity);
     }
@@ -361,9 +363,9 @@ export const ProductionEstimateCard = ({
           </div>
           <div className="relative w-full sm:w-48">
             <Input
-              aria-label="견적 수량 (최소 20장)"
+              aria-label={`견적 수량 (최소 ${garment.moq}장)`}
               type="number"
-              min={20}
+              min={garment.moq}
               max={100000}
               step={1}
               value={activeQuantity}
@@ -376,7 +378,7 @@ export const ProductionEstimateCard = ({
           </div>
         </div>
         <p className="mt-2 text-xs font-bold text-brand">
-          MOQ 20장부터 견적을 계산할 수 있습니다.
+          {garment.label} MOQ {garment.moq}장부터 견적을 계산할 수 있습니다.
         </p>
         {totals.productionDiscountRate > 0 && (
           <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">

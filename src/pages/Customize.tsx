@@ -57,6 +57,7 @@ const Customize = () => {
     handleProductionSizeChange,
     directQuantity,
     setDirectQuantity,
+    minimumOrderQuantity,
     handleAddMaterial,
     handleGenerateImage,
     handleNext,
@@ -253,6 +254,7 @@ const Customize = () => {
                 selectedType={selectedType}
                 gender={userGender}
                 directQuantity={directQuantity}
+                minimumOrderQuantity={minimumOrderQuantity}
                 onDirectQuantityChange={setDirectQuantity}
               />
             )}

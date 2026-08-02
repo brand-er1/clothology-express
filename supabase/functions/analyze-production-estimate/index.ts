@@ -199,6 +199,7 @@ const locationLabels: Record<DecorationLocation, string> = {
 
 const selectedTypeAliases: Record<string, string> = {
   long_pants: "pants",
+  니트: "knit",
 };
 
 const virtualGarmentCategories = [
@@ -223,11 +224,30 @@ const materialLabels: Record<string, string> = {
   other: "기타",
 };
 
-const normalizeEstimateQuantity = (value: unknown) =>
+const normalizeEstimateQuantity = (
+  value: unknown,
+  minimumQuantity = 20,
+) =>
   Math.min(
     100000,
-    Math.max(20, Math.round(Number(value) || 20)),
+    Math.max(
+      minimumQuantity,
+      Math.round(Number(value) || minimumQuantity),
+    ),
   );
+
+const resolveMinimumOrderQuantity = (
+  categoryKey: string,
+  materialKey: string,
+  catalogMoq: number,
+) => {
+  const isKnit = categoryKey === "knit";
+  const isLeatherJacket =
+    (categoryKey === "jacket" || categoryKey === "jacket_lined") &&
+    materialKey === "leather";
+
+  return Math.max(catalogMoq, isKnit || isLeatherJacket ? 100 : 20);
+};
 
 const getProductionDiscountRate = (quantity: number) => {
   if (quantity >= 300) return 0.1;
@@ -354,7 +374,9 @@ const resolveGarmentCategory = (
 ) => {
   const selectedKey = selectedTypeAliases[selectedType] || selectedType;
   const selectedSpecialCategory =
-    selectedKey === "leggings" || virtualGarmentMap.has(selectedKey);
+    selectedKey === "knit" ||
+    selectedKey === "leggings" ||
+    virtualGarmentMap.has(selectedKey);
   let categoryKey = selectedSpecialCategory
     ? selectedKey
     : String(rawAnalysis.categoryKey || "");
@@ -783,7 +805,13 @@ ${String(designContext).slice(0, 3000)}
 
     const selectedMaterialValue = String(selectedMaterial).trim().toLowerCase();
     const normalizedSelectedMaterial =
-      selectedMaterialValue === "poly" ? "polyester" : selectedMaterialValue;
+      selectedMaterialValue === "poly" || selectedMaterialValue === "폴리"
+        ? "polyester"
+        : /레더|가죽/.test(selectedMaterialValue)
+          ? "leather"
+          : selectedMaterialValue === "니트"
+            ? "knit"
+            : selectedMaterialValue;
     const rawMaterialKey = String(rawAnalysis.materialKey || "other")
       .trim()
       .toLowerCase();
@@ -970,7 +998,15 @@ ${String(designContext).slice(0, 3000)}
     const productionOriginalMax = garment.production_max === null
       ? null
       : garment.production_max + productionUnitSurcharge;
-    const quantity = normalizeEstimateQuantity(requestedQuantity);
+    const minimumOrderQuantity = resolveMinimumOrderQuantity(
+      garment.category_key,
+      resolvedMaterialKey,
+      garment.moq,
+    );
+    const quantity = normalizeEstimateQuantity(
+      requestedQuantity,
+      minimumOrderQuantity,
+    );
     const productionDiscountRate = getProductionDiscountRate(quantity);
     const productionMin = productionOriginalMin === null
       ? null
@@ -1082,8 +1118,13 @@ ${String(designContext).slice(0, 3000)}
       garment: {
         key: garment.category_key,
         label: garment.category_label,
-        moq: garment.moq,
-        note: garment.pricing_note,
+        moq: minimumOrderQuantity,
+        note: [
+          garment.pricing_note,
+          minimumOrderQuantity > garment.moq
+            ? "레더 자켓은 MOQ 총 100장 이상입니다."
+            : null,
+        ].filter(Boolean).join(" ") || null,
       },
       material: {
         key: resolvedMaterialKey,

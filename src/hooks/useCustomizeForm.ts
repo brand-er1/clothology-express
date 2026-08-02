@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS, clothTypes, colorOptions, fitOptions } from "@/lib/customize-constants";
@@ -26,6 +26,7 @@ import { supabase } from "@/lib/supabase";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { recalculateEstimateQuantity } from "@/lib/production-estimate-quantity";
 import { trackSiteEvent } from "@/lib/site-analytics";
+import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 
 interface ModifyImageOptions {
   referenceImage?: ArtworkReference;
@@ -87,6 +88,16 @@ export const useCustomizeForm = () => {
     useState<string | null>(null);
   const [currentProductionEstimate, setCurrentProductionEstimate] =
     useState<ProductionEstimateResult | null>(null);
+  const minimumOrderQuantity = getMinimumOrderQuantity(
+    selectedType,
+    selectedMaterial,
+  );
+
+  useEffect(() => {
+    setDirectQuantity((quantity) =>
+      Math.max(quantity, minimumOrderQuantity),
+    );
+  }, [minimumOrderQuantity]);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -556,7 +567,7 @@ export const useCustomizeForm = () => {
         description:
           trademarkScreening.decision === "review"
             ? "감지된 상표의 권리 관계를 관리자가 확인한 뒤 승인 또는 거절합니다."
-            : "MOQ 20장·관리자 승인 대기 상태로 자동 등록했습니다.",
+            : `MOQ ${minimumOrderQuantity}장·관리자 승인 대기 상태로 자동 등록했습니다.`,
       });
       void trackSiteEvent("funding_draft_created", {
         funding_id: funding.id,
@@ -588,10 +599,10 @@ export const useCustomizeForm = () => {
         return;
       }
 
-      if (directQuantity < 20) {
+      if (directQuantity < minimumOrderQuantity) {
         toast({
           title: "최소 제작 수량을 확인해주세요",
-          description: "제작 의뢰는 MOQ 20장부터 접수할 수 있습니다.",
+          description: `선택한 품목은 MOQ ${minimumOrderQuantity}장부터 접수할 수 있습니다.`,
           variant: "destructive",
         });
         return;
@@ -853,6 +864,7 @@ export const useCustomizeForm = () => {
     handleProductionSizeChange,
     directQuantity,
     setDirectQuantity,
+    minimumOrderQuantity,
     handleAddMaterial,
     handleGenerateImage,
     handleSelectImage,

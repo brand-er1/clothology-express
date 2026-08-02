@@ -10,6 +10,7 @@ export const estimateGarmentOptions = [
   { value: "long_sleeve", label: "긴팔" },
   { value: "hoodie", label: "후드티" },
   { value: "sweatshirt", label: "맨투맨" },
+  { value: "knit", label: "니트" },
   { value: "shirt", label: "셔츠" },
   { value: "pants", label: "바지" },
   { value: "jogger_pants", label: "조거팬츠" },

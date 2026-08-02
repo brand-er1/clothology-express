@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { Funding } from "@/types/funding";
 import { CircleAlert, ExternalLink, Loader2, PackageCheck, ShieldAlert, ShieldCheck } from "lucide-react";
+import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 
 const similarityScoreLabels = [
   ["text", "문자"],
@@ -35,19 +36,24 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
   const [moq, setMoq] = useState("20");
   const [price, setPrice] = useState("");
   const screening = funding?.trademark_screening || null;
+  const minimumOrderQuantity = funding
+    ? getMinimumOrderQuantity(funding.cloth_type, funding.material)
+    : 20;
 
   useEffect(() => {
     setComment(funding?.admin_comment || "");
-    setMoq(String(funding?.moq || 20));
+    setMoq(
+      String(Math.max(funding?.moq || 20, minimumOrderQuantity)),
+    );
     setPrice(funding?.price == null ? "" : String(funding.price));
-  }, [funding]);
+  }, [funding, minimumOrderQuantity]);
 
   const parsedMoq = Number(moq);
   const parsedPrice = price.trim() ? Number(price) : null;
   const approvalIssues = funding
     ? [
-        !Number.isInteger(parsedMoq) || parsedMoq < 20
-          ? "MOQ를 20장 이상으로 입력해주세요."
+        !Number.isInteger(parsedMoq) || parsedMoq < minimumOrderQuantity
+          ? `MOQ를 ${minimumOrderQuantity}장 이상으로 입력해주세요.`
           : null,
         parsedPrice == null ||
         !Number.isInteger(parsedPrice) ||
@@ -120,7 +126,7 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                   <Input
                     id="funding-review-moq"
                     type="number"
-                    min={20}
+                    min={minimumOrderQuantity}
                     step={1}
                     value={moq}
                     onChange={(event) => setMoq(event.target.value)}
@@ -128,7 +134,7 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                   />
                   <span className="pointer-events-none absolute right-3 top-3 text-sm text-gray-400">장</span>
                 </div>
-                <p className="text-xs text-gray-500">20장 이상이면 관리자 화면에서 바로 보완 후 승인할 수 있습니다.</p>
+                <p className="text-xs text-gray-500">이 품목은 {minimumOrderQuantity}장 이상이어야 승인할 수 있습니다.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="funding-review-price">승인 판매가</Label>

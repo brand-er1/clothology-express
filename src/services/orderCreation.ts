@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
 import type { ProductionEstimateResult } from "@/types/productionEstimate";
+import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 
 export interface DirectProductionRequestInput {
   clothType: string;
@@ -29,6 +30,19 @@ export const createDirectProductionRequest = async (
 
   if (!user) {
     throw new Error("바로 제작 의뢰를 접수하려면 로그인이 필요합니다.");
+  }
+
+  const minimumOrderQuantity = getMinimumOrderQuantity(
+    input.clothType,
+    input.material,
+  );
+  if (
+    input.requestedQuantity != null &&
+    input.requestedQuantity < minimumOrderQuantity
+  ) {
+    throw new Error(
+      `선택한 품목은 MOQ ${minimumOrderQuantity}장부터 제작을 의뢰할 수 있습니다.`,
+    );
   }
 
   const { data: orderData, error } = await supabase.functions.invoke("save-order", {

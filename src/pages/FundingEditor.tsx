@@ -17,6 +17,7 @@ import {
 } from "@/services/funding";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type { Funding } from "@/types/funding";
+import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 import {
   ArrowLeft,
   Calculator,
@@ -43,6 +44,9 @@ const FundingEditor = () => {
   const [saving, setSaving] = useState(false);
   const [newColor, setNewColor] = useState("");
   const [newSize, setNewSize] = useState("");
+  const minimumOrderQuantity = funding
+    ? getMinimumOrderQuantity(funding.cloth_type, funding.material)
+    : 20;
 
   useEffect(() => {
     if (!id) return;
@@ -54,7 +58,18 @@ const FundingEditor = () => {
         if (!sessionData.session?.user || sessionData.session.user.id !== fundingData.creator_id) {
           throw new Error("펀딩을 수정할 권한이 없습니다.");
         }
-        setFunding(fundingData);
+        const editableMinimumOrderQuantity = getMinimumOrderQuantity(
+          fundingData.cloth_type,
+          fundingData.material,
+        );
+        setFunding(
+          fundingData.status === "pending" || fundingData.status === "rejected"
+            ? {
+                ...fundingData,
+                moq: Math.max(fundingData.moq, editableMinimumOrderQuantity),
+              }
+            : fundingData,
+        );
 
         if (
           fundingData.estimate_direct_unit_min == null ||
@@ -110,8 +125,11 @@ const FundingEditor = () => {
       toast({ title: "상품명을 입력해주세요", variant: "destructive" });
       return;
     }
-    if (funding.moq < 20) {
-      toast({ title: "최소 제작 수량은 20장입니다", variant: "destructive" });
+    if (funding.moq < minimumOrderQuantity) {
+      toast({
+        title: `최소 제작 수량은 ${minimumOrderQuantity}장입니다`,
+        variant: "destructive",
+      });
       return;
     }
     if (!funding.color_options?.length) {
@@ -133,6 +151,8 @@ const FundingEditor = () => {
       const updated = await updateFunding(id, {
         product_name: funding.product_name.trim(),
         description: funding.description,
+        cloth_type: funding.cloth_type,
+        material: funding.material,
         moq: funding.moq,
         price: funding.price,
         estimate_direct_unit_min: funding.estimate_direct_unit_min,
@@ -251,7 +271,7 @@ const FundingEditor = () => {
               <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">
                 {funding.status === "pending" ? "관리자 승인 대기" : funding.status === "rejected" ? "수정 필요" : "승인 완료"}
               </Badge>
-              <span className="text-sm text-gray-500">MOQ 최소 20장 적용</span>
+              <span className="text-sm text-gray-500">MOQ 최소 {minimumOrderQuantity}장 적용</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight md:text-4xl">펀딩 페이지 자동 작성</h1>
             <p className="mt-2 text-gray-500">생성한 이미지와 옵션을 가져왔습니다. 소개 문구와 가격만 확인해주세요.</p>
@@ -387,11 +407,11 @@ const FundingEditor = () => {
                 <div className="space-y-2">
                   <Label htmlFor="moq">목표 수량</Label>
                   <div className="relative">
-                    <Input id="moq" type="number" min={20} disabled={!canEditSales} value={funding.moq}
+                    <Input id="moq" type="number" min={minimumOrderQuantity} disabled={!canEditSales} value={funding.moq}
                       onChange={(event) => setFunding({ ...funding, moq: Number(event.target.value) })} className="h-12 pr-10" />
                     <span className="absolute right-3 top-3 text-sm text-gray-400">장</span>
                   </div>
-                  <p className="text-xs text-brand">최소 20장</p>
+                  <p className="text-xs text-brand">최소 {minimumOrderQuantity}장</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="price">판매가</Label>

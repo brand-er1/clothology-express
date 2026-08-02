@@ -187,6 +187,18 @@ const printableDecorationKinds = new Set<DecorationKind>([
   "transfer",
   "unknown_print",
 ]);
+const knitPatchRequiredKinds = new Set<DecorationKind>([
+  "screen_print_1_color",
+  "screen_print_multi_color",
+  "dtf",
+  "dtg",
+  "pu",
+  "silicone_print",
+  "embroidery",
+  "patch",
+  "transfer",
+  "unknown_print",
+]);
 
 const locationLabels: Record<DecorationLocation, string> = {
   front: "앞",
@@ -214,13 +226,27 @@ const virtualGarmentMap = new Map(
 
 const materialLabels: Record<string, string> = {
   cotton: "면",
+  cotton_30s: "코마 싱글 30수",
+  cotton_20s: "헤비 코튼 싱글 20수",
+  cotton_rib: "코튼 골지",
+  pique_cotton: "PK 피케",
   polyester: "폴리",
   poly: "폴리",
+  poly_spandex: "기능성 폴리 스판",
+  nylon_spandex: "나일론 스판",
+  performance_mesh: "기능성 메쉬",
   functional: "기능성 원단",
   linen: "린넨",
+  french_terry: "쭈리(프렌치 테리)",
+  brushed_fleece: "기모 원단",
+  cotton_twill: "코튼 트윌",
+  woven_nylon: "우븐 나일론",
   denim: "데님",
   leather: "레더",
   knit: "니트",
+  wool_blend: "울 혼방 니트",
+  cotton_knit: "코튼 니트",
+  acrylic_blend: "아크릴 혼방 니트",
   other: "기타",
 };
 
@@ -672,6 +698,8 @@ Rules:
 - Count every visibly separate front, back, sleeve, and neck decoration.
 - A visible graphic, logo, lettering, or motif is a decoration even when the
   exact technique is uncertain. Use unknown_print in that case.
+- For knitwear, every visible or uploaded logo/graphic must be patch. Never
+  return printing, transfer, direct embroidery, PU, or silicone for knitwear.
 - If the design context explicitly names a printing technique or location, use
   it to distinguish visually similar methods unless the image contradicts it.
 - Return pigment for a visible pigment-dyed or pigment-washed finish, label for
@@ -701,7 +729,7 @@ Rules:
   절개, 패널링 in features. Do not duplicate priced accessories there.
 - If front and back garments appear side by side, inspect both.
 ${uploadedArtworkHint
-      ? `- A separately verified customer-uploaded ${uploadedArtworkHint.artworkType} artwork was applied at ${uploadedArtworkHint.location}. Treat it as ${uploadedArtworkHint.recommendedKind} even if the composite image makes the technique visually ambiguous.`
+      ? `- A separately verified customer-uploaded ${uploadedArtworkHint.artworkType} artwork was applied at ${uploadedArtworkHint.location}. Treat it as ${/니트|knit/i.test(String(selectedType)) ? "patch" : uploadedArtworkHint.recommendedKind} even if the composite image makes the technique visually ambiguous.`
       : ""}
 
 Selected type hint: ${selectedType}
@@ -802,6 +830,7 @@ ${String(designContext).slice(0, 3000)}
         .filter(Boolean)
         .join(" ") || null,
     };
+    const isKnit = garment.category_key === "knit";
 
     const selectedMaterialValue = String(selectedMaterial).trim().toLowerCase();
     const normalizedSelectedMaterial =
@@ -868,13 +897,20 @@ ${String(designContext).slice(0, 3000)}
           !printableDecorationKinds.has(decoration.kind),
       );
       normalizedDecorations.push({
-        kind: uploadedArtworkHint.recommendedKind,
+        kind: isKnit ? "patch" : uploadedArtworkHint.recommendedKind,
         location: uploadedArtworkHint.location,
         size: "unknown",
         confidence: uploadedArtworkHint.confidence,
         source: "uploaded_artwork",
         artworkType: uploadedArtworkHint.artworkType,
       });
+    }
+    if (isKnit) {
+      normalizedDecorations = normalizedDecorations.map((decoration) =>
+        knitPatchRequiredKinds.has(decoration.kind)
+          ? { ...decoration, kind: "patch" }
+          : decoration
+      );
     }
     const hasWashing = normalizedDecorations.some(
       (decoration) => decoration.kind === "washing",
@@ -1007,7 +1043,9 @@ ${String(designContext).slice(0, 3000)}
       requestedQuantity,
       minimumOrderQuantity,
     );
-    const productionDiscountRate = getProductionDiscountRate(quantity);
+    const productionDiscountRate = isKnit
+      ? 0
+      : getProductionDiscountRate(quantity);
     const productionMin = productionOriginalMin === null
       ? null
       : Math.round(productionOriginalMin * (1 - productionDiscountRate));

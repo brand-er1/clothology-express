@@ -24,8 +24,15 @@ const requireUser = async () => {
   return user;
 };
 
-export const resolveDefaultFabricUnitCost = (material: string) =>
-  /데님|denim|레더|leather|가죽/i.test(material) ? 15_000 : 10_000;
+export const resolveDefaultFabricUnitCost = (
+  material: string,
+  clothType = "",
+) => {
+  if (/니트|knit/i.test(clothType)) return 13_000;
+  return /데님|denim|레더|leather|가죽/i.test(material)
+    ? 15_000
+    : 10_000;
+};
 
 export const getFundingErrorMessage = (
   error: unknown,
@@ -75,7 +82,10 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       estimate_direct_unit_min: input.estimateDirectUnitMin ?? null,
       estimate_direct_unit_max: input.estimateDirectUnitMax ?? null,
       estimate_development_total: input.estimateDevelopmentTotal ?? null,
-      fabric_unit_cost: resolveDefaultFabricUnitCost(input.material),
+      fabric_unit_cost: resolveDefaultFabricUnitCost(
+        input.material,
+        input.clothType,
+      ),
       moq: minimumOrderQuantity,
       current_orders: 0,
       funding_days: 30,

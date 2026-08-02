@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS, clothTypes, colorOptions, fitOptions } from "@/lib/customize-constants";
@@ -27,6 +27,7 @@ import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { recalculateEstimateQuantity } from "@/lib/production-estimate-quantity";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
+import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 
 interface ModifyImageOptions {
   referenceImage?: ArtworkReference;
@@ -43,13 +44,11 @@ export const useCustomizeForm = () => {
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [selectedDetail, setSelectedDetail] = useState("");
   const [newMaterialName, setNewMaterialName] = useState("");
-  const [materials, setMaterials] = useState<Material[]>([
-    { id: "cotton", name: "면", description: "부드럽고 통기성이 좋은 천연 소재" },
-    { id: "denim", name: "데님", description: "튼튼하고 클래식한 청바지 소재" },
-    { id: "leather", name: "레더", description: "고급스럽고 구조감이 있는 가죽 소재" },
-    { id: "poly", name: "폴리", description: "구김이 적고 관리가 쉬운 소재" },
-    { id: "linen", name: "린넨", description: "시원하고 자연스러운 질감의 소재" },
-  ]);
+  const [customMaterials, setCustomMaterials] = useState<Material[]>([]);
+  const materials = useMemo(
+    () => [...getRecommendedFabrics(selectedType), ...customMaterials],
+    [customMaterials, selectedType],
+  );
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedPocket, setSelectedPocket] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
@@ -98,6 +97,15 @@ export const useCustomizeForm = () => {
       Math.max(quantity, minimumOrderQuantity),
     );
   }, [minimumOrderQuantity]);
+
+  useEffect(() => {
+    if (
+      selectedMaterial &&
+      !materials.some((material) => material.id === selectedMaterial)
+    ) {
+      setSelectedMaterial("");
+    }
+  }, [materials, selectedMaterial]);
 
   const validateCurrentStep = () => {
     switch (currentStep) {
@@ -159,7 +167,7 @@ export const useCustomizeForm = () => {
         isCustom: true,
       };
       
-      setMaterials([...materials, newMaterial]);
+      setCustomMaterials((current) => [...current, newMaterial]);
       setSelectedMaterial(newId);
       setNewMaterialName("");
     }

@@ -199,7 +199,10 @@ const FundingEditor = () => {
   const sellingPrice = Math.max(0, funding.price || 0);
   const expectedSales = sellingPrice * targetQuantity;
   const fabricUnitCost = Math.max(0, funding.fabric_unit_cost || 0);
-  const defaultFabricUnitCost = resolveDefaultFabricUnitCost(funding.material);
+  const defaultFabricUnitCost = resolveDefaultFabricUnitCost(
+    funding.material,
+    funding.cloth_type,
+  );
   const fabricTotal = fabricUnitCost * targetQuantity;
   const fundingFee = Math.round(expectedSales * 0.1);
   const productionFee = Math.round(expectedSales * 0.15);
@@ -422,7 +425,7 @@ const FundingEditor = () => {
                   </div>
                   <p className="text-xs text-gray-500">
                     자동 기본값 {formatWon(defaultFabricUnitCost)} · 면·린넨 등
-                    10,000원, 데님·레더 15,000원
+                    10,000원, 니트 13,000원, 데님·레더 15,000원
                   </p>
                 </div>
                 <div className="space-y-2">

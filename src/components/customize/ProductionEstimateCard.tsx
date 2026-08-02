@@ -89,6 +89,10 @@ const artworkTypeLabel: Record<ArtworkType, string> = {
   illustration: "일러스트형",
 };
 
+const knitDecorationOptions = decorationOptions.filter((option) =>
+  ["patch", "label", "pigment", "washing"].includes(option.value),
+);
+
 const toManualAnalysis = (
   estimate: ProductionEstimateResult,
 ): ManualProductionAnalysis => ({
@@ -259,6 +263,7 @@ export const ProductionEstimateCard = ({
   }
 
   const { analysis, garment, totals, decorations } = estimate;
+  const isKnit = analysis.categoryKey === "knit";
   const accessories = estimate.accessories || [];
   const accessoryUnitTotal = totals.accessoryUnitTotal || 0;
   const accessoryTotal = totals.accessoryTotal || 0;
@@ -358,7 +363,9 @@ export const ProductionEstimateCard = ({
           <div>
             <p className="text-sm font-extrabold text-stone-950">견적 수량</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">
-              100장 이상 생산공임 5% · 200장 이상 7% · 300장 이상 10% 할인
+              {isKnit
+                ? "니트 생산공임은 수량과 관계없이 장당 20,000원 기준"
+                : "100장 이상 생산공임 5% · 200장 이상 7% · 300장 이상 10% 할인"}
             </p>
           </div>
           <div className="relative w-full sm:w-48">
@@ -404,6 +411,13 @@ export const ProductionEstimateCard = ({
               </span>
             )}
           </div>
+
+          {isKnit && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs font-semibold leading-5 text-amber-900">
+              니트 로고·이미지는 원단 조직 보호를 위해 프린팅·직자수 없이
+              패치(와펜) 부착 방식만 적용됩니다.
+            </div>
+          )}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5 text-xs font-bold text-stone-600">
@@ -465,7 +479,9 @@ export const ProductionEstimateCard = ({
 
           {decorations.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-bold text-stone-600">프린팅·후가공</p>
+              <p className="text-xs font-bold text-stone-600">
+                {isKnit ? "패치·후가공" : "프린팅·후가공"}
+              </p>
               <div className="mt-2 grid gap-2">
                 {decorations.map((decoration, index) => (
                   <div
@@ -480,7 +496,7 @@ export const ProductionEstimateCard = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {decorationOptions.map((option) => (
+                        {(isKnit ? knitDecorationOptions : decorationOptions).map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
@@ -595,7 +611,7 @@ export const ProductionEstimateCard = ({
                   decorations: [
                     ...draft.decorations,
                     {
-                      kind: "screen_print_1_color",
+                      kind: isKnit ? "patch" : "screen_print_1_color",
                       location: "front",
                       size: "medium",
                       confidence: 1,
@@ -787,7 +803,8 @@ export const ProductionEstimateCard = ({
         <div className="flex items-center justify-between gap-3">
           <p className="flex items-center gap-2 font-bold text-gray-950">
             <Printer className="h-4 w-4 text-brand" />
-            프린팅·후가공 {decorations.length > 0 && `(${decorations.length}개)`} (장당)
+            {isKnit ? "패치·후가공" : "프린팅·후가공"}{" "}
+            {decorations.length > 0 && `(${decorations.length}개)`} (장당)
           </p>
           <p className="font-extrabold text-brand">
             {decorations.length
@@ -845,7 +862,8 @@ export const ProductionEstimateCard = ({
           </div>
         ) : (
           <p className="mt-2 text-xs leading-5 text-gray-500">
-            이미지에서 뚜렷한 프린팅·자수·패치가 확인되지 않았습니다.
+            이미지에서 뚜렷한 {isKnit ? "패치·후가공" : "프린팅·자수·패치"}가
+            확인되지 않았습니다.
           </p>
         )}
       </div>
@@ -1025,10 +1043,15 @@ export const ProductionEstimateCard = ({
             패턴·샘플비는 수량과 곱하지 않는 별도 1회 개발비입니다.
           </p>
           <p>
-            ※ 수량 할인은 생산공임에만 적용됩니다. 100장 이상 5%, 200장
-            이상 7%, 300장 이상 10% 할인됩니다.
+            {isKnit
+              ? "※ 니트 생산공임은 장당 20,000원 고정 기준입니다."
+              : "※ 수량 할인은 생산공임에만 적용됩니다. 100장 이상 5%, 200장 이상 7%, 300장 이상 10% 할인됩니다."}
           </p>
-          <p className="font-extrabold text-brand">※ 원단 가격은 별도입니다.</p>
+          <p className="font-extrabold text-brand">
+            {isKnit
+              ? "※ 니트 평균 원단비 13,000원/장은 별도입니다."
+              : "※ 원단 가격은 별도입니다."}
+          </p>
           <p>※ 위 금액은 예상 제작 단가(About Price)입니다.</p>
           <p>
             ※ 디자인 난이도, 봉제 방식, 후가공, 원단 종류에 따라 실제 견적은

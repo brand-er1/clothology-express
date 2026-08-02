@@ -31,7 +31,10 @@ export const recalculateEstimateQuantity = (
     requestedQuantity,
     estimate.garment.moq,
   );
-  const productionDiscountRate = getProductionDiscountRate(quantity);
+  const productionDiscountRate =
+    estimate.analysis.categoryKey === "knit"
+      ? 0
+      : getProductionDiscountRate(quantity);
   const productionOriginalMin =
     estimate.totals.productionOriginalMin ?? estimate.totals.productionMin;
   const productionOriginalMax =

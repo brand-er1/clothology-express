@@ -29,12 +29,26 @@ export const estimateGarmentOptions = [
 
 export const estimateMaterialOptions = [
   { value: "cotton", label: "면" },
+  { value: "cotton_30s", label: "코마 싱글 30수" },
+  { value: "cotton_20s", label: "헤비 코튼 싱글 20수" },
+  { value: "cotton_rib", label: "코튼 골지" },
+  { value: "pique_cotton", label: "PK 피케" },
   { value: "polyester", label: "폴리" },
+  { value: "poly_spandex", label: "기능성 폴리 스판" },
+  { value: "nylon_spandex", label: "나일론 스판" },
+  { value: "performance_mesh", label: "기능성 메쉬" },
   { value: "functional", label: "기능성 원단" },
   { value: "linen", label: "린넨" },
+  { value: "french_terry", label: "쭈리(프렌치 테리)" },
+  { value: "brushed_fleece", label: "기모 원단" },
+  { value: "cotton_twill", label: "코튼 트윌" },
+  { value: "woven_nylon", label: "우븐 나일론" },
   { value: "denim", label: "데님" },
   { value: "leather", label: "레더" },
   { value: "knit", label: "니트" },
+  { value: "wool_blend", label: "울 혼방 니트" },
+  { value: "cotton_knit", label: "코튼 니트" },
+  { value: "acrylic_blend", label: "아크릴 혼방 니트" },
   { value: "other", label: "기타" },
 ] as const;
 

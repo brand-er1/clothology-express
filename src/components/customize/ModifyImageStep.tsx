@@ -344,9 +344,11 @@ export const ModifyImageStep = ({
         `사용자 요청 "${artworkPlacementPrompt.trim()}"${
           appliedWithDrag ? " 후 드래그로 미세 조정한 위치" : ""
         }에 따라 업로드한 ${
-          artworkContentType === "logo"
-            ? "로고의 겉 배경을 제거하고"
-            : "사진의 배경을 그대로 유지해"
+          selectedType === "knit"
+            ? "이미지를 프린팅·직자수 없이 봉제 패치(와펜) 방식으로"
+            : artworkContentType === "logo"
+              ? "로고의 겉 배경을 제거하고"
+              : "사진의 배경을 그대로 유지해"
         } 옷의 ${locationLabel}, 화면 기준 가로 ${Math.round(
           placement.xPercent,
         )}%·세로 ${Math.round(
@@ -651,6 +653,12 @@ export const ModifyImageStep = ({
                     위치와 크기는 프롬프트로 지정한 뒤 드래그로 미세 조절할 수
                     있습니다.
                   </p>
+                  {selectedType === "knit" && (
+                    <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-900">
+                      니트에 올리는 로고·이미지는 프린팅·직자수 없이 패치(와펜)
+                      방식으로만 제작됩니다.
+                    </p>
+                  )}
                 </div>
               </div>
 

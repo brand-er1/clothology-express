@@ -13,7 +13,8 @@ type UploadDecorationKind =
   | "screen_print_1_color"
   | "screen_print_multi_color"
   | "dtf"
-  | "dtg";
+  | "dtg"
+  | "patch";
 type ArtworkLocation =
   | "front"
   | "back"
@@ -32,6 +33,7 @@ const validUploadDecorationKinds = new Set<UploadDecorationKind>([
   "screen_print_multi_color",
   "dtf",
   "dtg",
+  "patch",
 ]);
 const validArtworkLocations = new Set<ArtworkLocation>([
   "front",
@@ -127,6 +129,7 @@ serve(async (req) => {
       artworkLocation,
       artworkPosition,
     } = requestData;
+    const isKnit = /니트|knit/i.test(String(clothType || ""));
 
     // Validate inputs
     if (!imageUrl || !modificationPrompt) {
@@ -218,7 +221,7 @@ You are a Korean apparel printing specialist. Analyze only the uploaded
 artwork image and return JSON only:
 {
   "artworkType": "logo | photo | illustration",
-  "recommendedKind": "screen_print_1_color | screen_print_multi_color | dtf | dtg",
+  "recommendedKind": "screen_print_1_color | screen_print_multi_color | dtf | dtg | patch",
   "confidence": 0.0,
   "reason": "short Korean explanation"
 }
@@ -234,6 +237,9 @@ Printing recommendation:
 - Photos, gradients, detailed full-color artwork, or more than four colors: dtf.
 - Use dtg only when direct-to-garment is clearly more appropriate than DTF.
 - Do not choose embroidery, patch, PU, or silicone from appearance alone.
+${isKnit
+  ? "- The garment is knitwear. Always return patch, never printing or direct embroidery."
+  : ""}
 `.trim();
       const classificationBody = JSON.stringify({
         contents: [
@@ -296,7 +302,9 @@ Printing recommendation:
         )
         ? rawArtworkType as ArtworkType
         : "illustration";
-      const resolvedRecommendedKind = validUploadDecorationKinds.has(
+      const resolvedRecommendedKind = isKnit
+        ? "patch"
+        : validUploadDecorationKinds.has(
           rawRecommendedKind as UploadDecorationKind,
         )
         ? rawRecommendedKind as UploadDecorationKind
@@ -305,9 +313,10 @@ Printing recommendation:
       const confidence = Number.isFinite(confidenceValue)
         ? Math.min(1, Math.max(0, confidenceValue))
         : 0.5;
-      const reason =
-        String(rawClassification?.reason || "").trim() ||
-        "세부 색상과 그라데이션을 안전하게 구현할 수 있는 인쇄 방식으로 계산했습니다.";
+      const reason = isKnit
+        ? "니트 조직 보호를 위해 프린팅·직자수 대신 패치(와펜) 부착 방식으로 계산했습니다."
+        : String(rawClassification?.reason || "").trim() ||
+          "세부 색상과 그라데이션을 안전하게 구현할 수 있는 인쇄 방식으로 계산했습니다.";
 
       const { data: priceRows, error: priceError } = await supabase
         .from("quote_decoration_prices")
@@ -367,7 +376,7 @@ Printing recommendation:
         .getPublicUrl(uploadData?.path || fileName);
       const modifiedImageUrl = publicUrlData?.publicUrl;
       const textResponse = artworkAnalysis
-        ? `${artworkAnalysis.artworkTypeLabel} 이미지를 미리보기에서 지정한 ${artworkAnalysis.locationLabel} 위치와 크기 그대로 적용했습니다. ${artworkAnalysis.priceLabel || "추천 인쇄 방식"} 장당 공임을 자동견적에 반영합니다.`
+        ? `${artworkAnalysis.artworkTypeLabel} 이미지를 미리보기에서 지정한 ${artworkAnalysis.locationLabel} 위치와 크기 그대로 적용했습니다. ${artworkAnalysis.priceLabel || "추천 후가공"} 장당 공임을 자동견적에 반영합니다.`
         : "미리보기에서 지정한 위치와 크기 그대로 이미지를 적용했습니다.";
 
       return new Response(
@@ -394,7 +403,7 @@ Printing recommendation:
     
     Please maintain the general style and type of clothing while applying these specific modifications.
     ${hasReferenceImage
-      ? `The second supplied image is the customer's exact artwork. Preserve its composition, colors, lettering, and proportions. The customer dragged it to a precise target centered ${xPercent.toFixed(1)}% from the left edge and ${yPercent.toFixed(1)}% from the top edge of the source image, and resized it to span approximately ${widthPercent.toFixed(1)}% of the source image width. Apply it only to that dragged position on the ${artworkLocationLabels[safeArtworkLocation]}. The coordinates and width are authoritative. Do not invent, redraw, replace, or add any other logo or graphic.`
+      ? `The second supplied image is the customer's exact artwork. Preserve its composition, colors, lettering, and proportions. The customer dragged it to a precise target centered ${xPercent.toFixed(1)}% from the left edge and ${yPercent.toFixed(1)}% from the top edge of the source image, and resized it to span approximately ${widthPercent.toFixed(1)}% of the source image width. Apply it only to that dragged position on the ${artworkLocationLabels[safeArtworkLocation]}. The coordinates and width are authoritative. Do not invent, redraw, replace, or add any other logo or graphic.${isKnit ? " Render it as a visibly sewn fabric patch with a subtle stitched edge, never as ink printing or direct embroidery." : ""}`
       : ""}
     Preserve the premium photorealistic 3D garment-render style. Keep convincing
     three-dimensional volume, realistic fabric thickness, natural drape and
@@ -502,7 +511,7 @@ Printing recommendation:
     
     const generatedImageUrl = publicUrlData?.publicUrl;
     const resolvedTextResponse = artworkAnalysis
-      ? `${artworkAnalysis.artworkTypeLabel} 이미지로 분석해 ${artworkAnalysis.locationLabel}에 적용했습니다. ${artworkAnalysis.priceLabel || "추천 인쇄 방식"} 장당 공임을 자동견적에 반영합니다.`
+      ? `${artworkAnalysis.artworkTypeLabel} 이미지로 분석해 ${artworkAnalysis.locationLabel}에 적용했습니다. ${artworkAnalysis.priceLabel || "추천 후가공"} 장당 공임을 자동견적에 반영합니다.`
       : responseText;
     
     return new Response(

@@ -8,6 +8,10 @@ export interface Material {
   id: string;
   name: string;
   description: string;
+  badge?: string;
+  characteristics?: string[];
+  imageUrl?: string;
+  isCustom?: boolean;
 }
 
 export type ArtworkSize = "small" | "medium" | "large";

@@ -177,6 +177,7 @@ const Customize = () => {
             {currentStep === 2 && (
               <MaterialStep
                 materials={materials}
+                selectedType={selectedType}
                 selectedMaterial={selectedMaterial}
                 newMaterialName={newMaterialName}
                 onSelectMaterial={setSelectedMaterial}

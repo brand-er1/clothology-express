@@ -1,0 +1,157 @@
+import type { Material } from "@/types/customize";
+
+const fabricImage = (fileName: string) =>
+  `${import.meta.env.BASE_URL}fabrics/${fileName}`;
+
+const fabrics = {
+  cotton30s: {
+    id: "cotton_30s",
+    name: "코마 싱글 30수",
+    description: "가볍고 매끈해 여름 반팔에 가장 자주 쓰는 면 원단",
+    badge: "가장 많이 사용",
+    characteristics: ["통기성", "부드러움", "여름"],
+    imageUrl: fabricImage("cotton-jersey-light.webp"),
+  },
+  cotton20s: {
+    id: "cotton_20s",
+    name: "헤비 코튼 싱글 20수",
+    description: "비침이 적고 탄탄해 사계절 티셔츠에 적합한 면 원단",
+    badge: "탄탄한 핏",
+    characteristics: ["적은 비침", "형태 안정", "사계절"],
+    imageUrl: fabricImage("cotton-jersey-heavy.webp"),
+  },
+  cottonRib: {
+    id: "cotton_rib",
+    name: "코튼 골지",
+    description: "세로 골이 있어 신축성과 몸을 따라 흐르는 실루엣이 좋은 원단",
+    badge: "슬림핏 추천",
+    characteristics: ["신축성", "조직감", "레이어드"],
+    imageUrl: fabricImage("cotton-rib.webp"),
+  },
+  cottonPique: {
+    id: "pique_cotton",
+    name: "PK 피케",
+    description: "표면 요철과 통기성이 좋아 카라티·스포티 상의에 자주 사용",
+    badge: "카라티 추천",
+    characteristics: ["통기성", "조직감", "깔끔한 핏"],
+    imageUrl: fabricImage("cotton-pique.webp"),
+  },
+  polySpandex: {
+    id: "poly_spandex",
+    name: "기능성 폴리 스판",
+    description: "흡한속건과 신축성이 좋아 운동복과 기능성 상의에 적합",
+    badge: "기능성 추천",
+    characteristics: ["흡한속건", "신축성", "경량"],
+    imageUrl: fabricImage("poly-spandex.webp"),
+  },
+  nylonSpandex: {
+    id: "nylon_spandex",
+    name: "나일론 스판",
+    description: "매끈한 촉감과 높은 복원력으로 레깅스·타이즈에 가장 많이 사용",
+    badge: "컴프레션 추천",
+    characteristics: ["고신축", "복원력", "부드러움"],
+    imageUrl: fabricImage("nylon-spandex.webp"),
+  },
+  performanceMesh: {
+    id: "performance_mesh",
+    name: "기능성 메쉬",
+    description: "미세한 통기 구멍으로 열 배출이 빨라 스포츠웨어 배색에 적합",
+    badge: "통기성 추천",
+    characteristics: ["통풍", "경량", "스포츠"],
+    imageUrl: fabricImage("performance-mesh.webp"),
+  },
+  cottonTwill: {
+    id: "cotton_twill",
+    name: "코튼 트윌",
+    description: "사선 조직이 탄탄해 자켓과 팬츠의 형태를 안정적으로 유지",
+    badge: "기본 추천",
+    characteristics: ["내구성", "형태 안정", "사계절"],
+    imageUrl: fabricImage("cotton-twill.webp"),
+  },
+  frenchTerry: {
+    id: "french_terry",
+    name: "쭈리(프렌치 테리)",
+    description: "겉은 매끈하고 안쪽은 루프 조직이라 후드·맨투맨에 가장 보편적",
+    badge: "가장 많이 사용",
+    characteristics: ["편안함", "적당한 두께", "사계절"],
+    imageUrl: fabricImage("french-terry.webp"),
+  },
+  brushedFleece: {
+    id: "brushed_fleece",
+    name: "기모 원단",
+    description: "안쪽을 긁어 보온성을 높인 가을·겨울용 스웨트 원단",
+    badge: "겨울 추천",
+    characteristics: ["보온성", "포근함", "도톰함"],
+    imageUrl: fabricImage("brushed-fleece.webp"),
+  },
+  denim: {
+    id: "denim",
+    name: "코튼 데님",
+    description: "내구성이 높고 워싱 표현이 좋아 자켓과 팬츠에 자주 사용",
+    badge: "워싱 추천",
+    characteristics: ["내구성", "워싱", "구조감"],
+    imageUrl: fabricImage("denim.webp"),
+  },
+  leather: {
+    id: "leather",
+    name: "비건 레더",
+    description: "매끈한 광택과 구조감으로 레더 자켓에 사용하는 인조가죽",
+    badge: "MOQ 100장",
+    characteristics: ["구조감", "방풍", "관리 용이"],
+    imageUrl: fabricImage("faux-leather.webp"),
+  },
+  woolBlend: {
+    id: "wool_blend",
+    name: "울 혼방 니트",
+    description: "보온성과 고급스러운 조직감을 균형 있게 살리는 대표 니트 원사",
+    badge: "가장 많이 사용",
+    characteristics: ["보온성", "고급감", "가을·겨울"],
+    imageUrl: fabricImage("wool-blend-knit.webp"),
+  },
+  cottonKnit: {
+    id: "cotton_knit",
+    name: "코튼 니트",
+    description: "부드럽고 관리가 쉬워 봄·가을 데일리 니트에 자주 사용",
+    badge: "간절기 추천",
+    characteristics: ["부드러움", "관리 용이", "간절기"],
+    imageUrl: fabricImage("cotton-knit.webp"),
+  },
+  acrylicBlend: {
+    id: "acrylic_blend",
+    name: "아크릴 혼방 니트",
+    description: "가볍고 색 표현이 다양해 단체·브랜드 니트 생산에 효율적",
+    badge: "색상 선택 다양",
+    characteristics: ["경량", "선명한 발색", "합리적"],
+    imageUrl: fabricImage("acrylic-knit.webp"),
+  },
+  wovenNylon: {
+    id: "woven_nylon",
+    name: "우븐 나일론",
+    description: "가볍고 바람을 막아 윈드브레이커와 액티브 팬츠에 적합",
+    badge: "경량 아우터 추천",
+    characteristics: ["방풍", "경량", "생활 발수"],
+    imageUrl: fabricImage("woven-nylon.webp"),
+  },
+} satisfies Record<string, Material>;
+
+const recommendations: Record<string, Material[]> = {
+  short_sleeve: [fabrics.cotton30s, fabrics.cotton20s, fabrics.polySpandex, fabrics.cottonPique],
+  long_sleeve: [fabrics.cotton20s, fabrics.cotton30s, fabrics.cottonRib, fabrics.polySpandex],
+  tights_short_sleeve: [fabrics.nylonSpandex, fabrics.polySpandex, fabrics.performanceMesh],
+  tights_long_sleeve: [fabrics.nylonSpandex, fabrics.polySpandex, fabrics.performanceMesh],
+  hoodie: [fabrics.frenchTerry, fabrics.brushedFleece, fabrics.cotton20s],
+  sweatshirt: [fabrics.frenchTerry, fabrics.brushedFleece, fabrics.cotton20s],
+  knit: [fabrics.woolBlend, fabrics.cottonKnit, fabrics.acrylicBlend],
+  jacket: [fabrics.cottonTwill, fabrics.wovenNylon, fabrics.denim, fabrics.leather],
+  short_pants: [fabrics.cottonTwill, fabrics.wovenNylon, fabrics.frenchTerry, fabrics.polySpandex],
+  long_pants: [fabrics.cottonTwill, fabrics.wovenNylon, fabrics.denim, fabrics.polySpandex],
+  leggings: [fabrics.nylonSpandex, fabrics.polySpandex, fabrics.performanceMesh],
+  tights_bottom: [fabrics.nylonSpandex, fabrics.polySpandex, fabrics.performanceMesh],
+};
+
+export const getRecommendedFabrics = (clothType: string): Material[] =>
+  recommendations[clothType] || [
+    fabrics.cotton20s,
+    fabrics.cottonTwill,
+    fabrics.polySpandex,
+  ];

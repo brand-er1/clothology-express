@@ -3,11 +3,15 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { fetchFunding, getFundingErrorMessage, startKakaoPayFunding } from "@/services/funding";
+import { fetchFunding, getFundingErrorMessage, registerFundingPaymentIntent, startKakaoPayFunding } from "@/services/funding";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import type { Funding } from "@/types/funding";
 import {
@@ -19,6 +23,7 @@ import {
   Package,
   Plus,
   ShieldCheck,
+  Clock3,
   SquarePen,
   Users,
   WalletCards,
@@ -35,6 +40,7 @@ const FundingDetail = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [intentSubmitting, setIntentSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -134,6 +140,31 @@ const FundingDetail = () => {
       toast({ title: "펀딩 참여에 실패했습니다", description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePaymentIntent = async () => {
+    if (!funding || !id) return;
+    if (!currentUserId) {
+      navigate(`/auth?returnTo=${encodeURIComponent(`/fundings/${id}`)}`);
+      return;
+    }
+    if (!selectedColor || !selectedSize) {
+      toast({ title: "컬러와 사이즈를 선택해주세요", variant: "destructive" });
+      return;
+    }
+
+    setIntentSubmitting(true);
+    try {
+      await registerFundingPaymentIntent(id, selectedColor, selectedSize, quantity);
+      toast({
+        title: "결제 예정 등록이 완료되었습니다",
+        description: "판매자가 샘플을 공유하면 확인 후 결제를 진행해주세요.",
+      });
+    } catch (error) {
+      toast({ title: "결제 예정 등록에 실패했습니다", description: getFundingErrorMessage(error), variant: "destructive" });
+    } finally {
+      setIntentSubmitting(false);
     }
   };
 
@@ -258,7 +289,7 @@ const FundingDetail = () => {
                 <Button asChild
                   className="h-14 w-full rounded-full bg-[#FEE500] text-base font-bold text-[#191919] hover:bg-[#f5dc00]">
                   <Link to={loginReturnTo}>
-                    <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 테스트 결제
+                    <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 결제하기
                   </Link>
                 </Button>
               ) : (
@@ -266,9 +297,40 @@ const FundingDetail = () => {
                   className="h-14 w-full rounded-full bg-[#FEE500] text-base font-bold text-[#191919] hover:bg-[#f5dc00]">
                   {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                   {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
-                  {isPreview ? "관리자 승인 대기 중" : submitting ? "카카오페이 테스트창 여는 중" : "카카오페이 테스트 결제"}
+                  {isPreview ? "관리자 승인 대기 중" : submitting ? "결제창 여는 중" : "결제하기"}
                 </Button>
               )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPreview || !funding.price || intentSubmitting}
+                    className="h-14 w-full rounded-full border-brand text-base font-bold text-brand hover:bg-brand/5"
+                  >
+                    {intentSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Clock3 className="mr-2 h-5 w-5" />}
+                    샘플 확인 후 결제 예정
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-3xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>결제 예정으로 등록하시겠습니까?</AlertDialogTitle>
+                    <AlertDialogDescription className="leading-6">
+                      이 제품은 한정판으로 제작됩니다. 준비된 수량이 모두 소진되면 재생산하지 않아,
+                      결제 예정으로 등록했더라도 추후 결제가 불가능할 수 있습니다.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                    선택 옵션: {selectedColor} · {selectedSize} · {quantity}장
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-full">취소</AlertDialogCancel>
+                    <AlertDialogAction onClick={handlePaymentIntent} className="rounded-full bg-brand hover:bg-brand-dark">
+                      확인하고 등록하기
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               {paymentError && (
                 <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
                   <p className="font-bold">테스트 결제를 시작하지 못했습니다</p>
@@ -284,6 +346,28 @@ const FundingDetail = () => {
             </div>
           </div>
         </div>
+
+        {(funding.sample_image_url || funding.sample_note) && (
+          <section className="mt-10 overflow-hidden rounded-[2rem] border border-brand/20 bg-white p-6 md:p-10">
+            <div className="grid items-center gap-8 md:grid-cols-[0.8fr_1.2fr]">
+              {funding.sample_image_url && (
+                <div className="overflow-hidden rounded-3xl bg-stone-100">
+                  <img src={funding.sample_image_url} alt={`${funding.product_name} 제작 샘플`} className="aspect-square h-full w-full object-cover" />
+                </div>
+              )}
+              <div>
+                <Badge className="bg-brand/10 text-brand hover:bg-brand/10">판매자 샘플 공유</Badge>
+                <h2 className="mt-4 text-2xl font-bold md:text-3xl">실제 제작 샘플을 확인하세요</h2>
+                <p className="mt-4 whitespace-pre-wrap leading-7 text-gray-600">
+                  {funding.sample_note || "판매자가 실제 제작된 샘플 이미지를 공유했습니다."}
+                </p>
+                {funding.sample_shared_at && (
+                  <p className="mt-5 text-xs text-gray-400">공유일 {new Date(funding.sample_shared_at).toLocaleDateString("ko-KR")}</p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="mt-10 rounded-[2rem] border bg-white p-6 md:p-10">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-brand">PRODUCT STORY</p>

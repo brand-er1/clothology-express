@@ -6,6 +6,7 @@ import type {
   MyFundingParticipation,
   FundingParticipation,
   FundingParticipationStatus,
+  FundingPaymentIntent,
   FundingStatus,
 } from "@/types/funding";
 import { getAppUrl } from "@/utils/appUrl";
@@ -314,4 +315,56 @@ export const updateFundingParticipationStatus = async (
   });
 
   if (error) throwFundingError(error, "참여 상태를 변경하지 못했습니다.");
+};
+
+export const registerFundingPaymentIntent = async (
+  fundingId: string,
+  color: string,
+  size: string,
+  quantity: number
+): Promise<string> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("register_funding_payment_intent", {
+    p_funding_id: fundingId,
+    p_color: color,
+    p_size: size,
+    p_quantity: quantity,
+  });
+  if (error) throwFundingError(error, "결제 예정 등록을 처리하지 못했습니다.");
+  return data as string;
+};
+
+export const fetchFundingPaymentIntents = async (fundingId: string): Promise<FundingPaymentIntent[]> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_funding_payment_intents", { p_funding_id: fundingId });
+  if (error) throwFundingError(error, "결제 예정자 목록을 불러오지 못했습니다.");
+  return (data || []) as FundingPaymentIntent[];
+};
+
+export const uploadAndShareFundingSample = async (
+  fundingId: string,
+  file: File,
+  note: string
+): Promise<{ imageUrl: string; imagePath: string }> => {
+  const user = await requireUser();
+  if (!file.type.startsWith("image/")) throw new Error("샘플 이미지만 업로드할 수 있습니다.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("샘플 이미지는 10MB 이하만 업로드할 수 있습니다.");
+
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const imagePath = `${user.id}/${fundingId}/${Date.now()}.${extension}`;
+  const { error: uploadError } = await supabase.storage.from("funding-samples").upload(imagePath, file, {
+    cacheControl: "3600",
+    upsert: false,
+  });
+  if (uploadError) throwFundingError(uploadError, "샘플 이미지를 업로드하지 못했습니다.");
+
+  const { data: publicData } = supabase.storage.from("funding-samples").getPublicUrl(imagePath);
+  const { error } = await supabase.rpc("share_funding_sample", {
+    p_funding_id: fundingId,
+    p_image_url: publicData.publicUrl,
+    p_image_path: imagePath,
+    p_note: note,
+  });
+  if (error) throwFundingError(error, "샘플 공유 정보를 저장하지 못했습니다.");
+  return { imageUrl: publicData.publicUrl, imagePath };
 };

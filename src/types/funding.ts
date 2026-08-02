@@ -36,6 +36,22 @@ export type Funding = {
   reviewed_by: string | null;
   created_at: string;
   updated_at: string;
+  sample_image_url: string | null;
+  sample_image_path: string | null;
+  sample_note: string | null;
+  sample_shared_at: string | null;
+};
+
+export type FundingPaymentIntent = {
+  id: string;
+  participant_id: string;
+  participant_name: string;
+  phone_number: string | null;
+  selected_color: string;
+  selected_size: string;
+  quantity: number;
+  status: "waiting" | "converted" | "cancelled";
+  created_at: string;
 };
 export type CreateFundingInput = {
   productName: string;

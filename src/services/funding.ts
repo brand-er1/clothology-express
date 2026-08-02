@@ -7,6 +7,7 @@ import type {
   FundingParticipation,
   FundingParticipationStatus,
   FundingPaymentIntent,
+  MyFundingPaymentIntent,
   FundingStatus,
 } from "@/types/funding";
 import { getAppUrl } from "@/utils/appUrl";
@@ -292,6 +293,13 @@ export const fetchMyFundingParticipations = async (): Promise<MyFundingParticipa
 
   if (error) throwFundingError(error, "펀딩 참여 내역을 불러오지 못했습니다.");
   return (data || []) as MyFundingParticipation[];
+};
+
+export const fetchMyFundingPaymentIntents = async (): Promise<MyFundingPaymentIntent[]> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_my_funding_payment_intents");
+  if (error) throwFundingError(error, "결제 예정 내역을 불러오지 못했습니다.");
+  return (data || []) as MyFundingPaymentIntent[];
 };
 
 export const fetchFundingParticipants = async (fundingId: string): Promise<FundingParticipation[]> => {

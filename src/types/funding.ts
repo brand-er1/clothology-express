@@ -98,6 +98,26 @@ export type MyFundingParticipation = FundingParticipation & {
   payment_method_type: string | null;
 };
 
+export type MyFundingPaymentIntent = {
+  id: string;
+  funding_id: string;
+  participant_id: string;
+  product_name: string;
+  image_url: string;
+  funding_status: FundingStatus;
+  creator_id: string;
+  selected_color: string;
+  selected_size: string;
+  quantity: number;
+  unit_price: number;
+  total_amount: number;
+  status: "waiting";
+  sample_image_url: string | null;
+  sample_note: string | null;
+  sample_shared_at: string | null;
+  created_at: string;
+};
+
 export type KakaoPayReadyResult = {
   participation_id: string;
   next_redirect_pc_url: string | null;

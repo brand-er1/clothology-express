@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>하남교회 오후프로그램</title>
+  <style>
+    :root{--bg1:#f6f2ff;--bg2:#fff9fb;--ink:#171717;--muted:#6f6a77;--card:#fff}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--ink);min-height:100vh}
+    .app{max-width:520px;margin:0 auto;padding:28px 18px 48px;text-align:center}
+    .badge{display:inline-block;padding:7px 12px;border-radius:999px;background:#ebe4ff;font-size:13px;font-weight:800;color:#5d46b8}
+    h1{font-size:30px;margin:10px 0 6px}.sub{margin:0 0 22px;color:var(--muted)}
+    .wheel-wrap{width:min(86vw,380px);aspect-ratio:1;margin:0 auto 22px;position:relative}
+    .pointer{position:absolute;z-index:8;left:50%;top:-10px;transform:translateX(-50%);width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:38px solid #181818;filter:drop-shadow(0 3px 2px #0002)}
+    #wheel{position:absolute;inset:0;border-radius:50%;box-shadow:0 16px 40px #0002;transition:transform 3.6s cubic-bezier(.1,.75,.08,1);background:conic-gradient(#eadfff 0 40deg,#ffdfe8 40deg 80deg,#ffedce 80deg 120deg,#dff3ff 120deg 160deg,#e0f4de 160deg 200deg,#f2e2ff 200deg 240deg,#fff2ba 240deg 280deg,#dff7ef 280deg 320deg,#e5eaff 320deg 360deg);overflow:hidden}
+    .segment-label{position:absolute;left:50%;top:50%;width:46%;transform-origin:0 0;font-size:12px;font-weight:900;text-align:right;padding-right:12px}.segment-label span{display:inline-block;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:84px;height:84px;border-radius:50%;background:#181818;color:#fff;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:900;box-shadow:0 5px 18px #0003}
+    .spin{width:100%;border:0;border-radius:17px;background:#181818;color:#fff;padding:16px 20px;font-size:18px;font-weight:900;cursor:pointer}.spin:disabled{opacity:.55}
+    .result{display:none;margin-top:20px;background:var(--card);border-radius:24px;padding:18px;text-align:left;box-shadow:0 12px 35px #00000012}.result.show{display:block;animation:pop .25s ease-out}@keyframes pop{from{transform:scale(.97);opacity:0}to{transform:scale(1);opacity:1}}
+    .pose-art{height:260px;border-radius:19px;background:linear-gradient(180deg,#f5f0ff,#fff);display:flex;align-items:center;justify-content:center;overflow:hidden}.pose-art svg{width:100%;height:100%}
+    .eyebrow{margin-top:14px;font-size:12px;font-weight:900;color:#755fc5}.result h2{font-size:26px;margin:5px 0 8px}.result p{margin:0;color:var(--muted);line-height:1.6}.retry{margin-top:15px;background:#eee8ff;color:#1c1630}.footer{font-size:12px;color:#9a95a0;margin-top:14px;line-height:1.5}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="badge">하남교회</div>
+    <h1>오후프로그램 🎯</h1>
+    <p class="sub">룰렛을 돌리고 나온 커플 포즈에 도전하세요!</p>
+    <div class="wheel-wrap"><div class="pointer"></div><div id="wheel"><div class="hub">GO!</div></div></div>
+    <button id="spinBtn" class="spin">룰렛 돌리기</button>
+    <section id="result" class="result"><div id="poseArt" class="pose-art"></div><div class="eyebrow">🎉 선정된 자세</div><h2 id="poseName"></h2><p id="poseDesc"></p><button id="retryBtn" class="spin retry">다시 돌리기</button></section>
+    <div class="footer">안전을 위해 넘어질 가능성이 있는 자세는 주변에서 보조해주세요.</div>
+  </main>
+<script>
+const poses=[
+{name:"등 맞대고 스쿼트",desc:"서로 등을 맞대고 동시에 천천히 앉았다 일어나세요.",type:0},
+{name:"마주 보고 한쪽 다리 들기",desc:"두 손을 잡고 서로 마주 본 채 한쪽 다리를 들어 균형을 맞춰보세요.",type:1},
+{name:"커플 V자 자세",desc:"마주 앉아 발바닥을 맞대고 손을 잡은 뒤 다리를 V자로 들어보세요.",type:2},
+{name:"손잡고 뒤로 기울이기",desc:"서로 손을 단단히 잡고 반대 방향으로 천천히 몸을 기울여보세요.",type:3},
+{name:"한쪽 다리 스쿼트 보조",desc:"서로 손을 잡고 한 명씩 한쪽 다리를 든 채 천천히 앉아보세요.",type:4},
+{name:"등 맞대고 앉았다 일어나기",desc:"등을 붙이고 손을 쓰지 않은 채 함께 앉았다 일어나보세요.",type:5},
+{name:"다리 사이로 통과하기",desc:"한 명이 다리를 벌리고 다른 사람이 통과한 뒤 역할을 바꿔보세요.",type:6},
+{name:"가벼운 딥 포즈",desc:"한 명이 상대 허리를 받치고 상대는 몸을 살짝 뒤로 젖혀보세요.",type:7},
+{name:"업기 + 팔 벌리기",desc:"한 명이 상대를 업고, 업힌 사람은 양팔을 활짝 펼쳐보세요.",type:8}
+];
+const wheel=document.getElementById("wheel"),spinBtn=document.getElementById("spinBtn"),retryBtn=document.getElementById("retryBtn"),result=document.getElementById("result"),poseName=document.getElementById("poseName"),poseDesc=document.getElementById("poseDesc"),poseArt=document.getElementById("poseArt");
+poses.forEach((p,i)=>{const el=document.createElement("div");el.className="segment-label";const angle=i*40+20;el.style.transform=`rotate(${angle}deg)`;const span=document.createElement("span");span.textContent=p.name;span.style.transform=`rotate(${-angle}deg)`;el.appendChild(span);wheel.appendChild(el)});
+let currentRotation=0,spinning=false;
+function artFor(i,title){const layouts=[[[145,72],[255,72],[[145,98,165,160],[255,98,235,160],[145,120,105,140],[255,120,295,140],[165,160,135,210],[165,160,195,210],[235,160,205,210],[235,160,265,210]]],[[140,72],[260,72],[[140,98,160,160],[260,98,240,160],[140,115,200,125],[260,115,200,125],[160,160,125,215],[160,160,195,190],[240,160,275,215],[240,160,205,190]]],[[145,105],[255,105],[[145,130,185,165],[255,130,215,165],[145,140,200,150],[255,140,200,150],[185,165,120,205],[185,165,200,220],[215,165,280,205],[215,165,200,220]]],[[115,80],[285,80],[[115,105,150,160],[285,105,250,160],[115,120,200,130],[285,120,200,130],[150,160,120,215],[150,160,175,215],[250,160,225,215],[250,160,280,215]]],[[140,72],[260,72],[[140,98,160,158],[260,98,240,158],[140,115,200,126],[260,115,200,126],[160,158,125,210],[160,158,200,180],[240,158,275,210],[240,158,205,180]]],[[150,72],[250,72],[[150,98,175,160],[250,98,225,160],[150,115,110,135],[250,115,290,135],[175,160,135,215],[175,160,205,215],[225,160,195,215],[225,160,265,215]]],[[140,72],[260,72],[[140,98,150,160],[260,98,250,160],[140,115,100,135],[260,115,300,135],[150,160,115,215],[150,160,185,215],[250,160,215,215],[250,160,285,215]]],[[145,68],[270,105],[[145,95,175,158],[270,132,225,165],[145,115,205,126],[270,142,205,126],[175,158,135,215],[175,158,205,210],[225,165,205,210],[225,165,275,195]]],[[175,110],[210,58],[[175,135,175,188],[210,84,195,135],[175,148,135,160],[210,98,150,78],[210,98,270,78],[175,188,145,220],[175,188,205,220],[195,135,155,165],[195,135,235,165]]]];const L=layouts[i];const lines=L[2].map(x=>`<line x1="${x[0]}" y1="${x[1]}" x2="${x[2]}" y2="${x[3]}" stroke="#222" stroke-width="11" stroke-linecap="round"/>`).join("");return `<svg viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="260" rx="24" fill="#f3eeff"/><circle cx="${L[0][0]}" cy="${L[0][1]}" r="22" fill="#222"/><circle cx="${L[1][0]}" cy="${L[1][1]}" r="22" fill="#222"/>${lines}<rect x="65" y="220" width="270" height="28" rx="14" fill="#fff"/><text x="200" y="239" text-anchor="middle" font-size="15" font-weight="700" font-family="sans-serif">${title}</text></svg>`}
+function spin(){if(spinning)return;spinning=true;spinBtn.disabled=true;retryBtn.disabled=true;result.classList.remove("show");const selected=Math.floor(Math.random()*poses.length);const segment=360/poses.length;const center=selected*segment+segment/2;const desired=(360-center)%360;const current=((currentRotation%360)+360)%360;const delta=((desired-current+360)%360)+2160;currentRotation+=delta;wheel.style.transform=`rotate(${currentRotation}deg)`;setTimeout(()=>{const p=poses[selected];poseName.textContent=p.name;poseDesc.textContent=p.desc;poseArt.innerHTML=artFor(p.type,p.name);result.classList.add("show");spinBtn.disabled=false;retryBtn.disabled=false;spinning=false;result.scrollIntoView({behavior:"smooth",block:"nearest"})},3700)}
+spinBtn.addEventListener("click",spin);retryBtn.addEventListener("click",spin);
+</script>
+</body>
+</html>

@@ -137,7 +137,7 @@ export const Header = () => {
           ) : (
             <div className="space-y-2">
               <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
-                <Link to="/fundings">펀딩 둘러보기</Link>
+                <Link to="/customize">AI로 디자인하기</Link>
               </Button>
               <Button asChild variant="ghost" className="h-11 w-full rounded-full text-stone-500">
                 <Link to="/auth">로그인 · 회원가입</Link>
@@ -203,8 +203,8 @@ export const Header = () => {
                 <Link to="/auth">로그인</Link>
               </Button>
               <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark">
-                <Link to="/fundings">
-                  <Sparkles className="mr-2 h-4 w-4" /> 펀딩 둘러보기 <ArrowRight className="ml-2 h-4 w-4" />
+                <Link to="/customize">
+                  <Sparkles className="mr-2 h-4 w-4" /> AI로 디자인하기 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </>

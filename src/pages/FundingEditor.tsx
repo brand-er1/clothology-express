@@ -19,6 +19,10 @@ import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type { Funding } from "@/types/funding";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 import {
+  createFundingSizeMeasurements,
+  getProductionSizeGuide,
+} from "@/lib/production-size-guide";
+import {
   ArrowLeft,
   Calculator,
   Check,
@@ -162,6 +166,7 @@ const FundingEditor = () => {
         funding_days: funding.funding_days,
         color_options: funding.color_options,
         size_options: funding.size_options,
+        measurements: funding.measurements,
       });
       setFunding(updated);
       toast({
@@ -182,7 +187,7 @@ const FundingEditor = () => {
 
   if (loading || !funding) {
     return (
-      <div className="min-h-screen bg-[#f7f5f2]">
+      <div className="min-h-screen bg-[#f3f4f6]">
         <Header />
         <div className="flex min-h-screen items-center justify-center text-gray-500">
           <Loader2 className="mr-2 h-6 w-6 animate-spin text-brand" /> 펀딩 페이지를 자동으로 작성하고 있습니다
@@ -260,8 +265,30 @@ const FundingEditor = () => {
     setFunding({ ...funding, [key]: current.filter((option) => option !== value) });
   };
 
+  const applyUnisexSizePreset = () => {
+    const guide = getProductionSizeGuide("남녀공용", funding.cloth_type);
+    const selectedSizes = guide.sizes.map((size) => size.label);
+
+    setFunding({
+      ...funding,
+      size_options: selectedSizes,
+      measurements: createFundingSizeMeasurements({
+        gender: "남녀공용",
+        category: guide.category,
+        selectedSizes,
+        sizes: guide.sizes,
+      }),
+    });
+    toast({
+      title: "남녀공용 1·2·3 사이즈를 적용했습니다",
+      description: "평균 실측은 아래 사이즈표에서 확인할 수 있습니다.",
+    });
+  };
+
+  const isUnisexSizePreset = funding.measurements?.gender === "남녀공용";
+
   return (
-    <div className="min-h-screen bg-[#f7f5f2]">
+    <div className="min-h-screen bg-[#f3f4f6]">
       <Header />
       <main className="container mx-auto max-w-6xl px-4 pb-20 pt-24">
         <Link to="/fundings" className="mb-6 inline-flex items-center text-sm text-gray-500 hover:text-gray-900">
@@ -375,8 +402,23 @@ const FundingEditor = () => {
                 <div className="space-y-3">
                   <div>
                     <Label htmlFor="new-size">출시 사이즈</Label>
-                    <p className="mt-1 text-xs text-gray-500">S, M, L처럼 판매할 사이즈를 모두 추가하세요.</p>
+                    <p className="mt-1 text-xs text-gray-500">남녀공용은 1·2·3 프리셋으로 바로 구성할 수 있습니다.</p>
                   </div>
+                  <Button
+                    type="button"
+                    variant={isUnisexSizePreset ? "default" : "outline"}
+                    disabled={!canEditSales}
+                    onClick={applyUnisexSizePreset}
+                    className={`h-11 w-full rounded-xl ${
+                      isUnisexSizePreset
+                        ? "bg-brand hover:bg-brand-dark"
+                        : "border-brand/30 text-brand hover:bg-brand/5 hover:text-brand"
+                    }`}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    남녀공용 1·2·3 적용
+                    {isUnisexSizePreset && <Check className="ml-2 h-4 w-4" />}
+                  </Button>
                   <div className="flex gap-2">
                     <Input
                       id="new-size"
@@ -389,7 +431,7 @@ const FundingEditor = () => {
                           addOption("size");
                         }
                       }}
-                      placeholder="예: XL"
+                      placeholder="직접 입력 (예: XL)"
                       className="h-11"
                     />
                     <Button type="button" variant="outline" size="icon" disabled={!canEditSales} onClick={() => addOption("size")}>

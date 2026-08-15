@@ -8,7 +8,7 @@ const legalLinks = [
 ];
 
 export const Footer = () => (
-  <footer className="border-t border-stone-200 bg-stone-950 text-stone-300">
+  <footer className="border-t border-white/10 bg-[#21151b] text-gray-300">
     <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-col justify-between gap-8 md:flex-row">
         <div>

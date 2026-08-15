@@ -139,12 +139,12 @@ const Index = () => {
   const category = garmentCategories[selectedCategory];
 
   return (
-    <div className="min-h-screen bg-[#f5f1eb] text-[#1d1917]">
+    <div className="min-h-screen bg-[#f3f4f6] text-[#21161b]">
       <Header />
       <main className="pt-16 sm:pt-[72px]">
-        <section className="relative overflow-hidden border-b border-stone-200/80 bg-[#f7f4ef]">
+        <section className="relative overflow-hidden border-b border-gray-200/80 bg-[#f7f8fa]">
           <div className="absolute -left-56 top-28 h-[34rem] w-[34rem] rounded-full bg-white blur-[110px]" />
-          <div className="absolute -right-36 -top-44 h-[38rem] w-[38rem] rounded-full bg-[#b8857d]/20 blur-[120px]" />
+          <div className="absolute -right-36 -top-44 h-[38rem] w-[38rem] rounded-full bg-[#8f2a3d]/20 blur-[120px]" />
           <div className="relative mx-auto grid min-h-[740px] max-w-[1440px] items-center gap-12 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
             <div className="max-w-[650px]">
               <div className="inline-flex items-center rounded-full border border-brand/15 bg-white/70 px-3.5 py-2 text-[10px] font-bold tracking-[0.14em] text-brand shadow-sm backdrop-blur sm:text-xs">
@@ -181,18 +181,18 @@ const Index = () => {
 
             <div className="relative mx-auto w-full max-w-[690px] py-4">
               <div className="absolute inset-8 rounded-[3rem] bg-brand/15 blur-3xl" />
-              <div className="relative overflow-hidden rounded-[2rem] border border-stone-800/80 bg-[#171313] p-3 shadow-[0_35px_100px_rgba(43,28,25,0.25)] sm:rounded-[2.5rem] sm:p-5">
+              <div className="relative overflow-hidden rounded-[2rem] border border-gray-800/80 bg-[#21151a] p-3 shadow-[0_35px_100px_rgba(44,24,32,0.25)] sm:rounded-[2.5rem] sm:p-5">
                 <div className="flex items-center justify-between px-2 pb-4 pt-1 text-white sm:px-3">
                   <div>
-                    <p className="text-[9px] font-bold tracking-[0.18em] text-[#d9aaa4] sm:text-[10px]">BRAND-ER AI STUDIO</p>
+                    <p className="text-[9px] font-bold tracking-[0.18em] text-[#d9a8b4] sm:text-[10px]">BRAND-ER AI STUDIO</p>
                     <p className="mt-1 text-xs font-semibold text-white/80 sm:text-sm">Design workspace</p>
                   </div>
-                  <div className="flex gap-1.5"><span className="h-2 w-2 rounded-full bg-[#d5a7a0]" /><span className="h-2 w-2 rounded-full bg-white/20" /><span className="h-2 w-2 rounded-full bg-white/20" /></div>
+                  <div className="flex gap-1.5"><span className="h-2 w-2 rounded-full bg-[#d6a6b2]" /><span className="h-2 w-2 rounded-full bg-white/20" /><span className="h-2 w-2 rounded-full bg-white/20" /></div>
                 </div>
-                <div className="grid overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#221d1c] sm:grid-cols-[0.82fr_1.18fr]">
+                <div className="grid overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#2b1c23] sm:grid-cols-[0.82fr_1.18fr]">
                   <div className="order-2 border-t border-white/10 p-5 text-white sm:order-1 sm:border-r sm:border-t-0 sm:p-6">
                     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                      <p className="text-[10px] font-bold tracking-[0.14em] text-[#d9aaa4]">DESIGN BRIEF</p>
+                      <p className="text-[10px] font-bold tracking-[0.14em] text-[#d9a8b4]">DESIGN BRIEF</p>
                       <p className="mt-3 text-sm leading-6 text-white/75">240g 코튼 오버핏 반팔. 차콜 컬러, 앞가슴 미니 로고와 등판 타이포 그래픽.</p>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-2">
@@ -200,7 +200,7 @@ const Index = () => {
                         const StudioIcon = Icon as typeof Ruler;
                         return (
                           <div key={String(label)} className="rounded-xl border border-white/10 bg-black/10 p-3">
-                            <StudioIcon className="h-3.5 w-3.5 text-[#d9aaa4]" />
+                            <StudioIcon className="h-3.5 w-3.5 text-[#d9a8b4]" />
                             <p className="mt-2 text-[8px] font-bold tracking-[0.12em] text-white/35">{String(label)}</p>
                             <p className="mt-0.5 text-[11px] font-semibold text-white/80">{String(value)}</p>
                           </div>
@@ -211,9 +211,9 @@ const Index = () => {
                       디자인 생성 <Sparkles className="h-4 w-4" />
                     </div>
                   </div>
-                  <div className="order-1 relative flex min-h-[350px] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#f2e9e1_0%,#d8c6ba_55%,#bda59a_100%)] p-8 sm:order-2 sm:min-h-[520px]">
+                  <div className="order-1 relative flex min-h-[350px] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#f7f7f8_0%,#e2e3e6_55%,#bfc2c8_100%)] p-8 sm:order-2 sm:min-h-[520px]">
                     <div className="absolute left-4 top-4 rounded-full border border-white/60 bg-white/65 px-3 py-1.5 text-[9px] font-bold tracking-[0.15em] text-stone-700 backdrop-blur">FRONT · AI GENERATED</div>
-                    <div className="absolute right-4 top-4 rounded-full bg-[#201819] px-3 py-1.5 text-[9px] font-bold text-white">01 / 02</div>
+                    <div className="absolute right-4 top-4 rounded-full bg-[#24171d] px-3 py-1.5 text-[9px] font-bold text-white">01 / 02</div>
                     <div className="absolute h-64 w-64 rounded-full border border-white/35 sm:h-80 sm:w-80" />
                     <img src={getAppPath("/lovable-uploads/short_sleeve.png")} alt="AI로 생성된 반팔 티셔츠 디자인 미리보기" className="relative z-10 h-[275px] w-full object-contain drop-shadow-[0_28px_25px_rgba(38,24,21,0.28)] sm:h-[390px]" />
                     <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-2xl border border-white/55 bg-white/60 px-4 py-3 backdrop-blur-lg">
@@ -231,10 +231,10 @@ const Index = () => {
           </div>
         </section>
 
-        <section className="border-b border-stone-200 bg-[#fbfaf8]">
+        <section className="border-b border-gray-200 bg-[#fafbfc]">
           <div className="mx-auto grid max-w-[1440px] gap-px bg-stone-200 sm:grid-cols-2 xl:grid-cols-5">
             {productionSteps.map(({ icon: Icon, number, label, title, description }) => (
-              <article key={number} className="group bg-[#fbfaf8] px-5 py-7 transition hover:bg-white sm:px-7">
+              <article key={number} className="group bg-[#fafbfc] px-5 py-7 transition hover:bg-white sm:px-7">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold tracking-[0.16em] text-brand">{number} · {label}</span>
                   <Icon className="h-4 w-4 text-stone-300 transition group-hover:text-brand" />
@@ -262,7 +262,7 @@ const Index = () => {
                 onClick={() => setSelectedCategory(index)}
                 className={`group rounded-[1.5rem] border p-3 text-left transition duration-300 ${selectedCategory === index ? "border-brand bg-white shadow-[0_16px_40px_rgba(71,43,37,0.10)]" : "border-stone-200 bg-white/55 hover:border-brand/35 hover:bg-white"}`}
               >
-                <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[1.1rem] bg-[#ebe4dc] p-3">
+                <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[1.1rem] bg-[#e7e8eb] p-3">
                   <img src={getAppPath(item.image)} alt={item.label} className="h-full w-full object-contain drop-shadow-lg transition duration-300 group-hover:scale-105" />
                 </div>
                 <div className="px-1 pb-1 pt-4">
@@ -274,24 +274,24 @@ const Index = () => {
           </div>
         </section>
 
-        <section className="bg-[#1d1817] text-white">
+        <section className="bg-[#21151b] text-white">
           <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28">
             <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#daa9a3]">AI Design Studio</p>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#d7a6b2]">AI Design Studio</p>
                 <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.045em] sm:text-5xl">챗봇이 아닌,<br />의류 제작 워크스페이스.</h2>
               </div>
               <p className="max-w-md text-sm leading-7 text-white/50">핏, 원단, 컬러와 프린팅 위치까지 선택하고 FRONT / BACK 디자인을 크게 확인하세요.</p>
             </div>
-            <div className="mt-12 grid overflow-hidden rounded-[2rem] border border-white/10 bg-[#171312] lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="mt-12 grid overflow-hidden rounded-[2rem] border border-white/10 bg-[#201419] lg:grid-cols-[0.92fr_1.08fr]">
               <div className="border-b border-white/10 p-6 sm:p-9 lg:border-b-0 lg:border-r">
                 <div className="flex items-center justify-between">
-                  <div><p className="text-[10px] font-bold tracking-[0.16em] text-[#daa9a3]">01 · DESIGN BRIEF</p><h3 className="mt-3 text-2xl font-bold">만들고 싶은 옷을 설명하세요.</h3></div>
-                  <WandSparkles className="hidden h-7 w-7 text-[#daa9a3] sm:block" />
+                  <div><p className="text-[10px] font-bold tracking-[0.16em] text-[#d7a6b2]">01 · DESIGN BRIEF</p><h3 className="mt-3 text-2xl font-bold">만들고 싶은 옷을 설명하세요.</h3></div>
+                  <WandSparkles className="hidden h-7 w-7 text-[#d7a6b2] sm:block" />
                 </div>
                 <div className="mt-7 min-h-36 rounded-2xl border border-white/10 bg-white/[0.035] p-5 text-sm leading-7 text-white/65">
                   {category.label}, 여유로운 오버핏. {category.fabric} 원단에 딥 버건디 컬러. 앞가슴에는 작은 로고, 등판에는 크게 타이포 그래픽.
-                  <span className="ml-1 inline-block h-4 w-[1px] animate-pulse bg-[#daa9a3] align-middle" />
+                  <span className="ml-1 inline-block h-4 w-[1px] animate-pulse bg-[#d7a6b2] align-middle" />
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
                   {[["제품", category.label], ["핏", "오버핏"], ["원단", category.fabric], ["후가공", "실크스크린"]].map(([label, value]) => (
@@ -305,21 +305,21 @@ const Index = () => {
                   <Link to="/customize">내 디자인 생성하기 <Sparkles className="ml-2 h-4 w-4" /></Link>
                 </Button>
               </div>
-              <div className="relative flex min-h-[430px] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#eee3da_0%,#cfbab0_52%,#9f8178_100%)] p-8 sm:min-h-[580px]">
+              <div className="relative flex min-h-[430px] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#f4f4f5_0%,#d7d8dc_52%,#a6a8ae_100%)] p-8 sm:min-h-[580px]">
                 <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.35)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.35)_1px,transparent_1px)] [background-size:42px_42px]" />
                 <div className="absolute left-5 top-5 rounded-full bg-white/75 px-4 py-2 text-[10px] font-bold tracking-[0.14em] text-stone-700 backdrop-blur">FRONT VIEW</div>
-                <div className="absolute right-5 top-5 flex items-center gap-2 rounded-full bg-[#201819] px-4 py-2 text-[10px] font-bold"><span className="h-1.5 w-1.5 rounded-full bg-[#e2aba4]" /> AI GENERATED</div>
+                <div className="absolute right-5 top-5 flex items-center gap-2 rounded-full bg-[#24171d] px-4 py-2 text-[10px] font-bold"><span className="h-1.5 w-1.5 rounded-full bg-[#dfa7b4]" /> AI GENERATED</div>
                 <img src={getAppPath(category.image)} alt={`${category.label} AI 디자인 미리보기`} className="relative z-10 h-[330px] w-full object-contain drop-shadow-[0_35px_30px_rgba(45,26,22,0.3)] transition duration-500 sm:h-[455px]" />
                 <div className="absolute bottom-5 left-5 right-5 flex flex-col gap-3 rounded-2xl border border-white/50 bg-white/65 p-4 text-stone-800 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
                   <div><p className="text-[9px] font-bold tracking-[0.14em] text-brand">NEXT STEP</p><p className="mt-1 text-sm font-bold">이 디자인으로 자동 견적 받기</p></div>
-                  <Button asChild size="sm" className="rounded-full bg-[#201819] px-5 hover:bg-brand"><Link to="/design-quote">견적 확인 <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                  <Button asChild size="sm" className="rounded-full bg-[#24171d] px-5 hover:bg-brand"><Link to="/design-quote">견적 확인 <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="border-b border-stone-200 bg-[#fbfaf8]">
+        <section className="border-b border-gray-200 bg-[#fafbfc]">
           <div className="mx-auto grid max-w-[1440px] gap-12 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[0.86fr_1.14fr] lg:px-12 lg:py-28">
             <div className="self-center">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Smart estimate</p>
@@ -332,9 +332,9 @@ const Index = () => {
               </div>
             </div>
             <div className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-[0_24px_70px_rgba(68,45,39,0.08)] sm:p-7">
-              <div className="rounded-[1.5rem] bg-[#201819] p-6 text-white sm:p-8">
+              <div className="rounded-[1.5rem] bg-[#24171d] p-6 text-white sm:p-8">
                 <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-6">
-                  <div><p className="text-[10px] font-bold tracking-[0.16em] text-[#dda9a4]">ESTIMATE PREVIEW</p><h3 className="mt-2 text-xl font-bold">{selectedQuantity}장 기준 예상 견적</h3></div>
+                  <div><p className="text-[10px] font-bold tracking-[0.16em] text-[#dba8b4]">ESTIMATE PREVIEW</p><h3 className="mt-2 text-xl font-bold">{selectedQuantity}장 기준 예상 견적</h3></div>
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold text-white/55">VAT 별도</span>
                 </div>
                 <div className="py-2">
@@ -345,8 +345,8 @@ const Index = () => {
                     </div>
                   ))}
                 </div>
-                <div className="mt-2 rounded-2xl border border-[#dba7a1]/20 bg-[#dba7a1]/[0.08] p-5">
-                  <div className="flex items-center justify-between gap-4"><div><p className="text-[9px] font-bold tracking-[0.14em] text-[#dda9a4]">TOTAL ESTIMATE</p><p className="mt-2 text-lg font-bold">디자인 분석 후 바로 확인</p></div><Calculator className="h-6 w-6 text-[#dda9a4]" /></div>
+                <div className="mt-2 rounded-2xl border border-[#d9a6b2]/20 bg-[#d9a6b2]/[0.08] p-5">
+                  <div className="flex items-center justify-between gap-4"><div><p className="text-[9px] font-bold tracking-[0.14em] text-[#dba8b4]">TOTAL ESTIMATE</p><p className="mt-2 text-lg font-bold">디자인 분석 후 바로 확인</p></div><Calculator className="h-6 w-6 text-[#dba8b4]" /></div>
                   <p className="mt-3 text-[11px] leading-5 text-white/40">실제 원단과 제작 사양 확정 시 최종 금액이 달라질 수 있습니다.</p>
                 </div>
                 <Button asChild className="mt-5 h-13 w-full rounded-full bg-brand font-bold hover:bg-brand-light"><Link to="/design-quote">내 디자인 견적받기 <Upload className="ml-2 h-4 w-4" /></Link></Button>
@@ -366,7 +366,7 @@ const Index = () => {
               return (
                 <Link key={project.id} to={hasLiveFundings ? `/fundings/${project.id}` : "/fundings"} className="group">
                   <article>
-                    <div className="relative aspect-[4/5] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-[#e9e1d9] p-7">
+                    <div className="relative aspect-[4/5] overflow-hidden rounded-[1.75rem] border border-gray-200 bg-[#e5e7ea] p-7">
                       <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-bold tracking-wide text-stone-700 backdrop-blur">{project.cloth_type}</span>
                       <span aria-hidden="true" className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-stone-600 transition group-hover:text-brand"><Heart className="h-4 w-4" /></span>
                       <img src={project.image_url} alt={project.product_name} className="h-full w-full object-contain drop-shadow-xl transition duration-500 group-hover:scale-[1.04]" />
@@ -380,7 +380,7 @@ const Index = () => {
           </div>
         </section>
 
-        <section className="border-y border-stone-200 bg-[#ded3c9]">
+        <section className="border-y border-gray-200 bg-[#e1e3e6]">
           <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28">
             <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr]">
               <div>
@@ -389,15 +389,15 @@ const Index = () => {
                 <p className="mt-6 max-w-md text-sm leading-7 text-stone-600">디자인만 만들어 끝나는 서비스가 아닙니다. 샘플 확인과 생산 진행률까지 한 계정에서 이어집니다.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                <article className="overflow-hidden rounded-[1.75rem] bg-[#201819] p-5 text-white">
-                  <p className="text-[10px] font-bold tracking-[0.14em] text-[#dda9a4]">01 · AI DESIGN</p>
-                  <div className="mt-5 flex aspect-square items-center justify-center rounded-2xl bg-[radial-gradient(circle,#efe4dc_0%,#b79b90_100%)] p-4"><img src={getAppPath("/lovable-uploads/short_sleeve.png")} alt="AI 의류 디자인" className="h-full w-full object-contain drop-shadow-xl" /></div>
+                <article className="overflow-hidden rounded-[1.75rem] bg-[#24171d] p-5 text-white">
+                  <p className="text-[10px] font-bold tracking-[0.14em] text-[#dba8b4]">01 · AI DESIGN</p>
+                  <div className="mt-5 flex aspect-square items-center justify-center rounded-2xl bg-[radial-gradient(circle,#f2f3f4_0%,#bbbcc2_100%)] p-4"><img src={getAppPath("/lovable-uploads/short_sleeve.png")} alt="AI 의류 디자인" className="h-full w-full object-contain drop-shadow-xl" /></div>
                   <p className="mt-5 text-lg font-bold">앞·뒤 디자인 생성</p><p className="mt-2 text-xs leading-5 text-white/45">원하는 사양을 시각적으로 확인</p>
                 </article>
-                <article className="rounded-[1.75rem] bg-[#fbfaf8] p-5">
+                <article className="rounded-[1.75rem] bg-[#fafbfc] p-5">
                   <p className="text-[10px] font-bold tracking-[0.14em] text-brand">02 · SAMPLE CHECK</p>
                   <div className="mt-5 space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
-                    {["패턴 제작 완료", "원단 컨택 완료", "샘플 검수 대기"].map((item, index) => <div key={item} className="flex items-center gap-3 rounded-xl bg-[#f5f1eb] px-3 py-3"><span className={`flex h-6 w-6 items-center justify-center rounded-full ${index < 2 ? "bg-brand text-white" : "bg-stone-200 text-stone-400"}`}>{index < 2 ? <Check className="h-3.5 w-3.5" /> : index + 1}</span><span className="text-xs font-semibold">{item}</span></div>)}
+                    {["패턴 제작 완료", "원단 컨택 완료", "샘플 검수 대기"].map((item, index) => <div key={item} className="flex items-center gap-3 rounded-xl bg-[#f3f4f6] px-3 py-3"><span className={`flex h-6 w-6 items-center justify-center rounded-full ${index < 2 ? "bg-brand text-white" : "bg-gray-200 text-gray-400"}`}>{index < 2 ? <Check className="h-3.5 w-3.5" /> : index + 1}</span><span className="text-xs font-semibold">{item}</span></div>)}
                   </div>
                   <p className="mt-5 text-lg font-bold">샘플 확인</p><p className="mt-2 text-xs leading-5 text-stone-500">핏·원단·후가공을 생산 전 검수</p>
                 </article>
@@ -427,9 +427,9 @@ const Index = () => {
           </Accordion>
         </section>
 
-        <section className="border-t border-stone-200 bg-[#201819] text-white">
+        <section className="border-t border-gray-200 bg-[#24171d] text-white">
           <div className="mx-auto grid max-w-[1440px] gap-10 px-5 py-20 sm:px-8 md:grid-cols-[1fr_auto] md:items-end lg:px-12 lg:py-24">
-            <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#dfb1ac]">Start your collection</p><h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.045em] sm:text-5xl">20장부터,<br />당신의 브랜드를 생산하세요.</h2><p className="mt-5 text-sm leading-7 text-white/45">AI 디자인부터 샘플, 본생산과 납품까지 BRAND-ER에서 한 번에.</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#dfacb8]">Start your collection</p><h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.045em] sm:text-5xl">20장부터,<br />당신의 브랜드를 생산하세요.</h2><p className="mt-5 text-sm leading-7 text-white/45">AI 디자인부터 샘플, 본생산과 납품까지 BRAND-ER에서 한 번에.</p></div>
             <div className="flex flex-col gap-3 sm:flex-row md:flex-col lg:flex-row">
               <Button asChild size="lg" className="h-14 rounded-full bg-brand px-8 text-base font-bold hover:bg-brand-light"><Link to="/customize">AI로 디자인하기 <Sparkles className="ml-2 h-5 w-5" /></Link></Button>
               <Button asChild size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-transparent px-8 text-base text-white hover:bg-white hover:text-stone-950"><Link to="/design-quote">제작 의뢰하기 <ChevronRight className="ml-2 h-5 w-5" /></Link></Button>

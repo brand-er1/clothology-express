@@ -128,7 +128,7 @@ const Customize = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f4f0ea]">
+    <div className="min-h-screen bg-[#f2f3f5]">
       <Header />
       <main className="mx-auto max-w-[1320px] px-3 pb-24 pt-20 sm:px-6 sm:pt-24 lg:px-8 lg:pt-28">
         <div>
@@ -150,7 +150,7 @@ const Customize = () => {
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
           <section
-            className={`mt-4 rounded-[1.5rem] border border-stone-200 bg-[#fbfaf8] shadow-[0_24px_80px_rgba(36,26,24,0.06)] sm:mt-6 sm:rounded-[2rem] sm:p-9 lg:p-12 ${
+            className={`mt-4 rounded-[1.5rem] border border-gray-200 bg-[#fafbfc] shadow-[0_24px_80px_rgba(44,31,37,0.06)] sm:mt-6 sm:rounded-[2rem] sm:p-9 lg:p-12 ${
               currentStep === 4 || currentStep === 5 ? "p-2.5" : "p-4"
             }`}
           >

@@ -57,7 +57,7 @@ export const FundingSizeGuide = ({
 
   return (
     <section className="overflow-hidden rounded-[2rem] border bg-white">
-      <div className="flex flex-col justify-between gap-3 border-b bg-stone-50 px-6 py-5 sm:flex-row sm:items-end md:px-8">
+      <div className="flex flex-col justify-between gap-3 border-b bg-gray-50 px-6 py-5 sm:flex-row sm:items-end md:px-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
             SIZE GUIDE
@@ -93,7 +93,7 @@ export const FundingSizeGuide = ({
             {measurementKeys.map((measurement, index) => (
               <tr
                 key={measurement}
-                className={index % 2 === 0 ? "bg-white" : "bg-stone-50"}
+                className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
               >
                 <th className="border-t px-4 py-3 text-left font-semibold text-gray-700">
                   {measurement}

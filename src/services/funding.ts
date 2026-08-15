@@ -154,6 +154,7 @@ export const updateFunding = async (
     | "funding_days"
     | "color_options"
     | "size_options"
+    | "measurements"
   >
 ): Promise<Funding> => {
   await requireUser();
@@ -173,6 +174,7 @@ export const updateFunding = async (
     p_funding_days: updates.funding_days,
     p_color_options: updates.color_options,
     p_size_options: updates.size_options,
+    p_measurements: updates.measurements,
   });
 
   if (error) throw error;

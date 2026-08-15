@@ -145,14 +145,14 @@ export const SizeStep = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 rounded-2xl bg-white/10 p-1">
-              {(["남성", "여성"] as ProductionGender[]).map((option) => (
+            <div className="grid grid-cols-3 rounded-2xl bg-white/10 p-1">
+              {(["남성", "여성", "남녀공용"] as ProductionGender[]).map((option) => (
                 <Button
                   key={option}
                   type="button"
                   variant="ghost"
                   onClick={() => setSelectedGender(option)}
-                  className={`h-11 rounded-xl px-5 ${
+                  className={`h-11 rounded-xl px-3 ${
                     selectedGender === option
                       ? "bg-white text-brand hover:bg-white hover:text-brand"
                       : "text-white hover:bg-white/10 hover:text-white"
@@ -166,7 +166,7 @@ export const SizeStep = ({
         </div>
 
         <CardContent className="p-0">
-          <div className="grid border-b bg-stone-50 sm:grid-cols-3">
+          <div className="grid border-b bg-gray-50 sm:grid-cols-3">
             {sizes.map((size) => {
               const isSelected = selectedSizes.includes(size.label);
               return (
@@ -308,7 +308,7 @@ export const SizeStep = ({
                   {measurementKeys.map((measurement, index) => (
                     <tr
                       key={measurement}
-                      className={index % 2 === 0 ? "bg-white" : "bg-stone-50"}
+                      className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                     >
                       <th className="border-t px-4 py-3 text-left font-semibold text-gray-700">
                         {measurement}
@@ -372,7 +372,9 @@ export const SizeStep = ({
                   <br />
                   {selectedGender === "남성"
                     ? "남성 1=M(95) · 2=L(100) · 3=XL(105)"
-                    : "여성 1=S(85) · 2=M(90) · 3=L(95)"}
+                    : selectedGender === "여성"
+                      ? "여성 1=S(85) · 2=M(90) · 3=L(95)"
+                      : "남녀공용 1=90–95 · 2=100 · 3=105–110"}
                 </p>
               </div>
               <div className="flex gap-3 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">

@@ -92,7 +92,7 @@ export const Header = () => {
           <Menu className="h-5.5 w-5.5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[min(88vw,340px)] border-l-stone-200 bg-[#fbfaf8] px-5">
+      <SheetContent side="right" className="w-[min(88vw,340px)] border-l-gray-200 bg-[#f9fafb] px-5">
         <div className="border-b border-stone-200 pb-6 pt-8">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">BRAND-ER</p>
           {isAuthenticated ? (
@@ -150,7 +150,7 @@ export const Header = () => {
   );
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-stone-200/80 bg-[#fbfaf8]/90 backdrop-blur-xl">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-gray-200/80 bg-[#f9fafb]/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-8 px-4 sm:h-[72px] sm:px-6 lg:px-8">
         <Link to={accountType === "buyer" ? "/fundings" : "/"} className="flex shrink-0 items-center">
           <img

@@ -1,4 +1,4 @@
-export type ProductionGender = "남성" | "여성";
+export type ProductionGender = "남성" | "여성" | "남녀공용";
 export type ProductionSizeNumber = "1" | "2" | "3";
 
 export type ProductionSizeMeasurements = Record<string, string>;
@@ -142,6 +142,14 @@ const withoutPantsLength = (guide: StandardSizeGuide): StandardSizeGuide =>
     ]),
   );
 
+const toNumberedUnisexGuide = (
+  guide: StandardSizeGuide,
+): StandardSizeGuide => ({
+  "1": { ...guide.M },
+  "2": { ...guide.L },
+  "3": { ...guide.XL },
+});
+
 const guides: Record<ProductionGender, Record<string, StandardSizeGuide>> = {
   남성: {
     자켓: maleJacket,
@@ -163,6 +171,16 @@ const guides: Record<ProductionGender, Record<string, StandardSizeGuide>> = {
     바지: femalePants,
     반바지: withoutPantsLength(femalePants),
   },
+  남녀공용: {
+    자켓: toNumberedUnisexGuide(maleJacket),
+    맨투맨: toNumberedUnisexGuide(maleSweatshirt),
+    니트: toNumberedUnisexGuide(maleSweatshirt),
+    후드티: toNumberedUnisexGuide(maleHoodie),
+    긴팔티셔츠: toNumberedUnisexGuide(maleSweatshirt),
+    반팔티셔츠: toNumberedUnisexGuide(maleShortSleeve),
+    바지: toNumberedUnisexGuide(malePants),
+    반바지: toNumberedUnisexGuide(withoutPantsLength(malePants)),
+  },
 };
 
 const sizeLabels: Record<
@@ -179,10 +197,17 @@ const sizeLabels: Record<
     "2": { label: "M", domesticLabel: "M (90)" },
     "3": { label: "L", domesticLabel: "L (95)" },
   },
+  남녀공용: {
+    "1": { label: "1", domesticLabel: "1 (90–95)" },
+    "2": { label: "2", domesticLabel: "2 (100)" },
+    "3": { label: "3", domesticLabel: "3 (105–110)" },
+  },
 };
 
-export const normalizeProductionGender = (gender?: string): ProductionGender =>
-  /여|female|woman/i.test(gender || "") ? "여성" : "남성";
+export const normalizeProductionGender = (gender?: string): ProductionGender => {
+  if (/남녀공용|공용|unisex/i.test(gender || "")) return "남녀공용";
+  return /여|female|woman/i.test(gender || "") ? "여성" : "남성";
+};
 
 export const getProductionSizeGuide = (
   gender: ProductionGender,

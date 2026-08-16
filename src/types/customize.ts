@@ -20,6 +20,11 @@ export interface ArtworkReference {
   base64: string;
   mimeType: string;
   fileName: string;
+  backgroundRemoval?:
+    | "removed"
+    | "already-transparent"
+    | "not-detected"
+    | "preserved";
 }
 
 export interface CompositedImageReference {

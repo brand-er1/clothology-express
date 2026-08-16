@@ -218,6 +218,16 @@ export const ModifyImageStep = ({
       setArtworkPreview(
         `data:${prepared.mimeType};base64,${prepared.base64}`,
       );
+      if (
+        contentType === "logo" &&
+        prepared.backgroundRemoval === "not-detected"
+      ) {
+        toast({
+          title: "단색 배경을 찾지 못했습니다",
+          description:
+            "로고가 손상되지 않도록 원본을 유지했습니다. 흰색·단색 배경 또는 투명 PNG를 사용하면 더 정확합니다.",
+        });
+      }
       const screening = await screenTrademarkImage({
         imageBase64: prepared.base64,
         mimeType: prepared.mimeType,
@@ -747,12 +757,19 @@ export const ModifyImageStep = ({
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
                     <p className="text-xs font-extrabold text-brand">
                       {artworkContentType === "logo"
-                        ? "겉 배경 제거가 적용된 미리보기입니다."
+                        ? uploadedArtwork?.backgroundRemoval === "removed"
+                          ? "배경과 흰 테두리를 정리한 미리보기입니다."
+                          : uploadedArtwork?.backgroundRemoval ===
+                              "already-transparent"
+                            ? "기존 투명 배경을 그대로 보존했습니다."
+                            : "로고 손상 방지를 위해 원본에 가깝게 유지했습니다."
                         : "사진 배경을 제거하지 않고 원본 그대로 사용합니다."}
                     </p>
                     <p className="text-[11px] font-semibold text-gray-500">
                       {artworkContentType === "logo"
-                        ? "투명 PNG로 변환"
+                        ? uploadedArtwork?.backgroundRemoval === "not-detected"
+                          ? "원본 보호 PNG"
+                          : "투명 PNG로 변환"
                         : "고화질 WEBP로 변환"}
                     </p>
                   </div>

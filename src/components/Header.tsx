@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import { ArrowRight, LogOut, Menu, Sparkles } from "lucide-react";
+import { ArrowRight, LogOut, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { getAppPath } from "@/utils/appUrl";
 import { getAccountType, type AccountType } from "@/utils/accountRouting";
@@ -74,11 +74,12 @@ export const Header = () => {
 
   const navItems = [
     { to: "/fundings", label: "SHOP", visible: true },
-    { to: "/fabric-swatch", label: "원단 스와치", visible: true },
-    { to: "/customize", label: "컬렉션 시작하기", visible: !isAuthenticated || accountType === "seller" },
-    { to: "/design-quote", label: "내 디자인 견적", visible: !isAuthenticated || accountType === "seller" },
+    { to: "/my-fundings", label: "MY COLLECTION", visible: isAuthenticated && accountType === "buyer" },
+    { to: "/customize", label: "BRAND-ER STUDIO", visible: !isAuthenticated || accountType === "seller" },
+    { to: "/fabric-swatch", label: "원단 스와치", visible: isAuthenticated && accountType === "seller" },
+    { to: "/design-quote", label: "내 디자인 견적", visible: isAuthenticated && accountType === "seller" },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
-    { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated },
+    { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated && accountType === "seller" },
     { to: "/admin", label: "관리자", visible: isAdmin },
   ].filter((item) => item.visible);
 
@@ -137,7 +138,7 @@ export const Header = () => {
           ) : (
             <div className="space-y-2">
               <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
-                <Link to="/customize">AI로 디자인하기</Link>
+                <Link to="/fundings">컬렉션 쇼핑하기</Link>
               </Button>
               <Button asChild variant="ghost" className="h-11 w-full rounded-full text-stone-500">
                 <Link to="/auth">로그인 · 회원가입</Link>
@@ -152,7 +153,7 @@ export const Header = () => {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-gray-200/80 bg-[#f9fafb]/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-8 px-4 sm:h-[72px] sm:px-6 lg:px-8">
-        <Link to={accountType === "buyer" ? "/fundings" : "/"} className="flex shrink-0 items-center">
+        <Link to="/" className="flex shrink-0 items-center">
           <img
             src={getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png")}
             alt="BRAND-ER"
@@ -203,8 +204,8 @@ export const Header = () => {
                 <Link to="/auth">로그인</Link>
               </Button>
               <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark">
-                <Link to="/customize">
-                  <Sparkles className="mr-2 h-4 w-4" /> AI로 디자인하기 <ArrowRight className="ml-2 h-4 w-4" />
+                <Link to="/fundings">
+                  컬렉션 쇼핑하기 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </>

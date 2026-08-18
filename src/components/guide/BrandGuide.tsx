@@ -25,8 +25,8 @@ export const BrandGuide = () => {
   const shownKeys = useRef<Set<string>>(new Set());
   const lastActivityAt = useRef(Date.now());
 
-  const roam = useMascotRoam({ enabled: !isMobile, paused: isBubbleOpen || isMenuOpen });
-  const docked = isMobile || roam.safeZoneActive;
+  const roam = useMascotRoam({ enabled: true, paused: isBubbleOpen || isMenuOpen, compact: isMobile });
+  const docked = roam.safeZoneActive;
 
   useEffect(() => {
     let active = true;
@@ -164,7 +164,7 @@ export const BrandGuide = () => {
       <BrandMascot
         pose={docked ? "idle" : roam.pose}
         flip={!docked && roam.flip}
-        size={docked ? (isMobile ? 56 : 64) : 88}
+        size={docked ? (isMobile ? 56 : 64) : isMobile ? 68 : 88}
         className={!docked && roam.isMoving ? "animate-mascot-bounce drop-shadow-xl" : "drop-shadow-xl"}
       />
     </button>

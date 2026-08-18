@@ -101,6 +101,18 @@ export const returningVisitorGreeting: GuideMessage = {
   text: "다시 오셨네요! 👋 필요하신 게 있으면 언제든 눌러주세요.",
 };
 
+/**
+ * Shown once right when a visitor actually signs in (not on a page load that merely restores an
+ * existing session) — greets them by the same name the header shows (브랜드명 → 닉네임 → 이메일
+ * 앞부분 순, rule: never invent a name the account doesn't actually have).
+ */
+export const getLoginWelcomeMessage = (name: string): GuideMessage => ({
+  key: "login-welcome",
+  priority: 1,
+  maxDisplayCount: 1,
+  text: `${name}님, 로그인됐어요! 👋 오늘은 뭐 만들어볼까요?`,
+});
+
 /** Page-contextual messages, keyed by exact pathname. */
 export const staticMessages: Record<string, GuideMessage> = {
   "/": {

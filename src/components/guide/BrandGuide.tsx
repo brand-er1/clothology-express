@@ -17,6 +17,7 @@ import {
   getFundingDetailId,
   getFundingProgressMessage,
   getKakaoPayResultMessage,
+  getLoginWelcomeMessage,
   getMyFundingsMessage,
   hasGreetedThisSession,
   hasSeenFirstVisitIntro,
@@ -73,6 +74,25 @@ export const BrandGuide = () => {
 
   useEffect(() => {
     let active = true;
+    let loginWelcomeTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // Same brand name → username → email-prefix fallback the header uses, so the mascot never
+    // greets someone by a name their account doesn't actually have.
+    const resolveDisplayName = async (userId: string, metadata: Record<string, unknown>, email?: string) => {
+      const fallback =
+        (typeof metadata.brand_name === "string" && metadata.brand_name) ||
+        (typeof metadata.username === "string" && metadata.username) ||
+        email?.split("@")[0] ||
+        "회원";
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("brand_name, username")
+        .eq("id", userId)
+        .maybeSingle();
+
+      return data?.brand_name || data?.username || fallback;
+    };
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
@@ -80,14 +100,30 @@ export const BrandGuide = () => {
       setAccountType(data.session ? getAccountType(data.session.user) : null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
       setIsAuthenticated(Boolean(session));
       setAccountType(session ? getAccountType(session.user) : null);
+
+      // Greets by name only at the actual moment of signing in — not on a page load that just
+      // restores an already-open session (that's INITIAL_SESSION, left to the normal greeting).
+      if (event === "SIGNED_IN" && session?.user) {
+        resolveDisplayName(session.user.id, session.user.user_metadata, session.user.email).then((name) => {
+          if (!active) return;
+          // Delayed past the post-login redirect's own route-change effect (which resets the
+          // bubble on every pathname change), so this greeting is the one that actually lands.
+          loginWelcomeTimer = setTimeout(() => {
+            if (!active) return;
+            markGreetedThisSession();
+            showMessage(getLoginWelcomeMessage(name));
+          }, 1500);
+        });
+      }
     });
 
     return () => {
       active = false;
+      if (loginWelcomeTimer) clearTimeout(loginWelcomeTimer);
       subscription.unsubscribe();
     };
   }, []);
@@ -388,8 +424,16 @@ export const BrandGuide = () => {
     </button>
   );
 
-  const panel = (
-    <div className="pointer-events-auto flex flex-col items-end gap-3">
+  // A character dragged into the upper half of the screen would otherwise push the menu/bubble
+  // (which normally opens upward, above the character) off the top of the viewport — flip it to
+  // open downward instead. Docked mode always sits low in a fixed corner, so it never needs this.
+  const flipPanelBelow = !docked && roam.bottomPercent > 55;
+  // Same idea horizontally: near the left edge, right-aligning the popup to the character would
+  // push it off the left of the screen, so left-align it instead.
+  const flipPanelLeft = !docked && roam.xPercent < 25;
+
+  const popupContent = (
+    <>
       {isMenuOpen && (
         <div className="w-60 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl">
           {menuItems.map((item) => (
@@ -478,11 +522,28 @@ export const BrandGuide = () => {
               )}
             </div>
           )}
-          <span className="absolute -bottom-1.5 right-8 h-3 w-3 rotate-45 border-b border-r border-black/10 bg-white" />
+          <span
+            className={`absolute h-3 w-3 rotate-45 bg-white ${flipPanelLeft ? "left-8" : "right-8"} ${
+              flipPanelBelow ? "-top-1.5 border-l border-t border-black/10" : "-bottom-1.5 border-b border-r border-black/10"
+            }`}
+          />
         </div>
       )}
+    </>
+  );
 
+  // The popup is absolutely positioned off a wrapper sized to just the character, so the
+  // character's own anchor point never shifts when a menu/bubble opens, closes, or flips side.
+  const panel = (
+    <div className="pointer-events-auto relative inline-block">
       {characterButton}
+      <div
+        className={`absolute flex flex-col gap-3 ${flipPanelBelow ? "top-full mt-3" : "bottom-full mb-3"} ${
+          flipPanelLeft ? "left-0 items-start" : "right-0 items-end"
+        }`}
+      >
+        {popupContent}
+      </div>
     </div>
   );
 

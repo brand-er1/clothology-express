@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Calculator,
+  CircleCheck,
   CirclePlus,
   Info,
+  Layers,
   Loader2,
   Printer,
   RefreshCw,
@@ -39,6 +41,7 @@ import {
   printSizeLabels,
 } from "@/lib/production-estimate-options";
 import {
+  aggregateFromItems,
   normalizeEstimateQuantity,
   recalculateEstimateQuantity,
 } from "@/lib/production-estimate-quantity";
@@ -156,6 +159,10 @@ export const ProductionEstimateCard = ({
   const [error, setError] = useState<string | null>(null);
   const [manualAnalysis, setManualAnalysis] =
     useState<ManualProductionAnalysis | null>(null);
+  // Which detected items count toward the estimate — lets a visitor uncheck a wrongly-detected
+  // item (e.g. a duplicate front/back read as two garments) instead of the whole analysis being
+  // thrown away. Reset to "all included" whenever a fresh analysis loads.
+  const [includedItemIndices, setIncludedItemIndices] = useState<Set<number> | null>(null);
   const requestIdRef = useRef(0);
   const minimumQuantity = baseEstimate?.garment.moq ?? 20;
   const activeQuantity = normalizeEstimateQuantity(
@@ -169,6 +176,50 @@ export const ProductionEstimateCard = ({
         : null,
     [activeQuantity, baseEstimate],
   );
+
+  useEffect(() => {
+    if (estimate?.items && estimate.items.length > 1) {
+      setIncludedItemIndices(new Set(estimate.items.map((item) => item.itemIndex)));
+    } else {
+      setIncludedItemIndices(null);
+    }
+    // Only reset when a genuinely new analysis loads, not on every quantity-driven recalculation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseEstimate]);
+
+  const toggleItemIncluded = (itemIndex: number) => {
+    setIncludedItemIndices((current) => {
+      if (!current) return current;
+      const next = new Set(current);
+      if (next.has(itemIndex)) {
+        if (next.size <= 1) return current; // always keep at least one item priced
+        next.delete(itemIndex);
+      } else {
+        next.add(itemIndex);
+      }
+      return next;
+    });
+  };
+
+  // The estimate actually shown and reported upward: for a single-item analysis this is just
+  // `estimate` unchanged, and for a multi-item analysis it's the SET TOTAL re-summed from only
+  // the items the visitor left checked.
+  const displayEstimate = useMemo(() => {
+    if (!estimate || !estimate.items || estimate.items.length <= 1 || !includedItemIndices) {
+      return estimate;
+    }
+    const visibleItems = estimate.items.filter((item) => includedItemIndices.has(item.itemIndex));
+    if (visibleItems.length === 0) return estimate;
+
+    return {
+      ...estimate,
+      decorations: visibleItems.flatMap((item) => item.decorations),
+      accessories: visibleItems.flatMap((item) => item.accessories),
+      totals: aggregateFromItems(visibleItems, estimate.totals.quantity),
+      isPartial: visibleItems.some((item) => item.isPartial),
+      items: visibleItems,
+    };
+  }, [estimate, includedItemIndices]);
 
   const changeQuantity = (value: number) => {
     const nextQuantity = normalizeEstimateQuantity(value, minimumQuantity);
@@ -231,12 +282,12 @@ export const ProductionEstimateCard = ({
   }, [loadEstimate]);
 
   useEffect(() => {
-    onEstimateChange?.(estimate);
-  }, [estimate, onEstimateChange]);
+    onEstimateChange?.(displayEstimate);
+  }, [displayEstimate, onEstimateChange]);
 
   if (isLoading && !estimate) return <EstimateLoading />;
 
-  if (error || !estimate) {
+  if (error || !estimate || !displayEstimate) {
     return (
       <Card className="w-full border-rose-200 bg-rose-50/50 p-5">
         <div className="flex items-start gap-3">
@@ -262,14 +313,15 @@ export const ProductionEstimateCard = ({
     );
   }
 
-  const { analysis, garment, totals, decorations } = estimate;
+  const { analysis, garment, totals, decorations } = displayEstimate;
   const isKnit = analysis.categoryKey === "knit";
-  const accessories = estimate.accessories || [];
+  const accessories = displayEstimate.accessories || [];
   const accessoryUnitTotal = totals.accessoryUnitTotal || 0;
   const accessoryTotal = totals.accessoryTotal || 0;
-  const totalLabel = estimate.isPartial
+  const totalLabel = displayEstimate.isPartial
     ? `${totals.quantity}장 기준 확인 가능한 합계`
     : `${totals.quantity}장 기준 예상 제작비`;
+  const allItems = estimate.items && estimate.items.length > 1 ? estimate.items : null;
 
   const updateManualAnalysis = (
     updater: (draft: ManualProductionAnalysis) => ManualProductionAnalysis,
@@ -395,7 +447,126 @@ export const ProductionEstimateCard = ({
         )}
       </div>
 
-      {editable && (
+      {allItems && (
+        <div className="border-b border-stone-200 bg-[#fbfaf8] p-5">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-brand" />
+            <p className="font-extrabold text-stone-950">
+              이미지에서 {allItems.length}개의 제작 품목을 감지했습니다
+            </p>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-stone-500">
+            잘못 감지된 품목이 있다면 체크를 해제해 이 견적에서 제외할 수 있어요. 각 품목은
+            패턴비·샘플비·생산공임을 독립적으로 계산한 뒤 합산합니다.
+          </p>
+
+          <div className="mt-4 space-y-3">
+            {allItems.map((item, index) => {
+              const included = includedItemIndices?.has(item.itemIndex) ?? true;
+              return (
+                <div
+                  key={item.itemIndex}
+                  className={`overflow-hidden rounded-2xl border transition ${
+                    included ? "border-brand/30 bg-white" : "border-stone-200 bg-stone-50 opacity-60"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleItemIncluded(item.itemIndex)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                          included ? "border-brand bg-brand text-white" : "border-stone-300 text-transparent"
+                        }`}
+                      >
+                        <CircleCheck className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="text-sm font-extrabold text-stone-950">
+                        ITEM {index + 1} · {item.itemLabel}
+                      </span>
+                    </span>
+                    <span className="text-xs font-bold text-brand">
+                      {formatRange(item.totals.totalMin, item.totals.totalMax, item.totals.totalIsStartingFrom)}
+                    </span>
+                  </button>
+                  {included && (
+                    <div className="grid gap-3 border-t border-stone-100 px-4 py-3 text-xs text-stone-600 sm:grid-cols-2">
+                      <div>
+                        <p>예상 원단: {item.material.composition}</p>
+                        {item.decorations.length > 0 && (
+                          <p className="mt-1">
+                            후가공:{" "}
+                            {item.decorations
+                              .map((decoration) => `${decoration.locationLabel} ${decoration.label}`)
+                              .join(", ")}
+                          </p>
+                        )}
+                        {item.accessories.length > 0 && (
+                          <p className="mt-1">
+                            부자재:{" "}
+                            {item.accessories
+                              .map((accessory) => `${accessory.label} ${accessory.count}개`)
+                              .join(", ")}
+                          </p>
+                        )}
+                        {item.decorations.length === 0 && item.accessories.length === 0 && (
+                          <p className="mt-1">뚜렷한 후가공·부자재가 확인되지 않았습니다.</p>
+                        )}
+                      </div>
+                      <div className="space-y-1 sm:text-right">
+                        <p>
+                          패턴비 <strong className="text-stone-900">{formatWon(item.totals.patternCost)}</strong>
+                        </p>
+                        <p>
+                          샘플비 <strong className="text-stone-900">{formatWon(item.totals.sampleCost)}</strong>
+                        </p>
+                        <p>
+                          예상 장당 생산비{" "}
+                          <strong className="text-stone-900">
+                            {item.totals.productionMin === null || item.totals.productionMax === null
+                              ? "상담 후 확정"
+                              : formatRange(
+                                  item.totals.productionMin,
+                                  item.totals.productionMax,
+                                  item.totals.productionIsStartingFrom,
+                                )}
+                          </strong>
+                        </p>
+                        <p>
+                          {item.totals.quantity}장 생산비{" "}
+                          <strong className="text-stone-900">
+                            {formatRange(item.totals.productionTotalMin, item.totals.productionTotalMax)}
+                          </strong>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 rounded-xl bg-brand/5 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-extrabold text-brand">
+                SET TOTAL · {totals.quantity}세트 기준
+              </p>
+              <p className="text-sm font-black text-brand">
+                {formatRange(totals.totalMin, totals.totalMax, totals.totalIsStartingFrom)}
+              </p>
+            </div>
+            <p className="mt-1 text-[11px] leading-5 text-stone-500">
+              개발비 {formatWon(totals.developmentTotal)} · 생산비{" "}
+              {formatRange(totals.productionTotalMin, totals.productionTotalMax)} · 후가공비{" "}
+              {formatRange(totals.decorationTotalMin, totals.decorationTotalMax)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {editable && !allItems && (
         <div className="border-b border-stone-200 bg-[#fbfaf8] p-5">
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
             <div>

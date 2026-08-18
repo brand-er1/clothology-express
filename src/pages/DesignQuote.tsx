@@ -13,6 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import { Header } from "@/components/Header";
+import { useMascotPageContext } from "@/components/guide/MascotContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,6 +70,8 @@ const DesignQuote = () => {
     },
     [previewUrl],
   );
+
+  useMascotPageContext({ page: "design-quote", hasEstimate: Boolean(estimate) });
 
   const selectFile = (nextFile: File) => {
     if (!allowedImageTypes.has(nextFile.type)) {

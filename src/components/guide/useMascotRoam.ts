@@ -6,15 +6,22 @@ const ROAM_MIN_PCT = 8;
 const ROAM_MAX_PCT = 80;
 const ROAM_MIN_BOTTOM_PCT = 4;
 const ROAM_MAX_BOTTOM_PCT = 20;
+// Mobile screens are narrower and shorter, so the roam band is tighter and stays low,
+// out of the way of page content, while still visibly moving around.
+const COMPACT_MIN_PCT = 18;
+const COMPACT_MAX_PCT = 70;
+const COMPACT_MIN_BOTTOM_PCT = 4;
+const COMPACT_MAX_BOTTOM_PCT = 12;
 const ENTRY_START_PCT = 108;
 const RUN_FRAME_MS = 110;
 const MOVE_DURATION_MS = 1700;
 
 type RoamOptions = {
-  /** Desktop-only: mobile keeps the character docked in the corner instead of roaming. */
   enabled: boolean;
   /** Freezes movement in place (bubble or quick menu open) without losing roam eligibility. */
   paused: boolean;
+  /** Mobile: tighter roam band and lower max height, per the "narrower range on mobile" rule. */
+  compact: boolean;
 };
 
 type RoamState = {
@@ -27,9 +34,13 @@ type RoamState = {
   safeZoneActive: boolean;
 };
 
-export const useMascotRoam = ({ enabled, paused }: RoamOptions): RoamState => {
+export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamState => {
+  const minPct = compact ? COMPACT_MIN_PCT : ROAM_MIN_PCT;
+  const maxPct = compact ? COMPACT_MAX_PCT : ROAM_MAX_PCT;
+  const minBottomPct = compact ? COMPACT_MIN_BOTTOM_PCT : ROAM_MIN_BOTTOM_PCT;
+  const maxBottomPct = compact ? COMPACT_MAX_BOTTOM_PCT : ROAM_MAX_BOTTOM_PCT;
   const [xPercent, setXPercent] = useState(ENTRY_START_PCT);
-  const [bottomPercent, setBottomPercent] = useState(ROAM_MIN_BOTTOM_PCT);
+  const [bottomPercent, setBottomPercent] = useState(minBottomPct);
   const [isMoving, setIsMoving] = useState(false);
   const [isEntering, setIsEntering] = useState(true);
   const [flip, setFlip] = useState(false);
@@ -95,12 +106,12 @@ export const useMascotRoam = ({ enabled, paused }: RoamOptions): RoamState => {
       if (cancelled) return;
       let next = xRef.current;
       while (Math.abs(next - xRef.current) < 18) {
-        next = ROAM_MIN_PCT + Math.random() * (ROAM_MAX_PCT - ROAM_MIN_PCT);
+        next = minPct + Math.random() * (maxPct - minPct);
       }
       setFlip(next < xRef.current);
       xRef.current = next;
       setXPercent(next);
-      setBottomPercent(ROAM_MIN_BOTTOM_PCT + Math.random() * (ROAM_MAX_BOTTOM_PCT - ROAM_MIN_BOTTOM_PCT));
+      setBottomPercent(minBottomPct + Math.random() * (maxBottomPct - minBottomPct));
       setIsMoving(true);
       setIsEntering(false);
 
@@ -127,7 +138,7 @@ export const useMascotRoam = ({ enabled, paused }: RoamOptions): RoamState => {
       cancelled = true;
       clearAll();
     };
-  }, [enabled, paused, safeZoneActive]);
+  }, [enabled, paused, safeZoneActive, minPct, maxPct, minBottomPct, maxBottomPct]);
 
   return {
     xPercent,

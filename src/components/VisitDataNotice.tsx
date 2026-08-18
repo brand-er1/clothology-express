@@ -19,7 +19,10 @@ export const VisitDataNotice = () => {
   };
 
   return (
-    <aside className="fixed inset-x-3 bottom-3 z-[70] mx-auto max-w-3xl rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-2xl backdrop-blur sm:bottom-5 sm:flex sm:items-center sm:gap-4 sm:px-5">
+    <aside
+      data-mascot-safezone
+      className="fixed inset-x-3 bottom-3 z-[70] mx-auto max-w-3xl rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-2xl backdrop-blur sm:bottom-5 sm:flex sm:items-center sm:gap-4 sm:px-5"
+    >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-stone-900">방문정보 수집 안내</p>
         <p className="mt-1 text-xs leading-5 text-stone-500">

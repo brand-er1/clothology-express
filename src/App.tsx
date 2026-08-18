@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
+import NotFound from './pages/NotFound';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import { AuthGuard } from './components/auth/AuthGuard';
@@ -24,6 +25,7 @@ import { getAppUrl, routerBasename } from './utils/appUrl';
 import { useIsMobile } from './hooks/use-mobile';
 import { Footer } from './components/Footer';
 import { BrandGuide } from './components/guide/BrandGuide';
+import { MascotProvider } from './components/guide/MascotContext';
 import { SiteVisitTracker } from './components/SiteVisitTracker';
 import { VisitDataNotice } from './components/VisitDataNotice';
 import VisitDataPolicy from './pages/VisitDataPolicy';
@@ -101,30 +103,32 @@ function App() {
   return (
     <div className={isMobile ? 'mobile-view' : 'desktop-view'}>
       <BrowserRouter basename={routerBasename}>
-        <SiteVisitTracker />
-        <VisitDataNotice />
-        <WelcomeNotification />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
-          <Route path="/customize" element={<AuthGuard requiredAccountType="seller"><Customize /></AuthGuard>} />
-          <Route path="/design-quote" element={<AuthGuard requiredAccountType="seller"><DesignQuote /></AuthGuard>} />
-          <Route path="/fundings" element={<Fundings />} />
-          <Route path="/fundings/:id" element={<FundingDetail />} />
-          <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />
-          <Route path="/fundings/:id/manage" element={<AuthGuard requiredAccountType="seller"><FundingManager /></AuthGuard>} />
-          <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
-          <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
-          <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
-          <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
-          <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
-          <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <Footer />
-        <BrandGuide />
+        <MascotProvider>
+          <SiteVisitTracker />
+          <VisitDataNotice />
+          <WelcomeNotification />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+            <Route path="/customize" element={<AuthGuard requiredAccountType="seller"><Customize /></AuthGuard>} />
+            <Route path="/design-quote" element={<AuthGuard requiredAccountType="seller"><DesignQuote /></AuthGuard>} />
+            <Route path="/fundings" element={<Fundings />} />
+            <Route path="/fundings/:id" element={<FundingDetail />} />
+            <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />
+            <Route path="/fundings/:id/manage" element={<AuthGuard requiredAccountType="seller"><FundingManager /></AuthGuard>} />
+            <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
+            <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
+            <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
+            <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
+            <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
+            <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Footer />
+          <BrandGuide />
+        </MascotProvider>
       </BrowserRouter>
       <Toaster />
     </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { useMascotPageContext } from "@/components/guide/MascotContext";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -86,6 +87,16 @@ const MyFundings = () => {
     () => paidItems.filter((item) => item.payment_status !== "ready"),
     [paidItems],
   );
+
+  useMascotPageContext({
+    page: "my-fundings",
+    myFundingsSummary: loading
+      ? undefined
+      : {
+          plannedCount: plannedItems.length,
+          needsRevisionCount: createdFundings.filter((funding) => funding.status === "rejected").length,
+        },
+  });
   const paidAmount = activePaidItems
     .filter((item) => item.payment_status === "paid" && item.status !== "cancelled")
     .reduce((sum, item) => sum + item.total_amount, 0);

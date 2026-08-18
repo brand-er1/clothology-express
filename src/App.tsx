@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
+import NotFound from './pages/NotFound';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import { AuthGuard } from './components/auth/AuthGuard';
@@ -123,7 +124,7 @@ function App() {
             <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
             <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
             <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />
           <BrandGuide />

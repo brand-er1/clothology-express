@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { useMascotPageContext } from "@/components/guide/MascotContext";
 import { Button } from "@/components/ui/button";
 import { approveKakaoPayFunding, cancelFundingParticipation } from "@/services/funding";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +16,8 @@ const KakaoPayResult = () => {
   const [message, setMessage] = useState("카카오페이 결제 결과를 확인하고 있습니다.");
   const [fundingId, setFundingId] = useState<string | null>(null);
   const handled = useRef(false);
+
+  useMascotPageContext({ resultState: state, resultMessage: message });
 
   useEffect(() => {
     if (handled.current) return;

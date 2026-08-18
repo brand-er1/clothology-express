@@ -8,13 +8,21 @@ import { fetchFunding } from "@/services/funding";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   customizeDetailNudge,
+  customizeStepTips,
   firstVisitIntro,
   fundingConceptIntro,
+  fundingDetailHelp,
   getFundingDetailId,
   getFundingProgressMessage,
+  getKakaoPayResultMessage,
+  getMyFundingsMessage,
+  hasGreetedThisSession,
   hasSeenFirstVisitIntro,
   idleTips,
   markFirstVisitIntroSeen,
+  markGreetedThisSession,
+  quoteObjectionNudge,
+  returningVisitorGreeting,
   staticMessages,
   type GuideMessage,
 } from "./mascotConfig";
@@ -25,7 +33,7 @@ const IDLE_DELAY_MS = 4000;
 const AUTO_HIDE_MS = 9000;
 const IDLE_TIP_MIN_MS = 26000;
 const IDLE_TIP_MAX_MS = 42000;
-const CUSTOMIZE_NUDGE_DELAY_MS = 4000;
+const CONTEXT_NUDGE_DELAY_MS = 4000;
 const CUSTOMIZE_DESIGN_STEP = 3;
 const CUSTOMIZE_SHORT_DETAIL_LENGTH = 12;
 
@@ -49,6 +57,10 @@ export const BrandGuide = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const shownKeys = useRef<Set<string>>(new Set());
   const lastActivityAt = useRef(Date.now());
+  // rule 27: visitors who keep dismissing without engaging get nudged less; engaged visitors get more.
+  const missCount = useRef(0);
+  const engagementCount = useRef(0);
+  const hasEngagedWithBubble = useRef(false);
 
   const roam = useMascotRoam({ enabled: true, paused: isBubbleOpen || isMenuOpen, compact: isMobile });
   const docked = roam.safeZoneActive;
@@ -74,9 +86,26 @@ export const BrandGuide = () => {
     };
   }, []);
 
-  // Resolves the best message for the current route: first-visit intro takes priority
-  // everywhere until seen, then funding concept/progress (real data only), then the
-  // route's static tip. Only one bubble is ever shown at a time (rule 25).
+  const showMessage = (candidate: GuideMessage) => {
+    hasEngagedWithBubble.current = false;
+    shownKeys.current.add(candidate.key);
+    setMessage(candidate);
+    setIsBubbleOpen(true);
+  };
+
+  const closeBubble = () => {
+    if (hasEngagedWithBubble.current) {
+      engagementCount.current += 1;
+    } else {
+      missCount.current += 1;
+    }
+    setIsBubbleOpen(false);
+  };
+
+  // Resolves the best message for the current route: first-visit intro (or, for a visitor who
+  // already saw it on an earlier visit, a light "welcome back") takes priority everywhere until
+  // seen, then funding concept/progress (real data only), then the route's static tip. Only one
+  // bubble is ever shown at a time (rule 25).
   useEffect(() => {
     setIsMenuOpen(false);
     setIsBubbleOpen(false);
@@ -88,7 +117,11 @@ export const BrandGuide = () => {
     let showTimer: ReturnType<typeof setTimeout> | undefined;
 
     const resolveCandidates = async (): Promise<(GuideMessage | null)[]> => {
-      const intro = !hasSeenFirstVisitIntro() ? firstVisitIntro : null;
+      const intro = !hasSeenFirstVisitIntro()
+        ? firstVisitIntro
+        : !hasGreetedThisSession()
+          ? returningVisitorGreeting
+          : null;
 
       if (fundingId) {
         try {
@@ -106,15 +139,13 @@ export const BrandGuide = () => {
     resolveCandidates().then((candidates) => {
       if (cancelled) return;
       const resolved = pickCandidate(candidates, shownKeys.current);
-      setMessage(resolved);
+      if (!resolved) return;
 
-      if (resolved) {
-        showTimer = setTimeout(() => {
-          if (resolved.key === firstVisitIntro.key) markFirstVisitIntroSeen();
-          shownKeys.current.add(resolved.key);
-          setIsBubbleOpen(true);
-        }, IDLE_DELAY_MS);
-      }
+      showTimer = setTimeout(() => {
+        if (resolved.key === firstVisitIntro.key) markFirstVisitIntroSeen();
+        if (resolved.key === returningVisitorGreeting.key) markGreetedThisSession();
+        showMessage(resolved);
+      }, IDLE_DELAY_MS);
     });
 
     return () => {
@@ -125,45 +156,101 @@ export const BrandGuide = () => {
 
   useEffect(() => {
     if (!isBubbleOpen) return;
-    const hideTimer = setTimeout(() => setIsBubbleOpen(false), AUTO_HIDE_MS);
+    const hideTimer = setTimeout(closeBubble, AUTO_HIDE_MS);
     return () => clearTimeout(hideTimer);
   }, [isBubbleOpen]);
 
-  // Design-step nudge (rule 4/5): if the visitor lingers on the AI prompt step with a very
-  // short description, point them at the example/trend cards already built into that step
-  // instead of duplicating prompt-writing UI here. Debounced by pageContext changing on
-  // every keystroke, so it only fires ~4s after typing stops.
+  // Customize wizard, step-driven nudges: a short-description nudge on the AI prompt step
+  // (rule 4/5, pointing at the example/trend cards already built into that step rather than
+  // duplicating them here) and a MOQ/sample tip on the material and size steps (rule 3/15/16).
+  // Debounced by pageContext changing on every keystroke, so it settles ~4s after input stops.
   useEffect(() => {
     if (location.pathname !== "/customize") return;
     if (isBubbleOpen || isMenuOpen) return;
-    if (shownKeys.current.has(customizeDetailNudge.key)) return;
 
-    const step = pageContext.step;
+    const step = typeof pageContext.step === "number" ? pageContext.step : null;
     const detailLength = typeof pageContext.detailLength === "number" ? pageContext.detailLength : 0;
-    if (step !== CUSTOMIZE_DESIGN_STEP || detailLength >= CUSTOMIZE_SHORT_DETAIL_LENGTH) return;
 
-    const timer = setTimeout(() => {
-      shownKeys.current.add(customizeDetailNudge.key);
-      setMessage(customizeDetailNudge);
-      setIsBubbleOpen(true);
-    }, CUSTOMIZE_NUDGE_DELAY_MS);
+    let candidate: GuideMessage | null = null;
+    if (step === CUSTOMIZE_DESIGN_STEP && detailLength < CUSTOMIZE_SHORT_DETAIL_LENGTH) {
+      candidate = customizeDetailNudge;
+    } else if (step !== null && customizeStepTips[step]) {
+      candidate = customizeStepTips[step];
+    }
 
+    if (!candidate || shownKeys.current.has(candidate.key)) return;
+
+    const timer = setTimeout(() => showMessage(candidate as GuideMessage), CONTEXT_NUDGE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [location.pathname, pageContext.step, pageContext.detailLength, isBubbleOpen, isMenuOpen]);
 
-  // Random idle nudges (rule 7): if the visitor hasn't interacted with the guide in a while
-  // and nothing else is showing, offer a soft check-in instead of staying silent forever.
+  // Quote page: once a real estimate exists and the visitor still hasn't acted a while after
+  // the pricing-structure tip, offer to help adjust the request instead of just going quiet (rule 8).
+  useEffect(() => {
+    if (location.pathname !== "/design-quote") return;
+    if (isBubbleOpen || isMenuOpen) return;
+    if (!pageContext.hasEstimate) return;
+    if (!shownKeys.current.has(staticMessages["/design-quote"]?.key ?? "")) return;
+    if (shownKeys.current.has(quoteObjectionNudge.key)) return;
+
+    const timer = setTimeout(() => showMessage(quoteObjectionNudge), IDLE_TIP_MIN_MS / 2);
+    return () => clearTimeout(timer);
+  }, [location.pathname, pageContext.hasEstimate, isBubbleOpen, isMenuOpen]);
+
+  // My-fundings: a real, per-user priority message (needs revision > payment pending > goal
+  // reached > generic) instead of a single static line, built only from counts the page itself
+  // fetched (rule 18/24).
+  useEffect(() => {
+    if (location.pathname !== "/my-fundings") return;
+    if (isBubbleOpen || isMenuOpen) return;
+
+    const summary = pageContext.myFundingsSummary as
+      | { plannedCount: number; needsRevisionCount: number }
+      | undefined;
+    if (!summary) return;
+
+    const candidate = getMyFundingsMessage(summary);
+    if (shownKeys.current.has(candidate.key)) return;
+
+    const timer = setTimeout(() => showMessage(candidate), CONTEXT_NUDGE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [location.pathname, pageContext.myFundingsSummary, isBubbleOpen, isMenuOpen]);
+
+  // KakaoPay result: mirrors the page's own already-accurate state/message in the mascot's
+  // voice instead of a second, possibly-inconsistent claim (rule 20).
+  useEffect(() => {
+    if (!location.pathname.startsWith("/payments/kakaopay")) return;
+    if (isBubbleOpen || isMenuOpen) return;
+
+    const resultState = typeof pageContext.resultState === "string" ? pageContext.resultState : "";
+    const resultMessage = typeof pageContext.resultMessage === "string" ? pageContext.resultMessage : "";
+    const candidate = getKakaoPayResultMessage(resultState, resultMessage);
+    if (!candidate || shownKeys.current.has(candidate.key)) return;
+
+    const timer = setTimeout(() => showMessage(candidate), 800);
+    return () => clearTimeout(timer);
+  }, [location.pathname, pageContext.resultState, pageContext.resultMessage, isBubbleOpen, isMenuOpen]);
+
+  // Idle nudges (rule 7/19): if the visitor hasn't interacted with the guide in a while and
+  // nothing else is showing, offer a soft check-in — on a funding detail page this is the more
+  // useful "questions about this design?" prompt once, otherwise a random light tip. Frequency
+  // adapts to how the visitor has treated the guide so far (rule 27).
   useEffect(() => {
     let cancelled = false;
 
     const scheduleTip = () => {
-      const delay = IDLE_TIP_MIN_MS + Math.random() * (IDLE_TIP_MAX_MS - IDLE_TIP_MIN_MS);
+      const adapt = missCount.current >= 3 ? 1.6 : engagementCount.current >= 2 ? 0.7 : 1;
+      const delay = (IDLE_TIP_MIN_MS + Math.random() * (IDLE_TIP_MAX_MS - IDLE_TIP_MIN_MS)) * adapt;
       const timer = setTimeout(() => {
         if (cancelled) return;
-        if (!isBubbleOpen && !isMenuOpen && Date.now() - lastActivityAt.current > IDLE_TIP_MIN_MS) {
-          const tip = idleTips[Math.floor(Math.random() * idleTips.length)];
-          setMessage({ key: `idle-${Date.now()}`, priority: 5, text: tip });
-          setIsBubbleOpen(true);
+        if (!isBubbleOpen && !isMenuOpen && Date.now() - lastActivityAt.current > IDLE_TIP_MIN_MS * adapt) {
+          const isFundingDetail = Boolean(getFundingDetailId(location.pathname));
+          if (isFundingDetail && !shownKeys.current.has(fundingDetailHelp.key)) {
+            showMessage(fundingDetailHelp);
+          } else {
+            const tip = idleTips[Math.floor(Math.random() * idleTips.length)];
+            showMessage({ key: `idle-${Date.now()}`, priority: 5, text: tip });
+          }
         }
         scheduleTip();
       }, delay);
@@ -197,8 +284,25 @@ export const BrandGuide = () => {
 
   const toggleMenu = () => {
     registerActivity();
+    hasEngagedWithBubble.current = true;
     setIsBubbleOpen(false);
     setIsMenuOpen((open) => !open);
+  };
+
+  const handleEngage = () => {
+    hasEngagedWithBubble.current = true;
+    engagementCount.current += 1;
+    setIsBubbleOpen(false);
+  };
+
+  const handleChoiceClick = (choice: NonNullable<GuideMessage["choices"]>[number]) => {
+    hasEngagedWithBubble.current = true;
+    engagementCount.current += 1;
+    if (choice.next) {
+      showMessage(choice.next);
+      return;
+    }
+    setIsBubbleOpen(false);
   };
 
   const characterButton = (
@@ -247,7 +351,7 @@ export const BrandGuide = () => {
         <div className="relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl">
           <button
             type="button"
-            onClick={() => setIsBubbleOpen(false)}
+            onClick={closeBubble}
             aria-label="말풍선 닫기"
             className="absolute right-2 top-2 rounded-full p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
           >
@@ -257,7 +361,7 @@ export const BrandGuide = () => {
           {message.cta && (
             <Link
               to={message.cta.to}
-              onClick={() => setIsBubbleOpen(false)}
+              onClick={handleEngage}
               className="mt-3 inline-flex items-center text-xs font-bold uppercase tracking-[0.08em] text-brand hover:text-brand-dark"
             >
               {message.cta.label} →
@@ -270,7 +374,7 @@ export const BrandGuide = () => {
                   <Link
                     key={choice.label}
                     to={choice.to}
-                    onClick={() => setIsBubbleOpen(false)}
+                    onClick={() => handleChoiceClick(choice)}
                     className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-700 transition hover:border-brand/40 hover:bg-brand/5 hover:text-brand"
                   >
                     {choice.label}
@@ -279,7 +383,7 @@ export const BrandGuide = () => {
                   <button
                     key={choice.label}
                     type="button"
-                    onClick={() => setIsBubbleOpen(false)}
+                    onClick={() => handleChoiceClick(choice)}
                     className="rounded-lg border border-stone-200 px-3 py-2 text-left text-xs font-semibold text-stone-500 transition hover:border-stone-300 hover:bg-stone-50"
                   >
                     {choice.label}

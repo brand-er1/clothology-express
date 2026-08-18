@@ -6,17 +6,42 @@ import { supabase } from "@/lib/supabase";
 import { getAccountType, type AccountType } from "@/utils/accountRouting";
 import { fetchFunding } from "@/services/funding";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getFundingDetailId, idleTips, staticMessages, type GuideMessage } from "./mascotConfig";
+import {
+  customizeDetailNudge,
+  firstVisitIntro,
+  fundingConceptIntro,
+  getFundingDetailId,
+  getFundingProgressMessage,
+  hasSeenFirstVisitIntro,
+  idleTips,
+  markFirstVisitIntroSeen,
+  staticMessages,
+  type GuideMessage,
+} from "./mascotConfig";
+import { useMascotPageContextValue } from "./MascotContext";
 import { useMascotRoam } from "./useMascotRoam";
 
 const IDLE_DELAY_MS = 4000;
 const AUTO_HIDE_MS = 9000;
 const IDLE_TIP_MIN_MS = 26000;
 const IDLE_TIP_MAX_MS = 42000;
+const CUSTOMIZE_NUDGE_DELAY_MS = 4000;
+const CUSTOMIZE_DESIGN_STEP = 3;
+const CUSTOMIZE_SHORT_DETAIL_LENGTH = 12;
+
+/** Picks the highest-priority eligible candidate (lower number = more important); ties keep array order. */
+const pickCandidate = (candidates: (GuideMessage | null)[], shownKeys: Set<string>): GuideMessage | null => {
+  const eligible = candidates.filter(
+    (candidate): candidate is GuideMessage => Boolean(candidate) && !shownKeys.has(candidate.key)
+  );
+  if (!eligible.length) return null;
+  return [...eligible].sort((a, b) => a.priority - b.priority)[0];
+};
 
 export const BrandGuide = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
+  const pageContext = useMascotPageContextValue();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [message, setMessage] = useState<GuideMessage | null>(null);
@@ -49,45 +74,46 @@ export const BrandGuide = () => {
     };
   }, []);
 
-  // Page-contextual message: static per route, or a live remaining-slot count on a funding detail page.
+  // Resolves the best message for the current route: first-visit intro takes priority
+  // everywhere until seen, then funding concept/progress (real data only), then the
+  // route's static tip. Only one bubble is ever shown at a time (rule 25).
   useEffect(() => {
     setIsMenuOpen(false);
     setIsBubbleOpen(false);
     lastActivityAt.current = Date.now();
 
     const fundingId = getFundingDetailId(location.pathname);
+    const isFundingArea = location.pathname === "/fundings" || Boolean(fundingId);
     let cancelled = false;
     let showTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const resolveMessage = async (): Promise<GuideMessage | null> => {
+    const resolveCandidates = async (): Promise<(GuideMessage | null)[]> => {
+      const intro = !hasSeenFirstVisitIntro() ? firstVisitIntro : null;
+
       if (fundingId) {
         try {
           const funding = await fetchFunding(fundingId);
-          const remaining = Math.max(0, funding.moq - funding.current_orders);
-          return remaining > 0
-            ? {
-                key: `funding-${fundingId}`,
-                text: `목표 달성까지 ${remaining}명 남았어요! 함께 참여해주시면 더 빨리 제작돼요.`,
-              }
-            : {
-                key: `funding-${fundingId}-done`,
-                text: "축하합니다! 🎉 목표를 달성했어요. 이제 제작을 시작할게요!",
-              };
+          const progress = getFundingProgressMessage(fundingId, funding.current_orders, funding.moq);
+          return [intro, isFundingArea ? fundingConceptIntro : null, progress];
         } catch {
-          return null;
+          return [intro];
         }
       }
 
-      return staticMessages[location.pathname] ?? null;
+      return [intro, isFundingArea ? fundingConceptIntro : null, staticMessages[location.pathname] ?? null];
     };
 
-    resolveMessage().then((resolved) => {
+    resolveCandidates().then((candidates) => {
       if (cancelled) return;
+      const resolved = pickCandidate(candidates, shownKeys.current);
       setMessage(resolved);
 
-      if (resolved && !shownKeys.current.has(resolved.key)) {
-        shownKeys.current.add(resolved.key);
-        showTimer = setTimeout(() => setIsBubbleOpen(true), IDLE_DELAY_MS);
+      if (resolved) {
+        showTimer = setTimeout(() => {
+          if (resolved.key === firstVisitIntro.key) markFirstVisitIntroSeen();
+          shownKeys.current.add(resolved.key);
+          setIsBubbleOpen(true);
+        }, IDLE_DELAY_MS);
       }
     });
 
@@ -103,6 +129,28 @@ export const BrandGuide = () => {
     return () => clearTimeout(hideTimer);
   }, [isBubbleOpen]);
 
+  // Design-step nudge (rule 4/5): if the visitor lingers on the AI prompt step with a very
+  // short description, point them at the example/trend cards already built into that step
+  // instead of duplicating prompt-writing UI here. Debounced by pageContext changing on
+  // every keystroke, so it only fires ~4s after typing stops.
+  useEffect(() => {
+    if (location.pathname !== "/customize") return;
+    if (isBubbleOpen || isMenuOpen) return;
+    if (shownKeys.current.has(customizeDetailNudge.key)) return;
+
+    const step = pageContext.step;
+    const detailLength = typeof pageContext.detailLength === "number" ? pageContext.detailLength : 0;
+    if (step !== CUSTOMIZE_DESIGN_STEP || detailLength >= CUSTOMIZE_SHORT_DETAIL_LENGTH) return;
+
+    const timer = setTimeout(() => {
+      shownKeys.current.add(customizeDetailNudge.key);
+      setMessage(customizeDetailNudge);
+      setIsBubbleOpen(true);
+    }, CUSTOMIZE_NUDGE_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname, pageContext.step, pageContext.detailLength, isBubbleOpen, isMenuOpen]);
+
   // Random idle nudges (rule 7): if the visitor hasn't interacted with the guide in a while
   // and nothing else is showing, offer a soft check-in instead of staying silent forever.
   useEffect(() => {
@@ -114,7 +162,7 @@ export const BrandGuide = () => {
         if (cancelled) return;
         if (!isBubbleOpen && !isMenuOpen && Date.now() - lastActivityAt.current > IDLE_TIP_MIN_MS) {
           const tip = idleTips[Math.floor(Math.random() * idleTips.length)];
-          setMessage({ key: `idle-${Date.now()}`, text: tip });
+          setMessage({ key: `idle-${Date.now()}`, priority: 5, text: tip });
           setIsBubbleOpen(true);
         }
         scheduleTip();
@@ -185,7 +233,9 @@ export const BrandGuide = () => {
             </Link>
           ))}
           <a
-            href="tel:+821059161331"
+            href="https://open.kakao.com/o/sxDGCT4h"
+            target="_blank"
+            rel="noreferrer"
             className="flex items-center border-t border-black/5 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
           >
             💬 1:1 도움받기
@@ -194,7 +244,7 @@ export const BrandGuide = () => {
       )}
 
       {isBubbleOpen && message && !isMenuOpen && (
-        <div className="relative w-64 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl">
+        <div className="relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl">
           <button
             type="button"
             onClick={() => setIsBubbleOpen(false)}
@@ -212,6 +262,31 @@ export const BrandGuide = () => {
             >
               {message.cta.label} →
             </Link>
+          )}
+          {message.choices && (
+            <div className="mt-3 flex flex-col gap-1.5">
+              {message.choices.map((choice) =>
+                choice.to ? (
+                  <Link
+                    key={choice.label}
+                    to={choice.to}
+                    onClick={() => setIsBubbleOpen(false)}
+                    className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-700 transition hover:border-brand/40 hover:bg-brand/5 hover:text-brand"
+                  >
+                    {choice.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={choice.label}
+                    type="button"
+                    onClick={() => setIsBubbleOpen(false)}
+                    className="rounded-lg border border-stone-200 px-3 py-2 text-left text-xs font-semibold text-stone-500 transition hover:border-stone-300 hover:bg-stone-50"
+                  >
+                    {choice.label}
+                  </button>
+                )
+              )}
+            </div>
           )}
           <span className="absolute -bottom-1.5 right-8 h-3 w-3 rotate-45 border-b border-r border-black/10 bg-white" />
         </div>

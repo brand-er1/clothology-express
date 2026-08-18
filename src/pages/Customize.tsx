@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
+import { useMascotPageContext } from "@/components/guide/MascotContext";
 
 const Customize = () => {
   const [userGender, setUserGender] = useState<string>("남성");
@@ -126,6 +127,8 @@ const Customize = () => {
 
     loadUserProfile();
   }, []);
+
+  useMascotPageContext({ page: "customize", step: currentStep, detailLength: selectedDetail.length });
 
   return (
     <div className="min-h-screen bg-[#f2f3f5]">

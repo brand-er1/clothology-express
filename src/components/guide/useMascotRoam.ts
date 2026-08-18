@@ -32,6 +32,8 @@ type RoamState = {
   isMoving: boolean;
   isEntering: boolean;
   safeZoneActive: boolean;
+  /** Moves the character to an exact spot (drag-and-drop) and anchors future roaming from there. */
+  setManualPosition: (xPercent: number, bottomPercent: number) => void;
 };
 
 export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamState => {
@@ -140,6 +142,16 @@ export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamSt
     };
   }, [enabled, paused, safeZoneActive, minPct, maxPct, minBottomPct, maxBottomPct]);
 
+  const setManualPosition = (nextXPercent: number, nextBottomPercent: number) => {
+    const clampedX = Math.min(maxPct, Math.max(minPct, nextXPercent));
+    const clampedBottom = Math.min(maxBottomPct, Math.max(minBottomPct, nextBottomPercent));
+    xRef.current = clampedX;
+    setXPercent(clampedX);
+    setBottomPercent(clampedBottom);
+    setIsMoving(false);
+    setIsEntering(false);
+  };
+
   return {
     xPercent,
     bottomPercent,
@@ -148,5 +160,6 @@ export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamSt
     isMoving,
     isEntering,
     safeZoneActive,
+    setManualPosition,
   };
 };

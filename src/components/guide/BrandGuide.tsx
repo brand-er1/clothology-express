@@ -12,6 +12,8 @@ import {
   firstVisitIntro,
   fundingConceptIntro,
   fundingDetailHelp,
+  fundingEditorIntro,
+  fundingManagerIntro,
   getFundingDetailId,
   getFundingProgressMessage,
   getKakaoPayResultMessage,
@@ -29,6 +31,7 @@ import {
 import { useMascotPageContextValue } from "./MascotContext";
 import { useMascotRoam } from "./useMascotRoam";
 
+const DRAG_THRESHOLD_PX = 6;
 const IDLE_DELAY_MS = 4000;
 const AUTO_HIDE_MS = 9000;
 const IDLE_TIP_MIN_MS = 26000;
@@ -55,14 +58,17 @@ export const BrandGuide = () => {
   const [message, setMessage] = useState<GuideMessage | null>(null);
   const [isBubbleOpen, setIsBubbleOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const shownKeys = useRef<Set<string>>(new Set());
   const lastActivityAt = useRef(Date.now());
   // rule 27: visitors who keep dismissing without engaging get nudged less; engaged visitors get more.
   const missCount = useRef(0);
   const engagementCount = useRef(0);
   const hasEngagedWithBubble = useRef(false);
+  const dragState = useRef<{ pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
+  const justDraggedRef = useRef(false);
 
-  const roam = useMascotRoam({ enabled: true, paused: isBubbleOpen || isMenuOpen, compact: isMobile });
+  const roam = useMascotRoam({ enabled: true, paused: isBubbleOpen || isMenuOpen || isDragging, compact: isMobile });
   const docked = roam.safeZoneActive;
 
   useEffect(() => {
@@ -86,10 +92,13 @@ export const BrandGuide = () => {
     };
   }, []);
 
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
   const showMessage = (candidate: GuideMessage) => {
     hasEngagedWithBubble.current = false;
     shownKeys.current.add(candidate.key);
     setMessage(candidate);
+    setIsDetailOpen(false);
     setIsBubbleOpen(true);
   };
 
@@ -131,6 +140,13 @@ export const BrandGuide = () => {
         } catch {
           return [intro];
         }
+      }
+
+      if (location.pathname.endsWith("/edit") && location.pathname.startsWith("/fundings/")) {
+        return [intro, fundingEditorIntro];
+      }
+      if (location.pathname.endsWith("/manage") && location.pathname.startsWith("/fundings/")) {
+        return [intro, fundingManagerIntro];
       }
 
       return [intro, isFundingArea ? fundingConceptIntro : null, staticMessages[location.pathname] ?? null];
@@ -283,10 +299,56 @@ export const BrandGuide = () => {
   };
 
   const toggleMenu = () => {
+    if (justDraggedRef.current) {
+      justDraggedRef.current = false;
+      return;
+    }
     registerActivity();
     hasEngagedWithBubble.current = true;
     setIsBubbleOpen(false);
     setIsMenuOpen((open) => !open);
+  };
+
+  // Lets a visitor pick up the character and drop it anywhere on screen; it keeps roaming
+  // from that new spot afterwards instead of snapping back. Disabled while docked (fixed
+  // safe-zone corner) since that position isn't percent-based.
+  const handleCharacterPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (docked) return;
+    dragState.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, dragging: false };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleCharacterPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const state = dragState.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    const dx = event.clientX - state.startX;
+    const dy = event.clientY - state.startY;
+
+    if (!state.dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
+      state.dragging = true;
+      setIsDragging(true);
+      setIsBubbleOpen(false);
+      setIsMenuOpen(false);
+    }
+
+    if (state.dragging) {
+      event.preventDefault();
+      registerActivity();
+      const xPercent = (event.clientX / window.innerWidth) * 100;
+      const bottomPercent = ((window.innerHeight - event.clientY) / window.innerHeight) * 100;
+      roam.setManualPosition(xPercent, bottomPercent);
+    }
+  };
+
+  const handleCharacterPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const state = dragState.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragState.current = null;
+    if (state.dragging) justDraggedRef.current = true;
+    setIsDragging(false);
   };
 
   const handleEngage = () => {
@@ -309,9 +371,13 @@ export const BrandGuide = () => {
     <button
       type="button"
       onClick={toggleMenu}
-      aria-label="브랜더 가이드 열기"
+      onPointerDown={handleCharacterPointerDown}
+      onPointerMove={handleCharacterPointerMove}
+      onPointerUp={handleCharacterPointerUp}
+      onPointerCancel={handleCharacterPointerUp}
+      aria-label="브랜더 가이드 열기 (끌어서 위치를 옮길 수 있어요)"
       aria-expanded={isMenuOpen}
-      className="block rounded-full transition hover:scale-105"
+      className={`block rounded-full transition hover:scale-105 ${docked ? "" : "touch-none cursor-grab active:cursor-grabbing"}`}
     >
       <BrandMascot
         pose={docked ? "idle" : roam.pose}
@@ -357,16 +423,36 @@ export const BrandGuide = () => {
           >
             <X className="h-3.5 w-3.5" />
           </button>
-          <p>{message.text}</p>
-          {message.cta && (
-            <Link
-              to={message.cta.to}
-              onClick={handleEngage}
-              className="mt-3 inline-flex items-center text-xs font-bold uppercase tracking-[0.08em] text-brand hover:text-brand-dark"
-            >
-              {message.cta.label} →
-            </Link>
+          <p className="whitespace-pre-line">{message.text}</p>
+          {isDetailOpen && message.detail && (
+            <p className="mt-2 whitespace-pre-line border-t border-black/5 pt-2 text-[13px] leading-6 text-stone-500">
+              {message.detail}
+            </p>
           )}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold uppercase tracking-[0.08em]">
+            {message.detail && !isDetailOpen && (
+              <button
+                type="button"
+                onClick={() => {
+                  hasEngagedWithBubble.current = true;
+                  setIsDetailOpen(true);
+                }}
+                className="text-stone-500 hover:text-stone-700"
+              >
+                자세히 설명
+              </button>
+            )}
+            {message.cta && (
+              <Link to={message.cta.to} onClick={handleEngage} className="text-brand hover:text-brand-dark">
+                {message.cta.label} →
+              </Link>
+            )}
+            {(message.detail || message.cta) && (
+              <button type="button" onClick={closeBubble} className="text-stone-400 hover:text-stone-600">
+                닫기
+              </button>
+            )}
+          </div>
           {message.choices && (
             <div className="mt-3 flex flex-col gap-1.5">
               {message.choices.map((choice) =>
@@ -416,7 +502,7 @@ export const BrandGuide = () => {
           left: `${roam.xPercent}%`,
           bottom: `${roam.bottomPercent}vh`,
           transform: "translateX(-50%)",
-          transition: "left 1.7s cubic-bezier(0.45, 0.05, 0.35, 1), bottom 1.7s ease-in-out",
+          transition: isDragging ? "none" : "left 1.7s cubic-bezier(0.45, 0.05, 0.35, 1), bottom 1.7s ease-in-out",
         }}
       >
         {panel}

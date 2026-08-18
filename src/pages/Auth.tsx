@@ -99,7 +99,10 @@ const Auth = () => {
         </section>
 
         <section className="flex items-start justify-center px-3 py-8 sm:px-8 sm:py-10 lg:px-14 lg:py-16">
-          <Card className={`w-full border-0 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.09)] ${isSignUp ? "max-w-2xl" : "max-w-lg"} rounded-[2rem]`}>
+          <Card
+            className={`w-full border-0 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.09)] ${isSignUp ? "max-w-2xl" : "max-w-lg"} rounded-[2rem]`}
+            data-mascot-safezone
+          >
             <CardHeader className="space-y-3 px-5 pb-4 pt-7 sm:px-10 sm:pt-10">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand sm:text-xs sm:tracking-[0.2em]">
                 {isSignUp ? "Create your identity" : "Welcome back"}

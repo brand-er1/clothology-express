@@ -23,6 +23,7 @@ import { isInIframe } from './utils/authUtils';
 import { getAppUrl, routerBasename } from './utils/appUrl';
 import { useIsMobile } from './hooks/use-mobile';
 import { Footer } from './components/Footer';
+import { BrandGuide } from './components/guide/BrandGuide';
 import { SiteVisitTracker } from './components/SiteVisitTracker';
 import { VisitDataNotice } from './components/VisitDataNotice';
 import VisitDataPolicy from './pages/VisitDataPolicy';
@@ -123,6 +124,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Footer />
+        <BrandGuide />
       </BrowserRouter>
       <Toaster />
     </div>

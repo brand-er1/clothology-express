@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { BrandMascot } from "@/components/BrandMascot";
 
 const legalLinks = [
   { href: "https://brand-er.store/member/agreement.html", label: "이용약관", internal: false },
@@ -12,7 +13,10 @@ export const Footer = () => (
     <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-col justify-between gap-8 md:flex-row">
         <div>
-          <p className="text-sm font-bold tracking-[0.18em] text-white">BRAND-ER</p>
+          <div className="flex items-center gap-2.5">
+            <BrandMascot tone="light" size={28} className="shrink-0" />
+            <p className="text-sm font-bold tracking-[0.18em] text-white">BRAND-ER</p>
+          </div>
           <p className="mt-4 text-sm leading-7">
             상호명 브랜더(BRAND-ER) · 대표자 김하성 · 사업자등록번호 704-04-03387
             <br />

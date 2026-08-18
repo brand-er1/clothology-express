@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, ChevronRight, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
+import { BrandMascot } from "@/components/BrandMascot";
 import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
@@ -352,9 +353,12 @@ const Index = () => {
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#d7a6b2] sm:text-xs">
                 <Sparkles className="h-4 w-4" /> BRAND-ER STUDIO
               </div>
-              <h2 className="mt-5 max-w-4xl font-serif text-4xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-6xl">
-                찾던 옷이 없다면,<br />당신의 컬렉션을 시작하세요.
-              </h2>
+              <div className="mt-5 flex items-end gap-3 sm:gap-4">
+                <BrandMascot tone="light" wave size={52} className="hidden shrink-0 pb-1 sm:block" />
+                <h2 className="max-w-4xl font-serif text-4xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-6xl">
+                  찾던 옷이 없다면,<br />당신의 컬렉션을 시작하세요.
+                </h2>
+              </div>
               <p className="mt-5 max-w-xl text-sm leading-7 text-white/55 sm:text-base">
                 아이디어를 디자인으로 만들고, 선택받은 수량만큼 실제 옷으로 완성합니다.
               </p>

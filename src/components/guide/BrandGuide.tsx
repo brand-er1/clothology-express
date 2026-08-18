@@ -51,7 +51,21 @@ export const BrandGuide = () => {
   const [message, setMessage] = useState<GuideMessage | null>(null);
   const [isBubbleOpen, setIsBubbleOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [wave, setWave] = useState(false);
+  const [isHopping, setIsHopping] = useState(false);
   const shownKeys = useRef<Set<string>>(new Set());
+
+  // Cycles the placeholder's pose while idle so it reads as "alive" rather than a static
+  // icon. Once real character art/frames arrive, swap this for frame cycling instead.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWave((w) => !w);
+      setIsHopping(true);
+      setTimeout(() => setIsHopping(false), 500);
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -198,9 +212,11 @@ export const BrandGuide = () => {
         onClick={toggleMenu}
         aria-label="브랜더 가이드 열기"
         aria-expanded={isMenuOpen}
-        className="flex h-14 w-14 items-center justify-center rounded-full border border-black/10 bg-[#f1ece4] shadow-xl transition hover:scale-105 hover:shadow-2xl sm:h-16 sm:w-16"
+        className={`flex h-14 w-14 items-center justify-center rounded-full border border-black/10 bg-[#f1ece4] shadow-xl transition hover:scale-105 hover:shadow-2xl sm:h-16 sm:w-16 ${
+          isHopping ? "animate-bounce" : ""
+        }`}
       >
-        <BrandMascot tone="dark" size={44} className="pointer-events-none" />
+        <BrandMascot tone="dark" size={44} wave={wave} className="pointer-events-none" />
       </button>
     </div>
   );

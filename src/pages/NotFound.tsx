@@ -16,7 +16,7 @@ const NotFound = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f1f0ed] px-5 text-[#211b1c]">
       <div className="flex flex-col items-center text-center">
-        <BrandMascot wave size={104} />
+        <BrandMascot size={104} />
         <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.24em] text-brand">404</p>
         <h1 className="mt-3 font-serif text-4xl font-normal tracking-[-0.03em] sm:text-5xl">
           찾으시는 페이지가<br />보이지 않아요.

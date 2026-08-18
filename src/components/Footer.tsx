@@ -14,7 +14,7 @@ export const Footer = () => (
       <div className="flex flex-col justify-between gap-8 md:flex-row">
         <div>
           <div className="flex items-center gap-2.5">
-            <BrandMascot tone="light" size={28} className="shrink-0" />
+            <BrandMascot size={28} className="shrink-0" />
             <p className="text-sm font-bold tracking-[0.18em] text-white">BRAND-ER</p>
           </div>
           <p className="mt-4 text-sm leading-7">

@@ -354,7 +354,7 @@ const Index = () => {
                 <Sparkles className="h-4 w-4" /> BRAND-ER STUDIO
               </div>
               <div className="mt-5 flex items-end gap-3 sm:gap-4">
-                <BrandMascot tone="light" wave size={52} className="hidden shrink-0 pb-1 sm:block" />
+                <BrandMascot size={64} className="hidden shrink-0 pb-1 sm:block" />
                 <h2 className="max-w-4xl font-serif text-4xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-6xl">
                   찾던 옷이 없다면,<br />당신의 컬렉션을 시작하세요.
                 </h2>

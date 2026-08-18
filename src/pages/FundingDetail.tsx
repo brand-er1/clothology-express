@@ -254,7 +254,7 @@ const FundingDetail = () => {
             </div>
           </section>
 
-          <aside className="lg:sticky lg:top-28">
+          <aside className="lg:sticky lg:top-28" data-mascot-safezone>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">BRAND-ER / {funding.cloth_type}</p>
             <h1 className="mt-4 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-5xl xl:text-6xl">
               {funding.product_name}

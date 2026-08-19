@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import type { ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
 import type { ReadyMadeQuoteInput, ReadyMadeQuoteResult } from "@/types/readyMadeOrder";
 import type { TrademarkScreeningDecision } from "@/types/trademark";
-import { READY_MADE_PRINT_LOCATION_OPTIONS, READY_MADE_PRINT_METHOD_LABELS } from "@/data/ready-made-pricing-config";
+import { READY_MADE_PRINT_LOCATION_OPTIONS } from "@/data/ready-made-pricing-config";
 
 export interface ReadyMadeGroupWearRequestInput {
   product: ReadyMadeProductOption;
@@ -24,15 +24,13 @@ const buildDetailDescription = (input: ReadyMadeGroupWearRequestInput) => {
     .join(", ");
 
   const printSummary = input.quote.locationBreakdown
-    .map((line) => `${line.locationLabel}(${line.sizeLabel}) ${formatWon(line.unitPrice)}`)
+    .map((line) => `${line.locationLabel} ${formatWon(line.unitPrice)}`)
     .join(", ");
 
   const placementSummary = input.quoteInput.printJobs
     .map((job) => {
       const label =
-        job.location === "custom"
-          ? job.customLocationNote?.trim() || "직접 지정"
-          : READY_MADE_PRINT_LOCATION_OPTIONS.find((option) => option.key === job.location)?.label || job.location;
+        READY_MADE_PRINT_LOCATION_OPTIONS.find((option) => option.key === job.location)?.label || job.location;
       const side = job.side === "front" ? "앞면" : "뒷면";
       return `${label}: ${side} 기준 중심 (${Math.round(job.placement.xPercent)}%, ${Math.round(job.placement.yPercent)}%) · 폭 ${Math.round(job.placement.widthPercent)}%`;
     })
@@ -41,7 +39,6 @@ const buildDetailDescription = (input: ReadyMadeGroupWearRequestInput) => {
   return [
     "[기성품 단체복 빠른 제작 의뢰]",
     `제품: ${input.product.label} / 색상: ${input.color}`,
-    `인쇄 방식: ${READY_MADE_PRINT_METHOD_LABELS[input.quoteInput.printMethod]}`,
     `사이즈별 수량: ${sizeSummary || "없음"} (총 ${input.quote.quantity}장)`,
     `인쇄 위치: ${printSummary || "없음"}`,
     `배치 상세(고객 지정): ${placementSummary || "없음"}`,

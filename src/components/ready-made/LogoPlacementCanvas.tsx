@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { getAppPath } from "@/utils/appUrl";
+import { useRecoloredGarmentImage } from "@/lib/garment-recolor";
 import {
   READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
   READY_MADE_MIN_ARTWORK_WIDTH_PERCENT,
@@ -11,6 +12,7 @@ import type { ReadyMadePrintJob } from "@/types/readyMadeOrder";
 
 interface LogoPlacementCanvasProps {
   product: ReadyMadeProductOption;
+  color: string;
   designPreviewUrl: string | null;
   printJobs: ReadyMadePrintJob[];
   onPlacementChange: (jobId: string, placement: ReadyMadeArtworkPlacement) => void;
@@ -37,6 +39,7 @@ interface Gesture {
  */
 export const LogoPlacementCanvas = ({
   product,
+  color,
   designPreviewUrl,
   printJobs,
   onPlacementChange,
@@ -44,6 +47,9 @@ export const LogoPlacementCanvas = ({
   const [activeSide, setActiveSide] = useState<ReadyMadeGarmentSide>("front");
   const containerRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<Gesture | null>(null);
+  const frontUrl = useRecoloredGarmentImage(getAppPath(product.imageFront), color);
+  const backUrl = useRecoloredGarmentImage(getAppPath(product.imageBack), color);
+  const mockupUrl = activeSide === "front" ? frontUrl : backUrl;
 
   const jobsForSide = printJobs.filter((job) => job.side === activeSide);
   const frontCount = printJobs.filter((job) => job.side === "front").length;
@@ -135,7 +141,7 @@ export const LogoPlacementCanvas = ({
         onPointerCancel={endGesture}
       >
         <img
-          src={getAppPath(product.image)}
+          src={mockupUrl}
           alt={`${product.label} ${activeSide === "front" ? "앞면" : "뒷면"}`}
           className="pointer-events-none h-full w-full select-none object-contain p-6"
         />

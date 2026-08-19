@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import {
-  READY_MADE_CUSTOM_LOCATION_PLACEMENT_PRESET,
   READY_MADE_LOCATION_PLACEMENT_PRESET,
   READY_MADE_LOCATION_SIDE,
   READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
@@ -10,15 +9,12 @@ import {
   createEmptySizeQuantities,
   type ReadyMadeArtworkPlacement,
   type ReadyMadeGarmentSide,
-  type ReadyMadeGraphicSizeCategory,
   type ReadyMadePrintLocation,
-  type ReadyMadePrintMethod,
   type ReadyMadeSize,
   type ReadyMadeSizeQuantities,
 } from "@/data/ready-made-pricing-config";
 import {
   calculateReadyMadeQuote,
-  getReadyMadeQuantityTier,
   sumReadyMadeSizeQuantities,
 } from "@/lib/ready-made-pricing";
 import { prepareArtworkReference } from "@/lib/artwork-upload";
@@ -46,15 +42,14 @@ const clampArtworkWidth = (widthPercent: number) =>
 
 const presetForLocation = (
   location: ReadyMadePrintLocation,
-): { side: ReadyMadeGarmentSide; placement: ReadyMadeArtworkPlacement } =>
-  location === "custom"
-    ? { side: "front", placement: { ...READY_MADE_CUSTOM_LOCATION_PLACEMENT_PRESET } }
-    : { side: READY_MADE_LOCATION_SIDE[location], placement: { ...READY_MADE_LOCATION_PLACEMENT_PRESET[location] } };
+): { side: ReadyMadeGarmentSide; placement: ReadyMadeArtworkPlacement } => ({
+  side: READY_MADE_LOCATION_SIDE[location],
+  placement: { ...READY_MADE_LOCATION_PLACEMENT_PRESET[location] },
+});
 
 const createDefaultPrintJob = (): ReadyMadePrintJob => ({
   id: createPrintJobId(),
   location: "front_center",
-  sizeCategory: "small",
   ...presetForLocation("front_center"),
 });
 
@@ -85,7 +80,6 @@ export const useReadyMadeGroupWearForm = () => {
     }));
   }, []);
   const totalQuantity = useMemo(() => sumReadyMadeSizeQuantities(sizeQuantities), [sizeQuantities]);
-  const quantityTier = useMemo(() => getReadyMadeQuantityTier(totalQuantity || 1), [totalQuantity]);
 
   // The design artwork (uploaded or AI-generated) and its trademark screening travel together —
   // a fresh design always needs a fresh screening, so they're managed by the same actions below
@@ -195,13 +189,12 @@ export const useReadyMadeGroupWearForm = () => {
     }
   }, [runTrademarkScreening, trademarkScreening]);
 
-  const [printMethod, setPrintMethod] = useState<ReadyMadePrintMethod>("dtf");
   const [printJobs, setPrintJobs] = useState<ReadyMadePrintJob[]>([createDefaultPrintJob()]);
 
   const addPrintJob = useCallback((location: ReadyMadePrintLocation) => {
     setPrintJobs((previous) => [
       ...previous,
-      { id: createPrintJobId(), location, sizeCategory: "small", ...presetForLocation(location) },
+      { id: createPrintJobId(), location, ...presetForLocation(location) },
     ]);
   }, []);
 
@@ -213,21 +206,11 @@ export const useReadyMadeGroupWearForm = () => {
     setPrintJobs((previous) => previous.map((job) => (job.id === id ? { ...job, ...patch } : job)));
   }, []);
 
-  const setPrintJobSizeCategory = useCallback(
-    (id: string, sizeCategory: ReadyMadeGraphicSizeCategory) => updatePrintJob(id, { sizeCategory }),
-    [updatePrintJob],
-  );
-
   /** Changing the location dropdown resets the on-screen placement to that location's preset —
    * matches the customer's expectation that picking "왼쪽 가슴" actually moves the artwork there,
    * while still leaving it free to drag/resize from that starting point afterward. */
   const setPrintJobLocation = useCallback(
     (id: string, location: ReadyMadePrintLocation) => updatePrintJob(id, { location, ...presetForLocation(location) }),
-    [updatePrintJob],
-  );
-
-  const setPrintJobSide = useCallback(
-    (id: string, side: ReadyMadeGarmentSide) => updatePrintJob(id, { side }),
     [updatePrintJob],
   );
 
@@ -250,11 +233,11 @@ export const useReadyMadeGroupWearForm = () => {
   const quote = useMemo<ReadyMadeQuoteResult | null>(() => {
     if (totalQuantity <= 0 || printJobs.length === 0) return null;
     try {
-      return calculateReadyMadeQuote({ sizeQuantities, printMethod, printJobs });
+      return calculateReadyMadeQuote({ sizeQuantities, garmentBasePrice: selectedProduct.basePrice, printJobs });
     } catch {
       return null;
     }
-  }, [sizeQuantities, printMethod, printJobs, totalQuantity]);
+  }, [sizeQuantities, selectedProduct, printJobs, totalQuantity]);
 
   const isDesignReady =
     Boolean(designArtwork) &&
@@ -322,7 +305,7 @@ export const useReadyMadeGroupWearForm = () => {
       const result = await createReadyMadeGroupWearRequest({
         product: selectedProduct,
         color: selectedColor,
-        quoteInput: { sizeQuantities, printMethod, printJobs },
+        quoteInput: { sizeQuantities, garmentBasePrice: selectedProduct.basePrice, printJobs },
         quote,
         requestNote,
         imageBase64: designArtwork.base64,
@@ -337,7 +320,6 @@ export const useReadyMadeGroupWearForm = () => {
       void trackSiteEvent("ready_made_group_wear_submitted", {
         product: selectedProduct.key,
         quantity: quote.quantity,
-        printMethod,
       });
     } catch (error) {
       toast({
@@ -348,7 +330,7 @@ export const useReadyMadeGroupWearForm = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, printMethod, printJobs, requestNote]);
+  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, printJobs, requestNote]);
 
   return {
     currentStep,
@@ -367,7 +349,6 @@ export const useReadyMadeGroupWearForm = () => {
     sizeQuantities,
     setSizeQuantity,
     totalQuantity,
-    quantityTier,
 
     designArtwork,
     designPreviewUrl,
@@ -378,15 +359,11 @@ export const useReadyMadeGroupWearForm = () => {
     trademarkScreening,
     isScreeningTrademark,
 
-    printMethod,
-    setPrintMethod,
     printJobs,
     addPrintJob,
     removePrintJob,
     updatePrintJob,
-    setPrintJobSizeCategory,
     setPrintJobLocation,
-    setPrintJobSide,
     setPrintJobPlacement,
 
     requestNote,

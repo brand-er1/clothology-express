@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, ChevronRight, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BrandMascot } from "@/components/BrandMascot";
+import { NotifySignup } from "@/components/NotifySignup";
 import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
@@ -353,6 +354,8 @@ const Index = () => {
             </div>
           </div>
         </section>
+
+        <NotifySignup />
 
         <section className="border-t border-black/10 bg-[#21191a] text-white">
           <div className="mx-auto grid max-w-[1440px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_auto] lg:items-end lg:px-12 xl:px-16">

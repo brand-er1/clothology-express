@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { fetchApprovedFundings, fetchMyFundings } from "@/services/funding";
@@ -70,6 +71,7 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
                   alt={funding.product_name}
                   className="h-full w-full object-contain p-3 transition duration-700 ease-out group-hover:scale-[1.045] sm:p-5"
                 />
+                <WatermarkOverlay />
                 <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3 sm:p-4">
                   <span className="bg-[#f5f3ef]/90 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2a2223] backdrop-blur-sm">
                     Limited order
@@ -186,6 +188,7 @@ const Fundings = () => {
                     alt={featured.product_name}
                     className="h-full w-full object-contain p-8 transition duration-700 group-hover:scale-[1.035] sm:p-12 lg:p-16"
                   />
+                  <WatermarkOverlay />
                   <div className="absolute left-5 top-5 bg-brand px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white sm:left-8 sm:top-8">
                     New drop 01
                   </div>

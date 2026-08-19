@@ -5,9 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface ReferenceImageInput {
+  base64: string;
+  mimeType: string;
+}
+
 interface OrderData {
   userId: string;
-  clothType: string; 
+  clothType: string;
   material: string;
   detailDescription?: string;
   size?: string | null;
@@ -16,12 +21,16 @@ interface OrderData {
   imagePath?: string | null;
   imageBase64?: string | null;
   imageMimeType?: string | null;
+  /** Full set of reference images uploaded for a multi-image design-quote request (up to 10). */
+  images?: ReferenceImageInput[] | null;
   requestSource?: 'ai_design' | 'design_upload' | 'ready_made_group_wear';
   requestTitle?: string | null;
   requestedQuantity?: number | null;
   estimateSnapshot?: Record<string, unknown> | null;
   status: 'pending' | 'approved' | 'rejected' | 'draft' | 'deleted';
 }
+
+const maxReferenceImages = 10;
 
 const allowedImageMimeTypes = new Set([
   'image/png',
@@ -243,6 +252,50 @@ Deno.serve(async (req) => {
       uploadedNewImage = true;
     }
 
+    // Full reference-image set for a multi-image design-quote request (front/back/detail/etc,
+    // up to 10). Stored independently of the single `image_path` above, which stays the
+    // "cover"/representative image every other flow (ai_design, ready_made) still relies on.
+    // Uploads are best-effort per image — one invalid/oversized image is skipped rather than
+    // failing the whole submission, since the estimate itself already succeeded by this point.
+    const uploadedReferencePaths: string[] = [];
+    let referenceImagePaths: string[] | null = null;
+    if (Array.isArray(orderData.images) && orderData.images.length > 0) {
+      for (const image of orderData.images.slice(0, maxReferenceImages)) {
+        const mimeType = String(image?.mimeType || '').toLowerCase();
+        if (!allowedImageMimeTypes.has(mimeType)) continue;
+
+        let bytes: Uint8Array;
+        try {
+          bytes = decodeBase64Image(String(image?.base64 || ''));
+        } catch {
+          continue;
+        }
+        if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) continue;
+
+        const extension =
+          mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+        const path =
+          `design-quotes/${orderData.userId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from('generated_images')
+          .upload(path, bytes, {
+            contentType: mimeType,
+            cacheControl: '3600',
+            upsert: false,
+          });
+        if (uploadError) {
+          if (uploadedReferencePaths.length) {
+            await supabase.storage.from('generated_images').remove(uploadedReferencePaths);
+          }
+          throw uploadError;
+        }
+        uploadedReferencePaths.push(path);
+      }
+      if (uploadedReferencePaths.length > 0) {
+        referenceImagePaths = uploadedReferencePaths;
+      }
+    }
+
     const requestedQuantity = Number(orderData.requestedQuantity);
     const normalizedRequestedQuantity =
       Number.isFinite(requestedQuantity) && requestedQuantity > 0
@@ -259,6 +312,7 @@ Deno.serve(async (req) => {
       measurements: orderData.measurements || null,
       generated_image_url: storedImageUrl,
       image_path: storedImagePath,
+      reference_image_paths: referenceImagePaths,
       request_source: orderData.requestSource || 'ai_design',
       request_title: orderData.requestTitle || null,
       requested_quantity: normalizedRequestedQuantity,
@@ -280,9 +334,12 @@ Deno.serve(async (req) => {
         if (uploadedNewImage && storedImagePath) {
           await supabase.storage.from('generated_images').remove([storedImagePath]);
         }
+        if (uploadedReferencePaths.length) {
+          await supabase.storage.from('generated_images').remove(uploadedReferencePaths);
+        }
         throw error;
       }
-      
+
       result = { id: existingOrder.id, updated: true, data, success: true };
       console.log('Updated existing order:', existingOrder.id);
     } else {
@@ -296,9 +353,12 @@ Deno.serve(async (req) => {
         if (uploadedNewImage && storedImagePath) {
           await supabase.storage.from('generated_images').remove([storedImagePath]);
         }
+        if (uploadedReferencePaths.length) {
+          await supabase.storage.from('generated_images').remove(uploadedReferencePaths);
+        }
         throw error;
       }
-      
+
       result = { id: data?.[0]?.id, created: true, data, success: true };
       console.log('Created new order:', data?.[0]?.id);
     }

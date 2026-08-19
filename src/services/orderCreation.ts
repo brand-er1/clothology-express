@@ -16,6 +16,8 @@ export interface DirectProductionRequestInput {
   imagePath: string | null;
   imageBase64?: string | null;
   imageMimeType?: string | null;
+  /** Full set of reference images for a multi-image design-quote request (up to 10). */
+  images?: Array<{ base64: string; mimeType: string }> | null;
   requestSource?: "ai_design" | "design_upload";
   requestTitle?: string | null;
   requestedQuantity?: number | null;
@@ -57,6 +59,7 @@ export const createDirectProductionRequest = async (
       imagePath: input.imagePath,
       imageBase64: input.imageBase64,
       imageMimeType: input.imageMimeType,
+      images: input.images,
       requestSource: input.requestSource || "ai_design",
       requestTitle: input.requestTitle,
       requestedQuantity: input.requestedQuantity,

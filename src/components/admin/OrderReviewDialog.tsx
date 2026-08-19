@@ -54,6 +54,7 @@ export const OrderReviewDialog = ({
   const [adminComment, setAdminComment] = useState(order?.admin_comment || "");
   const [imageError, setImageError] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(order?.generated_image_url || null);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [userProfile, setUserProfile] = useState<RequestUserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const estimate = order?.estimate_snapshot || null;
@@ -64,12 +65,26 @@ export const OrderReviewDialog = ({
       setAdminComment(order.admin_comment || "");
       setImageError(false);
       setImageUrl(null); // Reset image URL
+      setGalleryUrls([]); // Reset image gallery
       setUserProfile(null); // Reset user profile
-      
+
       if (order.user_id) {
         fetchUserProfile(order.user_id);
       }
     }
+  }, [order]);
+
+  // 고객이 자동견적 시 올린 참고 이미지 전체(정면·후면·디테일 등)를 갤러리로 표시
+  useEffect(() => {
+    const paths = order?.reference_image_paths;
+    if (!paths || paths.length === 0) {
+      setGalleryUrls([]);
+      return;
+    }
+    const urls = paths.map(
+      (path) => supabase.storage.from("generated_images").getPublicUrl(path).data.publicUrl,
+    );
+    setGalleryUrls(urls);
   }, [order]);
 
   // 사용자 프로필 정보 가져오기 - 엣지 함수 사용
@@ -254,29 +269,54 @@ export const OrderReviewDialog = ({
               <div>
                 <h3 className="font-semibold mb-2 text-base md:text-lg">
                   고객 디자인 이미지
-                </h3>
-                <div className="w-full h-auto min-h-32 md:min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
-                  {imageUrl && !imageError ? (
-                    <img
-                      src={imageUrl}
-                      alt="Generated design"
-                      className="w-full h-auto rounded-lg"
-                      onLoad={() => console.log("Image loaded successfully in review dialog")}
-                      onError={(e) => {
-                        console.error("Image loading error in review dialog:", imageUrl);
-                        setImageError(true);
-                      }}
-                    />
-                  ) : (
-                    <div className="p-4 flex flex-col items-center justify-center h-32 md:h-48 text-center">
-                      <ImageOff className="w-6 h-6 md:w-8 md:h-8 mb-2 text-gray-400" />
-                      <p className="text-xs md:text-sm text-gray-400">이미지를 불러올 수 없습니다</p>
-                      {order.image_path && (
-                        <p className="text-xs mt-2 text-gray-400 truncate max-w-full">파일 경로: {order.image_path}</p>
-                      )}
-                    </div>
+                  {galleryUrls.length > 1 && (
+                    <span className="ml-2 text-xs font-bold text-brand">
+                      ({galleryUrls.length}장)
+                    </span>
                   )}
-                </div>
+                </h3>
+                {galleryUrls.length > 1 ? (
+                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                    {galleryUrls.map((url, index) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
+                      >
+                        <img
+                          src={url}
+                          alt={`고객 업로드 이미지 ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="w-full h-auto min-h-32 md:min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
+                    {imageUrl && !imageError ? (
+                      <img
+                        src={imageUrl}
+                        alt="Generated design"
+                        className="w-full h-auto rounded-lg"
+                        onLoad={() => console.log("Image loaded successfully in review dialog")}
+                        onError={(e) => {
+                          console.error("Image loading error in review dialog:", imageUrl);
+                          setImageError(true);
+                        }}
+                      />
+                    ) : (
+                      <div className="p-4 flex flex-col items-center justify-center h-32 md:h-48 text-center">
+                        <ImageOff className="w-6 h-6 md:w-8 md:h-8 mb-2 text-gray-400" />
+                        <p className="text-xs md:text-sm text-gray-400">이미지를 불러올 수 없습니다</p>
+                        {order.image_path && (
+                          <p className="text-xs mt-2 text-gray-400 truncate max-w-full">파일 경로: {order.image_path}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

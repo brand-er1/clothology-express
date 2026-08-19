@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { BrandMascot } from "@/components/BrandMascot";
 import { supabase } from "@/lib/supabase";
@@ -55,7 +55,6 @@ const pickCandidate = (candidates: (GuideMessage | null)[], shownKeys: Set<strin
 
 export const BrandGuide = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const pageContext = useMascotPageContextValue();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -348,12 +347,12 @@ export const BrandGuide = () => {
     tutorial.start(currentTutorialKey);
   };
 
-  const startTourFromHome = () => {
+  // Shared by every non-"current page" menu item: navigates to whatever route the tutorial's
+  // first step needs (if any) and starts it once there — TutorialOverlay owns that hand-off.
+  const startTour = (key: string) => {
     registerActivity();
     setIsMenuOpen(false);
-    tutorial.requestTour("home");
-    if (location.pathname !== "/") navigate("/");
-    else tutorial.start("home");
+    tutorial.requestTour(key);
   };
 
   const openFaq = () => {
@@ -472,34 +471,62 @@ export const BrandGuide = () => {
           <p className="px-4 pt-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
             무엇을 도와드릴까요?
           </p>
-          <div className="mt-1 pb-1.5">
+          <div className="mt-1 max-h-[60vh] overflow-y-auto pb-1.5">
             {currentTutorialKey && (
               <button
                 type="button"
                 onClick={startPageTutorial}
-                className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+                className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
               >
                 ▶ 이 페이지 사용법{tutorialLabels[currentTutorialKey] ? ` (${tutorialLabels[currentTutorialKey]})` : ""}
               </button>
             )}
             <button
               type="button"
-              onClick={startTourFromHome}
-              className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+              onClick={() => startTour("brandProcess")}
+              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
             >
-              ▶ 처음부터 둘러보기
+              ▶ 브랜더는 어떻게 이용하나요?
+            </button>
+            <button
+              type="button"
+              onClick={() => startTour("customize")}
+              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+            >
+              ▶ AI로 옷 만드는 방법
+            </button>
+            <button
+              type="button"
+              onClick={() => startTour("design-quote")}
+              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+            >
+              ▶ 자동견적이 궁금해요
+            </button>
+            <button
+              type="button"
+              onClick={() => startTour("fundingConcept")}
+              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+            >
+              ▶ 펀딩은 어떻게 하나요?
+            </button>
+            <button
+              type="button"
+              onClick={() => startTour("productionProcess")}
+              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+            >
+              ▶ 제작 과정이 궁금해요
             </button>
             <button
               type="button"
               onClick={openFaq}
-              className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
             >
               ▶ 자주 묻는 질문
             </button>
             <button
               type="button"
               onClick={() => setIsMenuOpen(false)}
-              className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-500 transition hover:bg-stone-50"
+              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-500 transition hover:bg-stone-50"
             >
               ✕ 닫기
             </button>

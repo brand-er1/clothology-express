@@ -23,6 +23,7 @@ import { WelcomeNotification } from './components/WelcomeNotification';
 import { isInIframe } from './utils/authUtils';
 import { getAppUrl, routerBasename } from './utils/appUrl';
 import { useIsMobile } from './hooks/use-mobile';
+import { useDisableImageCapture } from './hooks/useDisableImageCapture';
 import { Footer } from './components/Footer';
 import { BrandGuide } from './components/guide/BrandGuide';
 import { MascotProvider } from './components/guide/MascotContext';
@@ -42,6 +43,8 @@ declare global {
 function App() {
   const [isInIframeContext, setIsInIframeContext] = useState(false);
   const isMobile = useIsMobile();
+
+  useDisableImageCapture();
 
   useEffect(() => {
     const inIframe = isInIframe();

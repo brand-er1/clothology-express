@@ -307,7 +307,7 @@ const FundingEditor = () => {
             <p className="mt-2 text-gray-500">생성한 이미지와 옵션을 가져왔습니다. 소개 문구와 가격만 확인해주세요.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" className="rounded-full">
+            <Button asChild variant="outline" className="rounded-full" data-tutorial="funding-preview">
               <Link to={`/fundings/${funding.id}`}><Eye className="mr-2 h-4 w-4" /> 미리보기</Link>
             </Button>
             <Button asChild variant="outline" className="rounded-full">
@@ -323,7 +323,7 @@ const FundingEditor = () => {
         )}
 
         <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <Card className="overflow-hidden rounded-3xl">
+          <Card className="overflow-hidden rounded-3xl" data-tutorial="funding-image">
             <div className="aspect-[4/3] bg-stone-100 p-4">
               <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain" />
             </div>
@@ -610,7 +610,12 @@ const FundingEditor = () => {
               </div>
 
               {canEditContent && (
-                <Button onClick={handleSave} disabled={saving} className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark"
+                  data-tutorial="funding-submit"
+                >
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                   {canEditSales ? "저장하고 승인 대기" : "공개 페이지 내용 저장"}
                 </Button>

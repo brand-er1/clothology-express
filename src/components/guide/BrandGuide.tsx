@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { BrandMascot } from "@/components/BrandMascot";
 import { supabase } from "@/lib/supabase";
@@ -31,6 +31,9 @@ import {
 } from "./mascotConfig";
 import { useMascotPageContextValue } from "./MascotContext";
 import { useMascotRoam } from "./useMascotRoam";
+import { useTutorial } from "./TutorialContext";
+import { getTutorialKeyForPath, tutorialLabels } from "./tutorials";
+import { TutorialFaqDialog } from "./TutorialFaqDialog";
 
 const DRAG_THRESHOLD_PX = 6;
 const IDLE_DELAY_MS = 4000;
@@ -52,6 +55,7 @@ const pickCandidate = (candidates: (GuideMessage | null)[], shownKeys: Set<strin
 
 export const BrandGuide = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const pageContext = useMascotPageContextValue();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -60,6 +64,8 @@ export const BrandGuide = () => {
   const [isBubbleOpen, setIsBubbleOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isFaqOpen, setIsFaqOpen] = useState(false);
+  const tutorial = useTutorial();
   const shownKeys = useRef<Set<string>>(new Set());
   const lastActivityAt = useRef(Date.now());
   // rule 27: visitors who keep dismissing without engaging get nudged less; engaged visitors get more.
@@ -329,6 +335,33 @@ export const BrandGuide = () => {
   }, [isAuthenticated, accountType]);
 
   if (location.pathname.startsWith("/admin")) return null;
+  // TutorialOverlay renders its own positioned character while a walkthrough is active, so the
+  // roaming character steps aside instead of showing two mascots at once.
+  if (tutorial.activeKey) return null;
+
+  const currentTutorialKey = getTutorialKeyForPath(location.pathname);
+
+  const startPageTutorial = () => {
+    if (!currentTutorialKey) return;
+    registerActivity();
+    setIsMenuOpen(false);
+    tutorial.start(currentTutorialKey);
+  };
+
+  const startTourFromHome = () => {
+    registerActivity();
+    setIsMenuOpen(false);
+    tutorial.requestTour("home");
+    if (location.pathname !== "/") navigate("/");
+    else tutorial.start("home");
+  };
+
+  const openFaq = () => {
+    registerActivity();
+    hasEngagedWithBubble.current = true;
+    setIsMenuOpen(false);
+    setIsFaqOpen(true);
+  };
 
   const registerActivity = () => {
     lastActivityAt.current = Date.now();
@@ -435,25 +468,63 @@ export const BrandGuide = () => {
   const popupContent = (
     <>
       {isMenuOpen && (
-        <div className="w-60 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl">
-          {menuItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+        <div className="w-64 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl">
+          <p className="px-4 pt-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
+            무엇을 도와드릴까요?
+          </p>
+          <div className="mt-1 pb-1.5">
+            {currentTutorialKey && (
+              <button
+                type="button"
+                onClick={startPageTutorial}
+                className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+              >
+                ▶ 이 페이지 사용법{tutorialLabels[currentTutorialKey] ? ` (${tutorialLabels[currentTutorialKey]})` : ""}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={startTourFromHome}
+              className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
             >
-              {item.label}
-            </Link>
-          ))}
-          <a
-            href="https://open.kakao.com/o/sxDGCT4h"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center border-t border-black/5 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
-          >
-            💬 1:1 도움받기
-          </a>
+              ▶ 처음부터 둘러보기
+            </button>
+            <button
+              type="button"
+              onClick={openFaq}
+              className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+            >
+              ▶ 자주 묻는 질문
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex w-full items-center px-4 py-2.5 text-left text-sm font-semibold text-stone-500 transition hover:bg-stone-50"
+            >
+              ✕ 닫기
+            </button>
+          </div>
+
+          <div className="border-t border-black/5">
+            {menuItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <a
+              href="https://open.kakao.com/o/sxDGCT4h"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center border-t border-black/5 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+            >
+              💬 1:1 도움받기
+            </a>
+          </div>
         </div>
       )}
 
@@ -549,13 +620,17 @@ export const BrandGuide = () => {
 
   if (docked) {
     return (
-      <div className="pointer-events-none fixed bottom-24 right-4 z-[60] sm:bottom-6 sm:right-6">
-        {panel}
-      </div>
+      <>
+        <div className="pointer-events-none fixed bottom-24 right-4 z-[60] sm:bottom-6 sm:right-6">
+          {panel}
+        </div>
+        <TutorialFaqDialog open={isFaqOpen} onOpenChange={setIsFaqOpen} />
+      </>
     );
   }
 
   return (
+    <>
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] h-0">
       <div
         className="pointer-events-none absolute flex flex-col items-end gap-3"
@@ -569,5 +644,7 @@ export const BrandGuide = () => {
         {panel}
       </div>
     </div>
+    <TutorialFaqDialog open={isFaqOpen} onOpenChange={setIsFaqOpen} />
+    </>
   );
 };

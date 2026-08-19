@@ -553,6 +553,7 @@ export const ModifyImageStep = ({
                   : "border-gray-200"
               }`}
               style={{ aspectRatio: baseImageAspectRatio }}
+              data-tutorial="customize-modify"
             >
               <div
                 ref={artworkCanvasRef}
@@ -651,7 +652,10 @@ export const ModifyImageStep = ({
               </div>
             </div>
 
-            <div className="w-full rounded-2xl border border-brand/15 bg-brand/5 p-4 sm:p-5">
+            <div
+              className="w-full rounded-2xl border border-brand/15 bg-brand/5 p-4 sm:p-5"
+              data-tutorial="customize-artwork"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h4 className="flex items-center gap-2 font-extrabold text-gray-950">

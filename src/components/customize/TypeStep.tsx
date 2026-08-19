@@ -47,7 +47,7 @@ export const TypeStep = ({ selectedType, onSelectType }: TypeStepProps) => {
   );
 
   return (
-    <Tabs defaultValue="tops" className="w-full">
+    <Tabs defaultValue="tops" className="w-full" data-tutorial="customize-type">
       <TabsList className="mb-5 grid h-12 w-full grid-cols-2 rounded-full bg-[#eee9e3] p-1 sm:mb-6 sm:w-64">
         <TabsTrigger value="tops" className="rounded-full font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">상의</TabsTrigger>
         <TabsTrigger value="bottoms" className="rounded-full font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">하의</TabsTrigger>

@@ -151,7 +151,10 @@ const Index = () => {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(27,21,22,0.04)_0%,rgba(27,21,22,0.02)_52%,rgba(27,21,22,0.36)_100%)] sm:bg-[linear-gradient(90deg,rgba(235,229,220,0.96)_0%,rgba(235,229,220,0.82)_31%,rgba(235,229,220,0.10)_59%,rgba(25,19,20,0.06)_100%)]" />
 
           <div className="relative mx-auto flex min-h-[680px] max-w-[1440px] items-end px-5 pb-11 pt-16 sm:min-h-[760px] sm:items-center sm:px-8 sm:pb-16 lg:min-h-[calc(100vh-72px)] lg:px-12 xl:px-16">
-            <div className="w-full max-w-[680px] rounded-sm bg-[#f1ece4]/92 p-6 shadow-[0_24px_80px_rgba(44,33,29,0.10)] backdrop-blur-md sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
+            <div
+              className="w-full max-w-[680px] rounded-sm bg-[#f1ece4]/92 p-6 shadow-[0_24px_80px_rgba(44,33,29,0.10)] backdrop-blur-md sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none"
+              data-tutorial="home-hero"
+            >
               <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">
                 <span className="h-px w-8 bg-brand" />
                 BRAND-ER · EARLY FALL 2026
@@ -201,7 +204,11 @@ const Index = () => {
           </div>
         </section>
 
-        <section id="new-drop" className="mx-auto max-w-[1440px] scroll-mt-20 px-4 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
+        <section
+          id="new-drop"
+          className="mx-auto max-w-[1440px] scroll-mt-20 px-4 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16"
+          data-tutorial="home-collection"
+        >
           <div className="flex items-end justify-between gap-6 border-b border-black/10 pb-6">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">New drop</p>
@@ -363,7 +370,11 @@ const Index = () => {
                 아이디어를 디자인으로 만들고, 선택받은 수량만큼 실제 옷으로 완성합니다.
               </p>
             </div>
-            <Link to="/customize" className="inline-flex h-14 items-center justify-center border border-white/35 px-7 text-sm font-bold transition hover:bg-white hover:text-[#21191a]">
+            <Link
+              to="/customize"
+              className="inline-flex h-14 items-center justify-center border border-white/35 px-7 text-sm font-bold transition hover:bg-white hover:text-[#21191a]"
+              data-tutorial="home-start-cta"
+            >
               컬렉션 시작하기 <ChevronRight className="ml-2 h-4 w-4" />
             </Link>
           </div>

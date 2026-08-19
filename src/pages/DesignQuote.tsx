@@ -242,7 +242,7 @@ const DesignQuote = () => {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-2 sm:grid-cols-3">
+        <div className="mb-6 grid gap-2 sm:grid-cols-3" data-tutorial="quote-steps">
           {[
             { label: "1. 디자인 업로드", done: Boolean(file) },
             { label: "2. AI 분석·견적", done: Boolean(estimate) },
@@ -288,6 +288,7 @@ const DesignQuote = () => {
                 if (droppedFile) selectFile(droppedFile);
               }}
               aria-label="견적을 받을 의류 이미지 업로드"
+              data-tutorial="quote-upload"
             >
               {previewUrl ? (
                 <img
@@ -342,13 +343,14 @@ const DesignQuote = () => {
               className="mt-4 h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
               onClick={() => void startAnalysis()}
               disabled={isPreparing}
+              data-tutorial="quote-analyze"
             >
               {isPreparing ? "이미지 준비 중..." : "AI 분석 및 견적 생성"}
               {!isPreparing && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </Card>
 
-          <div>
+          <div data-tutorial="quote-result">
             {analysisInput ? (
               <div className="space-y-5">
                 <ProductionEstimateCard

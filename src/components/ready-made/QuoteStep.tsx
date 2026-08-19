@@ -35,16 +35,14 @@ export const QuoteStep = ({ form }: QuoteStepProps) => {
       <Card className="mt-5 overflow-hidden rounded-[1.5rem] border-brand/20 bg-white shadow-sm">
         <div className="space-y-3 p-5 sm:p-6">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-stone-500">기성 무지 {form.selectedProduct.label}</span>
+            <span className="text-sm font-semibold text-stone-500">기본 의류 ({form.selectedProduct.label})</span>
             <span className="text-sm font-bold text-stone-800">{formatWon(quote.garmentUnitPrice)}</span>
           </div>
 
           {quote.locationBreakdown.map((line) => (
             <div key={line.jobId} className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-stone-500">
-                {form.printMethod === "dtf" ? "DTF" : "DTG"} {line.locationLabel} 로고 ({line.sizeLabel})
-              </span>
-              <span className="text-sm font-bold text-stone-800">{formatWon(line.unitPrice)}</span>
+              <span className="text-sm font-semibold text-stone-500">{line.locationLabel} 프린팅</span>
+              <span className="text-sm font-bold text-stone-800">+{formatWon(line.unitPrice)}</span>
             </div>
           ))}
 

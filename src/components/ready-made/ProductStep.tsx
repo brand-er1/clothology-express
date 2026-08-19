@@ -32,7 +32,7 @@ export const ProductStep = ({ form }: ProductStepProps) => (
             >
               <div className="relative flex aspect-square items-center justify-center bg-stone-50">
                 <img
-                  src={getAppPath(product.image)}
+                  src={getAppPath(product.imageFront)}
                   alt={product.label}
                   className="h-full w-full object-contain p-4"
                 />
@@ -45,6 +45,9 @@ export const ProductStep = ({ form }: ProductStepProps) => (
               <div className="p-3">
                 <p className="text-sm font-bold text-stone-950">{product.label}</p>
                 <p className="mt-0.5 truncate text-xs text-stone-500">{product.description}</p>
+                <p className="mt-1 text-xs font-black text-brand">
+                  기본 {product.basePrice.toLocaleString("ko-KR")}원~
+                </p>
               </div>
             </Card>
           </button>

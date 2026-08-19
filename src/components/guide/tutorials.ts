@@ -286,14 +286,24 @@ const productionProcessSteps: TutorialStep[] = [
   },
 ];
 
-/** No generic (id-less) route creates a funding, so this stays narration too, ending in a
- * real CTA into the flow that actually starts one. */
+/** /fundings is public (no login required), so the funding explanation actually shows the real
+ * funding page — the visitor lands there and sees exactly what they'd browse. Only "opening your
+ * own funding" has no generic (id-less) route to spotlight, so that part stays narrated. */
 const fundingConceptSteps: TutorialStep[] = [
   {
-    character: "funding",
-    message: "바로 생산하지 않고 먼저 사람들의 반응을 확인해볼 수도 있어요. 대표 이미지, 상품명, 판매가격, 목표 수량, 진행 기간을 정하면 펀딩 페이지가 만들어져요.",
+    target: '[data-tutorial="fundings-grid"]',
+    page: "/fundings",
+    character: "point-down",
+    message: "바로 생산하지 않고 먼저 사람들의 반응을 확인해볼 수도 있어요. 이렇게 목표 수량만큼 주문이 모이면 제작이 시작되는 한정판 상품들이 펀딩이에요.",
+    position: "top",
   },
   {
+    page: "/fundings",
+    character: "funding",
+    message: "직접 펀딩을 열 때는 대표 이미지, 상품명, 판매가격, 목표 수량, 진행 기간을 정하면 펀딩 페이지가 만들어져요.",
+  },
+  {
+    page: "/fundings",
     character: "happy",
     message: "목표 인원이 모이면 그대로 실제 생산으로 이어져요. 재고를 먼저 많이 만들어두지 않아도 아이디어를 시장에서 검증할 수 있다는 게 펀딩의 장점이에요.",
     ctas: [{ label: "펀딩 만들어보기", to: "/customize" }],
@@ -301,52 +311,36 @@ const fundingConceptSteps: TutorialStep[] = [
 ];
 
 /**
- * AI design and auto-quote explained without leaving the current page or requiring a route
- * change — /customize and /design-quote both require being logged in (see AuthGuard), so a
- * "how does BRAND-ER work?" overview aimed at first-time, possibly-anonymous visitors must not
- * force a navigation that can dead-end at the login wall. The real, spotlight-driven versions
- * of these two stretches live in `customizeTutorial` and `designQuoteTutorial` — reached
- * directly from the menu's "AI로 옷 만드는 방법" / "자동견적이 궁금해요" once the visitor is
- * actually using that page.
- */
-const aiDesignConceptSteps: TutorialStep[] = [
-  {
-    character: "clothes",
-    message: "먼저 어떤 옷을 만들고 싶은지 정해볼까요? 정확한 디자인이 없어도 괜찮아요 — 만들고 싶은 느낌만 있어도 시작할 수 있어요.",
-  },
-  {
-    character: "point-down",
-    message: "종류를 고르면 원단과 디테일을 차례로 정하고, 마지막엔 색상·핏·프린트 위치 같은 걸 문장으로 설명하면 AI가 앞·뒤 디자인을 만들어줘요. 자세히 설명할수록 원하는 이미지에 가까워져요.",
-  },
-  {
-    character: "happy",
-    message: "마음에 드는 디자인이 나왔나요? 브랜더에서는 이 디자인을 이미지로만 끝내지 않아요 — 실제 제작을 의뢰하거나, 먼저 펀딩을 열어볼 수도 있어요. 상상한 옷을 AI로 만들고 실제 제품까지 이어가는 것이 브랜더의 핵심이에요.",
-  },
-];
-
-const quoteConceptSteps: TutorialStep[] = [
-  {
-    character: "thinking",
-    message: "필요한 수량이 이미 정해져 있다면 바로 제작을 의뢰하고, 아직 생산이 부담스럽다면 펀딩을 열어 사람들의 반응을 먼저 확인할 수 있어요. 어느 쪽이든, 시작하기 전에 예상 제작비부터 확인해볼까요?",
-  },
-  {
-    character: "calculator",
-    message: "의류 종류·원단·수량은 물론 프린팅·자수 같은 후가공, 지퍼·단추 같은 부자재까지 입력하면 예상 장당 제작비·패턴개발비·샘플비·후가공비·총 제작비를 자동으로 계산해줘요.",
-  },
-];
-
-/**
- * The full "브랜더는 어떻게 이용하나요?" walkthrough — a start-to-finish narration of the whole
- * pipeline. Kept entirely conceptual (no `page`) so it works from any page for any visitor;
- * the CTAs at the end are where it hands off into the real, per-page tutorials.
+ * The full "브랜더는 어떻게 이용하나요?" walkthrough — walks the real pages one by one
+ * (/customize → /design-quote → /fundings), not just narration on whatever page it started on.
+ * /customize and /design-quote require being logged in (AuthGuard); TutorialOverlay's
+ * navigation effect already bails out with a "로그인 후 이용할 수 있어요" toast instead of
+ * hanging if a step's page redirects an anonymous visitor to /auth, so this degrades instead
+ * of stranding the tour.
  */
 const brandProcessSteps: TutorialStep[] = [
   {
     character: "thinking",
-    message: "브랜더는 아이디어만 있어도 실제 옷을 만들 수 있는 곳이에요. 아이디어 → AI 디자인 → 자동견적 → 제작 의뢰/펀딩 → 샘플 → 본생산 → 검수 → 배송, 전체 과정을 하나씩 보여드릴게요.",
+    message: "브랜더는 아이디어만 있어도 실제 옷을 만들 수 있는 곳이에요. 아이디어 → AI 디자인 → 자동견적 → 제작 의뢰/펀딩 → 샘플 → 본생산 → 검수 → 배송, 전체 과정을 페이지를 직접 옮겨가며 보여드릴게요.",
   },
-  ...aiDesignConceptSteps,
-  ...quoteConceptSteps,
+  {
+    target: '[data-tutorial="customize-type"]',
+    page: "/customize",
+    character: "clothes",
+    message: "먼저 어떤 옷을 만들고 싶은지 정해볼까요? 정확한 디자인이 없어도 괜찮아요 — 만들고 싶은 느낌만 있어도 시작할 수 있어요.",
+    position: "auto",
+  },
+  {
+    page: "/customize",
+    character: "point-down",
+    message: "종류를 고르면 원단과 디테일을 차례로 정하고, 마지막엔 색상·핏·프린트 위치 같은 걸 문장으로 설명하면 AI가 앞·뒤 디자인을 만들어줘요. 자세히 설명할수록 원하는 이미지에 가까워져요.",
+  },
+  {
+    page: "/customize",
+    character: "happy",
+    message: "마음에 드는 디자인이 나왔나요? 브랜더에서는 이 디자인을 이미지로만 끝내지 않아요 — 실제 제작을 의뢰하거나, 먼저 펀딩을 열어볼 수도 있어요. 상상한 옷을 AI로 만들고 실제 제품까지 이어가는 것이 브랜더의 핵심이에요.",
+  },
+  ...designQuoteTutorial,
   ...fundingConceptSteps.map((s) => ({ ...s, ctas: undefined })),
   ...productionProcessSteps,
   {

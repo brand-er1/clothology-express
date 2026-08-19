@@ -20,6 +20,8 @@ const sizesWithTotal = (quantity: number) => ({
 const frontJob = (overrides: Partial<ReadyMadePrintJob> = {}): ReadyMadePrintJob => ({
   id: "front",
   location: "front_center",
+  side: "front",
+  placement: { xPercent: 50, yPercent: 50, widthPercent: 30 },
   sizeCategory: "small",
   ...overrides,
 });

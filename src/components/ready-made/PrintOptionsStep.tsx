@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LogoPlacementCanvas } from "@/components/ready-made/LogoPlacementCanvas";
 import {
   READY_MADE_DTF_BULK_SIZE_OPTIONS,
   READY_MADE_DTG_BULK_SIZE_OPTIONS,
@@ -62,6 +63,18 @@ export const PrintOptionsStep = ({ form }: PrintOptionsStepProps) => {
         </div>
       </div>
 
+      <div className="mt-6">
+        <p className="text-sm font-bold text-stone-700">디자인 배치 미리보기</p>
+        <Card className="mt-2 rounded-2xl border-stone-200 bg-white p-4">
+          <LogoPlacementCanvas
+            product={form.selectedProduct}
+            designPreviewUrl={form.designPreviewUrl}
+            printJobs={form.printJobs}
+            onPlacementChange={form.setPrintJobPlacement}
+          />
+        </Card>
+      </div>
+
       <div className="mt-6 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-stone-700">인쇄 위치 (여러 곳 선택 가능)</p>
@@ -78,7 +91,7 @@ export const PrintOptionsStep = ({ form }: PrintOptionsStepProps) => {
                 <div className="min-w-0 flex-1">
                   <Select
                     value={job.location}
-                    onValueChange={(value) => form.updatePrintJob(job.id, { location: value as ReadyMadePrintLocation })}
+                    onValueChange={(value) => form.setPrintJobLocation(job.id, value as ReadyMadePrintLocation)}
                   >
                     <SelectTrigger className="h-10 w-full bg-white font-bold">
                       <SelectValue>{locationMeta?.label}</SelectValue>
@@ -97,13 +110,31 @@ export const PrintOptionsStep = ({ form }: PrintOptionsStepProps) => {
                   </Select>
 
                   {job.location === "custom" && (
-                    <Input
-                      value={job.customLocationNote || ""}
-                      onChange={(event) => form.updatePrintJob(job.id, { customLocationNote: event.target.value })}
-                      placeholder="예: 오른쪽 소매 하단"
-                      maxLength={40}
-                      className="mt-2 h-10 bg-white"
-                    />
+                    <div className="mt-2 space-y-2">
+                      <Input
+                        value={job.customLocationNote || ""}
+                        onChange={(event) => form.updatePrintJob(job.id, { customLocationNote: event.target.value })}
+                        placeholder="예: 오른쪽 소매 하단"
+                        maxLength={40}
+                        className="h-10 bg-white"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["front", "back"] as const).map((side) => (
+                          <button
+                            key={side}
+                            type="button"
+                            onClick={() => form.setPrintJobSide(job.id, side)}
+                            className={`h-9 rounded-lg text-xs font-bold transition ${
+                              job.side === side
+                                ? "bg-brand text-white"
+                                : "bg-white text-stone-500 ring-1 ring-stone-200 hover:bg-stone-50"
+                            }`}
+                          >
+                            {side === "front" ? "앞면에 배치" : "뒷면에 배치"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
 

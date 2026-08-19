@@ -472,49 +472,49 @@ export const BrandGuide = () => {
             무엇을 도와드릴까요?
           </p>
           <div className="mt-1 max-h-[60vh] overflow-y-auto pb-1.5">
+            <button
+              type="button"
+              onClick={() => startTour("brandProcess")}
+              className="flex w-full flex-col items-start px-4 py-2 text-left transition hover:bg-stone-50"
+            >
+              <span className="text-sm font-semibold text-stone-700">▶ 브랜더 어떻게 이용하나요?</span>
+              <span className="mt-0.5 text-[11px] text-stone-400">AI 디자인부터 견적, 펀딩까지 전체 과정을 같이 둘러봅니다.</span>
+            </button>
             {currentTutorialKey && (
               <button
                 type="button"
                 onClick={startPageTutorial}
-                className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+                className="flex w-full flex-col items-start px-4 py-2 text-left transition hover:bg-stone-50"
               >
-                ▶ 이 페이지 사용법{tutorialLabels[currentTutorialKey] ? ` (${tutorialLabels[currentTutorialKey]})` : ""}
+                <span className="text-sm font-semibold text-stone-700">
+                  ▶ 이 페이지 사용법{tutorialLabels[currentTutorialKey] ? ` (${tutorialLabels[currentTutorialKey]})` : ""}
+                </span>
+                <span className="mt-0.5 text-[11px] text-stone-400">현재 보고 있는 화면의 기능만 설명합니다.</span>
               </button>
             )}
             <button
               type="button"
-              onClick={() => startTour("brandProcess")}
-              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
-            >
-              ▶ 브랜더는 어떻게 이용하나요?
-            </button>
-            <button
-              type="button"
-              onClick={() => startTour("customize")}
-              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
-            >
-              ▶ AI로 옷 만드는 방법
-            </button>
-            <button
-              type="button"
               onClick={() => startTour("design-quote")}
-              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+              className="flex w-full flex-col items-start px-4 py-2 text-left transition hover:bg-stone-50"
             >
-              ▶ 자동견적이 궁금해요
+              <span className="text-sm font-semibold text-stone-700">▶ 자동견적이 궁금해요</span>
+              <span className="mt-0.5 text-[11px] text-stone-400">디자인 견적을 계산하는 방법을 설명합니다.</span>
             </button>
             <button
               type="button"
               onClick={() => startTour("fundingConcept")}
-              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+              className="flex w-full flex-col items-start px-4 py-2 text-left transition hover:bg-stone-50"
             >
-              ▶ 펀딩은 어떻게 하나요?
+              <span className="text-sm font-semibold text-stone-700">▶ 펀딩이 궁금해요</span>
+              <span className="mt-0.5 text-[11px] text-stone-400">실제 펀딩 페이지에서 펀딩 기능을 설명합니다.</span>
             </button>
             <button
               type="button"
               onClick={() => startTour("productionProcess")}
-              className="flex w-full items-center px-4 py-2 text-left text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-brand"
+              className="flex w-full flex-col items-start px-4 py-2 text-left transition hover:bg-stone-50"
             >
-              ▶ 제작 과정이 궁금해요
+              <span className="text-sm font-semibold text-stone-700">▶ 제작 과정이 궁금해요</span>
+              <span className="mt-0.5 text-[11px] text-stone-400">샘플부터 생산·배송까지 설명합니다.</span>
             </button>
             <button
               type="button"

@@ -20,6 +20,14 @@ export interface TutorialStep {
   /** Route this step belongs to. If it differs from the current route, the overlay navigates
    * there first — this is what lets one tutorial walk across multiple real pages. */
   page?: string;
+  /** Use instead of `page` when the destination route is only known at runtime and matches a
+   * pattern rather than one fixed path — e.g. "we clicked into *some* funding's detail page,
+   * whichever one is first in the list" (`/^\/fundings\/[^/]+$/`). */
+  pagePattern?: RegExp;
+  /** Instead of just advancing the tutorial step, real-click the spotlighted element itself
+   * (e.g. a funding card) so its own real navigation fires — matches the spec's "show the real
+   * page, don't fake it" rule for content that only exists once you're actually there. */
+  clickThrough?: boolean;
   /** Extra action buttons shown on this step (typically the last one), e.g. the process
    * tour's closing "AI로 옷 만들어보기 / 자동견적 받아보기 / 펀딩 둘러보기" links. */
   ctas?: TutorialCta[];
@@ -286,69 +294,131 @@ const productionProcessSteps: TutorialStep[] = [
   },
 ];
 
-/** /fundings is public (no login required), so the funding explanation actually shows the real
- * funding page — the visitor lands there and sees exactly what they'd browse. Only "opening your
- * own funding" has no generic (id-less) route to spotlight, so that part stays narrated. */
+/** Matches any funding's detail route (/fundings/<id>) — used once we've clicked into
+ * *some* funding from the list, whose id is only known at runtime. */
+const FUNDING_DETAIL_PATTERN = /^\/fundings\/[^/]+$/;
+
+/** Real spotlights on an actual funding detail page — reached via a real click-through from the
+ * funding list, never a fabricated mock. No real order/payment is ever triggered here. */
+const fundingDetailSteps: TutorialStep[] = [
+  {
+    target: '[data-tutorial="funding-detail-image"]',
+    pagePattern: FUNDING_DETAIL_PATTERN,
+    character: "point-right",
+    message: "고객은 여기서 실제 디자인을 확인해요.",
+    position: "right",
+  },
+  {
+    target: '[data-tutorial="funding-detail-price"]',
+    pagePattern: FUNDING_DETAIL_PATTERN,
+    character: "calculator",
+    message: "판매 가격도 여기에서 확인할 수 있어요.",
+    position: "bottom",
+  },
+  {
+    target: '[data-tutorial="funding-detail-progress"]',
+    pagePattern: FUNDING_DETAIL_PATTERN,
+    character: "point-up",
+    message: "현재 몇 명이 참여했고 목표까지 얼마나 남았는지 확인할 수 있어요.",
+    position: "bottom",
+  },
+  {
+    target: '[data-tutorial="funding-detail-size"]',
+    pagePattern: FUNDING_DETAIL_PATTERN,
+    character: "point-down",
+    message: "구매자는 원하는 사이즈를 선택해서 참여할 수 있어요.",
+    position: "bottom",
+  },
+  {
+    target: '[data-tutorial="funding-detail-participate"]',
+    pagePattern: FUNDING_DETAIL_PATTERN,
+    character: "happy",
+    message: "마음에 들면 여기에서 펀딩에 참여하게 돼요. (이 튜토리얼에서는 실제 결제로 이어지지 않아요.)",
+    position: "top",
+  },
+];
+
+/** /fundings is public (no login required), so this walks the real list → a real card → a real
+ * detail page, exactly as the visitor would themselves — never a mocked-up substitute. */
 const fundingConceptSteps: TutorialStep[] = [
   {
     target: '[data-tutorial="fundings-grid"]',
     page: "/fundings",
     character: "point-down",
-    message: "바로 생산하지 않고 먼저 사람들의 반응을 확인해볼 수도 있어요. 이렇게 목표 수량만큼 주문이 모이면 제작이 시작되는 한정판 상품들이 펀딩이에요.",
+    message: "펀딩은 옷을 먼저 많이 생산해두는 방식이 아니에요. 디자인을 먼저 공개하고, 사람들이 얼마나 원하는지 먼저 확인해볼 수 있어요.",
     position: "top",
   },
   {
+    target: '[data-tutorial="funding-card"]',
     page: "/fundings",
-    character: "funding",
-    message: "직접 펀딩을 열 때는 대표 이미지, 상품명, 판매가격, 목표 수량, 진행 기간을 정하면 펀딩 페이지가 만들어져요.",
+    character: "point-up",
+    message: "상품 이미지·이름·가격은 물론, 지금까지 참여한 인원과 목표 인원·달성률·남은 기간까지 카드 하나에서 확인할 수 있어요. 하나를 눌러 자세히 볼까요?",
+    position: "bottom",
+    clickThrough: true,
+  },
+  ...fundingDetailSteps,
+  {
+    pagePattern: FUNDING_DETAIL_PATTERN,
+    character: "thinking",
+    message: "이번엔 이 옷을 만든 사람 입장에서 볼게요. 내가 AI로 만든 디자인도 이렇게 펀딩 상품으로 등록할 수 있어요.",
   },
   {
-    page: "/fundings",
+    pagePattern: FUNDING_DETAIL_PATTERN,
     character: "happy",
-    message: "목표 인원이 모이면 그대로 실제 생산으로 이어져요. 재고를 먼저 많이 만들어두지 않아도 아이디어를 시장에서 검증할 수 있다는 게 펀딩의 장점이에요.",
+    message: "목표 인원이 모이면 그대로 실제 생산 단계로 이어져요. 재고를 먼저 많이 만들어두지 않아도 아이디어를 시장에서 검증할 수 있다는 게 펀딩의 장점이에요.",
     ctas: [{ label: "펀딩 만들어보기", to: "/customize" }],
   },
 ];
 
 /**
- * The full "브랜더는 어떻게 이용하나요?" walkthrough — walks the real pages one by one
- * (/customize → /design-quote → /fundings), not just narration on whatever page it started on.
- * /customize and /design-quote require being logged in (AuthGuard); TutorialOverlay's
+ * The full "브랜더 어떻게 이용하나요?" walkthrough — walks the real pages one by one:
+ * /customize (AI design) → /design-quote (real quote flow) → /fundings → a real funding's own
+ * detail page. Not narration over a single screen — each page actually loads before its part is
+ * explained. /customize and /design-quote require being logged in (AuthGuard); TutorialOverlay's
  * navigation effect already bails out with a "로그인 후 이용할 수 있어요" toast instead of
- * hanging if a step's page redirects an anonymous visitor to /auth, so this degrades instead
- * of stranding the tour.
+ * hanging if a step's page redirects an anonymous visitor to /auth.
  */
 const brandProcessSteps: TutorialStep[] = [
   {
     character: "thinking",
-    message: "브랜더는 아이디어만 있어도 실제 옷을 만들 수 있는 곳이에요. 아이디어 → AI 디자인 → 자동견적 → 제작 의뢰/펀딩 → 샘플 → 본생산 → 검수 → 배송, 전체 과정을 페이지를 직접 옮겨가며 보여드릴게요.",
+    message: "처음 오셨군요! 제가 브랜더에서 옷을 만드는 과정을 직접 보여드릴게요. 디자인부터 실제 펀딩까지, 페이지를 직접 옮겨가며 같이 가볼까요?",
   },
   {
     target: '[data-tutorial="customize-type"]',
     page: "/customize",
     character: "clothes",
-    message: "먼저 어떤 옷을 만들고 싶은지 정해볼까요? 정확한 디자인이 없어도 괜찮아요 — 만들고 싶은 느낌만 있어도 시작할 수 있어요.",
+    message: "첫 번째는 디자인이에요. 원하는 옷을 글로 설명하면 AI가 디자인 이미지를 만들어드려요. 디자인을 직접 그리지 못해도 괜찮아요 — 원하는 느낌부터 시작하면 됩니다.",
     position: "auto",
   },
   {
     page: "/customize",
     character: "point-down",
-    message: "종류를 고르면 원단과 디테일을 차례로 정하고, 마지막엔 색상·핏·프린트 위치 같은 걸 문장으로 설명하면 AI가 앞·뒤 디자인을 만들어줘요. 자세히 설명할수록 원하는 이미지에 가까워져요.",
+    message: "종류를 고르면 원단과 디테일을 차례로 정하고, 마지막엔 색상·핏·프린트 위치 같은 걸 문장으로 자유롭게 설명해요. 예: '빈티지한 오버핏 반팔, 워싱 블랙 컬러, 앞면 작은 로고, 뒷면 그래픽'처럼요.",
   },
   {
     page: "/customize",
     character: "happy",
-    message: "마음에 드는 디자인이 나왔나요? 브랜더에서는 이 디자인을 이미지로만 끝내지 않아요 — 실제 제작을 의뢰하거나, 먼저 펀딩을 열어볼 수도 있어요. 상상한 옷을 AI로 만들고 실제 제품까지 이어가는 것이 브랜더의 핵심이에요.",
+    message: "이렇게 AI가 디자인을 만들어줘요. 중요한 건 여기서 끝이 아니라는 거예요 — AI로 만든 디자인을 실제 옷으로 제작할 수도 있고, 펀딩 상품으로 만들어볼 수도 있어요.",
   },
   ...designQuoteTutorial,
+  {
+    page: "/design-quote",
+    character: "thinking",
+    message: "견적까지 확인했다면 이제 어떻게 진행할지 선택하면 돼요. 필요한 수량이 정해져 있다면 이 디자인 그대로 제작을 의뢰하고, 아직 바로 생산하기 부담스럽다면 펀딩으로 사람들의 반응을 먼저 확인할 수도 있어요.",
+  },
+  {
+    page: "/design-quote",
+    character: "funding",
+    message: "이번엔 펀딩 쪽으로 같이 가볼게요 →",
+  },
   ...fundingConceptSteps.map((s) => ({ ...s, ctas: undefined })),
   ...productionProcessSteps,
   {
     character: "happy",
-    message: "어렵게만 느껴졌던 의류 제작, 이제 조금 이해되셨나요? 브랜더에서는 아이디어만 있어도 디자인부터 견적, 제작과 펀딩까지 하나의 과정으로 이어갈 수 있어요.",
+    message: "브랜더에서는 AI로 이미지만 만드는 게 아니라, 그 디자인을 실제 옷으로 연결할 수 있어요. 아이디어 → AI 디자인 → 디자인 견적 → 제작 의뢰/펀딩 → 샘플 → 본생산 → 검수·배송, 하나로 이어지는 과정이에요.",
     ctas: [
       { label: "AI로 옷 만들어보기", to: "/customize" },
-      { label: "자동견적 받아보기", to: "/design-quote" },
+      { label: "자동견적 확인하기", to: "/design-quote" },
       { label: "펀딩 둘러보기", to: "/fundings" },
     ],
   },
@@ -370,7 +440,7 @@ export const tutorials: Record<string, TutorialSource> = {
 export const tutorialLabels: Record<string, string> = {
   home: "홈",
   fundings: "펀딩 둘러보기",
-  "design-quote": "내 디자인 견적",
+  "design-quote": "디자인 견적",
   customize: "AI 디자인 만들기",
   fundingEditor: "펀딩 만들기",
   myFundings: "내 펀딩",
@@ -428,7 +498,7 @@ export const faqItems: FaqItem[] = [
   },
   {
     q: "펀딩 없이 바로 제작을 의뢰할 수도 있나요?",
-    a: "네, AI 디자인 마지막 단계나 내 디자인 견적 페이지에서 펀딩을 열지 않고 바로 제작 의뢰를 접수할 수 있어요. 관리자가 확인 후 연락드립니다.",
+    a: "네, AI 디자인 마지막 단계나 디자인 견적 페이지에서 펀딩을 열지 않고 바로 제작 의뢰를 접수할 수 있어요. 관리자가 확인 후 연락드립니다.",
   },
   {
     q: "직접 만든 로고나 이미지를 옷에 넣을 수 있나요?",

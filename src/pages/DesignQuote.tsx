@@ -217,11 +217,12 @@ const DesignQuote = () => {
               Brand-er AI estimate
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.045em] text-stone-950 sm:text-5xl">
-              내 디자인으로 견적받기
+              디자인 견적
             </h1>
             <p className="mt-4 max-w-2xl text-[15px] leading-7 text-stone-500">
-              이미 제작한 의류 이미지를 올리면 의류 종류, 소재, 후가공과
-              부자재를 분석해 기존 브랜더 계산식으로 예상 견적을 만듭니다.
+              디자인을 분석해 예상 제작비를 자동으로 확인해보세요. 이미 제작한
+              의류 이미지를 올리면 의류 종류, 소재, 후가공과 부자재를 분석해
+              기존 브랜더 계산식으로 예상 견적을 만듭니다.
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -237,7 +238,7 @@ const DesignQuote = () => {
             </Button>
             <Button className="h-12 rounded-full bg-brand px-6 hover:bg-brand-dark">
               <Upload className="mr-2 h-4 w-4" />
-              내 디자인으로 견적받기
+              자동견적 확인하기
             </Button>
           </div>
         </div>

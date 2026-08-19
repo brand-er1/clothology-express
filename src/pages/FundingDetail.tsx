@@ -203,7 +203,7 @@ const FundingDetail = () => {
   const customerDescription = getCustomerDescription(funding);
 
   const purchaseButton = !isPreview && funding.price && !currentUserId ? (
-    <Button asChild className="h-14 w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark">
+    <Button asChild className="h-14 w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark" data-tutorial="funding-detail-participate">
       <Link to={loginReturnTo}>
         <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
       </Link>
@@ -213,6 +213,7 @@ const FundingDetail = () => {
       disabled={isPreview || !funding.price || submitting}
       onClick={handleParticipate}
       className="h-14 w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark"
+      data-tutorial="funding-detail-participate"
     >
       {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
       {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
@@ -246,7 +247,7 @@ const FundingDetail = () => {
         </div>
 
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:gap-12 xl:gap-16">
-          <section className="overflow-hidden bg-[#e7e4df]">
+          <section className="overflow-hidden bg-[#e7e4df]" data-tutorial="funding-detail-image">
             <div className="relative aspect-[4/5] sm:aspect-square lg:aspect-[4/5]">
               <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain p-5 sm:p-10 lg:p-12" />
               <WatermarkOverlay />
@@ -262,11 +263,11 @@ const FundingDetail = () => {
               {funding.product_name}
             </h1>
             <p className="mt-5 text-sm leading-7 text-stone-600">{customerDescription}</p>
-            <p className="mt-7 text-2xl font-bold tracking-tight">
+            <p className="mt-7 text-2xl font-bold tracking-tight" data-tutorial="funding-detail-price">
               {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
             </p>
 
-            <div className="mt-8 border-y border-black/10 py-5">
+            <div className="mt-8 border-y border-black/10 py-5" data-tutorial="funding-detail-progress">
               <div className="flex items-start justify-between gap-4 text-sm">
                 <div>
                   <p className="font-bold text-[#211b1c]">
@@ -302,7 +303,7 @@ const FundingDetail = () => {
                 </div>
               </div>
 
-              <div>
+              <div data-tutorial="funding-detail-size">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-sm font-bold">SIZE</p>
                   <a href="#size-guide" className="text-xs text-stone-500 underline underline-offset-4 hover:text-brand">사이즈 가이드</a>

@@ -61,12 +61,17 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
       className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-x-6 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-7 xl:gap-y-16"
       data-tutorial="fundings-grid"
     >
-      {fundings.map((funding) => {
+      {fundings.map((funding, cardIndex) => {
         const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
         const remaining = Math.max(0, funding.moq - funding.current_orders);
 
         return (
-          <Link key={funding.id} to={`/fundings/${funding.id}`} className="group block min-w-0">
+          <Link
+            key={funding.id}
+            to={`/fundings/${funding.id}`}
+            className="group block min-w-0"
+            data-tutorial={cardIndex === 0 ? "funding-card" : undefined}
+          >
             <article>
               <div className="relative aspect-[4/5] overflow-hidden bg-[#e9e7e3]">
                 <img

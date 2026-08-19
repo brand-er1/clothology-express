@@ -103,12 +103,34 @@ export const TutorialOverlay = () => {
   const { activeKey, stepIndex, pendingKey, start, clearPending, stop, goNext, goPrev } = useTutorial();
   const [rect, setRect] = useState<Rect | null>(null);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  // Mobile bottom-sheet offset: normally just a safe-area margin, but when the on-screen
+  // keyboard opens (e.g. explaining a prompt/quantity input), visualViewport shrinks — track it
+  // so the sheet lifts above the keyboard instead of being covered by it.
+  const [sheetBottom, setSheetBottom] = useState(16);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setSheetBottom(covered + 16);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
 
   const pageTutorialKey = getTutorialKeyForPath(location.pathname);
   const steps = resolveTutorialSteps(activeKey, pageContext);
   const step = activeKey ? steps[Math.min(stepIndex, Math.max(steps.length - 1, 0))] : null;
   const isLastStep = activeKey ? stepIndex >= steps.length - 1 : false;
-  const onStepPage = !step?.page || step.page === location.pathname;
+  const onStepPage = step?.pagePattern
+    ? step.pagePattern.test(location.pathname)
+    : !step?.page || step.page === location.pathname;
 
   // Starting a tutorial from the character menu: navigate to whatever route its first step
   // needs (if any), then start once we've actually arrived. Works for a single fixed-page
@@ -155,6 +177,20 @@ export const TutorialOverlay = () => {
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, stepIndex, step?.page]);
+
+  // A `pagePattern` step (e.g. "whichever funding you clicked into") has no fixed destination
+  // to navigate to — it only ever becomes reachable via a preceding `clickThrough` step's real
+  // click. If that never landed (e.g. nothing to click — an empty list), don't strand the tour
+  // showing nothing forever; skip past it the same way an unfound target skips ahead.
+  useEffect(() => {
+    if (!activeKey || !step?.pagePattern || onStepPage) return;
+    const timer = window.setTimeout(() => {
+      if (isLastStep) stop();
+      else goNext();
+    }, FIND_TARGET_TIMEOUT_MS + 300);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey, stepIndex, step?.pagePattern, onStepPage]);
 
   useEffect(() => {
     setDontShowAgain(false);
@@ -218,6 +254,7 @@ export const TutorialOverlay = () => {
       );
     };
     window.addEventListener("resize", onViewportChange);
+    window.addEventListener("orientationchange", onViewportChange);
     window.addEventListener("scroll", onViewportChange, true);
     // Layout can keep shifting briefly after the step change (images loading, smooth-scroll in
     // progress), so poll every frame for the first second, then settle to resize/scroll only.
@@ -232,6 +269,7 @@ export const TutorialOverlay = () => {
     return () => {
       cancelled = true;
       window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("orientationchange", onViewportChange);
       window.removeEventListener("scroll", onViewportChange, true);
       window.cancelAnimationFrame(rafId);
     };
@@ -256,6 +294,15 @@ export const TutorialOverlay = () => {
     navigate(to);
   };
 
+  // "예시 펀딩 하나를 클릭" — real-click the spotlighted element so its own real navigation
+  // fires (e.g. into that funding's actual detail page), instead of faking the transition.
+  const handleNext = () => {
+    if (step.clickThrough && step.target) {
+      (document.querySelector(step.target) as HTMLElement | null)?.click();
+    }
+    goNext();
+  };
+
   const progressBar = (
     <div className="mt-3 flex items-center gap-1">
       {steps.map((_, index) => (
@@ -278,7 +325,7 @@ export const TutorialOverlay = () => {
               key={cta.to}
               type="button"
               onClick={() => handleCta(cta.to)}
-              className={`h-10 w-full rounded-full text-sm font-bold transition ${
+              className={`h-11 w-full rounded-full text-sm font-bold transition sm:h-10 ${
                 index === 0
                   ? "bg-brand text-white hover:bg-brand-dark"
                   : "border border-stone-200 text-stone-700 hover:bg-stone-50"
@@ -292,7 +339,7 @@ export const TutorialOverlay = () => {
         <button
           type="button"
           onClick={handleFinish}
-          className="h-10 w-full rounded-full bg-brand text-sm font-bold text-white transition hover:bg-brand-dark"
+          className="h-11 w-full rounded-full bg-brand text-sm font-bold text-white transition hover:bg-brand-dark sm:h-10"
         >
           완료 ✓
         </button>
@@ -317,15 +364,35 @@ export const TutorialOverlay = () => {
       ) : null}
     </div>
   ) : (
-    <div className="mt-4 flex items-center justify-between">
+    // PC: 이전 | 건너뛰기 | 다음 in one row. Mobile: 이전/다음 get their own full-width row
+    // (always tappable, never squeezed), 건너뛰기 drops to a second row below.
+    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+      <div className="flex items-center gap-2 sm:hidden">
+        {stepIndex > 0 && (
+          <button
+            type="button"
+            onClick={goPrev}
+            className="h-11 flex-1 rounded-full border border-stone-200 text-sm font-bold text-stone-600"
+          >
+            ← 이전
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleNext}
+          className="h-11 flex-1 rounded-full bg-brand text-sm font-bold text-white transition hover:bg-brand-dark"
+        >
+          다음 →
+        </button>
+      </div>
       <button
         type="button"
         onClick={handleClose}
-        className="text-xs font-bold text-stone-400 hover:text-stone-600"
+        className="text-xs font-bold text-stone-400 hover:text-stone-600 sm:order-first"
       >
         건너뛰기
       </button>
-      <div className="flex items-center gap-3">
+      <div className="hidden items-center gap-3 sm:flex">
         {stepIndex > 0 && (
           <button
             type="button"
@@ -337,7 +404,7 @@ export const TutorialOverlay = () => {
         )}
         <button
           type="button"
-          onClick={goNext}
+          onClick={handleNext}
           className="rounded-full bg-brand px-4 py-2 text-xs font-bold text-white transition hover:bg-brand-dark"
         >
           다음 →
@@ -346,28 +413,81 @@ export const TutorialOverlay = () => {
     </div>
   );
 
-  const bubble = (widthClass: string) => (
-    <div className={`relative ${widthClass} rounded-2xl border border-black/10 bg-white p-4 shadow-2xl`}>
+  const cardInner = (
+    <>
       <button
         type="button"
         onClick={handleClose}
         aria-label="튜토리얼 종료"
-        className="absolute right-2 top-2 rounded-full p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+        className="absolute right-3 top-3 rounded-full p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 sm:right-2 sm:top-2"
       >
-        <X className="h-3.5 w-3.5" />
+        <X className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
       </button>
 
       <p className="pr-6 text-[13px] font-bold uppercase tracking-[0.08em] text-brand">
         {stepIndex + 1} / {steps.length}
       </p>
-      <p className="mt-1.5 whitespace-pre-line text-sm leading-6 text-stone-800">{step.message}</p>
+      <p className="mt-1.5 whitespace-pre-line break-words text-sm leading-6 text-stone-800">{step.message}</p>
       {progressBar}
       {footer}
-    </div>
+    </>
   );
 
-  // Conceptual slide: no real target exists yet for this part of the story, so the character
-  // just narrates centered on a uniformly dimmed screen instead of faking a spotlight.
+  // Mobile: readability of the card beats keeping it glued to the character (spec priority:
+  // text visible > buttons tappable > target visible > character position). A fixed bottom
+  // sheet — clamped to the viewport width with real margins, capped height with its own
+  // scroll, and nudged above the on-screen keyboard via visualViewport — can never clip,
+  // over­lap the character, or push its buttons off-screen the way a target-relative bubble
+  // could on a narrow screen. The character just sits small, just above the sheet.
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 z-[70]" aria-live="polite">
+        {!isConceptual && rect && (
+          <div
+            style={{
+              position: "fixed",
+              top: (rect as Rect).top - SPOTLIGHT_PADDING,
+              left: (rect as Rect).left - SPOTLIGHT_PADDING,
+              width: (rect as Rect).width + SPOTLIGHT_PADDING * 2,
+              height: (rect as Rect).height + SPOTLIGHT_PADDING * 2,
+              borderRadius: 16,
+              boxShadow:
+                "0 0 0 9999px rgba(20,15,14,0.6), 0 0 0 3px rgba(113,26,42,0.9), 0 0 24px 6px rgba(113,26,42,0.35)",
+              transition: "top 300ms ease, left 300ms ease, width 300ms ease, height 300ms ease",
+              pointerEvents: "none",
+              zIndex: 70,
+            }}
+          />
+        )}
+        {isConceptual && <div className="fixed inset-0 z-[70] bg-[#141312]/65" />}
+        <button
+          type="button"
+          onClick={handleClose}
+          aria-label="튜토리얼 닫기"
+          className="fixed inset-0 z-[71] cursor-default"
+        />
+        {/* Character and sheet stack in one bottom-anchored flex column, so the character is
+            always fully above the sheet no matter how tall the sheet's content makes it —
+            never the two independently-anchored elements overlapping. */}
+        <div
+          className="fixed inset-x-4 z-[72] flex flex-col items-center gap-2"
+          style={{ bottom: sheetBottom, maxWidth: "calc(100vw - 32px)" }}
+        >
+          <BrandMascot
+            pose={step.character ?? "idle"}
+            size={56}
+            className="animate-mascot-bounce drop-shadow-xl"
+          />
+          <div className="flex max-h-[50vh] w-full flex-col overflow-y-auto rounded-2xl border border-black/10 bg-white p-4 shadow-2xl">
+            {cardInner}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Conceptual slide (desktop): no real target exists yet for this part of the story, so the
+  // character just narrates centered on a uniformly dimmed screen instead of faking a spotlight.
   if (isConceptual) {
     return (
       <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#141312]/70 p-4" aria-live="polite">
@@ -380,10 +500,10 @@ export const TutorialOverlay = () => {
         <div className="relative z-[72] flex w-full max-w-sm flex-col items-center gap-3">
           <BrandMascot
             pose={step.character ?? "idle"}
-            size={isMobile ? 64 : 88}
+            size={88}
             className="animate-mascot-bounce drop-shadow-xl"
           />
-          {bubble("w-full")}
+          <div className="relative w-full rounded-2xl border border-black/10 bg-white p-4 shadow-2xl">{cardInner}</div>
         </div>
       </div>
     );
@@ -426,10 +546,10 @@ export const TutorialOverlay = () => {
       >
         <BrandMascot
           pose={step.character ?? "idle"}
-          size={isMobile ? 56 : 76}
+          size={76}
           className="animate-mascot-bounce drop-shadow-xl"
         />
-        {bubble("w-full")}
+        <div className="relative w-full rounded-2xl border border-black/10 bg-white p-4 shadow-2xl">{cardInner}</div>
       </div>
     </div>
   );

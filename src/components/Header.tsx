@@ -77,7 +77,7 @@ export const Header = () => {
     { to: "/my-fundings", label: "MY COLLECTION", visible: isAuthenticated && accountType === "buyer" },
     { to: "/customize", label: "BRAND-ER STUDIO", visible: !isAuthenticated || accountType === "seller" },
     { to: "/fabric-swatch", label: "원단 스와치", visible: isAuthenticated && accountType === "seller" },
-    { to: "/design-quote", label: "내 디자인 견적", visible: isAuthenticated && accountType === "seller" },
+    { to: "/design-quote", label: "디자인 견적", visible: isAuthenticated && accountType === "seller" },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
     { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated && accountType === "seller" },
     { to: "/admin", label: "관리자", visible: isAdmin },

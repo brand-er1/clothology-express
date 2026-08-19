@@ -126,6 +126,53 @@ export const READY_MADE_PRINT_LOCATION_OPTIONS: {
   { key: "custom", label: "직접 위치 지정" },
 ];
 
+export type ReadyMadeGarmentSide = "front" | "back";
+
+/** Which mockup (front/back) each location lives on by default. "custom" has no fixed side —
+ * the customer picks one when they place it. */
+export const READY_MADE_LOCATION_SIDE: Record<
+  Exclude<ReadyMadePrintLocation, "custom">,
+  ReadyMadeGarmentSide
+> = {
+  left_chest: "front",
+  right_chest: "front",
+  front_center: "front",
+  back_center: "back",
+  sleeve: "front",
+};
+
+/** Percentage-based placement geometry for one artwork on a garment mockup — same shape as the
+ * custom-clothing flow's `ArtworkPlacement` (x/y/width, all % of the mockup image), kept as a
+ * plain local type instead of importing that one so this pricing-data module has no dependency
+ * on the custom-clothing feature. */
+export interface ReadyMadeArtworkPlacement {
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+}
+
+export const READY_MADE_MIN_ARTWORK_WIDTH_PERCENT = 6;
+export const READY_MADE_MAX_ARTWORK_WIDTH_PERCENT = 55;
+
+/** Starting placement for each location, matched to the size category's real-world scale
+ * (section 6) relative to a garment mockup — the customer can drag/resize freely from here. */
+export const READY_MADE_LOCATION_PLACEMENT_PRESET: Record<
+  Exclude<ReadyMadePrintLocation, "custom">,
+  ReadyMadeArtworkPlacement
+> = {
+  left_chest: { xPercent: 34, yPercent: 28, widthPercent: 16 },
+  right_chest: { xPercent: 66, yPercent: 28, widthPercent: 16 },
+  front_center: { xPercent: 50, yPercent: 50, widthPercent: 30 },
+  back_center: { xPercent: 50, yPercent: 46, widthPercent: 32 },
+  sleeve: { xPercent: 18, yPercent: 42, widthPercent: 14 },
+};
+
+export const READY_MADE_CUSTOM_LOCATION_PLACEMENT_PRESET: ReadyMadeArtworkPlacement = {
+  xPercent: 50,
+  yPercent: 50,
+  widthPercent: 24,
+};
+
 // ---------------------------------------------------------------------------
 // Graphic size categories — section 6
 // ---------------------------------------------------------------------------

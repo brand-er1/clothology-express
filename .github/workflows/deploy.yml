@@ -77,7 +77,8 @@ jobs:
 
   frontend:
     name: Deploy GitHub Pages
-    needs: backend
+    # Frontend deployment is intentionally independent from the Supabase job.
+    # A backend credential/deployment failure must not block static UI releases.
     runs-on: ubuntu-latest
     environment:
       name: github-pages

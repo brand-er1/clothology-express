@@ -393,42 +393,6 @@ export const ProductionEstimateCard = ({
     );
   }, [displayEstimate, dismissedAmbiguousIds]);
 
-  // Which detected element (decoration/accessory) was found in which submitted image, grouped
-  // by product then by image — powers the "IMAGE 1 · 정면 → ..." breakdown.
-  const imageFindings = useMemo(() => {
-    const imageLabels = displayEstimate?.imageLabels;
-    const items = displayEstimate?.items;
-    if (!imageLabels?.length || !items?.length || (displayEstimate?.imageCount ?? 0) <= 1) {
-      return [];
-    }
-
-    return items.map((item) => ({
-      itemIndex: item.itemIndex,
-      itemLabel: item.itemLabel,
-      images: (item.sourceImages || [])
-        .slice()
-        .sort((a, b) => a - b)
-        .map((imageIndex) => {
-          const lines: string[] = [];
-          for (const decoration of item.decorations) {
-            if (decoration.sourceImages?.includes(imageIndex)) {
-              lines.push(`${decoration.locationLabel} ${decoration.label} 발견`);
-            }
-          }
-          for (const accessory of item.accessories) {
-            if (accessory.sourceImages?.includes(imageIndex)) {
-              lines.push(`${accessory.label} 사용`);
-            }
-          }
-          return {
-            imageIndex,
-            imageLabel: imageLabels[imageIndex] || `이미지 ${imageIndex + 1}`,
-            lines,
-          };
-        }),
-    }));
-  }, [displayEstimate]);
-
   if (isLoading && !estimate) return <EstimateLoading />;
 
   if (error || !estimate || !displayEstimate) {
@@ -633,15 +597,8 @@ export const ProductionEstimateCard = ({
                       >
                         <CircleCheck className="h-3.5 w-3.5" />
                       </span>
-                      <span>
-                        <span className="block text-sm font-extrabold text-stone-950">
-                          ITEM {index + 1} · {item.itemLabel}
-                        </span>
-                        {item.sourceImages && item.sourceImages.length > 0 && (
-                          <span className="mt-0.5 block text-[11px] font-semibold text-stone-400">
-                            사용 이미지: {item.sourceImages.map((imageIndex) => `IMAGE ${imageIndex + 1}`).join(", ")}
-                          </span>
-                        )}
+                      <span className="text-sm font-extrabold text-stone-950">
+                        ITEM {index + 1} · {item.itemLabel}
                       </span>
                     </span>
                     <span className="text-xs font-bold text-brand">
@@ -791,57 +748,6 @@ export const ProductionEstimateCard = ({
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {imageFindings.length > 0 && (
-        <div className="mx-5 mb-5 rounded-2xl border border-stone-200 bg-[#fbfaf8] p-5">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="h-4 w-4 text-brand" />
-            <p className="font-extrabold text-stone-950">이미지별 발견 요소</p>
-          </div>
-          <p className="mt-1 text-xs leading-5 text-stone-500">
-            AI가 어떤 이미지에서 어떤 요소를 발견했는지 확인할 수 있습니다.
-          </p>
-          <div className="mt-4 space-y-4">
-            {imageFindings.map((group) => (
-              <div key={group.itemIndex}>
-                {allItems && (
-                  <p className="mb-2 text-xs font-extrabold text-brand">
-                    제품 {String.fromCharCode(65 + group.itemIndex)} · {group.itemLabel}
-                  </p>
-                )}
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {group.images.map((image) => (
-                    <div
-                      key={image.imageIndex}
-                      className="rounded-xl border border-stone-200 bg-white p-3"
-                    >
-                      <p className="text-xs font-extrabold text-stone-900">
-                        IMAGE {image.imageIndex + 1} · {image.imageLabel}
-                      </p>
-                      {image.lines.length > 0 ? (
-                        <ul className="mt-1.5 space-y-1">
-                          {image.lines.map((line, lineIndex) => (
-                            <li
-                              key={lineIndex}
-                              className="text-xs leading-5 text-stone-600"
-                            >
-                              → {line}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-1.5 text-xs leading-5 text-stone-400">
-                          참고용 이미지입니다.
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

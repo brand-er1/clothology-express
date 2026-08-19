@@ -3,19 +3,14 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Camera,
-  Check,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   ClipboardCheck,
   ImagePlus,
   Loader2,
-  Maximize2,
   Plus,
   RotateCcw,
   Send,
   Sparkles,
-  Star,
   Upload,
   X,
 } from "lucide-react";
@@ -38,15 +33,6 @@ const allowedImageTypes = new Set([
 ]);
 const maxFileSize = 10 * 1024 * 1024;
 const maxImageCount = 10;
-
-const analysisSteps = [
-  "의류 종류 확인",
-  "앞/뒤/디테일 이미지 분류",
-  "프린팅·자수·부자재 확인",
-  "중복 디자인 제거",
-  "제작 난이도 분석",
-  "예상 견적 계산",
-];
 
 const formatWonRange = (minimum: number, maximum: number) =>
   minimum === maximum
@@ -74,13 +60,11 @@ const readFileAsBase64 = (file: File) =>
 
 const DesignQuote = () => {
   const [images, setImages] = useState<UploadedImage[]>([]);
-  const [primaryId, setPrimaryId] = useState<string | null>(null);
   const [zoomImageId, setZoomImageId] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [analysisStarted, setAnalysisStarted] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [progressStep, setProgressStep] = useState(0);
   const [estimate, setEstimate] = useState<ProductionEstimateResult | null>(null);
   const [requestNote, setRequestNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -169,7 +153,6 @@ const DesignQuote = () => {
         })),
       );
       setImages((current) => [...current, ...prepared]);
-      setPrimaryId((current) => current ?? prepared[0]?.id ?? null);
       resetAnalysis();
     } catch (error) {
       toast({
@@ -189,31 +172,8 @@ const DesignQuote = () => {
     setImages((current) => {
       const target = current.find((image) => image.id === id);
       if (target) URL.revokeObjectURL(target.previewUrl);
-      const next = current.filter((image) => image.id !== id);
-      setPrimaryId((currentPrimary) =>
-        currentPrimary === id ? next[0]?.id ?? null : currentPrimary,
-      );
-      return next;
+      return current.filter((image) => image.id !== id);
     });
-    resetAnalysis();
-  };
-
-  const moveImage = (id: string, direction: -1 | 1) => {
-    setImages((current) => {
-      const index = current.findIndex((image) => image.id === id);
-      const targetIndex = index + direction;
-      if (index === -1 || targetIndex < 0 || targetIndex >= current.length) {
-        return current;
-      }
-      const next = current.slice();
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-      return next;
-    });
-    resetAnalysis();
-  };
-
-  const setPrimaryImage = (id: string) => {
-    setPrimaryId(id);
     resetAnalysis();
   };
 
@@ -221,18 +181,6 @@ const DesignQuote = () => {
     () => images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })),
     [images],
   );
-
-  useEffect(() => {
-    if (!isAnalyzing) {
-      setProgressStep(0);
-      return;
-    }
-    setProgressStep(0);
-    const interval = setInterval(() => {
-      setProgressStep((step) => (step < analysisSteps.length - 1 ? step + 1 : step));
-    }, 900);
-    return () => clearInterval(interval);
-  }, [isAnalyzing]);
 
   const startAnalysis = () => {
     if (images.length === 0) {
@@ -250,7 +198,6 @@ const DesignQuote = () => {
       URL.revokeObjectURL(image.previewUrl);
     }
     setImages([]);
-    setPrimaryId(null);
     resetAnalysis();
     fileInputRef.current?.click();
   };
@@ -264,7 +211,7 @@ const DesignQuote = () => {
       });
       return;
     }
-    const primaryImage = images.find((image) => image.id === primaryId) || images[0];
+    const primaryImage = images[0];
     if (!primaryImage) {
       toast({
         title: "이미지가 없습니다",
@@ -298,9 +245,7 @@ const DesignQuote = () => {
         estimate.totals.totalMin,
         estimate.totals.totalMax,
       )} (원단 제외)`,
-      images.length > 1
-        ? `업로드 이미지: 총 ${images.length}장 (대표 이미지 첨부)`
-        : "",
+      images.length > 1 ? `업로드 이미지: 총 ${images.length}장` : "",
       requestNote.trim() ? `추가 요청: ${requestNote.trim()}` : "",
     ]
       .filter(Boolean)
@@ -361,9 +306,8 @@ const DesignQuote = () => {
             </h1>
             <p className="mt-4 max-w-2xl text-[15px] leading-7 text-stone-500">
               디자인을 분석해 예상 제작비를 자동으로 확인해보세요. 정면·후면·
-              측면·디테일·프린트/자수 확대 이미지를 최대 10장까지 함께 올리면
-              AI가 한 제품으로 종합 분석해 기존 브랜더 계산식으로 예상 견적을
-              만듭니다.
+              디테일 이미지를 최대 10장까지 함께 올리면 AI가 한 제품으로 종합
+              분석해 기존 브랜더 계산식으로 예상 견적을 만듭니다.
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -473,75 +417,33 @@ const DesignQuote = () => {
                 data-tutorial="quote-upload"
               >
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-3">
-                  {images.map((image, index) => {
-                    const isPrimary = image.id === primaryId;
-                    return (
-                      <div
-                        key={image.id}
-                        className="group relative aspect-square overflow-hidden rounded-xl border border-stone-200 bg-white"
+                  {images.map((image, index) => (
+                    <div
+                      key={image.id}
+                      className="relative aspect-square overflow-hidden rounded-xl border border-stone-200 bg-white"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setZoomImageId(image.id)}
+                        className="h-full w-full"
+                        aria-label={`이미지 ${index + 1} 확대 보기`}
                       >
                         <img
                           src={image.previewUrl}
                           alt={`업로드 이미지 ${index + 1}`}
                           className="h-full w-full object-cover"
                         />
-                        {isPrimary && (
-                          <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-extrabold text-white shadow">
-                            <Star className="h-2.5 w-2.5 fill-white" />
-                            대표 이미지
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeImage(image.id)}
-                          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition hover:bg-black/80"
-                          aria-label={`이미지 ${index + 1} 삭제`}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-4">
-                          <button
-                            type="button"
-                            onClick={() => moveImage(image.id, -1)}
-                            disabled={index === 0}
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white disabled:opacity-30"
-                            aria-label={`이미지 ${index + 1} 앞으로 이동`}
-                          >
-                            <ChevronLeft className="h-3.5 w-3.5" />
-                          </button>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setZoomImageId(image.id)}
-                              className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white"
-                              aria-label={`이미지 ${index + 1} 확대 보기`}
-                            >
-                              <Maximize2 className="h-3.5 w-3.5" />
-                            </button>
-                            {!isPrimary && (
-                              <button
-                                type="button"
-                                onClick={() => setPrimaryImage(image.id)}
-                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white"
-                                aria-label={`이미지 ${index + 1} 대표 이미지로 지정`}
-                              >
-                                <Star className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => moveImage(image.id, 1)}
-                            disabled={index === images.length - 1}
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white disabled:opacity-30"
-                            aria-label={`이미지 ${index + 1} 뒤로 이동`}
-                          >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(image.id)}
+                        className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition hover:bg-black/80"
+                        aria-label={`이미지 ${index + 1} 삭제`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
                   {images.length < maxImageCount && (
                     <button
                       type="button"
@@ -555,7 +457,7 @@ const DesignQuote = () => {
                   )}
                 </div>
                 <p className="mt-3 text-xs font-semibold text-stone-400">
-                  {images.length}/{maxImageCount}장 업로드됨
+                  {images.length}/{maxImageCount}장 업로드됨 · 이미지를 눌러 확대해 보세요
                 </p>
               </div>
             )}
@@ -616,51 +518,17 @@ const DesignQuote = () => {
             {analysisStarted && cardImages.length > 0 ? (
               <div className="space-y-5">
                 {isAnalyzing && (
-                  <Card className="w-full overflow-hidden border-brand/20">
-                    <div className="px-6 py-8">
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-full bg-brand/10 p-2.5 text-brand">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        </div>
-                        <div>
-                          <p className="font-extrabold text-stone-950">
-                            이미지 {cardImages.length}장을 분석하고 있습니다
-                          </p>
-                          <p className="mt-0.5 text-xs text-stone-500">
-                            여러 이미지를 하나의 제품으로 종합해 분석 중입니다.
-                          </p>
-                        </div>
-                      </div>
-                      <ol className="mt-6 space-y-2.5">
-                        {analysisSteps.map((label, index) => (
-                          <li key={label} className="flex items-center gap-3 text-sm">
-                            <span
-                              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold transition ${
-                                index < progressStep
-                                  ? "bg-emerald-500 text-white"
-                                  : index === progressStep
-                                    ? "bg-brand text-white"
-                                    : "bg-stone-100 text-stone-400"
-                              }`}
-                            >
-                              {index < progressStep ? (
-                                <Check className="h-3.5 w-3.5" />
-                              ) : (
-                                index + 1
-                              )}
-                            </span>
-                            <span
-                              className={
-                                index <= progressStep
-                                  ? "font-bold text-stone-900"
-                                  : "text-stone-400"
-                              }
-                            >
-                              {label}
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
+                  <Card className="flex min-h-48 w-full flex-col items-center justify-center gap-3 border-brand/20 px-6 py-10 text-center">
+                    <div className="rounded-full bg-brand/10 p-3 text-brand">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-950">
+                        이미지 {cardImages.length}장을 분석하고 있습니다
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        여러 이미지를 하나의 제품으로 종합해 견적을 계산합니다.
+                      </p>
                     </div>
                   </Card>
                 )}
@@ -790,9 +658,9 @@ const DesignQuote = () => {
                   분석 결과와 자동 견적서
                 </h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-stone-500">
-                  정면·후면·측면·디테일·프린트/자수 확대 이미지를 함께 올리면
-                  AI가 종합 분석해 의류 종류·소재·프린트 위치와 개수·워싱·
-                  부자재·예상 난이도·AI 신뢰도를 확인할 수 있습니다.
+                  정면·후면·디테일 이미지를 함께 올리면 AI가 종합 분석해 의류
+                  종류·소재·프린트 위치와 개수·워싱·부자재·예상 난이도를
+                  확인할 수 있습니다.
                 </p>
                 <div className="mt-6 grid w-full max-w-lg grid-cols-2 gap-2 text-left text-xs text-stone-500 sm:grid-cols-4">
                   {["의류·소재", "프린팅·자수", "워싱·피그먼트", "부자재"].map(

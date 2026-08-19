@@ -263,6 +263,7 @@ const DesignQuote = () => {
         imagePath: null,
         imageBase64: primaryImage.base64,
         imageMimeType: primaryImage.mimeType,
+        images: images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })),
         requestSource: "design_upload",
         requestTitle: `${estimate.garment.label} 내 디자인 견적`,
         requestedQuantity: estimate.totals.quantity,

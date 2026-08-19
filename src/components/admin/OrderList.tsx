@@ -180,7 +180,7 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
               >
                 <CardContent className="p-0">
                   <div className="grid min-h-52 grid-cols-[116px_minmax(0,1fr)] sm:grid-cols-[150px_minmax(0,1fr)]">
-                    <div className="flex items-center justify-center bg-stone-100">
+                    <div className="relative flex items-center justify-center bg-stone-100">
                       {order.generated_image_url ? (
                         <img
                           src={order.generated_image_url}
@@ -189,6 +189,11 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                         />
                       ) : (
                         <ImageOff className="h-7 w-7 text-stone-300" />
+                      )}
+                      {(order.reference_image_paths?.length ?? 0) > 1 && (
+                        <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">
+                          +{(order.reference_image_paths?.length ?? 1) - 1}
+                        </span>
                       )}
                     </div>
 

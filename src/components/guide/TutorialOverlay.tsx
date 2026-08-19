@@ -8,11 +8,6 @@ import { useMascotPageContextValue } from "./MascotContext";
 import { useTutorial, markTutorialSeen } from "./TutorialContext";
 import { getTutorialKeyForPath, resolveTutorialSteps, type TutorialPosition } from "./tutorials";
 
-// A step that needs a login-gated route (e.g. /customize) can dead-end at /auth instead of
-// ever reaching its target — this is how long we wait before treating that as "blocked" rather
-// than "still navigating" and bailing out with an explanation instead of hanging silently.
-const PAGE_NAV_TIMEOUT_MS = 1800;
-
 const SPOTLIGHT_PADDING = 8;
 const CARD_WIDTH = 300;
 // Generous stand-in for the card's real height (message + progress dots + buttons) — the box is
@@ -111,34 +106,6 @@ export const TutorialOverlay = () => {
   // page we're waiting for, so a visitor who instead wanders off to some unrelated page without
   // logging in is treated as having abandoned the tour rather than left stuck in limbo forever.
   const awaitingLoginForPage = useRef<string | null>(null);
-
-  // Shared by both "a step's page needs login" effects below. `giveUp` is whichever of
-  // clearPending/stop that effect should call once we're sure this is a genuine dead end (not
-  // one we can wait out) — an anonymous visitor bounced to /auth waits it out (see
-  // awaitingLoginForPage above); a visitor logged in as the wrong account type (AuthGuard sends
-  // those to /fundings instead) can't just log in again, so that one still gives up, but with an
-  // accurate message instead of the generic "log in" one, which would be actively misleading for
-  // someone who already is logged in.
-  const handleLoginWallTimeout = (targetPage: string, giveUp: () => void) => {
-    if (window.location.pathname === targetPage) return;
-    if (window.location.pathname === "/auth") {
-      awaitingLoginForPage.current = targetPage;
-      toast({
-        title: "로그인이 필요해요",
-        description: "로그인하면 이어서 자동으로 보여드릴게요.",
-      });
-      return;
-    }
-    giveUp();
-    if (window.location.pathname === "/fundings") {
-      toast({
-        title: "판매자 계정으로 로그인해주세요",
-        description: "이 도움말은 판매자 계정으로 로그인한 뒤에 볼 수 있어요.",
-      });
-      return;
-    }
-    toast({ title: "로그인 후 이용할 수 있어요", description: "이 도움말은 로그인한 뒤에 볼 수 있어요." });
-  };
   // Mobile bottom-sheet offset: normally just a safe-area margin, but when the on-screen
   // keyboard opens (e.g. explaining a prompt/quantity input), visualViewport shrinks — track it
   // so the sheet lifts above the keyboard instead of being covered by it.
@@ -170,19 +137,14 @@ export const TutorialOverlay = () => {
 
   // Starting a tutorial from the character menu: navigate to whatever route its first step
   // needs (if any), then start once we've actually arrived. Works for a single fixed-page
-  // tutorial (e.g. home) exactly the same way it works for a multi-page journey. If that route
-  // needs login and bounces to /auth instead, give up with an explanation rather than hang.
+  // tutorial (e.g. home) exactly the same way it works for a multi-page journey.
   useEffect(() => {
     if (!pendingKey) return;
     const firstStep = resolveTutorialSteps(pendingKey, pageContext)[0];
     const targetPage = firstStep?.page;
     if (targetPage && targetPage !== location.pathname) {
       navigate(targetPage);
-      const timer = window.setTimeout(
-        () => handleLoginWallTimeout(targetPage, clearPending),
-        PAGE_NAV_TIMEOUT_MS,
-      );
-      return () => window.clearTimeout(timer);
+      return;
     }
     start(pendingKey);
     clearPending();
@@ -197,21 +159,57 @@ export const TutorialOverlay = () => {
 
   // Mid-tutorial step advance that needs a different route (journeys crossing /customize →
   // /design-quote etc.) — navigate there; the rest of this component waits via `onStepPage`.
-  // Same login-wall bailout as above so a mid-tour redirect can't strand the overlay silently.
   useEffect(() => {
     if (!activeKey || !step?.page || step.page === location.pathname) return;
-    const targetPage = step.page;
-    navigate(targetPage);
-    const timer = window.setTimeout(() => handleLoginWallTimeout(targetPage, stop), PAGE_NAV_TIMEOUT_MS);
-    return () => window.clearTimeout(timer);
+    navigate(step.page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, stepIndex, step?.page]);
 
-  // Resolves the "awaiting login" wait from either effect above: once the visitor is no longer
-  // sitting on /auth, either they logged in and `returnTo` brought them back to the exact page
-  // that step needed (nothing further to do — `onStepPage` already reflects that), or they
-  // navigated off to something else entirely without logging in, which we treat as abandoning
-  // the tour rather than leaving it silently stuck forever.
+  // A step's page can need login (AuthGuard bounces an anonymous visitor to /auth) or the right
+  // account type (AuthGuard bounces a wrong-type visitor to /fundings instead) — this reacts the
+  // instant `location.pathname` actually becomes one of those, not on a fixed timer, so it can
+  // never race a slow-to-resolve session check the way a "wait N ms then check" guess could.
+  //
+  // /auth is a wait, not a dead end: the app already redirects back to the originally-requested
+  // page after login via AuthGuard's `returnTo` param (honored in useAuthForm's
+  // resolvePostAuthDestination), so once that happens `onStepPage` above picks it up on its own
+  // re-render — nothing else to wire up. pendingKey/activeKey stay untouched while parked here.
+  // /fundings (wrong account type) can't be waited out the same way, so that one still ends the
+  // tour, just with an accurate message instead of a "log in" one that would be flat wrong for
+  // someone who already is logged in.
+  useEffect(() => {
+    const requiredPage = activeKey
+      ? step?.page
+      : pendingKey
+        ? resolveTutorialSteps(pendingKey, pageContext)[0]?.page
+        : null;
+    if (!requiredPage || requiredPage === location.pathname) return;
+
+    if (location.pathname === "/auth") {
+      if (awaitingLoginForPage.current === requiredPage) return;
+      awaitingLoginForPage.current = requiredPage;
+      toast({
+        title: "로그인이 필요해요",
+        description: "로그인하면 이어서 자동으로 보여드릴게요.",
+      });
+      return;
+    }
+
+    if (location.pathname === "/fundings") {
+      awaitingLoginForPage.current = null;
+      if (pendingKey) clearPending();
+      if (activeKey) stop();
+      toast({
+        title: "판매자 계정으로 로그인해주세요",
+        description: "이 도움말은 판매자 계정으로 로그인한 뒤에 볼 수 있어요.",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, activeKey, pendingKey, step?.page]);
+
+  // A visitor who was parked waiting on /auth but wanders off to some unrelated page instead of
+  // logging in has abandoned the tour — don't leave it silently stuck (and the roaming mascot
+  // hidden, see BrandGuide's `if (tutorial.activeKey) return null`) forever.
   useEffect(() => {
     const awaitedPage = awaitingLoginForPage.current;
     if (!awaitedPage || location.pathname === "/auth") return;

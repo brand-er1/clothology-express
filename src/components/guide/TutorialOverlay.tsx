@@ -103,6 +103,42 @@ export const TutorialOverlay = () => {
   const { activeKey, stepIndex, pendingKey, start, clearPending, stop, goNext, goPrev } = useTutorial();
   const [rect, setRect] = useState<Rect | null>(null);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  // When a step's page requires login and the visitor lands on /auth instead of the target, we
+  // don't want to silently end a whole multi-page journey — once they actually log in, the
+  // existing `returnTo` redirect (AuthGuard sets it, useAuthForm's resolvePostAuthDestination
+  // honors it) brings them straight back to the page this step needed, and `onStepPage` below
+  // picks that up on its own re-render, no extra wiring needed. This ref just remembers which
+  // page we're waiting for, so a visitor who instead wanders off to some unrelated page without
+  // logging in is treated as having abandoned the tour rather than left stuck in limbo forever.
+  const awaitingLoginForPage = useRef<string | null>(null);
+
+  // Shared by both "a step's page needs login" effects below. `giveUp` is whichever of
+  // clearPending/stop that effect should call once we're sure this is a genuine dead end (not
+  // one we can wait out) — an anonymous visitor bounced to /auth waits it out (see
+  // awaitingLoginForPage above); a visitor logged in as the wrong account type (AuthGuard sends
+  // those to /fundings instead) can't just log in again, so that one still gives up, but with an
+  // accurate message instead of the generic "log in" one, which would be actively misleading for
+  // someone who already is logged in.
+  const handleLoginWallTimeout = (targetPage: string, giveUp: () => void) => {
+    if (window.location.pathname === targetPage) return;
+    if (window.location.pathname === "/auth") {
+      awaitingLoginForPage.current = targetPage;
+      toast({
+        title: "로그인이 필요해요",
+        description: "로그인하면 이어서 자동으로 보여드릴게요.",
+      });
+      return;
+    }
+    giveUp();
+    if (window.location.pathname === "/fundings") {
+      toast({
+        title: "판매자 계정으로 로그인해주세요",
+        description: "이 도움말은 판매자 계정으로 로그인한 뒤에 볼 수 있어요.",
+      });
+      return;
+    }
+    toast({ title: "로그인 후 이용할 수 있어요", description: "이 도움말은 로그인한 뒤에 볼 수 있어요." });
+  };
   // Mobile bottom-sheet offset: normally just a safe-area margin, but when the on-screen
   // keyboard opens (e.g. explaining a prompt/quantity input), visualViewport shrinks — track it
   // so the sheet lifts above the keyboard instead of being covered by it.
@@ -142,12 +178,10 @@ export const TutorialOverlay = () => {
     const targetPage = firstStep?.page;
     if (targetPage && targetPage !== location.pathname) {
       navigate(targetPage);
-      const timer = window.setTimeout(() => {
-        if (window.location.pathname !== targetPage) {
-          clearPending();
-          toast({ title: "로그인 후 이용할 수 있어요", description: "이 도움말은 로그인한 뒤에 볼 수 있어요." });
-        }
-      }, PAGE_NAV_TIMEOUT_MS);
+      const timer = window.setTimeout(
+        () => handleLoginWallTimeout(targetPage, clearPending),
+        PAGE_NAV_TIMEOUT_MS,
+      );
       return () => window.clearTimeout(timer);
     }
     start(pendingKey);
@@ -168,15 +202,25 @@ export const TutorialOverlay = () => {
     if (!activeKey || !step?.page || step.page === location.pathname) return;
     const targetPage = step.page;
     navigate(targetPage);
-    const timer = window.setTimeout(() => {
-      if (window.location.pathname !== targetPage) {
-        stop();
-        toast({ title: "로그인 후 이용할 수 있어요", description: "이 도움말은 로그인한 뒤에 볼 수 있어요." });
-      }
-    }, PAGE_NAV_TIMEOUT_MS);
+    const timer = window.setTimeout(() => handleLoginWallTimeout(targetPage, stop), PAGE_NAV_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, stepIndex, step?.page]);
+
+  // Resolves the "awaiting login" wait from either effect above: once the visitor is no longer
+  // sitting on /auth, either they logged in and `returnTo` brought them back to the exact page
+  // that step needed (nothing further to do — `onStepPage` already reflects that), or they
+  // navigated off to something else entirely without logging in, which we treat as abandoning
+  // the tour rather than leaving it silently stuck forever.
+  useEffect(() => {
+    const awaitedPage = awaitingLoginForPage.current;
+    if (!awaitedPage || location.pathname === "/auth") return;
+    awaitingLoginForPage.current = null;
+    if (location.pathname !== awaitedPage) {
+      stop();
+      clearPending();
+    }
+  }, [location.pathname, stop, clearPending]);
 
   // A `pagePattern` step (e.g. "whichever funding you clicked into") has no fixed destination
   // to navigate to — it only ever becomes reachable via a preceding `clickThrough` step's real

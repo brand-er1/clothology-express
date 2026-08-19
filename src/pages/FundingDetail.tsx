@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -248,6 +249,7 @@ const FundingDetail = () => {
           <section className="overflow-hidden bg-[#e7e4df]">
             <div className="relative aspect-[4/5] sm:aspect-square lg:aspect-[4/5]">
               <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain p-5 sm:p-10 lg:p-12" />
+              <WatermarkOverlay />
               <span className="absolute left-4 top-4 bg-[#f3f1ed]/90 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-brand backdrop-blur-sm sm:left-6 sm:top-6">
                 Limited pre-order
               </span>
@@ -408,8 +410,9 @@ const FundingDetail = () => {
         {(funding.sample_image_url || funding.sample_note) && (
           <section className="mt-16 grid overflow-hidden bg-[#e7e4df] md:grid-cols-2">
             {funding.sample_image_url && (
-              <div className="overflow-hidden">
+              <div className="relative overflow-hidden">
                 <img src={funding.sample_image_url} alt={`${funding.product_name} 제작 샘플`} className="aspect-[4/3] h-full w-full object-cover" />
+                <WatermarkOverlay />
               </div>
             )}
             <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">

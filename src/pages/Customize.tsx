@@ -2,6 +2,7 @@
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { StepIndicator } from "@/components/customize/StepIndicator";
+import { ServiceComparisonCards } from "@/components/ready-made/ServiceComparisonCards";
 import { TypeStep } from "@/components/customize/TypeStep";
 import { MaterialStep } from "@/components/customize/MaterialStep";
 import { DetailStep } from "@/components/customize/DetailStep";
@@ -149,6 +150,15 @@ const Customize = () => {
               관리자에게 제작을 바로 의뢰할 수 있습니다.
             </p>
           </div>
+
+          {currentStep === 1 && (
+            <div className="mb-6 sm:mb-8">
+              <p className="mb-3 px-1 text-sm font-semibold text-stone-500">
+                단체복을 빠르고 저렴하게 제작하고 싶다면, 목적에 맞는 서비스를 먼저 선택해보세요.
+              </p>
+              <ServiceComparisonCards />
+            </div>
+          )}
 
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 

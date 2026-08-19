@@ -8,6 +8,7 @@ import {
   Search,
   Sparkles,
   XCircle,
+  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,6 +167,7 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
               statusMeta.pending;
             const StatusIcon = status.icon;
             const isDesignUpload = order.request_source === "design_upload";
+            const isReadyMadeGroupWear = order.request_source === "ready_made_group_wear";
 
             return (
               <Card
@@ -203,6 +205,12 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                           <Badge className="bg-brand/10 text-brand hover:bg-brand/10">
                             <Sparkles className="mr-1 h-3 w-3" />
                             내 디자인 견적
+                          </Badge>
+                        )}
+                        {isReadyMadeGroupWear && (
+                          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                            <Zap className="mr-1 h-3 w-3" />
+                            빠른 단체복
                           </Badge>
                         )}
                       </div>

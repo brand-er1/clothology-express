@@ -16,7 +16,7 @@ interface OrderData {
   imagePath?: string | null;
   imageBase64?: string | null;
   imageMimeType?: string | null;
-  requestSource?: 'ai_design' | 'design_upload';
+  requestSource?: 'ai_design' | 'design_upload' | 'ready_made_group_wear';
   requestTitle?: string | null;
   requestedQuantity?: number | null;
   estimateSnapshot?: Record<string, unknown> | null;
@@ -112,9 +112,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // The ready-made group wear service ("기성품 단체복 빠른 제작") has its own,
+    // much lower minimum (it supports 1-piece samples) and is priced by a
+    // completely separate module client-side — the custom-clothing MOQ table
+    // below does not apply to it.
     if (
       orderData.status === 'pending' &&
-      orderData.requestedQuantity != null
+      orderData.requestedQuantity != null &&
+      orderData.requestSource !== 'ready_made_group_wear'
     ) {
       const minimumOrderQuantity = getMinimumOrderQuantity(
         orderData.clothType,

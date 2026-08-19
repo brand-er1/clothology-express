@@ -18,6 +18,7 @@ import MyFundings from './pages/MyFundings';
 import KakaoPayResult from './pages/KakaoPayResult';
 import FabricSwatch from './pages/FabricSwatch';
 import DesignQuote from './pages/DesignQuote';
+import QuickGroupWear from './pages/QuickGroupWear';
 import { supabase } from './lib/supabase';
 import { WelcomeNotification } from './components/WelcomeNotification';
 import { isInIframe } from './utils/authUtils';
@@ -120,6 +121,7 @@ function App() {
             <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
             <Route path="/customize" element={<AuthGuard requiredAccountType="seller"><Customize /></AuthGuard>} />
             <Route path="/design-quote" element={<AuthGuard requiredAccountType="seller"><DesignQuote /></AuthGuard>} />
+            <Route path="/quick-group-wear" element={<AuthGuard requiredAccountType="seller"><QuickGroupWear /></AuthGuard>} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
             <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />

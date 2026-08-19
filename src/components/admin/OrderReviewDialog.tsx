@@ -17,6 +17,7 @@ import {
   PackageCheck,
   Sparkles,
   UserRound,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
@@ -164,6 +165,12 @@ export const OrderReviewDialog = ({
                 <Badge variant="outline" className="border-brand/30 bg-brand/5 text-brand">
                   <Sparkles className="mr-1 h-3.5 w-3.5" />
                   내 디자인 자동견적
+                </Badge>
+              )}
+              {order.request_source === "ready_made_group_wear" && (
+                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+                  <Zap className="mr-1 h-3.5 w-3.5" />
+                  빠른 단체복 제작
                 </Badge>
               )}
             </div>

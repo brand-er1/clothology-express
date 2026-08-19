@@ -11,7 +11,8 @@ export type SiteEventName =
   | "production_request_submitted"
   | "design_quote_submitted"
   | "fabric_swatch_submitted"
-  | "funding_checkout_started";
+  | "funding_checkout_started"
+  | "ready_made_group_wear_submitted";
 
 export type VisitAttribution = {
   leadCode: string | null;

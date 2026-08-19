@@ -69,6 +69,18 @@ export interface DecorationEstimateLine {
   /** Set only on the aggregate top-level `decorations` array of a multi-item estimate. */
   itemIndex?: number;
   itemLabel?: string;
+  /** 0-based indices into the request's `images` array where this exact decoration was found. */
+  sourceImages?: number[];
+  /** True when the AI could not confidently tell which decoration technique this is. */
+  ambiguous?: boolean;
+  /** Candidate techniques to offer the user when `ambiguous` is true. */
+  ambiguousOptions?: DecorationAnalysisKind[];
+  /**
+   * Stable id linking this (possibly location-expanded) line back to its source entry in
+   * `ProductionEstimateResult.rawAnalysisSnapshot`, so resolving an ambiguous technique can be
+   * sent back to the pricing engine without re-running the AI analysis.
+   */
+  sourceDecorationId?: string;
 }
 
 export interface AccessoryEstimateLine {
@@ -82,6 +94,8 @@ export interface AccessoryEstimateLine {
   /** Set only on the aggregate top-level `accessories` array of a multi-item estimate. */
   itemIndex?: number;
   itemLabel?: string;
+  /** 0-based indices into the request's `images` array where this accessory was found. */
+  sourceImages?: number[];
 }
 
 export interface ProductionAnalysis {
@@ -205,6 +219,48 @@ export interface ProductionEstimateItem {
   totals: ProductionEstimateTotals;
   isPartial: boolean;
   manualReviewReasons: string[];
+  /** 0-based indices into the request's `images` array grouped into this one product. */
+  sourceImages?: number[];
+}
+
+/**
+ * One image slot in a multi-image upload. `base64`/`mimeType` are used for a freshly-selected
+ * file; `url` is used for an already-uploaded/stored image. At least one of `base64` or `url`
+ * must be set.
+ */
+export interface ProductionEstimateImageInput {
+  base64?: string;
+  mimeType?: string;
+  url?: string;
+}
+
+/** Loosely-typed raw per-item analysis entry as produced by the AI (or edited by the user). */
+export interface ProductionAnalysisSnapshotDecoration {
+  id?: string;
+  kind?: string;
+  locations?: string[];
+  location?: string;
+  size?: string;
+  colorCount?: number;
+  confidence?: number;
+  sourceImages?: number[];
+  ambiguous?: boolean;
+  ambiguousOptions?: string[];
+  [key: string]: unknown;
+}
+
+export interface ProductionAnalysisSnapshotItem {
+  categoryKey?: string;
+  decorations?: ProductionAnalysisSnapshotDecoration[];
+  accessories?: Array<{
+    kind?: string;
+    count?: number;
+    confidence?: number;
+    sourceImages?: number[];
+    [key: string]: unknown;
+  }>;
+  sourceImages?: number[];
+  [key: string]: unknown;
 }
 
 export interface ProductionEstimateResult {
@@ -228,4 +284,14 @@ export interface ProductionEstimateResult {
    * before this field existed. Absent only for responses built by code that predates this field.
    */
   items?: ProductionEstimateItem[];
+  /** Number of images submitted for this analysis. Absent/1 for the legacy single-image shape. */
+  imageCount?: number;
+  /** AI-assigned short Korean role label per submitted image, e.g. "정면", "소매 자수 확대". */
+  imageLabels?: string[];
+  /**
+   * The exact raw per-item analysis (AI output or manual override) used to build this estimate.
+   * Opaque to normal rendering — its only purpose is to be edited (e.g. resolving an ambiguous
+   * decoration technique) and sent back as `rawItemsOverride` to reprice without re-running AI.
+   */
+  rawAnalysisSnapshot?: ProductionAnalysisSnapshotItem[];
 }

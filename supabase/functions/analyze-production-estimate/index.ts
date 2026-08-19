@@ -87,18 +87,27 @@ type AccessoryPriceRow = {
 };
 
 type RawDecoration = {
+  id?: string;
   kind?: string;
   locations?: string[];
   location?: string;
   size?: string;
   colorCount?: number;
   confidence?: number;
+  /** 1-based IMAGE numbers (as labeled in the prompt) this decoration was seen in. */
+  sourceImages?: number[];
+  /** True when the AI cannot confidently tell which decoration technique this is. */
+  ambiguous?: boolean;
+  /** Candidate technique kinds to let the user choose from when `ambiguous` is true. */
+  ambiguousOptions?: string[];
 };
 
 type RawAccessory = {
   kind?: string;
   count?: number;
   confidence?: number;
+  /** 1-based IMAGE numbers (as labeled in the prompt) this accessory was seen in. */
+  sourceImages?: number[];
 };
 
 type RawAnalysis = {
@@ -116,11 +125,15 @@ type RawAnalysis = {
   decorations?: RawDecoration[];
   accessories?: RawAccessory[];
   features?: string[];
+  /** 1-based IMAGE numbers (as labeled in the prompt) grouped into this one product. */
+  sourceImages?: number[];
 };
 
 /** Multi-item Gemini response: `{ "items": [RawAnalysis, ...] }`. */
 type RawAnalysisResponse = {
   items?: RawAnalysis[];
+  /** One short Korean role label per submitted image, in request order, e.g. "정면". */
+  imageLabels?: string[];
 } & RawAnalysis;
 
 type UploadedArtworkHint = {
@@ -137,6 +150,16 @@ type NormalizedDecoration = {
   confidence: number;
   source: "image_analysis" | "uploaded_artwork";
   artworkType: ArtworkType | null;
+  sourceImages?: number[];
+  ambiguous?: boolean;
+  ambiguousOptions?: DecorationKind[];
+  sourceDecorationId?: string;
+};
+
+type ImageInput = {
+  base64?: string;
+  mimeType?: string;
+  url?: string;
 };
 
 const validDecorationKinds = new Set<DecorationKind>([
@@ -314,6 +337,36 @@ const extractRawItems = (parsed: RawAnalysisResponse): RawAnalysis[] => {
   return [parsed];
 };
 
+/** Converts the AI's 1-based "IMAGE N" numbers into valid 0-based indices into `images`. */
+const normalizeSourceImages = (
+  value: unknown,
+  imageCount: number,
+): number[] | undefined => {
+  if (!Array.isArray(value) || imageCount === 0) return undefined;
+  const indices = Array.from(
+    new Set(
+      value
+        .map((entry) => Math.round(Number(entry)) - 1)
+        .filter((index) => Number.isInteger(index) && index >= 0 && index < imageCount),
+    ),
+  ).sort((a, b) => a - b);
+  return indices.length > 0 ? indices : undefined;
+};
+
+/**
+ * Gives every raw decoration a stable id (if the AI didn't already invent one) so a later
+ * ambiguous-technique resolution can target the exact source entry in `rawItemsOverride` even
+ * after location-expansion/dedup reshapes the priced `decorations` array.
+ */
+const withDecorationIds = (rawItems: RawAnalysis[]): RawAnalysis[] =>
+  rawItems.map((item, itemIndex) => ({
+    ...item,
+    decorations: (item.decorations || []).map((decoration, decorationIndex) => ({
+      ...decoration,
+      id: decoration.id || `item${itemIndex}_dec${decorationIndex}`,
+    })),
+  }));
+
 const decodeBase64Image = (value: string) => {
   const normalized = value.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, "");
   const binary = atob(normalized);
@@ -383,6 +436,22 @@ const normalizeManualAnalysis = (value: unknown): RawAnalysis | null => {
   };
 };
 
+/**
+ * Validates a client-resubmitted raw analysis snapshot (originally returned by this same
+ * function as `rawAnalysisSnapshot`, possibly edited to resolve one ambiguous decoration
+ * technique). Only checks structural shape — `resolveItem`/`normalizeDecorations` already treat
+ * unknown kinds/locations/confidences defensively, so this just guards against a non-array or
+ * an item with no usable category.
+ */
+const normalizeRawItemsOverride = (value: unknown): RawAnalysis[] | null => {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const items = value
+    .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object")
+    .map((entry) => entry as RawAnalysis)
+    .filter((entry) => typeof entry.categoryKey === "string" && entry.categoryKey.trim().length > 0);
+  return items.length > 0 ? items.slice(0, 10) : null;
+};
+
 const normalizeUploadedArtwork = (
   value: unknown,
 ): UploadedArtworkHint | null => {
@@ -450,9 +519,12 @@ const resolveGarmentCategory = (
   };
 };
 
-const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
+const normalizeDecorations = (
+  rawDecorations: RawDecoration[] | undefined,
+  imageCount: number,
+) => {
   const normalized: NormalizedDecoration[] = [];
-  const seen = new Set<string>();
+  const seenAt = new Map<string, NormalizedDecoration>();
 
   for (const rawDecoration of rawDecorations || []) {
     let kind = String(rawDecoration.kind || "") as DecorationKind;
@@ -474,29 +546,53 @@ const normalizeDecorations = (rawDecorations: RawDecoration[] | undefined) => {
       .map((location) => String(location) as DecorationLocation)
       .filter((location) => validLocations.has(location));
     const safeLocations = locations.length > 0 ? locations : ["other" as const];
+    const sourceImages = normalizeSourceImages(rawDecoration.sourceImages, imageCount);
+    const ambiguousOptions = Array.isArray(rawDecoration.ambiguousOptions)
+      ? rawDecoration.ambiguousOptions
+          .map((option) => String(option) as DecorationKind)
+          .filter((option) => validDecorationKinds.has(option))
+      : undefined;
 
     for (const location of safeLocations) {
+      // Same decoration reported more than once (e.g. seen in a wide shot AND a close-up) merges
+      // into a single line instead of being counted twice — this is the multi-image dedup rule.
       const key = `${kind}:${location}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      normalized.push({
+      const existing = seenAt.get(key);
+      if (existing) {
+        if (sourceImages) {
+          existing.sourceImages = Array.from(
+            new Set([...(existing.sourceImages || []), ...sourceImages]),
+          ).sort((a, b) => a - b);
+        }
+        continue;
+      }
+      const entry: NormalizedDecoration = {
         kind,
         location,
         size: normalizePrintSize(rawDecoration.size),
         confidence,
         source: "image_analysis",
         artworkType: null,
-      });
+        sourceImages,
+        ambiguous: Boolean(rawDecoration.ambiguous) && Boolean(ambiguousOptions?.length),
+        ambiguousOptions,
+        sourceDecorationId: rawDecoration.id,
+      };
+      seenAt.set(key, entry);
+      normalized.push(entry);
     }
   }
 
   return normalized;
 };
 
-const normalizeAccessories = (rawAccessories: RawAccessory[] | undefined) => {
+const normalizeAccessories = (
+  rawAccessories: RawAccessory[] | undefined,
+  imageCount: number,
+) => {
   const counts = new Map<
     AccessoryKind,
-    { count: number; confidence: number }
+    { count: number; confidence: number; sourceImages?: number[] }
   >();
 
   for (const rawAccessory of rawAccessories || []) {
@@ -514,9 +610,20 @@ const normalizeAccessories = (rawAccessories: RawAccessory[] | undefined) => {
       continue;
     }
 
+    const sourceImages = normalizeSourceImages(rawAccessory.sourceImages, imageCount);
     const current = counts.get(kind);
     if (!current || count > current.count) {
-      counts.set(kind, { count, confidence });
+      counts.set(kind, {
+        count,
+        confidence,
+        sourceImages: Array.from(
+          new Set([...(current?.sourceImages || []), ...(sourceImages || [])]),
+        ).sort((a, b) => a - b),
+      });
+    } else if (sourceImages) {
+      current.sourceImages = Array.from(
+        new Set([...(current.sourceImages || []), ...sourceImages]),
+      ).sort((a, b) => a - b);
     }
   }
 
@@ -524,6 +631,7 @@ const normalizeAccessories = (rawAccessories: RawAccessory[] | undefined) => {
     kind,
     count: value.count,
     confidence: value.confidence,
+    sourceImages: value.sourceImages?.length ? value.sourceImages : undefined,
   }));
 };
 
@@ -547,6 +655,7 @@ const resolveItem = (
   selectedMaterial: string,
   uploadedArtworkHint: UploadedArtworkHint | null,
   ctx: PricingContext,
+  imageCount: number,
 ) => {
   const { garmentRows, decorationRows, materialRows, accessoryRows, availableKeys } = ctx;
 
@@ -606,7 +715,7 @@ const resolveItem = (
     });
   }) || null;
 
-  let normalizedDecorations = normalizeDecorations(rawAnalysis.decorations);
+  let normalizedDecorations = normalizeDecorations(rawAnalysis.decorations, imageCount);
   const hasWashingSignal =
     Boolean(rawAnalysis.hasWashing) &&
     clampConfidence(rawAnalysis.washingConfidence) >= 0.55;
@@ -673,6 +782,10 @@ const resolveItem = (
         note: "자동 단가가 없어 상담 후 금액이 추가됩니다.",
         source: decoration.source,
         artworkType: decoration.artworkType,
+        sourceImages: decoration.sourceImages,
+        ambiguous: decoration.ambiguous,
+        ambiguousOptions: decoration.ambiguousOptions,
+        sourceDecorationId: decoration.sourceDecorationId,
       }];
     }
 
@@ -697,9 +810,13 @@ const resolveItem = (
       note: price.pricing_note,
       source: decoration.source,
       artworkType: decoration.artworkType,
+      sourceImages: decoration.sourceImages,
+      ambiguous: decoration.ambiguous,
+      ambiguousOptions: decoration.ambiguousOptions,
+      sourceDecorationId: decoration.sourceDecorationId,
     }];
   });
-  const normalizedAccessories = normalizeAccessories(rawAnalysis.accessories);
+  const normalizedAccessories = normalizeAccessories(rawAnalysis.accessories, imageCount);
   const accessoryLines = normalizedAccessories.flatMap((accessory) => {
     const price = accessoryRows.find(
       (row) => row.accessory_key === accessory.kind,
@@ -714,6 +831,7 @@ const resolveItem = (
       unitPrice: price.unit_price,
       lineTotal: price.unit_price * accessory.count,
       note: price.pricing_note,
+      sourceImages: accessory.sourceImages,
     }];
   });
 
@@ -777,6 +895,7 @@ const resolveItem = (
     garment,
     isKnit,
     minimumOrderQuantity,
+    sourceImages: normalizeSourceImages(rawAnalysis.sourceImages, imageCount),
     material: {
       key: resolvedMaterialKey,
       label: resolvedMaterialLabel,
@@ -930,6 +1049,8 @@ const buildEstimate = (
   decorationRows: DecorationPriceRow[],
   materialRows: MaterialSurchargeRow[],
   accessoryRows: AccessoryPriceRow[],
+  imageCount: number,
+  imageLabels: string[],
 ) => {
   if (rawItems.length === 0) {
     throw new Error("이미지에서 제작 가능한 의류를 찾지 못했습니다.");
@@ -953,6 +1074,7 @@ const buildEstimate = (
       index === 0 ? selectedMaterial : "",
       index === 0 ? uploadedArtworkHint : null,
       pricingContext,
+      imageCount,
     )
   );
 
@@ -991,6 +1113,7 @@ const buildEstimate = (
       totals,
       isPartial: totals.productionMin === null || totals.productionMax === null,
       manualReviewReasons: reviewReasons,
+      sourceImages: resolved.sourceImages,
     };
   });
 
@@ -1097,7 +1220,9 @@ const buildEstimate = (
     );
   if (pricedItems.length > 1) {
     aggManualReviewReasons.unshift(
-      `이미지에서 ${pricedItems.length}개의 제작 품목(${pricedItems.map((item) => item.itemLabel).join(", ")})을 감지해 각각 분석하고 합산했습니다. 잘못 감지된 품목이 있다면 체크를 해제해 견적에서 제외할 수 있습니다.`,
+      imageCount > 1
+        ? `업로드한 이미지 ${imageCount}장에서 ${pricedItems.length}개의 제작 품목(${pricedItems.map((item) => item.itemLabel).join(", ")})을 감지해 각각 분석하고 합산했습니다. 잘못 감지된 품목이 있다면 체크를 해제해 견적에서 제외할 수 있습니다.`
+        : `이미지에서 ${pricedItems.length}개의 제작 품목(${pricedItems.map((item) => item.itemLabel).join(", ")})을 감지해 각각 분석하고 합산했습니다. 잘못 감지된 품목이 있다면 체크를 해제해 견적에서 제외할 수 있습니다.`,
     );
   }
 
@@ -1117,6 +1242,9 @@ const buildEstimate = (
     isPartial: pricedItems.some((item) => item.isPartial),
     manualReviewReasons: aggManualReviewReasons,
     items: pricedItems,
+    imageCount,
+    imageLabels,
+    rawAnalysisSnapshot: rawItems,
   };
 };
 
@@ -1127,6 +1255,7 @@ serve(async (req) => {
 
   try {
     const {
+      images,
       imageUrl = "",
       imageBase64 = "",
       imageMimeType = "",
@@ -1135,12 +1264,44 @@ serve(async (req) => {
       designContext = "",
       uploadedArtwork,
       manualAnalysis,
+      rawItemsOverride,
       quantity: requestedQuantity = 20,
     } = await req.json();
     const normalizedManualAnalysis = normalizeManualAnalysis(manualAnalysis);
-    if (!normalizedManualAnalysis && !imageUrl && !imageBase64) {
+    const overrideRawItems = normalizeRawItemsOverride(rawItemsOverride);
+
+    // New multi-image shape: `images: [{ base64?, mimeType?, url? }, ...]`. Falls back to the
+    // legacy single-image params so existing callers (e.g. the AI-generated-design estimate
+    // card) keep working unchanged.
+    const imageInputs: ImageInput[] = Array.isArray(images) && images.length > 0
+      ? images
+        .slice(0, 10)
+        .map((entry: Record<string, unknown>) => ({
+          base64: typeof entry?.base64 === "string" ? entry.base64 : undefined,
+          mimeType: typeof entry?.mimeType === "string" ? entry.mimeType : undefined,
+          url: typeof entry?.url === "string" ? entry.url : undefined,
+        }))
+        .filter((entry) => Boolean(entry.base64 || entry.url))
+      : imageBase64 || imageUrl
+        ? [{
+          base64: imageBase64 || undefined,
+          mimeType: imageMimeType || undefined,
+          url: imageUrl || undefined,
+        }]
+        : [];
+
+    if (!normalizedManualAnalysis && !overrideRawItems && imageInputs.length === 0) {
       return new Response(
         JSON.stringify({ error: "분석할 이미지가 필요합니다." }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+    if (imageInputs.length > 10) {
+      return new Response(
+        JSON.stringify({ error: "이미지는 최대 10장까지 업로드할 수 있습니다." }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -1206,46 +1367,65 @@ serve(async (req) => {
       throw new Error("의류 단가 데이터가 없습니다.");
     }
 
-    let imageBuffer: ArrayBuffer | null = null;
-    let resolvedImageMimeType = "image/png";
+    // Image bytes are only needed on the Gemini path — the manual-edit and ambiguous-resolution
+    // (rawItemsOverride) paths already have a finished analysis and skip AI entirely.
+    const needsImageBytes = !normalizedManualAnalysis && !overrideRawItems;
+    const resolvedImages: Array<{ data: string; mimeType: string }> = [];
 
-    if (!normalizedManualAnalysis && imageBase64) {
-      resolvedImageMimeType = String(imageMimeType || "").toLowerCase();
-      if (!allowedImageMimeTypes.has(resolvedImageMimeType)) {
-        throw new Error("PNG, JPG, JPEG, WEBP 이미지만 분석할 수 있습니다.");
-      }
-      const bytes = decodeBase64Image(String(imageBase64));
-      if (bytes.byteLength > 10 * 1024 * 1024) {
-        throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
-      }
-      imageBuffer = bytes.buffer;
-    } else if (!normalizedManualAnalysis && imageUrl) {
-      const parsedImageUrl = new URL(imageUrl);
+    if (needsImageBytes) {
       const storageHostname = new URL(supabaseUrl).hostname;
-      if (
-        parsedImageUrl.protocol !== "https:" ||
-        parsedImageUrl.hostname !== storageHostname
-      ) {
-        throw new Error("분석할 수 없는 이미지 주소입니다.");
+      for (const imageInput of imageInputs) {
+        if (imageInput.base64) {
+          const mimeType = String(imageInput.mimeType || "").toLowerCase();
+          if (!allowedImageMimeTypes.has(mimeType)) {
+            throw new Error("PNG, JPG, JPEG, WEBP 이미지만 분석할 수 있습니다.");
+          }
+          const bytes = decodeBase64Image(String(imageInput.base64));
+          if (bytes.byteLength > 10 * 1024 * 1024) {
+            throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+          }
+          resolvedImages.push({
+            data: arrayBufferToBase64(bytes.buffer),
+            mimeType,
+          });
+        } else if (imageInput.url) {
+          const parsedImageUrl = new URL(imageInput.url);
+          if (
+            parsedImageUrl.protocol !== "https:" ||
+            parsedImageUrl.hostname !== storageHostname
+          ) {
+            throw new Error("분석할 수 없는 이미지 주소입니다.");
+          }
+
+          const imageResponse = await fetch(parsedImageUrl.toString());
+          if (!imageResponse.ok) {
+            throw new Error(`이미지를 불러오지 못했습니다: ${imageResponse.status}`);
+          }
+          const contentLength = Number(
+            imageResponse.headers.get("content-length") || 0,
+          );
+          if (contentLength > 10 * 1024 * 1024) {
+            throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+          }
+          const mimeType = imageResponse.headers.get("content-type") || "image/png";
+          const buffer = await imageResponse.arrayBuffer();
+          if (buffer.byteLength > 10 * 1024 * 1024) {
+            throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+          }
+          resolvedImages.push({ data: arrayBufferToBase64(buffer), mimeType });
+        }
       }
 
-      const imageResponse = await fetch(parsedImageUrl.toString());
-      if (!imageResponse.ok) {
-        throw new Error(`이미지를 불러오지 못했습니다: ${imageResponse.status}`);
-      }
-      const contentLength = Number(
-        imageResponse.headers.get("content-length") || 0,
-      );
-      if (contentLength > 10 * 1024 * 1024) {
-        throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
-      }
-      resolvedImageMimeType =
-        imageResponse.headers.get("content-type") || "image/png";
-      imageBuffer = await imageResponse.arrayBuffer();
-      if (imageBuffer.byteLength > 10 * 1024 * 1024) {
-        throw new Error("10MB 이하 이미지만 분석할 수 있습니다.");
+      if (resolvedImages.length === 0) {
+        throw new Error("AI가 분석할 이미지 데이터가 없습니다.");
       }
     }
+
+    const imageCount = overrideRawItems
+      ? imageInputs.length
+      : normalizedManualAnalysis
+        ? imageInputs.length
+        : resolvedImages.length;
 
     const availableCategories = [
       ...garmentRows.map((row) => `${row.category_key}: ${row.category_label}`),
@@ -1254,41 +1434,58 @@ serve(async (req) => {
       ),
     ].join("\n");
     let rawItems: RawAnalysis[];
+    let imageLabels: string[] = [];
 
-    if (normalizedManualAnalysis) {
+    if (overrideRawItems) {
+      // Ambiguous-decoration resolution round trip: the client edited one decoration's `kind`
+      // inside a previously-returned `rawAnalysisSnapshot` and sent it straight back. No AI call
+      // needed — just reprice with the same pipeline.
+      rawItems = overrideRawItems;
+    } else if (normalizedManualAnalysis) {
       // Manual override (from the "AI 분석 결과 확인" edit UI) is always exactly one item —
       // that flow edits a single garment's fields directly and never introduces new items.
       rawItems = [normalizedManualAnalysis];
     } else {
-      if (!imageBuffer) {
-        throw new Error("AI가 분석할 이미지 데이터가 없습니다.");
-      }
+      const imageCountForPrompt = resolvedImages.length;
       const analysisPrompt = `
-You are a Korean apparel production specialist. Inspect the supplied ecommerce
-garment image. It may show one garment (possibly with front and back views in
-one frame), or a full outfit / set with multiple independent garments (for
-example a jacket with pants, or a hoodie with jogger pants).
+You are a Korean apparel production specialist. You are given ${imageCountForPrompt}
+image${imageCountForPrompt > 1 ? "s" : ""} labeled IMAGE 1 through IMAGE ${imageCountForPrompt}, in that
+order. By default, treat ALL of the images as photos of the SAME garment
+product taken from different angles or distances — for example a front shot,
+a back shot, a side shot, a close-up of a print/embroidery/zipper, or a
+fabric swatch reference. Only split them into more than one product when you
+can clearly identify a genuinely different, independently producible garment
+(for example a top vs. a bottom, or an outer layer vs. an inner layer) — never
+just because the images differ in angle, crop, lighting, or zoom level.
 
-Step 1 — figure out how many physically separate garments are actually being
-offered for production, not how many rendered views appear in the image.
-- The SAME garment shown from the front and from the back is still one item.
-  Example: "hoodie front + hoodie back" → 1 item, not 2.
+Step 1 — group the ${imageCountForPrompt} image${imageCountForPrompt > 1 ? "s" : ""} into one or more
+physically separate garments actually being offered for production.
+- The SAME garment shown from the front, back, side, or as a zoomed-in detail
+  (print, embroidery, zipper, fabric) is still one item. Example: "IMAGE 1
+  hoodie front, IMAGE 2 hoodie back, IMAGE 3 sleeve embroidery close-up" → 1
+  item using all 3 images, not 3 items.
 - Genuinely different garments are separate items, even if each also has its
-  own front/back views. Example: "jacket front, jacket back, pants front,
-  pants back" → 2 items (jacket, pants), not 4.
+  own front/back/detail images. Example: "IMAGE 1 hoodie front, IMAGE 2 hoodie
+  back, IMAGE 3 jogger pants front, IMAGE 4 jogger pants back" → 2 items
+  (hoodie: images 1-2, jogger pants: images 3-4), not 4.
 - Only split into multiple items when you can identify each as a distinct,
   independently producible garment (different category, e.g. top vs bottom,
   outer vs top). Do not invent a second item from color blocking, layering
-  within the same single garment, or a printed graphic that merely depicts
-  another garment.
-- If you are not confident whether two regions are the same garment's two
-  views or two different garments, prefer treating them as two views of one
+  within the same single garment, a printed graphic that merely depicts
+  another garment, or a fabric/reference swatch image.
+- If you are not confident whether two images are the same garment's two
+  views or two different garments, prefer treating them as views of one
   garment (the less speculative reading) and lower that item's
   categoryConfidence instead of guessing a split.
+- Every image must belong to at least one item's "sourceImages" list, using
+  the 1-based IMAGE number (1 for IMAGE 1, 2 for IMAGE 2, and so on). A
+  fabric/reference/detail image belongs to whichever garment item it is a
+  detail of.
 
 Step 2 — for EACH separate item you identified, produce one full analysis
 object with this exact shape:
 {
+  "sourceImages": [1, 2],
   "categoryKey": "one allowed category key",
   "categoryConfidence": 0.0,
   "materialKey": "cotton | polyester | functional | linen | denim | leather | knit | other",
@@ -1306,30 +1503,60 @@ object with this exact shape:
       "locations": ["front | back | left_sleeve | right_sleeve | neck | other"],
       "size": "small | medium | large | unknown",
       "colorCount": 1,
-      "confidence": 0.0
+      "confidence": 0.0,
+      "sourceImages": [1, 3],
+      "ambiguous": false,
+      "ambiguousOptions": []
     }
   ],
   "accessories": [
     {
       "kind": "stud | zipper | button | rivet | hood_cord | snap_button | buckle | drawstring",
       "count": 1,
-      "confidence": 0.0
+      "confidence": 0.0,
+      "sourceImages": [1]
     }
   ],
   "features": ["short Korean visible construction feature, for example 캥거루 포켓"]
 }
 
-Return JSON only, with this exact top-level shape wrapping every item you found:
+Return JSON only, with this exact top-level shape wrapping every item you
+found, plus one role label per submitted image:
 {
-  "items": [ <one object per distinct garment, shape above> ]
+  "items": [ <one object per distinct garment, shape above> ],
+  "imageLabels": ["정면", "후면", "소매 자수 확대"]
 }
+"imageLabels" must have exactly ${imageCountForPrompt} entries, in IMAGE 1..${imageCountForPrompt}
+order, each a short Korean phrase describing what that specific image shows
+(e.g. 정면, 후면, 좌측면, 우측면, 프린트 확대, 자수 확대, 지퍼 디테일, 원단
+확대, 레퍼런스 이미지, 기타 디테일).
 Always return the "items" array, even when there is only one garment — put
 that single analysis object as the only entry.
+
+CRITICAL — cross-image duplicate detection: a single physical decoration or
+accessory that is visible in more than one image (e.g. a chest logo visible
+in both the front wide shot and a zoomed-in close-up) must appear only ONCE
+in that item's "decorations"/"accessories" array. Before finalizing, compare
+every candidate decoration/accessory by its position on the garment, its
+design, its size, and its shape against every other candidate for the same
+item; if two candidates match on all of those, they are the same physical
+element — merge them into one entry and list every image it appears in under
+"sourceImages". Never output "앞가슴 나염" twice just because it is shown in
+two images; output it once with sourceImages covering both.
 
 CRITICAL: decorations and accessories inside one item must describe ONLY
 that garment. Never repeat a jacket's chest embroidery inside the pants
 item, and never let a pants item's leg print bleed into a top item. Each
 item is analyzed and priced completely independently downstream.
+
+AMBIGUOUS TECHNIQUE: when you cannot confidently tell which decoration
+technique a graphic uses — even after looking at every image and close-up of
+it — do not force a guess. Set "ambiguous": true, still fill "kind" with your
+single best guess for interim pricing, and set "ambiguousOptions" to 2-4
+plausible technique keys from: screen_print_1_color, screen_print_multi_color,
+dtf, dtg, embroidery, transfer, pu, silicone_print. Only mark it ambiguous
+when genuinely uncertain between distinct techniques — not for a clear,
+obvious case.
 
 Allowed garment categories:
 ${availableCategories}
@@ -1344,7 +1571,8 @@ Rules:
   fiber percentage unless it is visually clear; otherwise describe it as 추정.
 - Count every visibly separate front, back, sleeve, and neck decoration.
 - A visible graphic, logo, lettering, or motif is a decoration even when the
-  exact technique is uncertain. Use unknown_print in that case.
+  exact technique is uncertain. Use unknown_print (or the ambiguous flow
+  above) in that case.
 - For knitwear, every visible or uploaded logo/graphic must be patch. Never
   return printing, transfer, direct embroidery, PU, or silicone for knitwear.
 - If the design context explicitly names a printing technique or location, use
@@ -1352,7 +1580,7 @@ Rules:
 - Return pigment for a visible pigment-dyed or pigment-washed finish, label for
   a visibly attached brand/care label, and include print size for each item.
 - Do not mark fabric texture, seams, pockets, buttons, or zippers as printing.
-- Inspect the actual image for every visible accessory and return its per-garment
+- Inspect the actual images for every visible accessory and return its per-garment
   count in accessories.
 - Count a complete zipper closure as one zipper, never individual teeth or the
   zipper pull.
@@ -1362,8 +1590,9 @@ Rules:
 - Count a pair/set of non-hood waist or hem cords as one drawstring.
 - Do not count eyelets, cord tips, seams, printed drawings of hardware, or
   accessories that are not actually visible.
-- Do not count the same accessory twice when front and back views of the same
-  garment appear together.
+- Do not count the same accessory twice when it is visible in more than one
+  image of the same garment (front, back, or a close-up) — see the
+  cross-image duplicate detection rule above.
 - Distinguish stud from denim rivet, button from snap_button, and hood_cord from
   drawstring. If uncertain, lower confidence instead of guessing.
 - Mark hasWashing true only when the finished garment visibly shows deliberate
@@ -1374,7 +1603,7 @@ Rules:
   construction, numerous pockets, unusual cut lines, or difficult sewing.
 - List visible construction features such as 캥거루 포켓, 포켓, 안감, 후드,
   절개, 패널링 in features. Do not duplicate priced accessories there.
-- Inspect every garment visible anywhere in the frame, front and back alike.
+- Inspect every garment visible anywhere across all images, front and back alike.
 ${uploadedArtworkHint
       ? `- A separately verified customer-uploaded ${uploadedArtworkHint.artworkType} artwork was applied at ${uploadedArtworkHint.location} on the first / primary item. Treat it as ${/니트|knit/i.test(String(selectedType)) ? "patch" : uploadedArtworkHint.recommendedKind} on that item even if the composite image makes the technique visually ambiguous.`
       : ""}
@@ -1390,18 +1619,17 @@ ${String(designContext).slice(0, 3000)}
         "gemini-3-pro-preview",
         "gemini-3-pro-image-preview",
       ];
+      const imageParts = resolvedImages.flatMap((image, index) => [
+        { text: `IMAGE ${index + 1}:` },
+        { inlineData: { data: image.data, mimeType: image.mimeType } },
+      ]);
       const geminiRequestBody = JSON.stringify({
         contents: [
           {
             role: "user",
             parts: [
               { text: analysisPrompt },
-              {
-                inlineData: {
-                  data: arrayBufferToBase64(imageBuffer),
-                  mimeType: resolvedImageMimeType,
-                },
-              },
+              ...imageParts,
             ],
           },
         ],
@@ -1452,8 +1680,14 @@ ${String(designContext).slice(0, 3000)}
         throw new Error("AI가 이미지 분석 결과를 반환하지 않았습니다.");
       }
 
-      rawItems = extractRawItems(parseJsonResponse(responseText));
+      const parsedResponse = parseJsonResponse(responseText);
+      rawItems = extractRawItems(parsedResponse);
+      imageLabels = Array.isArray(parsedResponse.imageLabels)
+        ? parsedResponse.imageLabels.map((label) => String(label)).slice(0, imageCountForPrompt)
+        : [];
     }
+
+    rawItems = withDecorationIds(rawItems);
 
     const estimate = buildEstimate(
       rawItems,
@@ -1465,6 +1699,8 @@ ${String(designContext).slice(0, 3000)}
       decorationRows,
       materialRows,
       accessoryRows,
+      imageCount,
+      imageLabels,
     );
 
     return new Response(JSON.stringify({ estimate }), {

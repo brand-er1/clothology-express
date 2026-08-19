@@ -1,22 +1,30 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  Camera,
+  Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
-  FileImage,
   ImagePlus,
   Loader2,
+  Maximize2,
+  Plus,
   RotateCcw,
   Send,
   Sparkles,
+  Star,
   Upload,
+  X,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ProductionEstimateCard } from "@/components/customize/ProductionEstimateCard";
 import { toast } from "@/components/ui/use-toast";
 import { createDirectProductionRequest } from "@/services/orderCreation";
@@ -29,16 +37,28 @@ const allowedImageTypes = new Set([
   "image/webp",
 ]);
 const maxFileSize = 10 * 1024 * 1024;
+const maxImageCount = 10;
+
+const analysisSteps = [
+  "의류 종류 확인",
+  "앞/뒤/디테일 이미지 분류",
+  "프린팅·자수·부자재 확인",
+  "중복 디자인 제거",
+  "제작 난이도 분석",
+  "예상 견적 계산",
+];
 
 const formatWonRange = (minimum: number, maximum: number) =>
   minimum === maximum
     ? `${minimum.toLocaleString("ko-KR")}원`
     : `${minimum.toLocaleString("ko-KR")}원 ~ ${maximum.toLocaleString("ko-KR")}원`;
 
-type AnalysisInput = {
+type UploadedImage = {
+  id: string;
+  file: File;
+  previewUrl: string;
   base64: string;
   mimeType: string;
-  fileName: string;
 };
 
 const readFileAsBase64 = (file: File) =>
@@ -53,67 +73,104 @@ const readFileAsBase64 = (file: File) =>
   });
 
 const DesignQuote = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [analysisInput, setAnalysisInput] = useState<AnalysisInput | null>(null);
+  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [primaryId, setPrimaryId] = useState<string | null>(null);
+  const [zoomImageId, setZoomImageId] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [progressStep, setProgressStep] = useState(0);
   const [estimate, setEstimate] = useState<ProductionEstimateResult | null>(null);
   const [requestNote, setRequestNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const imagesRef = useRef<UploadedImage[]>([]);
+  imagesRef.current = images;
 
   useEffect(
     () => () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      for (const image of imagesRef.current) {
+        URL.revokeObjectURL(image.previewUrl);
+      }
     },
-    [previewUrl],
+    [],
   );
 
   useMascotPageContext({ page: "design-quote", hasEstimate: Boolean(estimate) });
 
-  const selectFile = (nextFile: File) => {
-    if (!allowedImageTypes.has(nextFile.type)) {
-      toast({
-        title: "지원하지 않는 파일 형식",
-        description: "PNG, JPG, JPEG, WEBP 이미지를 선택해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (nextFile.size > maxFileSize) {
-      toast({
-        title: "파일 용량 초과",
-        description: "10MB 이하 이미지를 선택해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setFile(nextFile);
-    setPreviewUrl(URL.createObjectURL(nextFile));
-    setAnalysisInput(null);
+  const resetAnalysis = () => {
+    setAnalysisStarted(false);
+    setIsAnalyzing(false);
     setEstimate(null);
     setRequestNote("");
     setSubmittedOrderId(null);
   };
 
-  const startAnalysis = async () => {
-    if (!file) {
-      inputRef.current?.click();
+  const addFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+
+    const room = maxImageCount - imagesRef.current.length;
+    if (room <= 0) {
+      toast({
+        title: "업로드 개수 초과",
+        description: `이미지는 최대 ${maxImageCount}장까지 업로드할 수 있습니다.`,
+        variant: "destructive",
+      });
       return;
     }
 
+    const accepted: File[] = [];
+    for (const file of files) {
+      if (!allowedImageTypes.has(file.type)) {
+        toast({
+          title: "지원하지 않는 파일 형식",
+          description: "PNG, JPG, JPEG, WEBP 이미지를 선택해주세요.",
+          variant: "destructive",
+        });
+        continue;
+      }
+      if (file.size > maxFileSize) {
+        toast({
+          title: "파일 용량 초과",
+          description: "10MB 이하 이미지를 선택해주세요.",
+          variant: "destructive",
+        });
+        continue;
+      }
+      accepted.push(file);
+    }
+
+    const toAdd = accepted.slice(0, room);
+    if (accepted.length > toAdd.length) {
+      toast({
+        title: "업로드 개수 초과",
+        description: `이미지는 최대 ${maxImageCount}장까지 업로드할 수 있어 일부 이미지는 제외되었습니다.`,
+        variant: "destructive",
+      });
+    }
+    if (toAdd.length === 0) return;
+
     try {
       setIsPreparing(true);
-      const base64 = await readFileAsBase64(file);
-      setAnalysisInput({
-        base64,
-        mimeType: file.type,
-        fileName: file.name,
-      });
+      const prepared = await Promise.all(
+        toAdd.map(async (file) => ({
+          id:
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          file,
+          previewUrl: URL.createObjectURL(file),
+          base64: await readFileAsBase64(file),
+          mimeType: file.type,
+        })),
+      );
+      setImages((current) => [...current, ...prepared]);
+      setPrimaryId((current) => current ?? prepared[0]?.id ?? null);
+      resetAnalysis();
     } catch (error) {
       toast({
         title: "이미지 준비 실패",
@@ -128,11 +185,90 @@ const DesignQuote = () => {
     }
   };
 
+  const removeImage = (id: string) => {
+    setImages((current) => {
+      const target = current.find((image) => image.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      const next = current.filter((image) => image.id !== id);
+      setPrimaryId((currentPrimary) =>
+        currentPrimary === id ? next[0]?.id ?? null : currentPrimary,
+      );
+      return next;
+    });
+    resetAnalysis();
+  };
+
+  const moveImage = (id: string, direction: -1 | 1) => {
+    setImages((current) => {
+      const index = current.findIndex((image) => image.id === id);
+      const targetIndex = index + direction;
+      if (index === -1 || targetIndex < 0 || targetIndex >= current.length) {
+        return current;
+      }
+      const next = current.slice();
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+    resetAnalysis();
+  };
+
+  const setPrimaryImage = (id: string) => {
+    setPrimaryId(id);
+    resetAnalysis();
+  };
+
+  const cardImages = useMemo(
+    () => images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })),
+    [images],
+  );
+
+  useEffect(() => {
+    if (!isAnalyzing) {
+      setProgressStep(0);
+      return;
+    }
+    setProgressStep(0);
+    const interval = setInterval(() => {
+      setProgressStep((step) => (step < analysisSteps.length - 1 ? step + 1 : step));
+    }, 900);
+    return () => clearInterval(interval);
+  }, [isAnalyzing]);
+
+  const startAnalysis = () => {
+    if (images.length === 0) {
+      fileInputRef.current?.click();
+      return;
+    }
+    setIsAnalyzing(true);
+    setAnalysisStarted(true);
+  };
+
+  const zoomImage = images.find((image) => image.id === zoomImageId) || null;
+
+  const startOver = () => {
+    for (const image of imagesRef.current) {
+      URL.revokeObjectURL(image.previewUrl);
+    }
+    setImages([]);
+    setPrimaryId(null);
+    resetAnalysis();
+    fileInputRef.current?.click();
+  };
+
   const submitProductionRequest = async () => {
-    if (!analysisInput || !estimate) {
+    if (!analysisStarted || !estimate) {
       toast({
         title: "견적 확인이 필요합니다",
         description: "AI 분석과 견적 계산이 끝난 뒤 제작 의뢰를 접수해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const primaryImage = images.find((image) => image.id === primaryId) || images[0];
+    if (!primaryImage) {
+      toast({
+        title: "이미지가 없습니다",
+        description: "제작 의뢰에 첨부할 이미지를 업로드해주세요.",
         variant: "destructive",
       });
       return;
@@ -162,6 +298,9 @@ const DesignQuote = () => {
         estimate.totals.totalMin,
         estimate.totals.totalMax,
       )} (원단 제외)`,
+      images.length > 1
+        ? `업로드 이미지: 총 ${images.length}장 (대표 이미지 첨부)`
+        : "",
       requestNote.trim() ? `추가 요청: ${requestNote.trim()}` : "",
     ]
       .filter(Boolean)
@@ -177,8 +316,8 @@ const DesignQuote = () => {
         measurements: null,
         generatedImageUrl: null,
         imagePath: null,
-        imageBase64: analysisInput.base64,
-        imageMimeType: analysisInput.mimeType,
+        imageBase64: primaryImage.base64,
+        imageMimeType: primaryImage.mimeType,
         requestSource: "design_upload",
         requestTitle: `${estimate.garment.label} 내 디자인 견적`,
         requestedQuantity: estimate.totals.quantity,
@@ -192,6 +331,7 @@ const DesignQuote = () => {
       void trackSiteEvent("design_quote_submitted", {
         garment: estimate.garment.label,
         quantity: estimate.totals.quantity,
+        imageCount: images.length,
       });
     } catch (error) {
       toast({
@@ -220,9 +360,10 @@ const DesignQuote = () => {
               디자인 견적
             </h1>
             <p className="mt-4 max-w-2xl text-[15px] leading-7 text-stone-500">
-              디자인을 분석해 예상 제작비를 자동으로 확인해보세요. 이미 제작한
-              의류 이미지를 올리면 의류 종류, 소재, 후가공과 부자재를 분석해
-              기존 브랜더 계산식으로 예상 견적을 만듭니다.
+              디자인을 분석해 예상 제작비를 자동으로 확인해보세요. 정면·후면·
+              측면·디테일·프린트/자수 확대 이미지를 최대 10장까지 함께 올리면
+              AI가 한 제품으로 종합 분석해 기존 브랜더 계산식으로 예상 견적을
+              만듭니다.
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -245,7 +386,7 @@ const DesignQuote = () => {
 
         <div className="mb-6 grid gap-2 sm:grid-cols-3" data-tutorial="quote-steps">
           {[
-            { label: "1. 디자인 업로드", done: Boolean(file) },
+            { label: "1. 디자인 업로드", done: images.length > 0 },
             { label: "2. AI 분석·견적", done: Boolean(estimate) },
             { label: "3. 제작 의뢰 접수", done: Boolean(submittedOrderId) },
           ].map((step) => (
@@ -265,39 +406,34 @@ const DesignQuote = () => {
 
         <div className="grid items-start gap-6 lg:grid-cols-[0.78fr_1.22fr]">
           <Card className="overflow-hidden rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
-            <button
-              type="button"
-              className={`flex min-h-[430px] w-full flex-col items-center justify-center overflow-hidden rounded-[1.35rem] border-2 border-dashed transition ${
-                isDragging
-                  ? "border-brand bg-brand/5"
-                  : "border-stone-300 bg-white hover:border-brand/50"
-              }`}
-              onClick={() => inputRef.current?.click()}
-              onDragEnter={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragOver={(event) => event.preventDefault()}
-              onDragLeave={(event) => {
-                event.preventDefault();
-                setIsDragging(false);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                setIsDragging(false);
-                const droppedFile = event.dataTransfer.files?.[0];
-                if (droppedFile) selectFile(droppedFile);
-              }}
-              aria-label="견적을 받을 의류 이미지 업로드"
-              data-tutorial="quote-upload"
-            >
-              {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  alt="업로드한 의류 디자인 미리보기"
-                  className="h-full max-h-[560px] w-full object-contain p-3"
-                />
-              ) : (
+            {images.length === 0 ? (
+              <button
+                type="button"
+                className={`flex min-h-[430px] w-full flex-col items-center justify-center overflow-hidden rounded-[1.35rem] border-2 border-dashed transition ${
+                  isDragging
+                    ? "border-brand bg-brand/5"
+                    : "border-stone-300 bg-white hover:border-brand/50"
+                }`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                  if (event.dataTransfer.files?.length) {
+                    void addFiles(event.dataTransfer.files);
+                  }
+                }}
+                aria-label="견적을 받을 의류 이미지 업로드"
+                data-tutorial="quote-upload"
+              >
                 <div className="px-6 text-center">
                   <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
                     <ImagePlus className="h-7 w-7" />
@@ -306,43 +442,168 @@ const DesignQuote = () => {
                     의류 이미지를 올려주세요
                   </p>
                   <p className="mt-2 text-sm leading-6 text-stone-500">
-                    클릭하거나 파일을 끌어다 놓으세요.
+                    클릭하거나 파일을 끌어다 놓으세요. 최대 {maxImageCount}장까지
+                    한 번에 선택할 수 있습니다.
                     <br />
-                    PNG · JPG · JPEG · WEBP / 최대 10MB
+                    PNG · JPG · JPEG · WEBP / 장당 최대 10MB
                   </p>
                 </div>
-              )}
-            </button>
+              </button>
+            ) : (
+              <div
+                className={`rounded-[1.35rem] border-2 border-dashed p-3 transition ${
+                  isDragging ? "border-brand bg-brand/5" : "border-transparent"
+                }`}
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                  if (event.dataTransfer.files?.length) {
+                    void addFiles(event.dataTransfer.files);
+                  }
+                }}
+                data-tutorial="quote-upload"
+              >
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-3">
+                  {images.map((image, index) => {
+                    const isPrimary = image.id === primaryId;
+                    return (
+                      <div
+                        key={image.id}
+                        className="group relative aspect-square overflow-hidden rounded-xl border border-stone-200 bg-white"
+                      >
+                        <img
+                          src={image.previewUrl}
+                          alt={`업로드 이미지 ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        {isPrimary && (
+                          <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-extrabold text-white shadow">
+                            <Star className="h-2.5 w-2.5 fill-white" />
+                            대표 이미지
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeImage(image.id)}
+                          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition hover:bg-black/80"
+                          aria-label={`이미지 ${index + 1} 삭제`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-4">
+                          <button
+                            type="button"
+                            onClick={() => moveImage(image.id, -1)}
+                            disabled={index === 0}
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white disabled:opacity-30"
+                            aria-label={`이미지 ${index + 1} 앞으로 이동`}
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setZoomImageId(image.id)}
+                              className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white"
+                              aria-label={`이미지 ${index + 1} 확대 보기`}
+                            >
+                              <Maximize2 className="h-3.5 w-3.5" />
+                            </button>
+                            {!isPrimary && (
+                              <button
+                                type="button"
+                                onClick={() => setPrimaryImage(image.id)}
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white"
+                                aria-label={`이미지 ${index + 1} 대표 이미지로 지정`}
+                              >
+                                <Star className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => moveImage(image.id, 1)}
+                            disabled={index === images.length - 1}
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white disabled:opacity-30"
+                            aria-label={`이미지 ${index + 1} 뒤로 이동`}
+                          >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {images.length < maxImageCount && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-stone-300 bg-white text-stone-400 transition hover:border-brand/50 hover:text-brand"
+                      aria-label="이미지 추가"
+                    >
+                      <Plus className="h-5 w-5" />
+                      <span className="text-[11px] font-bold">추가</span>
+                    </button>
+                  )}
+                </div>
+                <p className="mt-3 text-xs font-semibold text-stone-400">
+                  {images.length}/{maxImageCount}장 업로드됨
+                </p>
+              </div>
+            )}
+
             <input
-              ref={inputRef}
+              ref={fileInputRef}
               type="file"
               accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+              multiple
               className="sr-only"
               onChange={(event) => {
-                const nextFile = event.target.files?.[0];
+                if (event.target.files?.length) void addFiles(event.target.files);
                 event.target.value = "";
-                if (nextFile) selectFile(nextFile);
+              }}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              capture="environment"
+              className="sr-only"
+              onChange={(event) => {
+                if (event.target.files?.length) void addFiles(event.target.files);
+                event.target.value = "";
               }}
             />
 
-            {file && (
-              <div className="mt-4 flex items-center gap-3 rounded-xl bg-white px-4 py-3 ring-1 ring-stone-200">
-                <FileImage className="h-5 w-5 shrink-0 text-brand" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-stone-800">
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-stone-400">
-                    {(file.size / 1024 / 1024).toFixed(1)}MB
-                  </p>
-                </div>
-              </div>
+            {images.length > 0 && images.length < maxImageCount && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 h-11 w-full rounded-full border-stone-300 bg-white text-sm font-bold"
+                onClick={() => cameraInputRef.current?.click()}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                사진 촬영으로 추가
+              </Button>
             )}
+
+            <p className="mt-4 rounded-xl bg-brand/5 px-3.5 py-3 text-xs font-semibold leading-5 text-brand">
+              정면, 후면, 디테일 이미지를 함께 등록하면 더욱 정확한 견적을 받을
+              수 있습니다.
+            </p>
 
             <Button
               type="button"
               className="mt-4 h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
-              onClick={() => void startAnalysis()}
+              onClick={startAnalysis}
               disabled={isPreparing}
               data-tutorial="quote-analyze"
             >
@@ -352,20 +613,81 @@ const DesignQuote = () => {
           </Card>
 
           <div data-tutorial="quote-result">
-            {analysisInput ? (
+            {analysisStarted && cardImages.length > 0 ? (
               <div className="space-y-5">
-                <ProductionEstimateCard
-                  key={`${analysisInput.fileName}-${analysisInput.base64.length}`}
-                  selectedType=""
-                  selectedMaterial=""
-                  imageBase64={analysisInput.base64}
-                  imageMimeType={analysisInput.mimeType}
-                  designContext="사용자가 기존에 보유한 의류 디자인 이미지"
-                  editable
-                  onEstimateChange={setEstimate}
-                />
+                {isAnalyzing && (
+                  <Card className="w-full overflow-hidden border-brand/20">
+                    <div className="px-6 py-8">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-brand/10 p-2.5 text-brand">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        </div>
+                        <div>
+                          <p className="font-extrabold text-stone-950">
+                            이미지 {cardImages.length}장을 분석하고 있습니다
+                          </p>
+                          <p className="mt-0.5 text-xs text-stone-500">
+                            여러 이미지를 하나의 제품으로 종합해 분석 중입니다.
+                          </p>
+                        </div>
+                      </div>
+                      <ol className="mt-6 space-y-2.5">
+                        {analysisSteps.map((label, index) => (
+                          <li key={label} className="flex items-center gap-3 text-sm">
+                            <span
+                              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold transition ${
+                                index < progressStep
+                                  ? "bg-emerald-500 text-white"
+                                  : index === progressStep
+                                    ? "bg-brand text-white"
+                                    : "bg-stone-100 text-stone-400"
+                              }`}
+                            >
+                              {index < progressStep ? (
+                                <Check className="h-3.5 w-3.5" />
+                              ) : (
+                                index + 1
+                              )}
+                            </span>
+                            <span
+                              className={
+                                index <= progressStep
+                                  ? "font-bold text-stone-900"
+                                  : "text-stone-400"
+                              }
+                            >
+                              {label}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  </Card>
+                )}
+
+                {estimate && !isAnalyzing && (
+                  <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    {estimate.imageCount ?? cardImages.length}장의 이미지를 종합하여{" "}
+                    {estimate.items?.length ?? 1}개의 제품으로 분석했습니다.
+                  </div>
+                )}
+
+                <div className={isAnalyzing ? "hidden" : ""}>
+                  <ProductionEstimateCard
+                    key={images.map((image) => image.id).join(",")}
+                    selectedType=""
+                    selectedMaterial=""
+                    images={cardImages}
+                    designContext="사용자가 기존에 보유한 의류 디자인 이미지"
+                    editable
+                    onEstimateChange={setEstimate}
+                    onLoadingChange={setIsAnalyzing}
+                  />
+                </div>
 
                 {estimate &&
+                  !isAnalyzing &&
                   (submittedOrderId ? (
                     <Card className="rounded-[1.75rem] border-emerald-200 bg-emerald-50 p-6 shadow-sm">
                       <div className="flex items-start gap-3">
@@ -390,7 +712,7 @@ const DesignQuote = () => {
                           type="button"
                           variant="outline"
                           className="h-11 rounded-full border-emerald-300 bg-white"
-                          onClick={() => inputRef.current?.click()}
+                          onClick={startOver}
                         >
                           <RotateCcw className="mr-2 h-4 w-4" />
                           다른 디자인 견적받기
@@ -468,7 +790,8 @@ const DesignQuote = () => {
                   분석 결과와 자동 견적서
                 </h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-stone-500">
-                  이미지를 올리면 의류 종류·소재·프린트 위치와 개수·워싱·
+                  정면·후면·측면·디테일·프린트/자수 확대 이미지를 함께 올리면
+                  AI가 종합 분석해 의류 종류·소재·프린트 위치와 개수·워싱·
                   부자재·예상 난이도·AI 신뢰도를 확인할 수 있습니다.
                 </p>
                 <div className="mt-6 grid w-full max-w-lg grid-cols-2 gap-2 text-left text-xs text-stone-500 sm:grid-cols-4">
@@ -488,6 +811,19 @@ const DesignQuote = () => {
           </div>
         </div>
       </main>
+
+      <Dialog open={Boolean(zoomImage)} onOpenChange={(open) => !open && setZoomImageId(null)}>
+        <DialogContent className="max-w-3xl border-0 bg-black/95 p-2 sm:p-3">
+          <DialogTitle className="sr-only">이미지 확대 보기</DialogTitle>
+          {zoomImage && (
+            <img
+              src={zoomImage.previewUrl}
+              alt="업로드 이미지 확대 보기"
+              className="max-h-[80vh] w-full rounded-lg object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

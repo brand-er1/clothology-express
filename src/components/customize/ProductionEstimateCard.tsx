@@ -3,7 +3,9 @@ import {
   AlertTriangle,
   Calculator,
   CircleCheck,
+  CircleHelp,
   CirclePlus,
+  ImageIcon,
   Info,
   Layers,
   Loader2,
@@ -28,8 +30,11 @@ import {
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import type {
   ArtworkType,
+  DecorationAnalysisKind,
   EstimateDifficulty,
   ManualProductionAnalysis,
+  ProductionAnalysisSnapshotItem,
+  ProductionEstimateImageInput,
   ProductionEstimateResult,
   UploadedArtworkAnalysis,
 } from "@/types/productionEstimate";
@@ -49,6 +54,8 @@ import {
 interface ProductionEstimateCardProps {
   selectedType: string;
   selectedMaterial: string;
+  /** Preferred multi-image input, up to 10 images. Takes precedence over imageUrl/imageBase64 below. */
+  images?: ProductionEstimateImageInput[];
   imageUrl?: string;
   imageBase64?: string;
   imageMimeType?: string;
@@ -58,7 +65,13 @@ interface ProductionEstimateCardProps {
   quantity?: number;
   onQuantityChange?: (quantity: number) => void;
   onEstimateChange?: (estimate: ProductionEstimateResult | null) => void;
+  /** Fires whenever a fresh AI analysis request starts/finishes — lets a parent page drive its own progress UI. */
+  onLoadingChange?: (isLoading: boolean) => void;
 }
+
+const decorationLabelByKind = new Map(
+  decorationOptions.map((option) => [option.value, option.label]),
+);
 
 const formatWon = (amount: number) => `${amount.toLocaleString("ko-KR")}원`;
 
@@ -142,6 +155,7 @@ const EstimateLoading = () => (
 export const ProductionEstimateCard = ({
   selectedType,
   selectedMaterial,
+  images,
   imageUrl = "",
   imageBase64 = "",
   imageMimeType = "",
@@ -151,6 +165,7 @@ export const ProductionEstimateCard = ({
   quantity,
   onQuantityChange,
   onEstimateChange,
+  onLoadingChange,
 }: ProductionEstimateCardProps) => {
   const [baseEstimate, setBaseEstimate] =
     useState<ProductionEstimateResult | null>(null);
@@ -163,6 +178,11 @@ export const ProductionEstimateCard = ({
   // item (e.g. a duplicate front/back read as two garments) instead of the whole analysis being
   // thrown away. Reset to "all included" whenever a fresh analysis loads.
   const [includedItemIndices, setIncludedItemIndices] = useState<Set<number> | null>(null);
+  // Ambiguous decoration technique chips the visitor dismissed with "잘 모르겠어요" — kept as the
+  // AI's best guess but no longer prompted. Reset whenever a fresh analysis loads.
+  const [dismissedAmbiguousIds, setDismissedAmbiguousIds] = useState<Set<string>>(new Set());
+  const [resolvingDecorationId, setResolvingDecorationId] = useState<string | null>(null);
+  const [ambiguousError, setAmbiguousError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const minimumQuantity = baseEstimate?.garment.moq ?? 20;
   const activeQuantity = normalizeEstimateQuantity(
@@ -183,6 +203,8 @@ export const ProductionEstimateCard = ({
     } else {
       setIncludedItemIndices(null);
     }
+    setDismissedAmbiguousIds(new Set());
+    setAmbiguousError(null);
     // Only reset when a genuinely new analysis loads, not on every quantity-driven recalculation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseEstimate]);
@@ -237,6 +259,7 @@ export const ProductionEstimateCard = ({
 
     try {
       const result = await analyzeProductionEstimate({
+        images,
         imageUrl,
         imageBase64,
         imageMimeType,
@@ -265,6 +288,7 @@ export const ProductionEstimateCard = ({
     }
   }, [
     designContext,
+    images,
     imageBase64,
     imageMimeType,
     imageUrl,
@@ -273,6 +297,68 @@ export const ProductionEstimateCard = ({
     selectedType,
     uploadedArtwork,
   ]);
+
+  const resolveAmbiguousDecoration = useCallback(
+    async (sourceDecorationId: string, chosenKind: DecorationAnalysisKind) => {
+      if (!baseEstimate?.rawAnalysisSnapshot) return;
+      setResolvingDecorationId(sourceDecorationId);
+      setAmbiguousError(null);
+
+      try {
+        const snapshot = baseEstimate.rawAnalysisSnapshot.map(
+          (item): ProductionAnalysisSnapshotItem => ({
+            ...item,
+            decorations: (item.decorations || []).map((decoration) =>
+              decoration.id === sourceDecorationId
+                ? { ...decoration, kind: chosenKind, ambiguous: false }
+                : decoration,
+            ),
+          }),
+        );
+        const result = await analyzeProductionEstimate({
+          images,
+          imageUrl,
+          imageBase64,
+          imageMimeType,
+          selectedType,
+          selectedMaterial,
+          designContext,
+          uploadedArtwork,
+          rawItemsOverride: snapshot,
+          quantity: 20,
+        });
+        setBaseEstimate(result);
+      } catch (resolveError) {
+        console.error("Ambiguous decoration resolution error:", resolveError);
+        setAmbiguousError(
+          resolveError instanceof Error
+            ? resolveError.message
+            : "가공 방식을 반영하지 못했습니다. 다시 시도해주세요.",
+        );
+      } finally {
+        setResolvingDecorationId(null);
+      }
+    },
+    [
+      baseEstimate,
+      designContext,
+      images,
+      imageBase64,
+      imageMimeType,
+      imageUrl,
+      selectedMaterial,
+      selectedType,
+      uploadedArtwork,
+    ],
+  );
+
+  const dismissAmbiguousDecoration = (sourceDecorationId: string) => {
+    setDismissedAmbiguousIds((current) => {
+      const next = new Set(current);
+      next.add(sourceDecorationId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     void loadEstimate();
@@ -284,6 +370,64 @@ export const ProductionEstimateCard = ({
   useEffect(() => {
     onEstimateChange?.(displayEstimate);
   }, [displayEstimate, onEstimateChange]);
+
+  useEffect(() => {
+    onLoadingChange?.(isLoading);
+  }, [isLoading, onLoadingChange]);
+
+  // Decoration technique the AI could not confidently pin down — needs the visitor to pick
+  // among a few plausible techniques before it's final. Sourced from every priced item so it
+  // works the same whether the analysis found one product or several.
+  const ambiguousDecorations = useMemo(() => {
+    if (!displayEstimate?.items) return [];
+    return displayEstimate.items.flatMap((item) =>
+      item.decorations
+        .filter(
+          (decoration) =>
+            decoration.ambiguous &&
+            decoration.sourceDecorationId &&
+            decoration.ambiguousOptions?.length &&
+            !dismissedAmbiguousIds.has(decoration.sourceDecorationId),
+        )
+        .map((decoration) => ({ decoration, itemLabel: item.itemLabel })),
+    );
+  }, [displayEstimate, dismissedAmbiguousIds]);
+
+  // Which detected element (decoration/accessory) was found in which submitted image, grouped
+  // by product then by image — powers the "IMAGE 1 · 정면 → ..." breakdown.
+  const imageFindings = useMemo(() => {
+    const imageLabels = displayEstimate?.imageLabels;
+    const items = displayEstimate?.items;
+    if (!imageLabels?.length || !items?.length || (displayEstimate?.imageCount ?? 0) <= 1) {
+      return [];
+    }
+
+    return items.map((item) => ({
+      itemIndex: item.itemIndex,
+      itemLabel: item.itemLabel,
+      images: (item.sourceImages || [])
+        .slice()
+        .sort((a, b) => a - b)
+        .map((imageIndex) => {
+          const lines: string[] = [];
+          for (const decoration of item.decorations) {
+            if (decoration.sourceImages?.includes(imageIndex)) {
+              lines.push(`${decoration.locationLabel} ${decoration.label} 발견`);
+            }
+          }
+          for (const accessory of item.accessories) {
+            if (accessory.sourceImages?.includes(imageIndex)) {
+              lines.push(`${accessory.label} 사용`);
+            }
+          }
+          return {
+            imageIndex,
+            imageLabel: imageLabels[imageIndex] || `이미지 ${imageIndex + 1}`,
+            lines,
+          };
+        }),
+    }));
+  }, [displayEstimate]);
 
   if (isLoading && !estimate) return <EstimateLoading />;
 
@@ -385,6 +529,12 @@ export const ProductionEstimateCard = ({
                 <Sparkles className="mr-1 h-3.5 w-3.5" />
                 AI 이미지 분석
               </Badge>
+              {estimate.imageCount != null && estimate.imageCount > 1 && (
+                <Badge className="border-white/20 bg-white/15 text-white hover:bg-white/15">
+                  <ImageIcon className="mr-1 h-3.5 w-3.5" />
+                  이미지 {estimate.imageCount}장 종합 분석
+                </Badge>
+              )}
               <span className="text-xs font-medium text-white/75">
                 {garment.label} · 견적 수량 직접 조절
               </span>
@@ -483,8 +633,15 @@ export const ProductionEstimateCard = ({
                       >
                         <CircleCheck className="h-3.5 w-3.5" />
                       </span>
-                      <span className="text-sm font-extrabold text-stone-950">
-                        ITEM {index + 1} · {item.itemLabel}
+                      <span>
+                        <span className="block text-sm font-extrabold text-stone-950">
+                          ITEM {index + 1} · {item.itemLabel}
+                        </span>
+                        {item.sourceImages && item.sourceImages.length > 0 && (
+                          <span className="mt-0.5 block text-[11px] font-semibold text-stone-400">
+                            사용 이미지: {item.sourceImages.map((imageIndex) => `IMAGE ${imageIndex + 1}`).join(", ")}
+                          </span>
+                        )}
                       </span>
                     </span>
                     <span className="text-xs font-bold text-brand">
@@ -562,6 +719,129 @@ export const ProductionEstimateCard = ({
               {formatRange(totals.productionTotalMin, totals.productionTotalMax)} · 후가공비{" "}
               {formatRange(totals.decorationTotalMin, totals.decorationTotalMax)}
             </p>
+          </div>
+        </div>
+      )}
+
+      {ambiguousDecorations.length > 0 && (
+        <div className="mx-5 mb-5 mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex items-center gap-2">
+            <CircleHelp className="h-4 w-4 text-amber-700" />
+            <p className="font-extrabold text-amber-900">
+              가공 방식을 확인해주세요 ({ambiguousDecorations.length}건)
+            </p>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-amber-800">
+            이미지만으로는 정확한 가공 방식을 확정하기 어려운 항목이 있습니다. 아래에서 선택하면
+            견적에 바로 반영됩니다.
+          </p>
+          {ambiguousError && (
+            <p className="mt-2 text-xs font-bold text-rose-600">{ambiguousError}</p>
+          )}
+          <div className="mt-4 space-y-3">
+            {ambiguousDecorations.map(({ decoration, itemLabel }) => {
+              const isResolving = resolvingDecorationId === decoration.sourceDecorationId;
+              return (
+                <div
+                  key={decoration.sourceDecorationId}
+                  className="rounded-xl border border-amber-200 bg-white p-3"
+                >
+                  <p className="text-sm font-bold text-stone-900">
+                    {allItems ? `${itemLabel} · ` : ""}
+                    {decoration.locationLabel} 로고의 가공 방식을 정확히 확인하기 어렵습니다.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(decoration.ambiguousOptions || []).map((option) => (
+                      <Button
+                        key={option}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isResolving}
+                        className="h-8 rounded-full border-amber-300 bg-amber-50/50 px-3 text-xs font-bold text-amber-900 hover:bg-amber-100"
+                        onClick={() =>
+                          void resolveAmbiguousDecoration(
+                            decoration.sourceDecorationId as string,
+                            option,
+                          )
+                        }
+                      >
+                        {decorationLabelByKind.get(option) || option}
+                      </Button>
+                    ))}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={isResolving}
+                      className="h-8 rounded-full px-3 text-xs font-bold text-stone-500 hover:text-stone-700"
+                      onClick={() =>
+                        dismissAmbiguousDecoration(decoration.sourceDecorationId as string)
+                      }
+                    >
+                      잘 모르겠어요
+                    </Button>
+                    {isResolving && (
+                      <span className="flex items-center gap-1 px-2 text-xs font-bold text-amber-700">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        반영 중
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {imageFindings.length > 0 && (
+        <div className="mx-5 mb-5 rounded-2xl border border-stone-200 bg-[#fbfaf8] p-5">
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-4 w-4 text-brand" />
+            <p className="font-extrabold text-stone-950">이미지별 발견 요소</p>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-stone-500">
+            AI가 어떤 이미지에서 어떤 요소를 발견했는지 확인할 수 있습니다.
+          </p>
+          <div className="mt-4 space-y-4">
+            {imageFindings.map((group) => (
+              <div key={group.itemIndex}>
+                {allItems && (
+                  <p className="mb-2 text-xs font-extrabold text-brand">
+                    제품 {String.fromCharCode(65 + group.itemIndex)} · {group.itemLabel}
+                  </p>
+                )}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {group.images.map((image) => (
+                    <div
+                      key={image.imageIndex}
+                      className="rounded-xl border border-stone-200 bg-white p-3"
+                    >
+                      <p className="text-xs font-extrabold text-stone-900">
+                        IMAGE {image.imageIndex + 1} · {image.imageLabel}
+                      </p>
+                      {image.lines.length > 0 ? (
+                        <ul className="mt-1.5 space-y-1">
+                          {image.lines.map((line, lineIndex) => (
+                            <li
+                              key={lineIndex}
+                              className="text-xs leading-5 text-stone-600"
+                            >
+                              → {line}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-1.5 text-xs leading-5 text-stone-400">
+                          참고용 이미지입니다.
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

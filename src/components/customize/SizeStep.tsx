@@ -213,7 +213,10 @@ export const SizeStep = ({
           </div>
 
           <div className="p-5 md:p-7">
-            <div className="mb-6 grid gap-4 rounded-2xl border border-brand/15 bg-brand/5 p-5 sm:grid-cols-[1fr_220px] sm:items-center">
+            <div
+              className="mb-6 grid gap-4 rounded-2xl border border-brand/15 bg-brand/5 p-5 sm:grid-cols-[1fr_220px] sm:items-center"
+              data-tutorial="customize-quantity"
+            >
               <div className="flex gap-3">
                 <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
                 <div>

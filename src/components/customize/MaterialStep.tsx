@@ -37,7 +37,7 @@ export const MaterialStep = ({
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2" data-tutorial="customize-material">
         {materials.map((material) => {
           const isSelected = selectedMaterial === material.id;
           return (

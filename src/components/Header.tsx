@@ -177,7 +177,7 @@ export const Header = () => {
           ))}
         </nav>
 
-        <div className="ml-auto hidden items-center gap-2 md:flex">
+        <div className="ml-auto hidden items-center gap-2 md:flex" data-tutorial="header-account">
           {isAuthenticated ? (
             <>
               {accountType === "seller" && (

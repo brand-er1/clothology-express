@@ -71,11 +71,14 @@ export const ImageStep = ({
             </div>
           ) : generatedImageUrls && generatedImageUrls.length > 0 ? (
             <div className="space-y-4">
-              <div className={`grid gap-4 ${
-                generatedImageUrls.length > 1
-                  ? "grid-cols-1 2xl:grid-cols-2"
-                  : "grid-cols-1"
-              }`}>
+              <div
+                className={`grid gap-4 ${
+                  generatedImageUrls.length > 1
+                    ? "grid-cols-1 2xl:grid-cols-2"
+                    : "grid-cols-1"
+                }`}
+                data-tutorial="customize-results"
+              >
                 {generatedImageUrls.map((imageUrl, index) => {
                   const resolvedImageUrl =
                     storedImageUrls && storedImageUrls[index]
@@ -132,11 +135,12 @@ export const ImageStep = ({
                 이미지를 누르면 화면 전체로 더 크게 확인할 수 있어요.
               </p>
               
-              <Button 
+              <Button
                 onClick={onGenerateImage}
                 variant="outline"
                 className="h-12 w-full rounded-full"
                 disabled={isLoading}
+                data-tutorial="customize-generate"
               >
                 {isLoading ? (
                   <>
@@ -149,10 +153,11 @@ export const ImageStep = ({
           ) : (
             <div className="flex min-h-[520px] w-full items-center justify-center rounded-2xl bg-gray-100 sm:min-h-[660px]">
               <div className="flex flex-col items-center">
-                <Button 
+                <Button
                   onClick={onGenerateImage}
                   className="h-12 rounded-full bg-brand px-7 hover:bg-brand-dark"
                   disabled={isLoading}
+                  data-tutorial="customize-generate"
                 >
                   {isLoading ? (
                     <>

@@ -222,6 +222,7 @@ export const DetailInput = ({
             onChange={onChange}
             placeholder="예: 네이비 컬러의 오버핏 맨투맨에 작은 레터링을 넣어주세요."
             className="min-h-40 w-full resize-y rounded-xl border border-stone-300 bg-[#fbfaf8] p-4 text-base leading-7 text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-brand focus:ring-4 focus:ring-brand/10 sm:min-h-44"
+            data-tutorial="customize-prompt"
           />
         </div>
 
@@ -231,6 +232,7 @@ export const DetailInput = ({
               ? "border-brand/25 bg-brand/5"
               : "border-amber-200 bg-amber-50/70"
           }`}
+          data-tutorial="customize-example"
         >
           <div className="flex items-start gap-3">
             {promptExample.isTrend ? (

@@ -27,6 +27,8 @@ import { useDisableImageCapture } from './hooks/useDisableImageCapture';
 import { Footer } from './components/Footer';
 import { BrandGuide } from './components/guide/BrandGuide';
 import { MascotProvider } from './components/guide/MascotContext';
+import { TutorialProvider } from './components/guide/TutorialContext';
+import { TutorialOverlay } from './components/guide/TutorialOverlay';
 import { SiteVisitTracker } from './components/SiteVisitTracker';
 import { VisitDataNotice } from './components/VisitDataNotice';
 import VisitDataPolicy from './pages/VisitDataPolicy';
@@ -107,6 +109,7 @@ function App() {
     <div className={isMobile ? 'mobile-view' : 'desktop-view'}>
       <BrowserRouter basename={routerBasename}>
         <MascotProvider>
+        <TutorialProvider>
           <SiteVisitTracker />
           <VisitDataNotice />
           <WelcomeNotification />
@@ -131,6 +134,8 @@ function App() {
           </Routes>
           <Footer />
           <BrandGuide />
+          <TutorialOverlay />
+        </TutorialProvider>
         </MascotProvider>
       </BrowserRouter>
       <Toaster />

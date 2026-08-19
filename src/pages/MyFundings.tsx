@@ -168,10 +168,18 @@ const MyFundings = () => {
 
         <Tabs defaultValue="created" className="mt-8">
           <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl bg-white p-1.5 shadow-sm md:w-[520px]">
-            <TabsTrigger value="created" className="rounded-xl py-3 data-[state=active]:bg-brand data-[state=active]:text-white">
+            <TabsTrigger
+              value="created"
+              className="rounded-xl py-3 data-[state=active]:bg-brand data-[state=active]:text-white"
+              data-tutorial="myf-created-tab"
+            >
               내가 만든 펀딩 <span className="ml-2 opacity-70">{createdFundings.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="joined" className="rounded-xl py-3 data-[state=active]:bg-brand data-[state=active]:text-white">
+            <TabsTrigger
+              value="joined"
+              className="rounded-xl py-3 data-[state=active]:bg-brand data-[state=active]:text-white"
+              data-tutorial="myf-joined-tab"
+            >
               내가 참여한 펀딩 <span className="ml-2 opacity-70">{activePaidItems.length + plannedItems.length}</span>
             </TabsTrigger>
           </TabsList>

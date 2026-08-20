@@ -15,6 +15,12 @@ type ProductSpriteMap = Partial<Record<DirectColor, Record<ReadyMadeGarmentSide,
 const W = 1536;
 const H = 1024;
 
+const DIRECT_GRAY_FRONT_IMAGES: Record<string, string> = {
+  polo: "/clothing-templates/direct/polo-gray-front.webp",
+  half_pants: "/clothing-templates/direct/shorts-gray-front.webp",
+  hoodie_zipup: "/clothing-templates/direct/zip-hoodie-gray-front.webp",
+};
+
 const halfBlack = (sheet: string): ProductSpriteMap => ({
   블랙: {
     front: { sheet, viewBox: `0 0 ${W / 2} ${H}` },
@@ -74,12 +80,6 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
   },
 };
 
-/**
- * Exact sprite crop renderer.
- * Instead of background-position or SVG image cropping, keep the original sheet as a normal img,
- * enlarge it to the exact crop ratio, and clip it with overflow:hidden. This avoids fuzzy edges,
- * neighboring garments leaking into the frame, and inconsistent crop behavior across browsers.
- */
 const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string; className?: string }) => {
   const sourceWidth = crop.sourceWidth ?? W;
   const sourceHeight = crop.sourceHeight ?? H;
@@ -91,11 +91,7 @@ const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string;
   const topPercent = -(y / cropHeight) * 100;
 
   return (
-    <div
-      role="img"
-      aria-label={alt}
-      className={`relative overflow-hidden ${className ?? ""}`}
-    >
+    <div role="img" aria-label={alt} className={`relative overflow-hidden ${className ?? ""}`}>
       <img
         src={getAppPath(crop.sheet)}
         alt=""
@@ -130,6 +126,18 @@ export const ReadyMadeGarmentImage = ({
   const crop = PRODUCT_SPRITES[product.key]?.[directColor]?.[side];
   const fallbackSource = getAppPath(side === "front" ? product.imageFront : product.imageBack);
   const fallbackUrl = useRecoloredGarmentImage(fallbackSource, color);
+
+  const standaloneGrayFront = color === "그레이" && side === "front" ? DIRECT_GRAY_FRONT_IMAGES[product.key] : undefined;
+  if (standaloneGrayFront) {
+    return (
+      <img
+        src={getAppPath(standaloneGrayFront)}
+        alt={alt}
+        draggable={false}
+        className={`object-contain ${className ?? ""}`}
+      />
+    );
+  }
 
   if (crop) return <DirectSprite crop={crop} alt={alt} className={className} />;
 

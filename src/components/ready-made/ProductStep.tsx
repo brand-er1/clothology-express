@@ -1,18 +1,18 @@
 import { Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { READY_MADE_PRODUCT_OPTIONS, type ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
-import { useRecoloredGarmentImage } from "@/lib/garment-recolor";
-import { getAppPath } from "@/utils/appUrl";
+import { useProductGarmentImage } from "@/lib/garment-recolor";
 import type { UseReadyMadeGroupWearFormReturn } from "@/hooks/useReadyMadeGroupWearForm";
 
 interface ProductStepProps {
   form: UseReadyMadeGroupWearFormReturn;
 }
 
-/** Every category's catalog thumbnail is shown in the same "그레이" so the product grid reads as
- * one unified design system, regardless of which color the customer ends up picking. Extracted
- * into its own component (rather than called inline in the `.map` below) because the recolor is
- * a hook — one call per card, not one call shared across the whole list. */
+/** Every category's catalog thumbnail is shown in its `defaultColor` (그레이, for every product
+ * today) so the product grid reads as one unified design system, regardless of which color the
+ * customer ends up picking. Extracted into its own component (rather than called inline in the
+ * `.map` below) because the image resolution is a hook — one call per card, not one call shared
+ * across the whole list. */
 const ProductCard = ({
   product,
   isSelected,
@@ -22,7 +22,7 @@ const ProductCard = ({
   isSelected: boolean;
   onSelect: () => void;
 }) => {
-  const thumbnailUrl = useRecoloredGarmentImage(getAppPath(product.imageFront), "그레이");
+  const thumbnailUrl = useProductGarmentImage(product, "front", product.defaultColor);
 
   return (
     <button type="button" onClick={onSelect} className="text-left">

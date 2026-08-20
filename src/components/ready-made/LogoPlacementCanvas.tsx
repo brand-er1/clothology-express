@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { getAppPath } from "@/utils/appUrl";
-import { useRecoloredGarmentImage } from "@/lib/garment-recolor";
+import { useProductGarmentImage } from "@/lib/garment-recolor";
 import {
   READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
   READY_MADE_MIN_ARTWORK_WIDTH_PERCENT,
@@ -47,8 +46,8 @@ export const LogoPlacementCanvas = ({
   const [activeSide, setActiveSide] = useState<ReadyMadeGarmentSide>("front");
   const containerRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<Gesture | null>(null);
-  const frontUrl = useRecoloredGarmentImage(getAppPath(product.imageFront), color);
-  const backUrl = useRecoloredGarmentImage(getAppPath(product.imageBack), color);
+  const frontUrl = useProductGarmentImage(product, "front", color);
+  const backUrl = useProductGarmentImage(product, "back", color);
   const mockupUrl = activeSide === "front" ? frontUrl : backUrl;
 
   const jobsForSide = printJobs.filter((job) => job.side === activeSide);

@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { READY_MADE_COLOR_SWATCHES, type ReadyMadeColor } from "@/data/ready-made-pricing-config";
+import { getAppPath } from "@/utils/appUrl";
 
 /**
  * Recolors a photographed black garment mockup to an arbitrary target color, purely on the
  * client (canvas pixel manipulation — no server round trip, no per-color asset files, and no
  * regenerating a new AI image per color — same base photo, same silhouette, every time).
  *
- * How it works: every base photo in `public/lovable-uploads/ready-made/` is shot on the SAME
- * garment against a near-white studio background. For each pixel we:
- *  1. Derive an alpha mask from luminosity — near-white pixels (background) get alpha ~0,
- *     dark pixels (garment) get alpha ~1.
+ * How it works: every base photo is shot on the SAME garment against a near-white studio
+ * background — the garment itself can be any color (black, heather gray, ...) as long as it
+ * contrasts with the backdrop. For each pixel we:
+ *  1. Derive an alpha mask from luminosity. The garment/background split point is found per
+ *     image with Otsu's method (rather than a hardcoded "dark = garment" threshold) so this
+ *     works the same whether the source photo is a black tee or a gray hoodie: background
+ *     pixels get alpha ~0, garment pixels get alpha ~1.
  *  2. Within the garment mask, measure each pixel's luminosity relative to the garment's own
  *     median, and clamp that deviation to a small, fixed amplitude (`SHADING_AMPLITUDE`). This
  *     keeps just enough of the photo's real fold/shoulder shading to read as an actual garment,
@@ -32,15 +36,23 @@ import { READY_MADE_COLOR_SWATCHES, type ReadyMadeColor } from "@/data/ready-mad
  */
 
 /** How much the photo's real shading may modulate brightness around the flat target color.
- * Kept small and fixed (independent of the target color) so every color reads as solid/uniform
- * rather than washed, pigment-dyed, or gradient-faded. */
-const SHADING_AMPLITUDE = 0.06;
+ * Kept fixed (independent of the target color) so every color reads as solid/uniform rather than
+ * washed, pigment-dyed, or gradient-faded — but not so small that structural details (a pocket,
+ * a hood seam) become imperceptible on darker targets, where the same percentage swing is a much
+ * smaller absolute brightness difference than on a light target. Edge/silhouette definition does
+ * NOT depend on this value (see the real-alpha-channel note above), so this only has to be large
+ * enough to keep folds and seams legible, not to carry the garment's outline. */
+const SHADING_AMPLITUDE = 0.14;
 
 /** Blur radius (px) applied to the shading map before it modulates the target color. Camera
  * sensor noise in the source photo is per-pixel; smoothing it out keeps only the smooth,
  * large-scale shading (folds, shoulder highlight, seam shadow) that reads as real fabric instead
  * of visible speckle/grain — another contributor to the "washed" look this module fixes. */
 const SHADING_BLUR_RADIUS = 4;
+
+/** Width (in luminosity units, 0-255) of the soft transition band centered on the Otsu split
+ * point. Mirrors the antialiasing already present in the source photo's own edges. */
+const ALPHA_EDGE_WIDTH = 18;
 
 const recolorCache = new Map<string, Promise<string>>();
 
@@ -68,6 +80,40 @@ const percentile = (sortedValues: Float64Array, p: number): number => {
 };
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+
+/** Otsu's method: finds the luminosity split point that best separates a bimodal histogram into
+ * two classes (here, garment vs. background), by maximizing between-class variance. Works for
+ * any garment color as long as it's reasonably distinct from the near-white studio backdrop. */
+const otsuThreshold = (luminosity: Float32Array): number => {
+  const histogram = new Float64Array(256);
+  for (let i = 0; i < luminosity.length; i += 1) {
+    histogram[Math.min(255, Math.max(0, Math.round(luminosity[i])))] += 1;
+  }
+  const total = luminosity.length;
+  let sumAll = 0;
+  for (let i = 0; i < 256; i += 1) sumAll += i * histogram[i];
+
+  let sumBackground = 0;
+  let weightBackground = 0;
+  let maxVariance = 0;
+  let threshold = 0;
+
+  for (let i = 0; i < 256; i += 1) {
+    weightBackground += histogram[i];
+    if (weightBackground === 0) continue;
+    const weightForeground = total - weightBackground;
+    if (weightForeground === 0) break;
+    sumBackground += i * histogram[i];
+    const meanBackground = sumBackground / weightBackground;
+    const meanForeground = (sumAll - sumBackground) / weightForeground;
+    const variance = weightBackground * weightForeground * (meanBackground - meanForeground) ** 2;
+    if (variance > maxVariance) {
+      maxVariance = variance;
+      threshold = i;
+    }
+  }
+  return threshold;
+};
 
 /** Separable box blur, one axis. Edge pixels clamp to the nearest in-bounds sample rather than
  * wrapping or zero-padding, so blurred values near the image border don't get pulled down. */
@@ -122,19 +168,23 @@ export const recolorGarmentPhoto = async (imageUrl: string, colorHex: string): P
     const pixelCount = canvas.width * canvas.height;
 
     const luminosity = new Float32Array(pixelCount);
+    for (let i = 0; i < pixelCount; i += 1) {
+      const offset = i * 4;
+      luminosity[i] = 0.299 * data[offset] + 0.587 * data[offset + 1] + 0.114 * data[offset + 2];
+    }
+
+    const otsuSplit = otsuThreshold(luminosity);
+
     const alpha = new Float32Array(pixelCount);
     const garmentMask = new Float32Array(pixelCount);
     const garmentLuminosities: number[] = [];
 
     for (let i = 0; i < pixelCount; i += 1) {
-      const offset = i * 4;
-      const l = 0.299 * data[offset] + 0.587 * data[offset + 1] + 0.114 * data[offset + 2];
-      luminosity[i] = l;
-      const a = Math.min(1, Math.max(0, (225 - l) / 200));
+      const a = clamp01((otsuSplit + ALPHA_EDGE_WIDTH / 2 - luminosity[i]) / ALPHA_EDGE_WIDTH);
       alpha[i] = a;
       if (a > 0.5) {
         garmentMask[i] = 1;
-        garmentLuminosities.push(l);
+        garmentLuminosities.push(luminosity[i]);
       }
     }
 
@@ -181,35 +231,58 @@ export const recolorGarmentPhoto = async (imageUrl: string, colorHex: string): P
   }
 };
 
+/** A product's image sources: an algorithm-source front/back pair (used for any color without a
+ * real photo), plus optional real per-color photos that take priority when present. Both
+ * `ReadyMadeProductOption` (the ready-made catalog) and any future product list can satisfy this
+ * shape, so the resolver below is the one place that decides "literal photo vs. recolor". */
+export interface GarmentImageSource {
+  imageFront: string;
+  imageBack: string;
+  colorImages?: Partial<Record<ReadyMadeColor, { front: string; back: string }>>;
+}
+
 /**
- * React hook wrapper: returns the recolored image URL for the given base photo + color name,
- * falling back to the original (native black) photo while recoloring is in flight or if the
- * color has no swatch / is the native "블랙". Every base photo is already black, so "블랙" is a
- * free no-op passthrough instead of an unnecessary recolor pass.
+ * React hook: resolves the image URL for one product, one side (front/back), and one color —
+ * a real photographed image when the product has one for that color, otherwise the algorithmic
+ * recolor of the product's base photo. This is the single place that merges "literal per-color
+ * photos" with "same base image, recolored" so every consumer (catalog thumbnail, size/color
+ * step, logo placement canvas) shows the same image for the same product+side+color.
  */
-export const useRecoloredGarmentImage = (imageUrl: string, colorName: string): string => {
+export const useProductGarmentImage = (
+  product: GarmentImageSource,
+  side: "front" | "back",
+  colorName: string,
+): string => {
+  const literal = product.colorImages?.[colorName as ReadyMadeColor];
+  const literalUrl = literal ? getAppPath(literal[side]) : null;
+  const baseUrl = getAppPath(side === "front" ? product.imageFront : product.imageBack);
   const swatch = READY_MADE_COLOR_SWATCHES[colorName as ReadyMadeColor];
-  const [resolvedUrl, setResolvedUrl] = useState(imageUrl);
+
+  const [resolvedUrl, setResolvedUrl] = useState(literalUrl ?? baseUrl);
 
   useEffect(() => {
-    if (!swatch || colorName === "블랙") {
-      setResolvedUrl(imageUrl);
+    if (literalUrl) {
+      setResolvedUrl(literalUrl);
+      return;
+    }
+    if (!swatch) {
+      setResolvedUrl(baseUrl);
       return;
     }
 
     let cancelled = false;
-    recolorGarmentPhoto(imageUrl, swatch)
+    recolorGarmentPhoto(baseUrl, swatch)
       .then((dataUrl) => {
         if (!cancelled) setResolvedUrl(dataUrl);
       })
       .catch(() => {
-        if (!cancelled) setResolvedUrl(imageUrl);
+        if (!cancelled) setResolvedUrl(baseUrl);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, colorName, swatch]);
+  }, [literalUrl, baseUrl, swatch]);
 
   return resolvedUrl;
 };

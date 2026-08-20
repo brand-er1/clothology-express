@@ -62,12 +62,12 @@ export const useReadyMadeGroupWearForm = () => {
     [selectedProductKey],
   );
 
-  const [selectedColor, setSelectedColorState] = useState(READY_MADE_PRODUCT_OPTIONS[0].colors[0]);
+  const [selectedColor, setSelectedColorState] = useState(READY_MADE_PRODUCT_OPTIONS[0].defaultColor);
   const setSelectedProduct = useCallback((key: string) => {
     setSelectedProductKey(key);
     const product = READY_MADE_PRODUCT_OPTIONS.find((option) => option.key === key);
     if (product && !product.colors.includes(selectedColor)) {
-      setSelectedColorState(product.colors[0]);
+      setSelectedColorState(product.defaultColor);
     }
   }, [selectedColor]);
   const setSelectedColor = setSelectedColorState;

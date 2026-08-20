@@ -80,16 +80,24 @@ export interface ReadyMadeProductOption {
   description: string;
   /** 의류 1장당 기본 단가 (원) */
   basePrice: number;
-  /** 브랜더가 미리 준비한 무지 의류 앞면 기본 이미지 */
+  /** 컬러 선택 전 기본으로 보여줄 컬러. 모든 상품이 "그레이"로 통일되어 있다. */
+  defaultColor: ReadyMadeColor;
+  /** 실사진이 없는 컬러를 만들어내는 재료가 되는 앞면 기본 이미지 (컬러 변환 알고리즘의 원본). */
   imageFront: string;
-  /** 브랜더가 미리 준비한 무지 의류 뒷면 기본 이미지 */
+  /** 실사진이 없는 컬러를 만들어내는 재료가 되는 뒷면 기본 이미지 (컬러 변환 알고리즘의 원본). */
   imageBack: string;
+  /**
+   * 컬러별 실제 촬영 이미지 (있는 경우 우선 사용, 없는 컬러는 `imageFront`/`imageBack`을 원본으로
+   * 알고리즘 컬러 변환). 이미지·기본 컬러를 이 한 곳(상품 데이터)에서만 관리하도록 한다.
+   */
+  colorImages?: Partial<Record<ReadyMadeColor, { front: string; back: string }>>;
   /** True while this category is still using a placeholder image instead of a real product photo. */
   hasPlaceholderImage?: boolean;
   colors: readonly ReadyMadeColor[];
 }
 
 const readyMadeUploadsBase = "/lovable-uploads/ready-made";
+const clothingTemplatesBase = "/clothing-templates";
 
 export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
   {
@@ -97,6 +105,7 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     label: "라운드 반팔 티셔츠",
     description: "가장 기본적인 라운드넥 반팔 티셔츠",
     basePrice: 7000,
+    defaultColor: "그레이",
     imageFront: `${readyMadeUploadsBase}/short_sleeve_front.png`,
     imageBack: `${readyMadeUploadsBase}/short_sleeve_back.png`,
     colors: READY_MADE_COLOR_OPTIONS,
@@ -106,9 +115,14 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     label: "폴로셔츠",
     description: "카라가 있는 단정한 폴로셔츠",
     basePrice: 9000,
-    imageFront: `${readyMadeUploadsBase}/placeholder.png`,
-    imageBack: `${readyMadeUploadsBase}/placeholder.png`,
-    hasPlaceholderImage: true,
+    defaultColor: "그레이",
+    // 그레이 실사진을 컬러 변환 원본으로 사용 (블랙 실사진 없음 → 블랙/네이비는 그레이에서 변환).
+    imageFront: `${clothingTemplatesBase}/polo-gray-front.webp`,
+    imageBack: `${clothingTemplatesBase}/polo-gray-back.webp`,
+    colorImages: {
+      그레이: { front: `${clothingTemplatesBase}/polo-gray-front.webp`, back: `${clothingTemplatesBase}/polo-gray-back.webp` },
+      화이트: { front: `${clothingTemplatesBase}/polo-white-front.webp`, back: `${clothingTemplatesBase}/polo-white-back.webp` },
+    },
     colors: READY_MADE_COLOR_OPTIONS,
   },
   {
@@ -116,8 +130,14 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     label: "맨투맨",
     description: "두께감 있는 기본 맨투맨",
     basePrice: 12000,
-    imageFront: `${readyMadeUploadsBase}/sweatshirt_front.png`,
-    imageBack: `${readyMadeUploadsBase}/sweatshirt_back.png`,
+    defaultColor: "그레이",
+    imageFront: `${clothingTemplatesBase}/sweatshirt-black-front.webp`,
+    imageBack: `${clothingTemplatesBase}/sweatshirt-black-back.webp`,
+    colorImages: {
+      블랙: { front: `${clothingTemplatesBase}/sweatshirt-black-front.webp`, back: `${clothingTemplatesBase}/sweatshirt-black-back.webp` },
+      그레이: { front: `${clothingTemplatesBase}/sweatshirt-gray-front.webp`, back: `${clothingTemplatesBase}/sweatshirt-gray-back.webp` },
+      화이트: { front: `${clothingTemplatesBase}/sweatshirt-white-front.webp`, back: `${clothingTemplatesBase}/sweatshirt-white-back.webp` },
+    },
     colors: READY_MADE_COLOR_OPTIONS,
   },
   {
@@ -125,6 +145,7 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     label: "하프팬츠",
     description: "여름 단체복으로 자주 쓰는 하프팬츠",
     basePrice: 15000,
+    defaultColor: "그레이",
     imageFront: `${readyMadeUploadsBase}/placeholder.png`,
     imageBack: `${readyMadeUploadsBase}/placeholder.png`,
     hasPlaceholderImage: true,
@@ -135,8 +156,14 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     label: "후드티",
     description: "단체 스태프복으로 자주 쓰는 기본 후드티",
     basePrice: 15000,
-    imageFront: `${readyMadeUploadsBase}/hoodie_front.png`,
-    imageBack: `${readyMadeUploadsBase}/hoodie_back.png`,
+    defaultColor: "그레이",
+    imageFront: `${clothingTemplatesBase}/hoodie-black-front.webp`,
+    imageBack: `${clothingTemplatesBase}/hoodie-black-back.webp`,
+    colorImages: {
+      블랙: { front: `${clothingTemplatesBase}/hoodie-black-front.webp`, back: `${clothingTemplatesBase}/hoodie-black-back.webp` },
+      그레이: { front: `${clothingTemplatesBase}/hoodie-gray-front.webp`, back: `${clothingTemplatesBase}/hoodie-gray-back.webp` },
+      화이트: { front: `${clothingTemplatesBase}/hoodie-white-front.webp`, back: `${clothingTemplatesBase}/hoodie-white-back.webp` },
+    },
     colors: READY_MADE_COLOR_OPTIONS,
   },
   {
@@ -144,9 +171,14 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     label: "후드집업",
     description: "앞지퍼가 있는 후드 집업",
     basePrice: 20000,
-    imageFront: `${readyMadeUploadsBase}/placeholder.png`,
-    imageBack: `${readyMadeUploadsBase}/placeholder.png`,
-    hasPlaceholderImage: true,
+    defaultColor: "그레이",
+    imageFront: `${clothingTemplatesBase}/zip-hoodie-black-front.webp`,
+    imageBack: `${clothingTemplatesBase}/zip-hoodie-black-back.webp`,
+    colorImages: {
+      블랙: { front: `${clothingTemplatesBase}/zip-hoodie-black-front.webp`, back: `${clothingTemplatesBase}/zip-hoodie-black-back.webp` },
+      그레이: { front: `${clothingTemplatesBase}/zip-hoodie-gray-front.webp`, back: `${clothingTemplatesBase}/zip-hoodie-gray-back.webp` },
+      화이트: { front: `${clothingTemplatesBase}/zip-hoodie-white-front.webp`, back: `${clothingTemplatesBase}/zip-hoodie-white-back.webp` },
+    },
     colors: READY_MADE_COLOR_OPTIONS,
   },
 ];

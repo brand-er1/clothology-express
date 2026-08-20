@@ -1,8 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { READY_MADE_COLOR_SWATCHES, READY_MADE_SIZE_OPTIONS } from "@/data/ready-made-pricing-config";
-import { useRecoloredGarmentImage } from "@/lib/garment-recolor";
-import { getAppPath } from "@/utils/appUrl";
+import { useProductGarmentImage } from "@/lib/garment-recolor";
 import type { UseReadyMadeGroupWearFormReturn } from "@/hooks/useReadyMadeGroupWearForm";
 
 interface SizeQuantityStepProps {
@@ -19,8 +18,8 @@ const GarmentPreview = ({ src, label }: { src: string; label: string }) => (
 );
 
 export const SizeQuantityStep = ({ form }: SizeQuantityStepProps) => {
-  const frontUrl = useRecoloredGarmentImage(getAppPath(form.selectedProduct.imageFront), form.selectedColor);
-  const backUrl = useRecoloredGarmentImage(getAppPath(form.selectedProduct.imageBack), form.selectedColor);
+  const frontUrl = useProductGarmentImage(form.selectedProduct, "front", form.selectedColor);
+  const backUrl = useProductGarmentImage(form.selectedProduct, "back", form.selectedColor);
 
   return (
     <div>

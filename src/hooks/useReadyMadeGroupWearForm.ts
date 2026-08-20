@@ -62,14 +62,15 @@ export const useReadyMadeGroupWearForm = () => {
     [selectedProductKey],
   );
 
-  const [selectedColor, setSelectedColorState] = useState(READY_MADE_PRODUCT_OPTIONS[0].colors[0]);
+  const [selectedColor, setSelectedColorState] = useState(READY_MADE_PRODUCT_OPTIONS[0].defaultColor);
+  // Switching product always resets color back to that product's default (그레이) — the main
+  // page's "gray first" promise has to hold even if the customer picked another color, went
+  // back to step 1, and switched to a different item.
   const setSelectedProduct = useCallback((key: string) => {
     setSelectedProductKey(key);
     const product = READY_MADE_PRODUCT_OPTIONS.find((option) => option.key === key);
-    if (product && !product.colors.includes(selectedColor)) {
-      setSelectedColorState(product.colors[0]);
-    }
-  }, [selectedColor]);
+    if (product) setSelectedColorState(product.defaultColor);
+  }, []);
   const setSelectedColor = setSelectedColorState;
 
   const [sizeQuantities, setSizeQuantities] = useState<ReadyMadeSizeQuantities>(createEmptySizeQuantities());

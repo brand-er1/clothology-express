@@ -1,27 +1,39 @@
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { READY_MADE_COLOR_SWATCHES, READY_MADE_SIZE_OPTIONS } from "@/data/ready-made-pricing-config";
-import { useRecoloredGarmentImage } from "@/lib/garment-recolor";
-import { getAppPath } from "@/utils/appUrl";
+import { READY_MADE_COLOR_SWATCHES, READY_MADE_SIZE_OPTIONS, type ReadyMadeGarmentSide, type ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
+import { ReadyMadeGarmentImage } from "@/components/ready-made/ReadyMadeGarmentImage";
 import type { UseReadyMadeGroupWearFormReturn } from "@/hooks/useReadyMadeGroupWearForm";
 
 interface SizeQuantityStepProps {
   form: UseReadyMadeGroupWearFormReturn;
 }
 
-const GarmentPreview = ({ src, label }: { src: string; label: string }) => (
+const GarmentPreview = ({
+  product,
+  color,
+  side,
+  label,
+}: {
+  product: ReadyMadeProductOption;
+  color: string;
+  side: ReadyMadeGarmentSide;
+  label: string;
+}) => (
   <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
     <div className="flex aspect-square items-center justify-center bg-stone-50">
-      <img src={src} alt={label} className="h-full w-full object-contain p-3" />
+      <ReadyMadeGarmentImage
+        product={product}
+        color={color}
+        side={side}
+        alt={`${product.label} ${color} ${label}`}
+        className="h-full w-full p-3"
+      />
     </div>
     <p className="py-1.5 text-center text-xs font-bold text-stone-500">{label}</p>
   </div>
 );
 
 export const SizeQuantityStep = ({ form }: SizeQuantityStepProps) => {
-  const frontUrl = useRecoloredGarmentImage(getAppPath(form.selectedProduct.imageFront), form.selectedColor);
-  const backUrl = useRecoloredGarmentImage(getAppPath(form.selectedProduct.imageBack), form.selectedColor);
-
   return (
     <div>
       <h2 className="text-xl font-black text-stone-950">색상 및 사이즈별 수량을 입력해주세요</h2>
@@ -30,14 +42,9 @@ export const SizeQuantityStep = ({ form }: SizeQuantityStepProps) => {
       </p>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <GarmentPreview src={frontUrl} label="앞면" />
-        <GarmentPreview src={backUrl} label="뒷면" />
+        <GarmentPreview product={form.selectedProduct} color={form.selectedColor} side="front" label="앞면" />
+        <GarmentPreview product={form.selectedProduct} color={form.selectedColor} side="back" label="뒷면" />
       </div>
-      {form.selectedProduct.hasPlaceholderImage && (
-        <p className="mt-2 text-xs font-semibold text-amber-600">
-          이 품목은 아직 실제 제품 사진이 준비되지 않아 임시 이미지가 표시됩니다.
-        </p>
-      )}
 
       <div className="mt-5">
         <p className="text-sm font-bold text-stone-700">색상</p>

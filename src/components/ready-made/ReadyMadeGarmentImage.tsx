@@ -135,5 +135,5 @@ export const ReadyMadeGarmentImage = ({
     if (blackCrop) return <DirectSprite crop={blackCrop} alt={alt} className={className} />;
   }
 
-  return <img src={fallbackUrl} alt={alt} className={className} />;
+  return <img src={fallbackUrl} alt={alt} className={className} style={{ objectFit: "contain" }} />;
 };

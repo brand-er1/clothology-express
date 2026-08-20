@@ -81,8 +81,6 @@ export interface ReadyMadeProductOption {
   imageFront: string;
   /** 브랜더가 미리 준비한 무지 의류 뒷면 기본 이미지 */
   imageBack: string;
-  /** 상품 선택 첫 화면에서 사용하는 업로드된 그레이 대표 이미지 */
-  mainThumbnail: string;
   /** 상품의 최초 기본 색상 */
   defaultColor: ReadyMadeColor;
   /** True while this category is still using a placeholder image instead of a real product photo. */
@@ -101,7 +99,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     basePrice: 7000,
     imageFront: `${readyMadeUploadsBase}/short_sleeve_front.png`,
     imageBack: `${readyMadeUploadsBase}/short_sleeve_back.png`,
-    mainThumbnail: `${clothingTemplatesBase}/tshirt-gray-white-front-back.webp`,
     defaultColor: "그레이",
     colors: READY_MADE_COLOR_OPTIONS,
   },
@@ -112,7 +109,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     basePrice: 9000,
     imageFront: `${readyMadeUploadsBase}/placeholder.png`,
     imageBack: `${readyMadeUploadsBase}/placeholder.png`,
-    mainThumbnail: `${clothingTemplatesBase}/polo-gray-white-front-back.webp`,
     defaultColor: "그레이",
     hasPlaceholderImage: true,
     colors: READY_MADE_COLOR_OPTIONS,
@@ -124,7 +120,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     basePrice: 12000,
     imageFront: `${readyMadeUploadsBase}/sweatshirt_front.png`,
     imageBack: `${readyMadeUploadsBase}/sweatshirt_back.png`,
-    mainThumbnail: `${clothingTemplatesBase}/sweatshirt-gray-white-front-back.webp`,
     defaultColor: "그레이",
     colors: READY_MADE_COLOR_OPTIONS,
   },
@@ -135,7 +130,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     basePrice: 15000,
     imageFront: `${readyMadeUploadsBase}/placeholder.png`,
     imageBack: `${readyMadeUploadsBase}/placeholder.png`,
-    mainThumbnail: `${clothingTemplatesBase}/shorts-gray-white-front-back.webp`,
     defaultColor: "그레이",
     hasPlaceholderImage: true,
     colors: READY_MADE_COLOR_OPTIONS,
@@ -147,7 +141,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     basePrice: 15000,
     imageFront: `${readyMadeUploadsBase}/hoodie_front.png`,
     imageBack: `${readyMadeUploadsBase}/hoodie_back.png`,
-    mainThumbnail: `${clothingTemplatesBase}/hoodie-gray-white-front-back.webp`,
     defaultColor: "그레이",
     colors: READY_MADE_COLOR_OPTIONS,
   },
@@ -158,7 +151,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     basePrice: 20000,
     imageFront: `${readyMadeUploadsBase}/placeholder.png`,
     imageBack: `${readyMadeUploadsBase}/placeholder.png`,
-    mainThumbnail: `${clothingTemplatesBase}/zip-hoodie-gray-white-front-back.webp`,
     defaultColor: "그레이",
     hasPlaceholderImage: true,
     colors: READY_MADE_COLOR_OPTIONS,

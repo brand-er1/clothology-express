@@ -3,21 +3,37 @@ import { READY_MADE_COLOR_SWATCHES, type ReadyMadeColor } from "@/data/ready-mad
 
 /**
  * Recolors a photographed black garment mockup to an arbitrary target color, purely on the
- * client (canvas pixel manipulation — no server round trip, no per-color asset files).
+ * client (canvas pixel manipulation — no server round trip, no per-color asset files, and no
+ * regenerating a new AI image per color — same base photo, same silhouette, every time).
  *
  * How it works: every base photo in `public/lovable-uploads/ready-made/` is shot on the SAME
- * black garment against a near-white studio background. For each pixel we:
+ * garment against a near-white studio background. For each pixel we:
  *  1. Derive an alpha mask from luminosity — near-white pixels (background) get alpha ~0,
  *     dark pixels (garment) get alpha ~1.
- *  2. Within the garment mask, stretch the luminosity range (2nd–90th percentile) to the full
- *     0–1 span, so the photo's real fold/shadow shading becomes usable as a fabric shading map
- *     regardless of how dark the original black fabric was.
- *  3. Multiply the target color by that shading map (with a "floor" so shadows don't crush to
- *     pure black), then composite over white using the alpha mask, so the studio background
- *     stays white no matter the target color.
- * The result is an approximate, but visually convincing, "same garment in a different color"
- * mockup — good enough for a quote-stage preview, not a substitute for a real product photo.
+ *  2. Within the garment mask, measure each pixel's luminosity relative to the garment's own
+ *     median, and clamp that deviation to a small, fixed amplitude (`SHADING_AMPLITUDE`). This
+ *     keeps just enough of the photo's real fold/shoulder shading to read as an actual garment,
+ *     without stretching sensor noise / faint tonal variance in the source photo into visible
+ *     washing, pigment blotches, gradients, or fade — the failure mode of a naive min–max
+ *     percentile stretch, which amplifies whatever small variance is in the source black fabric
+ *     into a large, uneven brightness swing once multiplied against a light target color.
+ *  3. Multiply the target color by that bounded shading map, then composite over white using
+ *     the alpha mask, so the studio background stays white no matter the target color.
+ * The result is a solid, uniform garment color — the same shape, fit, folds, seams, and camera
+ * framing as the base photo, with only the color swapped. Good enough for a quote-stage preview,
+ * not a substitute for a real product photo per color.
  */
+
+/** How much the photo's real shading may modulate brightness around the flat target color.
+ * Kept small and fixed (independent of the target color) so every color reads as solid/uniform
+ * rather than washed, pigment-dyed, or gradient-faded. */
+const SHADING_AMPLITUDE = 0.1;
+
+/** Blur radius (px) applied to the shading map before it modulates the target color. Camera
+ * sensor noise in the source photo is per-pixel; smoothing it out keeps only the smooth,
+ * large-scale shading (folds, shoulder highlight, seam shadow) that reads as real fabric instead
+ * of visible speckle/grain — another contributor to the "washed" look this module fixes. */
+const SHADING_BLUR_RADIUS = 3;
 
 const recolorCache = new Map<string, Promise<string>>();
 
@@ -44,6 +60,42 @@ const percentile = (sortedValues: Float64Array, p: number): number => {
   return sortedValues[index];
 };
 
+const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+
+/** Separable box blur, one axis. Edge pixels clamp to the nearest in-bounds sample rather than
+ * wrapping or zero-padding, so blurred values near the image border don't get pulled down. */
+const boxBlur1D = (
+  src: Float32Array,
+  width: number,
+  height: number,
+  radius: number,
+  horizontal: boolean,
+): Float32Array => {
+  const out = new Float32Array(src.length);
+  const windowSize = radius * 2 + 1;
+  const outerCount = horizontal ? height : width;
+  const innerCount = horizontal ? width : height;
+  const index = (outer: number, inner: number) => (horizontal ? outer * width + inner : inner * width + outer);
+
+  for (let outer = 0; outer < outerCount; outer += 1) {
+    let sum = 0;
+    for (let k = -radius; k <= radius; k += 1) {
+      const clamped = Math.min(innerCount - 1, Math.max(0, k));
+      sum += src[index(outer, clamped)];
+    }
+    for (let inner = 0; inner < innerCount; inner += 1) {
+      out[index(outer, inner)] = sum / windowSize;
+      const enter = Math.min(innerCount - 1, Math.max(0, inner + radius + 1));
+      const leave = Math.min(innerCount - 1, Math.max(0, inner - radius));
+      sum += src[index(outer, enter)] - src[index(outer, leave)];
+    }
+  }
+  return out;
+};
+
+const boxBlur2D = (src: Float32Array, width: number, height: number, radius: number): Float32Array =>
+  boxBlur1D(boxBlur1D(src, width, height, radius, true), width, height, radius, false);
+
 export const recolorGarmentPhoto = async (imageUrl: string, colorHex: string): Promise<string> => {
   const cacheKey = `${imageUrl}|${colorHex}`;
   const cached = recolorCache.get(cacheKey);
@@ -64,6 +116,7 @@ export const recolorGarmentPhoto = async (imageUrl: string, colorHex: string): P
 
     const luminosity = new Float32Array(pixelCount);
     const alpha = new Float32Array(pixelCount);
+    const garmentMask = new Float32Array(pixelCount);
     const garmentLuminosities: number[] = [];
 
     for (let i = 0; i < pixelCount; i += 1) {
@@ -72,26 +125,40 @@ export const recolorGarmentPhoto = async (imageUrl: string, colorHex: string): P
       luminosity[i] = l;
       const a = Math.min(1, Math.max(0, (225 - l) / 200));
       alpha[i] = a;
-      if (a > 0.5) garmentLuminosities.push(l);
+      if (a > 0.5) {
+        garmentMask[i] = 1;
+        garmentLuminosities.push(l);
+      }
     }
 
+    // Mask-aware blur: average luminosity only over garment pixels in each window, so the
+    // near-white background never bleeds into the shading map at the garment's edges (which
+    // would otherwise show up as a bright halo right on the silhouette outline).
+    const weightedLuminosity = new Float32Array(pixelCount);
+    for (let i = 0; i < pixelCount; i += 1) weightedLuminosity[i] = luminosity[i] * garmentMask[i];
+    const blurredWeighted = boxBlur2D(weightedLuminosity, canvas.width, canvas.height, SHADING_BLUR_RADIUS);
+    const blurredMask = boxBlur2D(garmentMask, canvas.width, canvas.height, SHADING_BLUR_RADIUS);
+
     const sortedGarmentLuminosities = Float64Array.from(garmentLuminosities.sort((a, b) => a - b));
-    const lo = percentile(sortedGarmentLuminosities, 0.02);
-    const hi = percentile(sortedGarmentLuminosities, 0.9) || 255;
-    const range = Math.max(1, hi - lo);
+    // Robust center + spread of the garment's own tonal range (median / semi-interquartile),
+    // used only to detect how far a pixel sits from "typical" — never to rescale the range to
+    // full contrast, which is what turned subtle fold shadows into visible washing before.
+    const median = percentile(sortedGarmentLuminosities, 0.5);
+    const p25 = percentile(sortedGarmentLuminosities, 0.25);
+    const p75 = percentile(sortedGarmentLuminosities, 0.75);
+    const spread = Math.max(8, (p75 - p25) / 2);
 
     const [targetR, targetG, targetB] = hexToRgb(colorHex);
-    const targetLuminance = (targetR + targetG + targetB) / (3 * 255);
-    const floor = 0.15 + 0.5 * targetLuminance;
 
     for (let i = 0; i < pixelCount; i += 1) {
       const offset = i * 4;
-      const normalized = Math.min(1, Math.max(0, (luminosity[i] - lo) / range));
-      const shade = floor + (1 - floor) * normalized;
+      const smoothedLuminosity = blurredMask[i] > 1e-3 ? blurredWeighted[i] / blurredMask[i] : luminosity[i];
+      const deviation = Math.min(1, Math.max(-1, (smoothedLuminosity - median) / spread));
+      const shade = 1 + deviation * SHADING_AMPLITUDE;
       const a = alpha[i];
-      data[offset] = shade * targetR * a + 255 * (1 - a);
-      data[offset + 1] = shade * targetG * a + 255 * (1 - a);
-      data[offset + 2] = shade * targetB * a + 255 * (1 - a);
+      data[offset] = clamp01((shade * targetR) / 255) * 255 * a + 255 * (1 - a);
+      data[offset + 1] = clamp01((shade * targetG) / 255) * 255 * a + 255 * (1 - a);
+      data[offset + 2] = clamp01((shade * targetB) / 255) * 255 * a + 255 * (1 - a);
     }
 
     ctx.putImageData(imageData, 0, 0);

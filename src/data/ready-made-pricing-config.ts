@@ -58,15 +58,16 @@ export const createEmptySizeQuantities = (): ReadyMadeSizeQuantities => ({
 // of the original photo since every base photo is already shot in black.
 // ---------------------------------------------------------------------------
 
-export const READY_MADE_COLOR_OPTIONS = ["블랙", "화이트", "그레이", "네이비", "베이지"] as const;
+// "그레이" is listed first so it is the default selected color for every product (each
+// product's default color is `colors[0]`, see `useReadyMadeGroupWearForm`).
+export const READY_MADE_COLOR_OPTIONS = ["그레이", "화이트", "블랙", "네이비"] as const;
 export type ReadyMadeColor = (typeof READY_MADE_COLOR_OPTIONS)[number];
 
 export const READY_MADE_COLOR_SWATCHES: Record<ReadyMadeColor, string> = {
-  블랙: "#1c1c1c",
   화이트: "#ffffff",
+  블랙: "#1c1c1c",
   그레이: "#8f8f8f",
   네이비: "#1e2a4a",
-  베이지: "#cdbb9c",
 };
 
 // ---------------------------------------------------------------------------

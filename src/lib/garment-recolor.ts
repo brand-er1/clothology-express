@@ -17,8 +17,15 @@ import { READY_MADE_COLOR_SWATCHES, type ReadyMadeColor } from "@/data/ready-mad
  *     washing, pigment blotches, gradients, or fade — the failure mode of a naive min–max
  *     percentile stretch, which amplifies whatever small variance is in the source black fabric
  *     into a large, uneven brightness swing once multiplied against a light target color.
- *  3. Multiply the target color by that bounded shading map, then composite over white using
- *     the alpha mask, so the studio background stays white no matter the target color.
+ *  3. Multiply the target color by that bounded shading map and write it out as a real RGBA
+ *     pixel — alpha from the mask, color from the shaded target — instead of pre-compositing
+ *     onto an opaque white canvas. A hardcoded white composite is what silently erased the
+ *     garment's own silhouette for light target colors: white-on-white math averages back to
+ *     white at every partial-alpha edge/fold pixel, so the shirt had no visible outline and
+ *     read as "broken" rather than "clean". A transparent PNG lets the actual page background
+ *     (an off-white surface, never pure #fff) show through instead, which keeps every edge and
+ *     fold crisp no matter how light the target color is — exactly like a real product photo
+ *     cut out with a transparent background.
  * The result is a solid, uniform garment color — the same shape, fit, folds, seams, and camera
  * framing as the base photo, with only the color swapped. Good enough for a quote-stage preview,
  * not a substitute for a real product photo per color.
@@ -27,13 +34,13 @@ import { READY_MADE_COLOR_SWATCHES, type ReadyMadeColor } from "@/data/ready-mad
 /** How much the photo's real shading may modulate brightness around the flat target color.
  * Kept small and fixed (independent of the target color) so every color reads as solid/uniform
  * rather than washed, pigment-dyed, or gradient-faded. */
-const SHADING_AMPLITUDE = 0.1;
+const SHADING_AMPLITUDE = 0.06;
 
 /** Blur radius (px) applied to the shading map before it modulates the target color. Camera
  * sensor noise in the source photo is per-pixel; smoothing it out keeps only the smooth,
  * large-scale shading (folds, shoulder highlight, seam shadow) that reads as real fabric instead
  * of visible speckle/grain — another contributor to the "washed" look this module fixes. */
-const SHADING_BLUR_RADIUS = 3;
+const SHADING_BLUR_RADIUS = 4;
 
 const recolorCache = new Map<string, Promise<string>>();
 
@@ -155,10 +162,10 @@ export const recolorGarmentPhoto = async (imageUrl: string, colorHex: string): P
       const smoothedLuminosity = blurredMask[i] > 1e-3 ? blurredWeighted[i] / blurredMask[i] : luminosity[i];
       const deviation = Math.min(1, Math.max(-1, (smoothedLuminosity - median) / spread));
       const shade = 1 + deviation * SHADING_AMPLITUDE;
-      const a = alpha[i];
-      data[offset] = clamp01((shade * targetR) / 255) * 255 * a + 255 * (1 - a);
-      data[offset + 1] = clamp01((shade * targetG) / 255) * 255 * a + 255 * (1 - a);
-      data[offset + 2] = clamp01((shade * targetB) / 255) * 255 * a + 255 * (1 - a);
+      data[offset] = clamp01((shade * targetR) / 255) * 255;
+      data[offset + 1] = clamp01((shade * targetG) / 255) * 255;
+      data[offset + 2] = clamp01((shade * targetB) / 255) * 255;
+      data[offset + 3] = alpha[i] * 255;
     }
 
     ctx.putImageData(imageData, 0, 0);

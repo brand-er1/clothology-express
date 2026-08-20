@@ -1,19 +1,13 @@
 import { Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { ReadyMadeGarmentImage } from "@/components/ready-made/ReadyMadeGarmentImage";
 import { READY_MADE_PRODUCT_OPTIONS, type ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
-import { getAppPath } from "@/utils/appUrl";
 import type { UseReadyMadeGroupWearFormReturn } from "@/hooks/useReadyMadeGroupWearForm";
 
 interface ProductStepProps {
   form: UseReadyMadeGroupWearFormReturn;
 }
 
-/**
- * Product-selection cards use the uploaded gray product photographs directly.
- * This avoids recoloring artifacts/washing on the first screen and keeps every
- * category visually consistent. Later steps keep the existing front/back
- * mockup pipeline so logo placement, color switching and estimates are not broken.
- */
 const ProductCard = ({
   product,
   isSelected,
@@ -22,39 +16,37 @@ const ProductCard = ({
   product: ReadyMadeProductOption;
   isSelected: boolean;
   onSelect: () => void;
-}) => {
-  const thumbnailUrl = getAppPath(product.mainThumbnail);
-
-  return (
-    <button type="button" onClick={onSelect} className="text-left">
-      <Card
-        className={`overflow-hidden rounded-2xl border-2 p-0 transition ${
-          isSelected ? "border-brand shadow-md" : "border-stone-200 hover:border-brand/40"
-        }`}
-      >
-        <div className="relative flex aspect-square items-center justify-center bg-stone-50">
-          <img
-            src={thumbnailUrl}
-            alt={`${product.label} 그레이 기본 이미지`}
-            className="h-full w-full object-contain p-2 sm:p-3"
-          />
-          {isSelected && (
-            <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
-              <Check className="h-3.5 w-3.5" />
-            </span>
-          )}
-        </div>
-        <div className="p-3">
-          <p className="text-sm font-bold text-stone-950">{product.label}</p>
-          <p className="mt-0.5 truncate text-xs text-stone-500">{product.description}</p>
-          <p className="mt-1 text-xs font-black text-brand">
-            기본 {product.basePrice.toLocaleString("ko-KR")}원~
-          </p>
-        </div>
-      </Card>
-    </button>
-  );
-};
+}) => (
+  <button type="button" onClick={onSelect} className="text-left">
+    <Card
+      className={`overflow-hidden rounded-2xl border-2 p-0 transition ${
+        isSelected ? "border-brand shadow-md" : "border-stone-200 hover:border-brand/40"
+      }`}
+    >
+      <div className="relative flex aspect-square items-center justify-center bg-stone-50">
+        <ReadyMadeGarmentImage
+          product={product}
+          color="그레이"
+          side="front"
+          alt={`${product.label} 그레이 앞면`}
+          className="h-full w-full p-2 sm:p-3"
+        />
+        {isSelected && (
+          <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
+            <Check className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
+      <div className="p-3">
+        <p className="text-sm font-bold text-stone-950">{product.label}</p>
+        <p className="mt-0.5 truncate text-xs text-stone-500">{product.description}</p>
+        <p className="mt-1 text-xs font-black text-brand">
+          기본 {product.basePrice.toLocaleString("ko-KR")}원~
+        </p>
+      </div>
+    </Card>
+  </button>
+);
 
 export const ProductStep = ({ form }: ProductStepProps) => (
   <div>

@@ -15,12 +15,6 @@ type ProductSpriteMap = Partial<Record<DirectColor, Record<ReadyMadeGarmentSide,
 const W = 1536;
 const H = 1024;
 
-const DIRECT_GRAY_FRONT_IMAGES: Record<string, string> = {
-  polo: "/clothing-templates/direct/polo-gray-front.webp",
-  half_pants: "/clothing-templates/direct/shorts-gray-front.webp",
-  hoodie_zipup: "/clothing-templates/direct/zip-hoodie-gray-front.webp",
-};
-
 const halfBlack = (sheet: string): ProductSpriteMap => ({
   블랙: {
     front: { sheet, viewBox: `0 0 ${W / 2} ${H}` },
@@ -51,8 +45,11 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
       back: { sheet: "/clothing-templates/sweatshirt-gray-white-front-back.webp", viewBox: `${(W * 3) / 4} ${H / 2} ${W / 4} ${H / 2}` },
     },
   },
+  // No 블랙 crop for polo: the uploaded polo-black-front-back.webp is corrupted (truncated
+  // mid-upload — its RIFF header declares more bytes than the file actually has, so no decoder
+  // can read it). 블랙 falls through to the placeholder-recolor fallback below until a valid
+  // photo is uploaded.
   polo: {
-    ...halfBlack("/clothing-templates/polo-black-front-back.webp"),
     ...grayWhite2x2("/clothing-templates/polo-gray-white-front-back.webp"),
   },
   sweatshirt: {
@@ -66,10 +63,9 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
       back: { sheet: "/clothing-templates/sweatshirt-gray-white-front-back.webp", viewBox: `${(W * 3) / 4} 0 ${W / 4} ${H / 2}` },
     },
   },
-  half_pants: {
-    ...halfBlack("/clothing-templates/shorts-black-front-back.webp"),
-    ...grayWhite2x2("/clothing-templates/shorts-gray-white-front-back.webp"),
-  },
+  // No crops for half_pants at all: both uploaded sheets (shorts-black-front-back.webp and
+  // shorts-gray-white-front-back.webp) are corrupted the same way as polo's above. Every color
+  // falls through to the placeholder-recolor fallback until valid photos are uploaded.
   hoodie: {
     ...halfBlack("/clothing-templates/hoodie-black-front-back.webp"),
     ...grayWhite2x2("/clothing-templates/hoodie-gray-white-front-back.webp"),
@@ -126,18 +122,6 @@ export const ReadyMadeGarmentImage = ({
   const crop = PRODUCT_SPRITES[product.key]?.[directColor]?.[side];
   const fallbackSource = getAppPath(side === "front" ? product.imageFront : product.imageBack);
   const fallbackUrl = useRecoloredGarmentImage(fallbackSource, color);
-
-  const standaloneGrayFront = color === "그레이" && side === "front" ? DIRECT_GRAY_FRONT_IMAGES[product.key] : undefined;
-  if (standaloneGrayFront) {
-    return (
-      <img
-        src={getAppPath(standaloneGrayFront)}
-        alt={alt}
-        draggable={false}
-        className={`object-contain ${className ?? ""}`}
-      />
-    );
-  }
 
   if (crop) return <DirectSprite crop={crop} alt={alt} className={className} />;
 

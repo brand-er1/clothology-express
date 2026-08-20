@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { getAppPath } from "@/utils/appUrl";
-import { useRecoloredGarmentImage } from "@/lib/garment-recolor";
+import { ReadyMadeGarmentImage } from "@/components/ready-made/ReadyMadeGarmentImage";
 import {
   READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
   READY_MADE_MIN_ARTWORK_WIDTH_PERCENT,
@@ -29,14 +28,6 @@ interface Gesture {
   startYPercent: number;
 }
 
-/**
- * Lets the customer drag/resize their uploaded or AI-generated design directly on a real front/
- * back garment mockup — the visual confirmation of "where does my logo actually go" the discrete
- * location dropdown (still used for the order text and pricing label) can't give on its own.
- * Geometry math mirrors the custom-clothing flow's artwork placement (percent-of-mockup x/y/
- * width), kept as a self-contained implementation here rather than sharing code, so nothing about
- * this new feature can regress that existing, working flow.
- */
 export const LogoPlacementCanvas = ({
   product,
   color,
@@ -47,9 +38,6 @@ export const LogoPlacementCanvas = ({
   const [activeSide, setActiveSide] = useState<ReadyMadeGarmentSide>("front");
   const containerRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<Gesture | null>(null);
-  const frontUrl = useRecoloredGarmentImage(getAppPath(product.imageFront), color);
-  const backUrl = useRecoloredGarmentImage(getAppPath(product.imageBack), color);
-  const mockupUrl = activeSide === "front" ? frontUrl : backUrl;
 
   const jobsForSide = printJobs.filter((job) => job.side === activeSide);
   const frontCount = printJobs.filter((job) => job.side === "front").length;
@@ -140,10 +128,12 @@ export const LogoPlacementCanvas = ({
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
       >
-        <img
-          src={mockupUrl}
+        <ReadyMadeGarmentImage
+          product={product}
+          color={color}
+          side={activeSide}
           alt={`${product.label} ${activeSide === "front" ? "앞면" : "뒷면"}`}
-          className="pointer-events-none h-full w-full select-none object-contain p-6"
+          className="pointer-events-none h-full w-full select-none p-6"
         />
 
         {designPreviewUrl &&

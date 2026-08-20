@@ -10,7 +10,6 @@ interface SpriteCrop {
 }
 
 type DirectColor = "그레이" | "화이트" | "블랙";
-
 type ProductSpriteMap = Partial<Record<DirectColor, Record<ReadyMadeGarmentSide, SpriteCrop>>>;
 
 const W = 1536;
@@ -76,35 +75,41 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
 };
 
 /**
- * Render one crop from a sprite sheet with a CSS background instead of an inline SVG <image>.
- * Some production browsers/CDN combinations were failing to paint WEBP files referenced from
- * SVG <image>, which made polo / half-pants / zip-hoodie cards look empty. CSS backgrounds are
- * much more reliable and still let us use the existing combined front/back image sheets.
+ * Exact sprite crop renderer.
+ * Instead of background-position or SVG image cropping, keep the original sheet as a normal img,
+ * enlarge it to the exact crop ratio, and clip it with overflow:hidden. This avoids fuzzy edges,
+ * neighboring garments leaking into the frame, and inconsistent crop behavior across browsers.
  */
 const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string; className?: string }) => {
   const sourceWidth = crop.sourceWidth ?? W;
   const sourceHeight = crop.sourceHeight ?? H;
   const [x, y, cropWidth, cropHeight] = crop.viewBox.split(/\s+/).map(Number);
 
-  const backgroundSizeX = (sourceWidth / cropWidth) * 100;
-  const backgroundSizeY = (sourceHeight / cropHeight) * 100;
-  const maxX = sourceWidth - cropWidth;
-  const maxY = sourceHeight - cropHeight;
-  const backgroundPositionX = maxX > 0 ? (x / maxX) * 100 : 0;
-  const backgroundPositionY = maxY > 0 ? (y / maxY) * 100 : 0;
+  const imageWidthPercent = (sourceWidth / cropWidth) * 100;
+  const imageHeightPercent = (sourceHeight / cropHeight) * 100;
+  const leftPercent = -(x / cropWidth) * 100;
+  const topPercent = -(y / cropHeight) * 100;
 
   return (
     <div
       role="img"
       aria-label={alt}
-      className={className}
-      style={{
-        backgroundImage: `url("${getAppPath(crop.sheet)}")`,
-        backgroundRepeat: "no-repeat",
-        backgroundSize: `${backgroundSizeX}% ${backgroundSizeY}%`,
-        backgroundPosition: `${backgroundPositionX}% ${backgroundPositionY}%`,
-      }}
-    />
+      className={`relative overflow-hidden ${className ?? ""}`}
+    >
+      <img
+        src={getAppPath(crop.sheet)}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="pointer-events-none absolute max-w-none select-none"
+        style={{
+          width: `${imageWidthPercent}%`,
+          height: `${imageHeightPercent}%`,
+          left: `${leftPercent}%`,
+          top: `${topPercent}%`,
+        }}
+      />
+    </div>
   );
 };
 
@@ -128,8 +133,6 @@ export const ReadyMadeGarmentImage = ({
 
   if (crop) return <DirectSprite crop={crop} alt={alt} className={className} />;
 
-  // Categories that used to be placeholders (polo / half pants / zip hoodie) should never
-  // disappear. For an unsupported color such as navy, use their real black garment sprite.
   if (product.hasPlaceholderImage) {
     const blackCrop = PRODUCT_SPRITES[product.key]?.블랙?.[side];
     if (blackCrop) return <DirectSprite crop={blackCrop} alt={alt} className={className} />;

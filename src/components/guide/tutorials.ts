@@ -374,9 +374,8 @@ const fundingConceptSteps: TutorialStep[] = [
  * The full "브랜더 어떻게 이용하나요?" walkthrough — walks the real pages one by one:
  * /customize (AI design) → /design-quote (real quote flow) → /fundings → a real funding's own
  * detail page. Not narration over a single screen — each page actually loads before its part is
- * explained. /customize and /design-quote require being logged in (AuthGuard); TutorialOverlay's
- * navigation effect already bails out with a "로그인 후 이용할 수 있어요" toast instead of
- * hanging if a step's page redirects an anonymous visitor to /auth.
+ * explained. /customize and /design-quote are public preview tools, so guests can follow the
+ * same journey and are asked to sign in only when they submit an account-owned request.
  */
 const brandProcessSteps: TutorialStep[] = [
   {

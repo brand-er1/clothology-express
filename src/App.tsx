@@ -120,9 +120,9 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
-            <Route path="/customize" element={<AuthGuard requiredAccountType="seller"><Customize /></AuthGuard>} />
-            <Route path="/design-quote" element={<AuthGuard requiredAccountType="seller"><DesignQuote /></AuthGuard>} />
-            <Route path="/quick-group-wear" element={<AuthGuard requiredAccountType="seller"><QuickGroupWear /></AuthGuard>} />
+            <Route path="/customize" element={<Customize />} />
+            <Route path="/design-quote" element={<DesignQuote />} />
+            <Route path="/quick-group-wear" element={<QuickGroupWear />} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
             <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />

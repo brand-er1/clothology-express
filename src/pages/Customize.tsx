@@ -94,14 +94,9 @@ const Customize = () => {
         const { data } = await supabase.auth.getSession();
         const user = data.session?.user;
         
-        if (!user) {
-          toast({
-            title: "로그인이 필요합니다",
-            description: "사이즈 추천을 위해 로그인해주세요.",
-            variant: "destructive",
-          });
-          return;
-        }
+        // Guests use the default size recommendation and can complete the
+        // whole design/estimate flow without an account.
+        if (!user) return;
 
         const { data: profile, error } = await supabase
           .from('profiles')

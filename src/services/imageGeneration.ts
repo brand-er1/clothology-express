@@ -24,15 +24,6 @@ export const generateImage = async (
   try {
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user;
-    
-    if (!user) {
-      toast({
-        title: "로그인 필요",
-        description: "이미지를 생성하려면 로그인해주세요.",
-        variant: "destructive",
-      });
-      return null;
-    }
 
     // Build the prompt based on selections
     const selectedClothType = clothTypes.find(type => type.id === selectedType)?.name || selectedType;
@@ -112,7 +103,7 @@ export const generateImage = async (
             {
               body: { 
                 imageUrl,
-                userId: user.id,
+                userId: user?.id,
                 clothType: selectedClothType
               }
             }
@@ -134,33 +125,36 @@ export const generateImage = async (
       // Continue with original URLs if storage fails
     }
 
-    // Always save all generated images to DB, but without selecting any of them yet
-    try {
-      // Store image information in the generated_images table without selecting any
-      const { data: imageData, error: imageError } = await supabase.functions.invoke(
-        'save-generated-image',
-        {
-          body: {
-            userId: user.id,
-            originalImageUrls: imageUrls,
-            storedImageUrls: storedImageUrls,
-            imagePaths: imagePaths,
-            prompt: prompt,
-            clothType: selectedClothType,
-            material: selectedMaterialName,
-            detailDescription: selectedDetail,
-            generationPrompt: optimizedPrompt // Store the actual GPT-optimized prompt
+    // A guest can generate and edit a design without creating account-owned records.
+    // Signed-in users keep the existing generated-image history behavior.
+    if (user) {
+      try {
+        // Store image information in the generated_images table without selecting any
+        const { data: imageData, error: imageError } = await supabase.functions.invoke(
+          'save-generated-image',
+          {
+            body: {
+              userId: user.id,
+              originalImageUrls: imageUrls,
+              storedImageUrls: storedImageUrls,
+              imagePaths: imagePaths,
+              prompt: prompt,
+              clothType: selectedClothType,
+              material: selectedMaterialName,
+              detailDescription: selectedDetail,
+              generationPrompt: optimizedPrompt // Store the actual GPT-optimized prompt
+            }
           }
-        }
-      );
+        );
 
-      if (imageError) {
-        console.error("Failed to save image data:", imageError);
-      } else {
-        console.log("Image data saved:", imageData);
+        if (imageError) {
+          console.error("Failed to save image data:", imageError);
+        } else {
+          console.log("Image data saved:", imageData);
+        }
+      } catch (saveError) {
+        console.error("Error saving image data:", saveError);
       }
-    } catch (saveError) {
-      console.error("Error saving image data:", saveError);
     }
 
     return {
@@ -173,7 +167,7 @@ export const generateImage = async (
       prompt,
       optimizedPrompt,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Image generation error:", error);
     toast({
       title: "이미지 생성 실패",
@@ -309,7 +303,7 @@ export const storeSelectedImage = async (
       imagePath: finalImagePath,
       optimizedPrompt,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Image selection error:", error);
     throw error;
   }

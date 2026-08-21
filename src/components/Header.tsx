@@ -76,9 +76,9 @@ export const Header = () => {
     { to: "/fundings", label: "SHOP", visible: true },
     { to: "/my-fundings", label: "MY COLLECTION", visible: isAuthenticated && accountType === "buyer" },
     { to: "/customize", label: "BRAND-ER STUDIO", visible: !isAuthenticated || accountType === "seller" },
-    { to: "/quick-group-wear", label: "빠른 단체복 제작", visible: isAuthenticated && accountType === "seller" },
+    { to: "/quick-group-wear", label: "빠른 단체복 제작", visible: !isAuthenticated || accountType === "seller" },
     { to: "/fabric-swatch", label: "원단 스와치", visible: isAuthenticated && accountType === "seller" },
-    { to: "/design-quote", label: "디자인 견적", visible: isAuthenticated && accountType === "seller" },
+    { to: "/design-quote", label: "디자인 견적", visible: !isAuthenticated || accountType === "seller" },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
     { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated && accountType === "seller" },
     { to: "/admin", label: "관리자", visible: isAdmin },
@@ -142,7 +142,7 @@ export const Header = () => {
           ) : (
             <div className="space-y-2">
               <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
-                <Link to="/fundings">컬렉션 쇼핑하기</Link>
+                <Link to="/customize">무료로 의류 만들어보기</Link>
               </Button>
               <Button asChild variant="ghost" className="h-11 w-full rounded-full text-stone-500">
                 <Link to="/auth">로그인 · 회원가입</Link>
@@ -208,8 +208,8 @@ export const Header = () => {
                 <Link to="/auth">로그인</Link>
               </Button>
               <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark">
-                <Link to="/fundings">
-                  컬렉션 쇼핑하기 <ArrowRight className="ml-2 h-4 w-4" />
+                <Link to="/customize">
+                  무료로 의류 만들기 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </>

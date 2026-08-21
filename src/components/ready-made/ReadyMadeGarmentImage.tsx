@@ -18,58 +18,61 @@ const H = 1024;
 /**
  * Real per-category, per-color product photos (uploaded directly to
  * public/clothing-templates/, not AI-regenerated or CSS-recolored). Each file holds one color's
- * front (left half) and back (right half) view side by side; the crop below is that garment's
- * own tight content bounding box, auto-detected from the actual pixels (+4% padding, plus extra
- * clearance on whichever edge faces the other half so a wide sleeve/cuff never bleeds into its
- * neighbor) — not a fixed half-width cell, since the source photos aren't all framed identically.
+ * front (left) and back (right) view side by side, but not at a clean 50/50 split — the actual
+ * gap between the two garments (or, when their sleeves touch, the point where they're closest)
+ * was measured per photo from the pixels themselves and used as the front/back boundary, since a
+ * fixed half-width boundary was cutting several pixels into a sleeve/cuff on one side (most
+ * visibly on hoodie/후드집업, whose sleeves run wide). The crop itself is that garment's own tight
+ * content bounding box within its side of that boundary, auto-detected from the actual pixels
+ * (+4% padding) — not a fixed cell, since the source photos aren't all framed identically.
  */
 const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
   short_sleeve_tee: {
     블랙: {
-      front: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "0 111 743 777" },
-      back: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "792 109 743 780" },
+      front: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "0 111 766 777" },
+      back: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "766 109 769 780" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "18 104 724 819" },
-      back: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "791 104 719 818" },
+      front: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "18 104 747 819" },
+      back: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "765 104 745 818" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "43 130 699 763" },
-      back: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "791 130 689 764" },
+      front: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "43 130 732 763" },
+      back: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "775 130 704 764" },
     },
   },
   polo: {
     블랙: {
-      front: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "17 73 726 842" },
-      back: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "792 72 727 845" },
+      front: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "17 73 752 842" },
+      back: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "769 72 750 845" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "9 45 733 811" },
-      back: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "791 45 720 811" },
+      front: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "9 45 767 811" },
+      back: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "776 45 735 811" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "34 88 708 810" },
-      back: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "791 87 697 811" },
+      front: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "34 88 744 810" },
+      back: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "778 87 710 811" },
     },
   },
   sweatshirt: {
     블랙: {
-      front: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "0 109 743 788" },
-      back: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "792 108 743 794" },
+      front: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "0 109 763 788" },
+      back: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "763 108 772 794" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "43 113 699 757" },
-      back: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "791 113 689 761" },
+      front: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "43 113 713 757" },
+      back: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "756 113 724 761" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "57 109 685 786" },
-      back: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "791 113 693 778" },
+      front: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "57 109 713 786" },
+      back: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "770 113 714 778" },
     },
   },
   half_pants: {
     블랙: {
-      front: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "0 163 743 651" },
-      back: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "792 159 735 655" },
+      front: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "0 163 760 651" },
+      back: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "760 159 767 655" },
     },
     그레이: {
       front: { sheet: "/clothing-templates/shorts-gray.png.png", viewBox: "108 33 583 482" },
@@ -82,30 +85,30 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
   },
   hoodie: {
     블랙: {
-      front: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "0 30 743 915" },
-      back: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "792 38 741 911" },
+      front: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "0 30 748 915" },
+      back: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "748 38 785 911" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "0 38 743 911" },
-      back: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "792 41 743 907" },
+      front: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "0 38 769 911" },
+      back: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "769 41 766 907" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "0 25 742 936" },
-      back: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "791 48 741 912" },
+      front: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "0 25 763 936" },
+      back: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "763 48 769 912" },
     },
   },
   hoodie_zipup: {
     블랙: {
-      front: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "0 46 743 867" },
-      back: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "792 104 728 805" },
+      front: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "1 46 755 867" },
+      back: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "756 104 765 805" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "22 79 721 773" },
-      back: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "792 99 706 749" },
+      front: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "22 79 741 773" },
+      back: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "763 99 735 749" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "52 106 691 766" },
-      back: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "792 109 692 762" },
+      front: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "52 106 716 766" },
+      back: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "768 109 716 762" },
     },
   },
 };
@@ -128,19 +131,28 @@ const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string;
       className={`flex items-center justify-center overflow-hidden ${className ?? ""}`}
     >
       <div
-        className="relative max-h-full max-w-full overflow-hidden"
-        style={{
-          aspectRatio: `${cropWidth} / ${cropHeight}`,
-          width: cropAspectRatio >= 1 ? "100%" : "auto",
-          height: cropAspectRatio < 1 ? "100%" : "auto",
-          // Never stretch past the crop's own native pixel size — the editor canvas can be much
-          // bigger than these thumbnail-era crops, and filling 100% of a large canvas from a
-          // ~400px-wide source crop is what reads as blurry/broken. Capping here lets the box
-          // still shrink to fit small containers (mobile) via the width/height above, it just
-          // can't grow past 1:1 pixel scale.
-          maxWidth: `${cropWidth}px`,
-          maxHeight: `${cropHeight}px`,
-        }}
+        className="relative overflow-hidden"
+        style={
+          cropAspectRatio >= 1
+            ? {
+                aspectRatio: `${cropWidth} / ${cropHeight}`,
+                // Only one axis is ever a definite size (capped at the crop's own native pixel
+                // size so a small source crop never gets stretched past 1:1 on the editor's much
+                // bigger canvas, which is what read as blurry/broken); the other is `auto`,
+                // purely derived from aspect-ratio. Setting both a percentage size AND a max-*
+                // cap on both axes at once (the previous approach) left width and height fighting
+                // — one axis would hit its cap while the other stayed at 100%, breaking the box's
+                // actual aspect ratio and throwing off the image's percentage-based crop offset,
+                // which showed up as a sleeve/cuff getting sliced off.
+                width: `min(100%, ${cropWidth}px)`,
+                height: "auto",
+              }
+            : {
+                aspectRatio: `${cropWidth} / ${cropHeight}`,
+                width: "auto",
+                height: `min(100%, ${cropHeight}px)`,
+              }
+        }
       >
         <img
           src={crop.sheet.startsWith("data:") ? crop.sheet : getAppPath(crop.sheet)}

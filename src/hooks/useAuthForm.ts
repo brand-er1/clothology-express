@@ -19,7 +19,9 @@ import { getAccountLandingPath, syncAccountTypeToProfile, type AccountType } fro
 
 export const useAuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(
+    () => new URLSearchParams(window.location.search).get("mode") === "signup"
+  );
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
   const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);

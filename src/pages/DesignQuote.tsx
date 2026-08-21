@@ -21,10 +21,17 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ProductionEstimateCard } from "@/components/customize/ProductionEstimateCard";
+import { ProductionCountryPicker } from "@/components/customize/ProductionCountryPicker";
+import { ProductionCountryBadge } from "@/components/customize/ProductionCountryBadge";
 import { toast } from "@/components/ui/use-toast";
 import { createDirectProductionRequest } from "@/services/orderCreation";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import type { ProductionEstimateResult } from "@/types/productionEstimate";
+import { DEFAULT_MINIMUM_ORDER_QUANTITY } from "@/lib/minimum-order-quantity";
+import {
+  productionCountryConfig,
+  type ProductionCountry,
+} from "@/lib/production-country";
 
 const allowedImageTypes = new Set([
   "image/png",
@@ -59,6 +66,7 @@ const readFileAsBase64 = (file: File) =>
   });
 
 const DesignQuote = () => {
+  const [productionCountry, setProductionCountry] = useState<ProductionCountry | null>(null);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [zoomImageId, setZoomImageId] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
@@ -236,6 +244,7 @@ const DesignQuote = () => {
       : "없음";
     const detailDescription = [
       "[내 디자인 자동견적 제작 의뢰]",
+      `생산 국가: ${productionCountryConfig[productionCountry ?? "korea"].label}`,
       `의류 종류: ${estimate.garment.label}`,
       `소재: ${estimate.material.composition}`,
       `후가공: ${decorationSummary}`,
@@ -329,11 +338,12 @@ const DesignQuote = () => {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-2 sm:grid-cols-3" data-tutorial="quote-steps">
+        <div className="mb-6 grid gap-2 sm:grid-cols-4" data-tutorial="quote-steps">
           {[
-            { label: "1. 디자인 업로드", done: images.length > 0 },
-            { label: "2. AI 분석·견적", done: Boolean(estimate) },
-            { label: "3. 제작 의뢰 접수", done: Boolean(submittedOrderId) },
+            { label: "1. 생산 국가 선택", done: Boolean(productionCountry) },
+            { label: "2. 디자인 업로드", done: images.length > 0 },
+            { label: "3. AI 분석·견적", done: Boolean(estimate) },
+            { label: "4. 제작 의뢰 접수", done: Boolean(submittedOrderId) },
           ].map((step) => (
             <div
               key={step.label}
@@ -347,6 +357,20 @@ const DesignQuote = () => {
               {step.label}
             </div>
           ))}
+        </div>
+
+        {!productionCountry ? (
+          <Card className="rounded-[1.75rem] border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+            <ProductionCountryPicker selected={productionCountry} onSelect={setProductionCountry} />
+          </Card>
+        ) : (
+          <>
+        <div className="mb-6">
+          <ProductionCountryBadge
+            country={productionCountry}
+            domesticMoq={estimate?.garment.moq ?? DEFAULT_MINIMUM_ORDER_QUANTITY}
+            onChangeCountry={setProductionCountry}
+          />
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[0.78fr_1.22fr]">
@@ -552,6 +576,8 @@ const DesignQuote = () => {
                     editable
                     onEstimateChange={setEstimate}
                     onLoadingChange={setIsAnalyzing}
+                    productionCountry={productionCountry}
+                    onChangeCountry={setProductionCountry}
                   />
                 </div>
 
@@ -679,6 +705,8 @@ const DesignQuote = () => {
             )}
           </div>
         </div>
+          </>
+        )}
       </main>
 
       <Dialog open={Boolean(zoomImage)} onOpenChange={(open) => !open && setZoomImageId(null)}>

@@ -28,6 +28,12 @@ import { recalculateEstimateQuantity } from "@/lib/production-estimate-quantity"
 import { trackSiteEvent } from "@/lib/site-analytics";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
+import {
+  applyProductionCountryPricing,
+  getProductionCountryMoq,
+  productionCountryConfig,
+  type ProductionCountry,
+} from "@/lib/production-country";
 
 interface ModifyImageOptions {
   referenceImage?: ArtworkReference;
@@ -87,9 +93,15 @@ export const useCustomizeForm = () => {
     useState<string | null>(null);
   const [currentProductionEstimate, setCurrentProductionEstimate] =
     useState<ProductionEstimateResult | null>(null);
-  const minimumOrderQuantity = getMinimumOrderQuantity(
+  const [productionCountry, setProductionCountry] =
+    useState<ProductionCountry | null>(null);
+  const domesticMinimumOrderQuantity = getMinimumOrderQuantity(
     selectedType,
     selectedMaterial,
+  );
+  const minimumOrderQuantity = getProductionCountryMoq(
+    productionCountry ?? "korea",
+    domesticMinimumOrderQuantity,
   );
 
   useEffect(() => {
@@ -140,9 +152,19 @@ export const useCustomizeForm = () => {
         }
         break;
       case 5:
-        // No validation for modification step - it's optional
+        if (!productionCountry) {
+          toast({
+            title: "생산 국가 필요",
+            description: "생산 국가를 선택해주세요.",
+            variant: "destructive",
+          });
+          return false;
+        }
         break;
       case 6:
+        // No validation for modification step - it's optional
+        break;
+      case 7:
         if (!productionSizeSelection?.selectedSizes.length) {
           toast({
             title: "사이즈 필요",
@@ -534,6 +556,10 @@ export const useCustomizeForm = () => {
             uploadedArtwork: currentArtworkAnalysis,
             quantity: directQuantity,
           });
+          productionEstimate = applyProductionCountryPricing(
+            productionEstimate,
+            productionCountry ?? "korea",
+          );
         } catch (estimateError) {
           console.error("Funding estimate analysis error:", estimateError);
         }
@@ -698,6 +724,10 @@ export const useCustomizeForm = () => {
             uploadedArtwork: currentArtworkAnalysis,
             quantity: directQuantity,
           });
+          productionEstimate = applyProductionCountryPricing(
+            productionEstimate,
+            productionCountry ?? "korea",
+          );
         } catch (estimateError) {
           console.error("Direct request estimate analysis error:", estimateError);
         }
@@ -715,8 +745,10 @@ export const useCustomizeForm = () => {
       const developmentTotal = productionEstimate
         ? formatWon(productionEstimate.totals.developmentTotal)
         : "상담 후 안내";
+      const countryLabel = productionCountryConfig[productionCountry ?? "korea"].label;
       const detailDescription = [
         "의뢰 방식: 바로 제작",
+        `생산 국가: ${countryLabel}`,
         `제작 희망 수량: ${directQuantity}장`,
         colorName ? `컬러: ${colorName}` : "",
         fitName ? `핏: ${fitName}` : "",
@@ -736,6 +768,7 @@ export const useCustomizeForm = () => {
         detailDescription,
         size: finalSizeOptions.join(", "),
         measurements: {
+          "생산 국가": countryLabel,
           "제작 수량": `${directQuantity}장`,
           "선택 사이즈": finalSizeOptions.join(", "),
           "사이즈 기준": productionSizeSelection
@@ -865,6 +898,9 @@ export const useCustomizeForm = () => {
     directQuantity,
     setDirectQuantity,
     minimumOrderQuantity,
+    domesticMinimumOrderQuantity,
+    productionCountry,
+    setProductionCountry,
     handleAddMaterial,
     handleGenerateImage,
     handleSelectImage,

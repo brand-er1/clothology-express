@@ -45,6 +45,7 @@ import type {
 } from "@/types/productionEstimate";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import type { TrademarkScreeningResult } from "@/types/trademark";
+import type { ProductionCountry } from "@/lib/production-country";
 
 const placementExamples = [
   "앞면 왼쪽 가슴에 작게 넣어줘",
@@ -113,6 +114,8 @@ interface ModifyImageStepProps {
   ) => Promise<boolean>;
   onResetModifications: () => void;
   onSelectHistoryImage: (imageUrl: string | null, imagePath?: string | null, index?: number) => void;
+  productionCountry: ProductionCountry;
+  onChangeCountry: (country: ProductionCountry) => void;
 }
 
 export const ModifyImageStep = ({
@@ -130,6 +133,8 @@ export const ModifyImageStep = ({
   onModifyImage,
   onResetModifications,
   onSelectHistoryImage,
+  productionCountry,
+  onChangeCountry,
 }: ModifyImageStepProps) => {
   const [modificationPrompt, setModificationPrompt] = useState("");
   const [imageError, setImageError] = useState(false);
@@ -1025,6 +1030,8 @@ export const ModifyImageStep = ({
                 quantity={quantity}
                 onQuantityChange={onQuantityChange}
                 onEstimateChange={onEstimateChange}
+                productionCountry={productionCountry}
+                onChangeCountry={onChangeCountry}
               />
             )}
             

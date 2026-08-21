@@ -18,97 +18,99 @@ const H = 1024;
 /**
  * Real per-category, per-color product photos (uploaded directly to
  * public/clothing-templates/, not AI-regenerated or CSS-recolored). Each file holds one color's
- * front (left) and back (right) view side by side, but not at a clean 50/50 split — the actual
- * gap between the two garments (or, when their sleeves touch, the point where they're closest)
- * was measured per photo from the pixels themselves and used as the front/back boundary, since a
- * fixed half-width boundary was cutting several pixels into a sleeve/cuff on one side (most
- * visibly on hoodie/후드집업, whose sleeves run wide). The crop itself is that garment's own tight
- * content bounding box within its side of that boundary, auto-detected from the actual pixels
- * (+4% padding) — not a fixed cell, since the source photos aren't all framed identically.
+ * front (left) and back (right) view side by side, but not at a clean 50/50 split, and in several
+ * of them (폴로 그레이/화이트 especially) the two sleeves visibly cross close to the middle. Each
+ * crop's boundary on the side facing the other garment is set from that garment's OWN unambiguous
+ * content only — rows where the two sides visibly touch or cross don't count, so the boundary
+ * can't land mid-crossing and slice a cuff. Where the two garments never get close (the normal
+ * case), this lands on the natural gap between them, same as before. The crop itself is that
+ * garment's own tight content bounding box within its side of that boundary, auto-detected from
+ * the actual pixels (+4% padding) — not a fixed cell, since the source photos aren't all framed
+ * identically.
  */
 const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
   short_sleeve_tee: {
     블랙: {
-      front: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "0 111 766 777" },
-      back: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "766 109 769 780" },
+      front: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "0 111 744 777" },
+      back: { sheet: "/clothing-templates/tshirt-black.png.png", viewBox: "789 107 746 783" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "18 104 747 819" },
-      back: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "765 104 745 818" },
+      front: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "19 103 726 820" },
+      back: { sheet: "/clothing-templates/tshirt-gray.png.png", viewBox: "785 104 724 818" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "43 130 732 763" },
-      back: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "775 130 704 764" },
+      front: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "43 130 709 763" },
+      back: { sheet: "/clothing-templates/tshirt-white.png.png", viewBox: "792 130 687 764" },
     },
   },
   polo: {
     블랙: {
-      front: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "17 73 752 842" },
-      back: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "769 72 750 845" },
+      front: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "17 73 730 842" },
+      back: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "791 72 728 845" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "9 45 767 811" },
-      back: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "776 45 735 811" },
+      front: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "10 45 744 811" },
+      back: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "799 45 711 811" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "34 88 744 810" },
-      back: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "778 87 710 811" },
+      front: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "34 88 729 810" },
+      back: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "799 87 688 811" },
     },
   },
   sweatshirt: {
     블랙: {
-      front: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "0 109 763 788" },
-      back: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "763 108 772 794" },
+      front: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "0 109 743 788" },
+      back: { sheet: "/clothing-templates/sweatshirt-black.png.png", viewBox: "784 108 751 794" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "43 113 713 757" },
-      back: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "756 113 724 761" },
+      front: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "44 112 693 758" },
+      back: { sheet: "/clothing-templates/sweatshirt-gray.png.png", viewBox: "777 113 703 761" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "57 109 713 786" },
-      back: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "770 113 714 778" },
+      front: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "58 109 699 786" },
+      back: { sheet: "/clothing-templates/sweatshirt-white.png.png", viewBox: "791 113 692 778" },
     },
   },
   half_pants: {
     블랙: {
-      front: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "0 163 760 651" },
-      back: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "760 159 767 655" },
+      front: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "0 163 738 651" },
+      back: { sheet: "/clothing-templates/shorts-black.png.png", viewBox: "783 159 744 655" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/shorts-gray.png.png", viewBox: "108 33 583 482" },
-      back: { sheet: "/clothing-templates/shorts-gray.png.png", viewBox: "835 33 568 482" },
+      front: { sheet: "/clothing-templates/shorts-gray.png.png", viewBox: "108 33 560 482" },
+      back: { sheet: "/clothing-templates/shorts-gray.png.png", viewBox: "858 33 544 482" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/short-white.png.png", viewBox: "81 34 589 461" },
-      back: { sheet: "/clothing-templates/short-white.png.png", viewBox: "850 33 579 462" },
+      front: { sheet: "/clothing-templates/short-white.png.png", viewBox: "81 33 567 462" },
+      back: { sheet: "/clothing-templates/short-white.png.png", viewBox: "873 33 556 462" },
     },
   },
   hoodie: {
     블랙: {
-      front: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "0 30 748 915" },
-      back: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "748 38 785 911" },
+      front: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "0 30 726 915" },
+      back: { sheet: "/clothing-templates/hoodie-black.png.png", viewBox: "771 38 762 911" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "0 38 769 911" },
-      back: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "769 41 766 907" },
+      front: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "0 38 748 911" },
+      back: { sheet: "/clothing-templates/hoodie-gray.png.png", viewBox: "791 41 744 907" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "0 25 763 936" },
-      back: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "763 48 769 912" },
+      front: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "0 25 742 936" },
+      back: { sheet: "/clothing-templates/hoodie-white.png.png", viewBox: "787 48 744 912" },
     },
   },
   hoodie_zipup: {
     블랙: {
-      front: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "1 46 755 867" },
-      back: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "756 104 765 805" },
+      front: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "1 46 735 867" },
+      back: { sheet: "/clothing-templates/ziphoodie-black.png.png", viewBox: "779 104 741 805" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "22 79 741 773" },
-      back: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "763 99 735 749" },
+      front: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "23 79 721 773" },
+      back: { sheet: "/clothing-templates/ziphoodie-gray.png.png", viewBox: "788 99 709 749" },
     },
     화이트: {
-      front: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "52 106 716 766" },
-      back: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "768 109 716 762" },
+      front: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "53 106 690 766" },
+      back: { sheet: "/clothing-templates/ziphoodie-white.png.png", viewBox: "787 109 696 763" },
     },
   },
 };

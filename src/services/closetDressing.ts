@@ -48,16 +48,14 @@ export interface DressCharacterResult {
 }
 
 interface DressCharacterOptions {
-  /** The exact currently displayed look. Using it as the edit source keeps every other slot unchanged. */
-  editSourceImageUrl?: string | null;
-  /** Only these slots may differ from the current look. */
+  /** Slots changed by the last user action (all equipped references are still sent). */
   changedSlots?: ClosetSlot[];
 }
 
 /**
- * Calls the dress-character edge function as a fail-closed clothing edit. The canonical base image is
- * always the identity anchor. When an existing render is available it becomes the edit source and only
- * changed slots are sent, so an unchanged top is not regenerated during a bottom swap.
+ * Calls the dress-character edge function as a fail-closed clothing edit. Every request starts from the
+ * canonical base image and includes every currently equipped original garment reference. A generated
+ * output is deliberately never used as input, which prevents cumulative identity and garment drift.
  */
 export const dressCharacter = async (
   character: CharacterGender,
@@ -67,9 +65,6 @@ export const dressCharacter = async (
 ): Promise<DressCharacterResult | null> => {
   try {
     const identityImage = await urlToImageRef(characterBaseImageUrl);
-    const characterImage = options.editSourceImageUrl
-      ? await urlToImageRef(options.editSourceImageUrl)
-      : identityImage;
     const garmentPayload = await Promise.all(
       garments.map(async (garment) => ({
         slot: garment.slot,
@@ -84,7 +79,7 @@ export const dressCharacter = async (
     const { data: result, error } = await supabase.functions.invoke("dress-character", {
       body: {
         characterGender: character,
-        characterImage,
+        characterImage: identityImage,
         identityImage,
         garments: garmentPayload,
         changedSlots: options.changedSlots,

@@ -28,7 +28,7 @@ export const characterConfig: Record<CharacterGender, CharacterConfig> = {
     key: "female",
     label: "여자 브랜더",
     tagline: "속눈썹이 포인트인 브랜더",
-    baseImage: getAppPath("/mascot/character-female-placeholder.png"),
+    baseImage: getAppPath("/mascot/character-female.png"),
     anchors: {
       top: { xPercent: 50, yPercent: 40, widthPercent: 42, zIndex: 20 },
       bottom: { xPercent: 50, yPercent: 66, widthPercent: 38, zIndex: 10 },

@@ -163,6 +163,22 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Print method — informational only. There is no per-method price table, so
+// this never changes `calculateReadyMadeQuote`'s output; it's folded into the
+// order's free-text note (see `readyMadeOrder.ts`) so production staff know
+// which technique the customer wants.
+// ---------------------------------------------------------------------------
+
+export const READY_MADE_PRINT_METHOD_OPTIONS = [
+  { key: "screen", label: "나염" },
+  { key: "dtf", label: "DTF" },
+  { key: "embroidery", label: "자수" },
+  { key: "transfer", label: "전사" },
+] as const;
+
+export type ReadyMadePrintMethod = (typeof READY_MADE_PRINT_METHOD_OPTIONS)[number]["key"];
+
+// ---------------------------------------------------------------------------
 // Print locations
 // ---------------------------------------------------------------------------
 

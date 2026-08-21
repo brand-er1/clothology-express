@@ -1,21 +1,29 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Save, Share2, Sparkles } from "lucide-react";
+import { RefreshCw, Save, Share2, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { CharacterCard } from "@/components/closet/CharacterCard";
 import { DressingCanvas } from "@/components/closet/DressingCanvas";
+import { DressingLoadingOverlay } from "@/components/closet/DressingLoadingOverlay";
 import { WardrobeSlotPicker } from "@/components/closet/WardrobeSlotPicker";
+import { ClosetGarmentStudio } from "@/components/closet/ClosetGarmentStudio";
+import { MyWardrobeList } from "@/components/closet/MyWardrobeList";
 import { characterConfig, closetSlotLabel, closetSlotOrder } from "@/lib/closet-character-config";
+import { dressCharacter } from "@/services/closetDressing";
 import {
+  addToMyWardrobe,
+  loadMyWardrobe,
   saveCurrentLook,
   setCharacter,
   setGarment,
+  setRenderedCharacterImage,
   useWardrobeState,
+  type MyWardrobeGarment,
 } from "@/lib/closet-store";
-import type { CharacterGender, ClosetGarment } from "@/types/closet";
+import type { CharacterGender, ClosetGarment, ClosetOutfit } from "@/types/closet";
 
 type ClosetView = "select" | "transition" | "dressing" | "look-complete";
 
@@ -23,23 +31,79 @@ interface ClosetLocationState {
   pendingGarment?: ClosetGarment;
 }
 
+const wornDesignGarments = (outfit: ClosetOutfit) =>
+  closetSlotOrder
+    .map((slot) => outfit[slot])
+    .filter((garment): garment is ClosetGarment => Boolean(garment && garment.source !== "preset"));
+
 const Closet = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { character, outfit } = useWardrobeState();
+  const { character, outfit, renderedCharacterImage } = useWardrobeState();
   const [view, setView] = useState<ClosetView>("select");
   const [pendingCharacter, setPendingCharacter] = useState<CharacterGender>(character);
+  const [isDressing, setIsDressing] = useState(false);
+  const [showBeforeAfter, setShowBeforeAfter] = useState<"after" | "before">("after");
+  const [myWardrobe, setMyWardrobe] = useState<MyWardrobeGarment[]>(() => loadMyWardrobe());
 
   const pendingGarment = (location.state as ClosetLocationState | null)?.pendingGarment ?? null;
+
+  const runDressing = async (targetOutfit: ClosetOutfit, targetCharacter: CharacterGender) => {
+    const designGarments = wornDesignGarments(targetOutfit);
+    if (designGarments.length === 0) return;
+    setIsDressing(true);
+    setShowBeforeAfter("after");
+    const result = await dressCharacter(
+      targetCharacter,
+      characterConfig[targetCharacter].baseImage,
+      designGarments,
+    );
+    setIsDressing(false);
+    if (result) {
+      setRenderedCharacterImage(result.renderedImageUrl);
+      toast({ title: "✨ 착용 완료!" });
+    }
+  };
 
   const handleSelectCharacter = (gender: CharacterGender) => {
     setPendingCharacter(gender);
     setCharacter(gender);
+    const nextOutfit: ClosetOutfit = pendingGarment
+      ? { ...outfit, [pendingGarment.slot]: pendingGarment }
+      : outfit;
     if (pendingGarment) {
       setGarment(pendingGarment.slot, pendingGarment);
+      setMyWardrobe(addToMyWardrobe(pendingGarment));
     }
     setView("transition");
-    window.setTimeout(() => setView("dressing"), 900);
+    window.setTimeout(() => {
+      setView("dressing");
+      if (pendingGarment) void runDressing(nextOutfit, gender);
+    }, 900);
+  };
+
+  const handleEquip = (slot: (typeof closetSlotOrder)[number], garment: ClosetGarment) => {
+    setGarment(slot, garment);
+    if (garment.source === "ai_design") {
+      setMyWardrobe(addToMyWardrobe(garment));
+    }
+    void runDressing({ ...outfit, [slot]: garment }, character);
+  };
+
+  const handleGarmentCreated = (garment: ClosetGarment) => {
+    setMyWardrobe(addToMyWardrobe(garment));
+    setGarment(garment.slot, garment);
+    void runDressing({ ...outfit, [garment.slot]: garment }, character);
+    toast({ title: "새 옷을 만들었어요!", description: "브랜더에게 바로 입혀봤어요." });
+  };
+
+  const handleWearFromWardrobe = (garment: MyWardrobeGarment) => {
+    setGarment(garment.slot, garment);
+    void runDressing({ ...outfit, [garment.slot]: garment }, character);
+  };
+
+  const handleRegenerate = () => {
+    void runDressing(outfit, character);
   };
 
   const wornSlotCount = closetSlotOrder.filter((slot) => outfit[slot]).length;
@@ -72,9 +136,7 @@ const Closet = () => {
   };
 
   const goToQuote = () => {
-    const designGarments = closetSlotOrder
-      .map((slot) => outfit[slot])
-      .filter((garment): garment is ClosetGarment => Boolean(garment && garment.source !== "preset"));
+    const designGarments = wornDesignGarments(outfit);
 
     if (designGarments.length === 0) {
       toast({
@@ -109,6 +171,9 @@ const Closet = () => {
   useEffect(() => {
     setPendingCharacter(character);
   }, [character]);
+
+  const displayedImage =
+    showBeforeAfter === "before" ? characterConfig[character].baseImage : renderedCharacterImage;
 
   return (
     <div className="min-h-screen bg-[#f4f0ea]">
@@ -165,7 +230,10 @@ const Closet = () => {
                   <button
                     key={gender}
                     type="button"
-                    onClick={() => setCharacter(gender)}
+                    onClick={() => {
+                      setCharacter(gender);
+                      void runDressing(outfit, gender);
+                    }}
                     className={`rounded-full px-4 py-2 text-sm font-bold transition ${
                       character === gender
                         ? "bg-brand text-white"
@@ -179,17 +247,62 @@ const Closet = () => {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-              <DressingCanvas character={character} outfit={outfit} />
+              <div>
+                <div className="relative">
+                  <DressingCanvas character={character} renderedCharacterImage={displayedImage} />
+                  <DressingLoadingOverlay active={isDressing} />
+                </div>
+                {renderedCharacterImage && (
+                  <div className="mt-3 flex items-center justify-center gap-2">
+                    <div className="inline-flex rounded-full border border-stone-200 bg-white p-1 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setShowBeforeAfter("before")}
+                        className={`rounded-full px-3 py-1.5 font-bold transition ${
+                          showBeforeAfter === "before" ? "bg-stone-900 text-white" : "text-stone-500"
+                        }`}
+                      >
+                        Before
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowBeforeAfter("after")}
+                        className={`rounded-full px-3 py-1.5 font-bold transition ${
+                          showBeforeAfter === "after" ? "bg-stone-900 text-white" : "text-stone-500"
+                        }`}
+                      >
+                        After
+                      </button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-full border-stone-300 text-xs font-bold"
+                      onClick={handleRegenerate}
+                      disabled={isDressing}
+                    >
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                      다시 입혀보기
+                    </Button>
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-5">
                 {view === "dressing" ? (
                   <>
+                    <ClosetGarmentStudio onGarmentCreated={handleGarmentCreated} />
+                    <MyWardrobeList items={myWardrobe} onWear={handleWearFromWardrobe} />
                     <Card className="rounded-[1.5rem] border-stone-200 bg-white p-5 shadow-sm">
                       <p className="mb-3 text-sm font-black text-stone-950">코디 아이템</p>
                       <WardrobeSlotPicker
                         outfit={outfit}
-                        onEquip={(slot, garment) => setGarment(slot, garment)}
-                        onRemove={(slot) => setGarment(slot, null)}
+                        onEquip={handleEquip}
+                        onRemove={(slot) => {
+                          setGarment(slot, null);
+                          void runDressing({ ...outfit, [slot]: null }, character);
+                        }}
                       />
                     </Card>
                     <Button

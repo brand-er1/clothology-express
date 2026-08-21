@@ -1,6 +1,5 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
-import { Sparkles, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { closetSlotLabel, closetSlotOrder } from "@/lib/closet-character-config";
 import type { ClosetGarment, ClosetOutfit, ClosetSlot } from "@/types/closet";
@@ -87,18 +86,6 @@ export const WardrobeSlotPicker = ({ outfit, onEquip, onRemove }: WardrobeSlotPi
                 </Button>
               ) : (
                 <>
-                  <Button
-                    asChild
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-brand hover:bg-brand/10"
-                    title="AI로 만들기"
-                  >
-                    <Link to="/customize">
-                      <Sparkles className="h-4 w-4" />
-                    </Link>
-                  </Button>
                   <input
                     ref={(element) => {
                       fileInputRefs.current[slot] = element;

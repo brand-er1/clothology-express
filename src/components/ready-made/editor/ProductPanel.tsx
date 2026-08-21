@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { ReadyMadeGarmentImage } from "@/components/ready-made/ReadyMadeGarmentImage";
+import { getAppPath } from "@/utils/appUrl";
 import { READY_MADE_PRODUCT_OPTIONS, type ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
 import type { UseReadyMadeGroupWearFormReturn } from "@/hooks/useReadyMadeGroupWearForm";
 
@@ -17,19 +17,25 @@ const ProductCard = ({
   isSelected: boolean;
   onSelect: () => void;
 }) => (
-  <button type="button" onClick={onSelect} className="text-left">
+  <button
+    type="button"
+    onClick={onSelect}
+    aria-pressed={isSelected}
+    data-testid={`ready-made-product-option-${product.key}`}
+    className="text-left"
+  >
     <Card
       className={`overflow-hidden rounded-2xl border-2 p-0 transition ${
         isSelected ? "border-brand shadow-md" : "border-stone-200 hover:border-brand/40"
       }`}
     >
-      <div className="relative flex aspect-square items-center justify-center bg-stone-50">
-        <ReadyMadeGarmentImage
-          product={product}
-          color="그레이"
-          side="front"
-          alt={`${product.label} 그레이 앞면`}
-          className="h-full w-full p-2"
+      <div className="relative flex aspect-square items-center justify-center bg-white p-3 sm:p-4">
+        <img
+          src={getAppPath(product.mainThumbnail)}
+          alt={`${product.label} 그레이 앞면과 뒷면 전체`}
+          draggable={false}
+          data-testid={`ready-made-product-thumbnail-${product.key}`}
+          className="block h-full w-full max-h-full max-w-full select-none object-contain object-center"
         />
         {isSelected && (
           <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white">

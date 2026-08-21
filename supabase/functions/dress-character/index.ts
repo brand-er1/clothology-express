@@ -51,10 +51,21 @@ interface GeneratedImage {
   textResponse: string;
 }
 
-interface IdentityEvaluation {
+interface PreservationEvaluation {
   score: number;
+  characterMatch: boolean;
+  unchangedOutfitMatch: boolean;
   violations: string[];
 }
+
+const isPreservationApproved = (evaluation: PreservationEvaluation | null) =>
+  Boolean(
+    evaluation &&
+      evaluation.score >= 0.98 &&
+      evaluation.characterMatch &&
+      evaluation.unchangedOutfitMatch &&
+      evaluation.violations.length === 0,
+  );
 
 const generateDressedImage = async (
   geminiApiKey: string,
@@ -98,12 +109,13 @@ const generateDressedImage = async (
   return base64 ? { base64, mimeType, textResponse } : null;
 };
 
-const evaluateCharacterIdentity = async (
+const evaluatePreservation = async (
   geminiApiKey: string,
-  baseCharacter: { base64: string; mimeType: string },
+  identityAnchor: { base64: string; mimeType: string },
+  editSource: { base64: string; mimeType: string },
   candidate: { base64: string; mimeType: string },
   changedSlots: ClosetSlot[],
-): Promise<IdentityEvaluation | null> => {
+): Promise<PreservationEvaluation | null> => {
   try {
     const changedSlotNames = changedSlots
       .map((slot) => slotDescriptionEn[slot])
@@ -119,11 +131,13 @@ const evaluateCharacterIdentity = async (
               role: "user",
               parts: [
                 {
-                  text: `Compare IMAGE A (immutable source) and IMAGE B (restricted clothing edit). The ONLY clothing slots allowed to change are: ${changedSlotNames}. Ignore differences inside those changed slots and body areas legitimately covered by them. Every UNSUPPLIED clothing slot must remain exactly as in IMAGE A, including garment type, silhouette, color, length, fit, folds, hood/collar, sleeves, logo, print, texture, and layering. Also check that the SAME character is preserved: exact face color, eyes, eye spacing, eyelashes, head outline, visible body proportions, pose, limbs, hands, feet, rendering style, camera angle, scale, and framing. Return JSON only: {"score":0.0,"violations":["short concrete difference"]}. Score 1.0 only when the character and every unchanged clothing slot are effectively identical.`,
+                  text: `Perform a strict fail-closed comparison of three images. IMAGE A is the canonical immutable character identity anchor. IMAGE B is the exact current look that is being edited. IMAGE C is the candidate. The ONLY clothing slots allowed to change between B and C are: ${changedSlotNames}. Ignore differences only inside those changed garment regions and body pixels legitimately occluded by them. Every other visible character region in C must preserve the same identity, geometry, pose, camera, framing, and rendering style as A and B. Every UNSUPPLIED clothing slot must be visually identical between B and C, including garment type, silhouette, color, length, fit, folds, drape, hood/collar, sleeves, cuffs, pockets, logo, print, pattern, texture, and layering. Set characterMatch or unchangedOutfitMatch to false if there is any visible doubt or difference. Return JSON only: {"score":0.0,"characterMatch":false,"unchangedOutfitMatch":false,"violations":["short concrete difference"]}. Score 1.0 only when the character and every unchanged clothing slot are effectively identical.`,
                 },
-                { text: "IMAGE A — IMMUTABLE BASE CHARACTER" },
-                { inlineData: { data: baseCharacter.base64, mimeType: baseCharacter.mimeType } },
-                { text: "IMAGE B — CLOTHING EDIT TO CHECK" },
+                { text: "IMAGE A — CANONICAL IMMUTABLE CHARACTER IDENTITY" },
+                { inlineData: { data: identityAnchor.base64, mimeType: identityAnchor.mimeType } },
+                { text: "IMAGE B — EXACT CURRENT LOOK / EDIT SOURCE" },
+                { inlineData: { data: editSource.base64, mimeType: editSource.mimeType } },
+                { text: "IMAGE C — CLOTHING EDIT TO CHECK" },
                 { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
               ],
             },
@@ -150,12 +164,14 @@ const evaluateCharacterIdentity = async (
     if (!Number.isFinite(score)) return null;
     return {
       score: Math.min(1, Math.max(0, score)),
+      characterMatch: parsed?.characterMatch === true,
+      unchangedOutfitMatch: parsed?.unchangedOutfitMatch === true,
       violations: Array.isArray(parsed?.violations)
         ? parsed.violations.map((item: unknown) => String(item)).slice(0, 6)
         : [],
     };
   } catch (error) {
-    console.warn("dress-character identity evaluation failed", error);
+    console.warn("dress-character preservation evaluation failed", error);
     return null;
   }
 };
@@ -182,7 +198,9 @@ serve(async (req) => {
     const {
       characterGender,
       characterImage,
+      identityImage,
       garments: rawGarments,
+      changedSlots: rawChangedSlots,
       userId,
     } = requestData || {};
 
@@ -193,6 +211,15 @@ serve(async (req) => {
     if (!characterBase64 || !supportedImageMimeTypes.has(characterMimeType)) {
       return new Response(
         JSON.stringify({ error: "캐릭터 참조 이미지가 필요합니다." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+
+    const identityBase64 = stripDataUrlPrefix(String(identityImage?.base64 || characterBase64));
+    const identityMimeType = String(identityImage?.mimeType || characterMimeType);
+    if (!identityBase64 || !supportedImageMimeTypes.has(identityMimeType)) {
+      return new Response(
+        JSON.stringify({ error: "캐릭터 원본 기준 이미지가 필요합니다." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
       );
     }
@@ -209,9 +236,17 @@ serve(async (req) => {
         .filter((item) => item.base64 && supportedImageMimeTypes.has(item.mimeType))
       : [];
 
-    if (garments.length === 0) {
+    const explicitlyChangedSlots: ClosetSlot[] = Array.isArray(rawChangedSlots)
+      ? rawChangedSlots.filter((slot: unknown): slot is ClosetSlot => validSlots.has(slot as ClosetSlot))
+      : [];
+    const slotsInThisRequest = Array.from(new Set([
+      ...explicitlyChangedSlots,
+      ...garments.map((garment) => garment.slot),
+    ]));
+
+    if (garments.length === 0 && slotsInThisRequest.length === 0) {
       return new Response(
-        JSON.stringify({ error: "입힐 의류 이미지가 최소 1개 필요합니다." }),
+        JSON.stringify({ error: "변경할 의류 슬롯이나 의류 이미지가 필요합니다." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
       );
     }
@@ -222,7 +257,8 @@ serve(async (req) => {
       );
     }
 
-    const totalBytes = characterBase64.length + garments.reduce((sum, g) => sum + g.base64.length, 0);
+    const totalBytes = characterBase64.length + identityBase64.length +
+      garments.reduce((sum, g) => sum + g.base64.length, 0);
     if (totalBytes > 30 * 1024 * 1024) {
       return new Response(
         JSON.stringify({ error: "이미지 용량이 너무 큽니다." }),
@@ -236,12 +272,11 @@ serve(async (req) => {
 
     const garmentList = garments
       .map((garment, index) => {
-        const ordinal = index + 2;
+        const ordinal = index + 3;
         return `Reference Image ${ordinal} (${slotDescriptionEn[garment.slot]}${garment.label ? `, "${garment.label}"` : ""}): garment to render on the character in the ${garment.slot} slot.`;
       })
       .join("\n");
 
-    const slotsInThisRequest = Array.from(new Set(garments.map((g) => g.slot)));
     const slotsSentence = slotsInThisRequest
       .map((slot) => slotDescriptionEn[slot])
       .join(", ");
@@ -251,16 +286,22 @@ serve(async (req) => {
     const unchangedSlotsSentence = unchangedSlots
       .map((slot) => slotDescriptionEn[slot])
       .join(", ") || "none (every clothing slot was supplied)";
+    const clearedSlots = slotsInThisRequest.filter(
+      (slot) => !garments.some((garment) => garment.slot === slot),
+    );
+    const clearedSlotsInstruction = clearedSlots.length > 0
+      ? `For these editable slots with no replacement garment (${clearedSlots.map((slot) => slotDescriptionEn[slot]).join(", ")}), remove the current item and restore that slot from Reference Image 2.`
+      : "";
 
     const prompt = `
 EDIT Reference Image 1. This is a tightly constrained CLOTHING-ONLY image edit, not a request to create, redraw, or reinterpret a character.
 
-Reference Image 1 is the immutable BRAND-ER mascot source. ${characterIdentityRules}
+Reference Image 1 is the exact CURRENT LOOK to edit. Reference Image 2 is the canonical immutable BRAND-ER character identity anchor. ${characterIdentityRules}
 
 IMMUTABLE CHARACTER LOCK — HIGHEST PRIORITY:
-- The output must visibly be the exact same source character with only a wardrobe change, never a new character inspired by it.
+- The output must visibly be the exact same character from References 1 and 2 with only a wardrobe change, never a new character inspired by them.
 - Preserve exactly: black face color, eyes, eye spacing and shape, eyelashes when present, expression, head outline, hair/headwear not explicitly replaced, neck, body proportions, limb length and thickness, hands, fingers, feet, pose, gender presentation, camera angle, crop, scale, framing, lighting, background, and overall 3D render style.
-- Keep all visible uncovered character regions as close to pixel-identical to Reference Image 1 as generatively possible.
+- Keep all visible uncovered character regions as close to pixel-identical to Reference Image 1 as generatively possible, while Reference Image 2 remains the canonical identity authority.
 - Never redesign, beautify, humanize, age, recolor, reshape, rotate, mirror, or replace the character. Never add or remove a facial feature or limb.
 - Do not change the character to fit a garment. If proportions conflict, tailor and drape the GARMENT to the unchanged character body.
 
@@ -271,7 +312,8 @@ UNCHANGED OUTFIT LOCK — SAME PRIORITY:
 - Never regenerate, restyle, resize, recolor, tighten, loosen, lengthen, shorten, cover, or remove an unchanged garment.
 - Example: if only the bottom slot is supplied, replace only the bottom. The original top must keep the exact same fit, length, folds, sleeves, hood/collar, color, and graphics from Reference Image 1.
 
-${garmentList}
+${garmentList || "No replacement garment reference is supplied; restore only the explicitly editable slot from Reference Image 2."}
+${clearedSlotsInstruction}
 
 TASK: Change only the supplied clothing slot(s) (${slotsSentence}) in Reference Image 1. Make each garment genuinely wrap around the locked body with natural fit, drape, folds, seams, occlusion, and contact shadows. Garment realism must come from adapting the clothing, never from changing the character.
 
@@ -288,71 +330,78 @@ ${slotsInThisRequest.includes("top") || slotsInThisRequest.includes("bottom") ||
   ? "If the character was previously wearing a different garment in the same slot as one of the reference garments above, REPLACE it entirely — the old garment must not remain visible, layered, or peeking out. Only garments provided as reference images in this request, plus any body parts/clothing not covered by those slots (face, hair, and any other slot not being changed), should appear in the final image."
   : ""}
 
-OUTPUT: Return exactly ONE edited full-body image. No before/after split, comparison layout, caption, watermark, extra person, prop, or text overlay. The final result must look like Reference Image 1 was edited only inside the supplied clothing regions. Preserve its original background, camera, pose, framing, and character identity.
+OUTPUT: Return exactly ONE edited full-body image. No before/after split, comparison layout, caption, watermark, extra person, prop, or text overlay. The final result must look like Reference Image 1 was edited only inside the explicitly editable clothing regions. Preserve its original background, camera, pose, framing, and character identity.
 `.trim();
 
     const garmentParts: Array<Record<string, unknown>> = [];
     garments.forEach((garment, index) => {
       garmentParts.push(
-        { text: `Reference Image ${index + 2}: ${slotDescriptionEn[garment.slot]}.` },
+        { text: `Reference Image ${index + 3}: ${slotDescriptionEn[garment.slot]}.` },
         { inlineData: { data: garment.base64, mimeType: garment.mimeType } },
       );
     });
 
     const generationParts: Array<Record<string, unknown>> = [
       { text: prompt },
-      { text: "Reference Image 1: IMMUTABLE BASE CHARACTER. Copy this exact character and edit clothing only." },
+      { text: "Reference Image 1: EXACT CURRENT LOOK. Preserve every pixel-level visual outside the editable clothing slots." },
       { inlineData: { data: characterBase64, mimeType: characterMimeType } },
+      { text: "Reference Image 2: CANONICAL IMMUTABLE CHARACTER IDENTITY. Never deviate from this character." },
+      { inlineData: { data: identityBase64, mimeType: identityMimeType } },
       ...garmentParts,
-      { text: "FINAL LOCK: exact same face, eyes, head, body, pose, hands, feet, style, camera, framing, lighting, and background as Reference Image 1. Only supplied clothing slots may change." },
+      { text: "FINAL LOCK: exact same face, eyes, head, body, pose, hands, feet, style, camera, framing, lighting, background, and every unchanged garment as Reference Image 1. Only explicitly editable clothing slots may change." },
     ];
 
     const firstImage = await generateDressedImage(geminiApiKey, generationParts);
     if (!firstImage) throw new Error("Gemini did not return an image");
 
-    const baseCharacter = { base64: characterBase64, mimeType: characterMimeType };
+    const editSource = { base64: characterBase64, mimeType: characterMimeType };
+    const identityAnchor = { base64: identityBase64, mimeType: identityMimeType };
     let chosenImage = firstImage;
-    let identityEvaluation = await evaluateCharacterIdentity(
+    let preservationEvaluation = await evaluatePreservation(
       geminiApiKey,
-      baseCharacter,
+      identityAnchor,
+      editSource,
       firstImage,
       slotsInThisRequest,
     );
     let identityRetryApplied = false;
 
-    if (identityEvaluation && identityEvaluation.score < 0.9) {
+    if (!isPreservationApproved(preservationEvaluation)) {
       identityRetryApplied = true;
-      console.warn("dress-character identity drift detected", identityEvaluation);
+      console.warn("dress-character preservation failure detected", preservationEvaluation);
       const retryParts: Array<Record<string, unknown>> = [
         {
-          text: `${prompt}\n\nCORRECTION PASS: The rejected draft changed the locked character. Discard every character change and redo the clothing-only edit from Reference Image 1. Detected differences: ${identityEvaluation.violations.join("; ") || "character identity or proportions changed"}.`,
+          text: `${prompt}\n\nCORRECTION PASS: The rejected draft changed locked pixels. Discard it and redo the clothing-only edit from Reference Image 1. Detected differences: ${preservationEvaluation?.violations.join("; ") || "the strict preservation check was unavailable or found a difference"}.`,
         },
-        { text: "Reference Image 1: IMMUTABLE BASE CHARACTER. This exact character must survive unchanged." },
+        { text: "Reference Image 1: EXACT CURRENT LOOK. This exact character and every unchanged garment must survive unchanged." },
         { inlineData: { data: characterBase64, mimeType: characterMimeType } },
+        { text: "Reference Image 2: CANONICAL IMMUTABLE CHARACTER IDENTITY." },
+        { inlineData: { data: identityBase64, mimeType: identityMimeType } },
         { text: "REJECTED DRAFT: use only as an example of what NOT to change outside clothing." },
         { inlineData: { data: firstImage.base64, mimeType: firstImage.mimeType } },
         ...garmentParts,
-        { text: "FINAL CHECK: exact same base face, eyes, head, body proportions, pose, hands, feet, style, camera, framing, lighting, and background; only clothing changes." },
+        { text: "FINAL CHECK: exact same face, eyes, head, body proportions, pose, hands, feet, style, camera, framing, lighting, background, and unchanged garments; only explicitly editable clothing slots change." },
       ];
       const retryImage = await generateDressedImage(geminiApiKey, retryParts);
       if (retryImage) {
-        const retryEvaluation = await evaluateCharacterIdentity(
+        const retryEvaluation = await evaluatePreservation(
           geminiApiKey,
-          baseCharacter,
+          identityAnchor,
+          editSource,
           retryImage,
           slotsInThisRequest,
         );
-        if (!retryEvaluation || retryEvaluation.score >= identityEvaluation.score) {
+        if (isPreservationApproved(retryEvaluation)) {
           chosenImage = retryImage;
-          identityEvaluation = retryEvaluation || identityEvaluation;
+          preservationEvaluation = retryEvaluation;
         }
       }
     }
 
-    if (identityEvaluation && identityEvaluation.score < 0.82) {
-      console.error("dress-character discarded for identity drift", identityEvaluation);
+    if (!isPreservationApproved(preservationEvaluation)) {
+      console.error("dress-character discarded by fail-closed preservation gate", preservationEvaluation);
       return new Response(
-        JSON.stringify({ error: "캐릭터 정체성을 충분히 유지하지 못해 결과를 폐기했습니다. 다시 시도해주세요." }),
+        JSON.stringify({ error: "캐릭터 또는 기존 착장이 조금이라도 달라질 가능성이 있어 결과를 폐기했습니다. 기존 이미지는 그대로 유지됩니다." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 422 },
       );
     }
@@ -385,7 +434,8 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
         renderedImageUrl: publicUrlData?.publicUrl,
         renderedImagePath: uploadData?.path || fileName,
         hasImage: Boolean(publicUrlData?.publicUrl),
-        identityScore: identityEvaluation?.score ?? null,
+        identityScore: preservationEvaluation.score,
+        preservationPassed: true,
         identityRetryApplied,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

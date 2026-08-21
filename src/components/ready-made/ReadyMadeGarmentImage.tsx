@@ -124,7 +124,6 @@ const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string;
   const imageHeightPercent = (sourceHeight / cropHeight) * 100;
   const leftPercent = -(x / cropWidth) * 100;
   const topPercent = -(y / cropHeight) * 100;
-  const cropAspectRatio = cropWidth / cropHeight;
 
   return (
     <div
@@ -134,27 +133,22 @@ const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string;
     >
       <div
         className="relative overflow-hidden"
-        style={
-          cropAspectRatio >= 1
-            ? {
-                aspectRatio: `${cropWidth} / ${cropHeight}`,
-                // Only one axis is ever a definite size (capped at the crop's own native pixel
-                // size so a small source crop never gets stretched past 1:1 on the editor's much
-                // bigger canvas, which is what read as blurry/broken); the other is `auto`,
-                // purely derived from aspect-ratio. Setting both a percentage size AND a max-*
-                // cap on both axes at once (the previous approach) left width and height fighting
-                // — one axis would hit its cap while the other stayed at 100%, breaking the box's
-                // actual aspect ratio and throwing off the image's percentage-based crop offset,
-                // which showed up as a sleeve/cuff getting sliced off.
-                width: `min(100%, ${cropWidth}px)`,
-                height: "auto",
-              }
-            : {
-                aspectRatio: `${cropWidth} / ${cropHeight}`,
-                width: "auto",
-                height: `min(100%, ${cropHeight}px)`,
-              }
-        }
+        style={{
+          aspectRatio: `${cropWidth} / ${cropHeight}`,
+          // Width is the one definite axis (capped at the crop's own native pixel size so a
+          // small source crop never gets stretched past 1:1 on the editor's much bigger canvas,
+          // which is what read as blurry/broken); height is `auto`, purely derived from
+          // aspect-ratio. Deliberately never height-percentage: percentage width against a flex
+          // parent's content box is close to universally reliable, but percentage height only
+          // resolves if every ancestor up the chain has its own definite height, and threading
+          // that through this component's flex/aspect-ratio wrappers wasn't reliable in every
+          // browser — a wide-aspect crop (width-based) rendered fine while a tall-aspect crop
+          // (which used to be height-based here) still got sliced on some pages/browsers. The
+          // outer overflow-hidden below is the fallback for the rare container that's shorter
+          // than this width implies.
+          width: `min(100%, ${cropWidth}px)`,
+          height: "auto",
+        }}
       >
         <img
           src={crop.sheet.startsWith("data:") ? crop.sheet : getAppPath(crop.sheet)}

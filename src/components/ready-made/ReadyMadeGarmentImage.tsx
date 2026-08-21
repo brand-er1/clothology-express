@@ -316,18 +316,21 @@ export const ReadyMadeGarmentImage = ({
       (candidate): candidate is SpriteCrop => Boolean(candidate),
     ) ?? null;
   const recolorSource = directReferenceImage ?? referenceCrop?.sheet ?? "";
-  const shouldRecolor = !directImage && Boolean(directReferenceImage || (!crop && referenceCrop));
+  // Only recolor when the exact requested color has neither a real standalone photo nor a real
+  // sprite crop of its own — a real crop (even from an older sprite sheet) is still a real photo
+  // of the exact color, so it must win over recoloring a *different* color's standalone photo.
+  const shouldRecolor = !directImage && !crop && Boolean(directReferenceImage || referenceCrop);
   const recoloredSheetUrl = useRecoloredGarmentImage(getAppPath(recolorSource), color, shouldRecolor);
 
   if (directImage) {
     return <DirectImage source={directImage} alt={alt} className={className} />;
   }
 
+  if (crop) return <DirectSprite crop={crop} alt={alt} className={className} />;
+
   if (directReferenceImage) {
     return <DirectImage source={recoloredSheetUrl} alt={alt} className={className} />;
   }
-
-  if (crop) return <DirectSprite crop={crop} alt={alt} className={className} />;
 
   if (referenceCrop) {
     return (

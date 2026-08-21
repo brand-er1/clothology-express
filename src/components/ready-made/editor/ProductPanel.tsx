@@ -29,13 +29,13 @@ const ProductCard = ({
         isSelected ? "border-brand shadow-md" : "border-stone-200 hover:border-brand/40"
       }`}
     >
-      <div className="relative flex aspect-square items-center justify-center bg-white p-3 sm:p-4">
+      <div className="relative flex aspect-square items-center justify-center bg-white">
         <img
           src={getAppPath(product.mainThumbnail)}
           alt={`${product.label} 그레이 앞면과 뒷면 전체`}
           draggable={false}
           data-testid={`ready-made-product-thumbnail-${product.key}`}
-          className="block h-full w-full max-h-full max-w-full select-none object-contain object-center"
+          className="block h-[72%] w-[72%] max-h-[72%] max-w-[72%] select-none object-contain object-center"
         />
         {isSelected && (
           <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white">

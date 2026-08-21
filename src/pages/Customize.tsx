@@ -7,8 +7,6 @@ import { TypeStep } from "@/components/customize/TypeStep";
 import { MaterialStep } from "@/components/customize/MaterialStep";
 import { DetailStep } from "@/components/customize/DetailStep";
 import { ImageStep } from "@/components/customize/ImageStep";
-import { ProductionCountryPicker } from "@/components/customize/ProductionCountryPicker";
-import { ProductionCountryBadge } from "@/components/customize/ProductionCountryBadge";
 import { ModifyImageStep } from "@/components/customize/ModifyImageStep";
 import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
@@ -62,7 +60,6 @@ const Customize = () => {
     directQuantity,
     setDirectQuantity,
     minimumOrderQuantity,
-    domesticMinimumOrderQuantity,
     productionCountry,
     setProductionCountry,
     handleAddMaterial,
@@ -88,7 +85,6 @@ const Customize = () => {
     ["어떤 원단이 좋을까요?", "제품의 분위기와 착용감을 결정할 소재를 선택해주세요."],
     ["원하는 디자인을 설명해주세요", "예시처럼 색상, 핏, 프린트 위치와 분위기를 문장으로 적으면 AI가 디자인에 반영합니다."],
     ["첫 디자인을 생성합니다", "입력한 조건을 바탕으로 앞·뒤 의류 디자인을 확인해보세요."],
-    ["어디에서 생산하시겠어요?", "생산 국가에 따라 최소 생산 수량과 예상 제작비가 달라집니다."],
     ["내 디자인으로 완성하세요", "이미지를 편집하고 로고를 배치하면 견적과 상표 분석이 함께 진행됩니다."],
     ["생산 정보를 확인해주세요", "사이즈와 수량을 확인한 뒤 펀딩 페이지를 만들거나 제작만 바로 의뢰할 수 있습니다."],
   ];
@@ -165,7 +161,7 @@ const Customize = () => {
 
           <section
             className={`mt-4 rounded-[1.5rem] border border-gray-200 bg-[#fafbfc] shadow-[0_24px_80px_rgba(44,31,37,0.06)] sm:mt-6 sm:rounded-[2rem] sm:p-9 lg:p-12 ${
-              currentStep === 4 || currentStep === 6 ? "p-2.5" : "p-4"
+              currentStep === 4 || currentStep === 5 ? "p-2.5" : "p-4"
             }`}
           >
             <div className="mb-6 border-b border-stone-200 px-1 pb-5 pt-2 sm:mb-8 sm:px-0 sm:pb-6 sm:pt-0">
@@ -178,15 +174,6 @@ const Customize = () => {
               <p className="mt-2 text-[15px] leading-6 text-stone-500 sm:text-sm">
                 {stepContent[currentStep - 1]?.[1]}
               </p>
-              {currentStep > 5 && productionCountry && (
-                <div className="mt-4">
-                  <ProductionCountryBadge
-                    country={productionCountry}
-                    domesticMoq={domesticMinimumOrderQuantity}
-                    onChangeCountry={setProductionCountry}
-                  />
-                </div>
-              )}
             </div>
 
             <div>
@@ -253,17 +240,6 @@ const Customize = () => {
             )}
 
             {currentStep === 5 && (
-              <ProductionCountryPicker
-                selected={productionCountry}
-                onSelect={(country) => {
-                  setProductionCountry(country);
-                  handleNext();
-                }}
-                showHeading={false}
-              />
-            )}
-
-            {currentStep === 6 && (
               <ModifyImageStep
                 isLoading={imageModifying}
                 selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
@@ -279,12 +255,12 @@ const Customize = () => {
                 onModifyImage={handleModifyImage}
                 onResetModifications={handleResetModifications}
                 onSelectHistoryImage={handleSelectHistoryImage}
-                productionCountry={productionCountry ?? "korea"}
+                productionCountry={productionCountry}
                 onChangeCountry={setProductionCountry}
               />
             )}
 
-            {currentStep === 7 && (
+            {currentStep === 6 && (
               <SizeStep
                 productionSizeSelection={productionSizeSelection}
                 onProductionSizeChange={handleProductionSizeChange}
@@ -336,7 +312,7 @@ const Customize = () => {
                   disabled={isSubmitting}
                   className="h-12 min-w-0 flex-1 rounded-full bg-brand px-4 text-[15px] font-bold hover:bg-brand-dark sm:flex-none sm:px-7 sm:text-sm"
                 >
-                  {currentStep === 4 ? "생산 국가 선택하기" : "다음 단계"}
+                  {currentStep === 4 ? "이 디자인 편집하기" : "다음 단계"}
                 </Button>
               )}
             </div>

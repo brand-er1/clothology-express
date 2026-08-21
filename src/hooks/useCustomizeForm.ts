@@ -29,7 +29,7 @@ import { trackSiteEvent } from "@/lib/site-analytics";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import {
-  applyProductionCountryPricing,
+  calculateEstimateByCountry,
   getProductionCountryMoq,
   productionCountryConfig,
   type ProductionCountry,
@@ -94,13 +94,13 @@ export const useCustomizeForm = () => {
   const [currentProductionEstimate, setCurrentProductionEstimate] =
     useState<ProductionEstimateResult | null>(null);
   const [productionCountry, setProductionCountry] =
-    useState<ProductionCountry | null>(null);
+    useState<ProductionCountry>("korea");
   const domesticMinimumOrderQuantity = getMinimumOrderQuantity(
     selectedType,
     selectedMaterial,
   );
   const minimumOrderQuantity = getProductionCountryMoq(
-    productionCountry ?? "korea",
+    productionCountry,
     domesticMinimumOrderQuantity,
   );
 
@@ -152,19 +152,9 @@ export const useCustomizeForm = () => {
         }
         break;
       case 5:
-        if (!productionCountry) {
-          toast({
-            title: "생산 국가 필요",
-            description: "생산 국가를 선택해주세요.",
-            variant: "destructive",
-          });
-          return false;
-        }
-        break;
-      case 6:
         // No validation for modification step - it's optional
         break;
-      case 7:
+      case 6:
         if (!productionSizeSelection?.selectedSizes.length) {
           toast({
             title: "사이즈 필요",
@@ -546,7 +536,7 @@ export const useCustomizeForm = () => {
       }
       if (!productionEstimate) {
         try {
-          productionEstimate = await analyzeProductionEstimate({
+          const domesticEstimate = await analyzeProductionEstimate({
             imageUrl: finalImageUrl,
             selectedType,
             selectedMaterial,
@@ -556,10 +546,11 @@ export const useCustomizeForm = () => {
             uploadedArtwork: currentArtworkAnalysis,
             quantity: directQuantity,
           });
-          productionEstimate = applyProductionCountryPricing(
-            productionEstimate,
-            productionCountry ?? "korea",
-          );
+          productionEstimate = calculateEstimateByCountry(
+            domesticEstimate,
+            productionCountry,
+            directQuantity,
+          ).estimate;
         } catch (estimateError) {
           console.error("Funding estimate analysis error:", estimateError);
         }
@@ -714,7 +705,7 @@ export const useCustomizeForm = () => {
       }
       if (!productionEstimate) {
         try {
-          productionEstimate = await analyzeProductionEstimate({
+          const domesticEstimate = await analyzeProductionEstimate({
             imageUrl: finalImageUrl,
             selectedType,
             selectedMaterial,
@@ -724,10 +715,11 @@ export const useCustomizeForm = () => {
             uploadedArtwork: currentArtworkAnalysis,
             quantity: directQuantity,
           });
-          productionEstimate = applyProductionCountryPricing(
-            productionEstimate,
-            productionCountry ?? "korea",
-          );
+          productionEstimate = calculateEstimateByCountry(
+            domesticEstimate,
+            productionCountry,
+            directQuantity,
+          ).estimate;
         } catch (estimateError) {
           console.error("Direct request estimate analysis error:", estimateError);
         }
@@ -745,7 +737,7 @@ export const useCustomizeForm = () => {
       const developmentTotal = productionEstimate
         ? formatWon(productionEstimate.totals.developmentTotal)
         : "상담 후 안내";
-      const countryLabel = productionCountryConfig[productionCountry ?? "korea"].label;
+      const countryLabel = productionCountryConfig[productionCountry].label;
       const detailDescription = [
         "의뢰 방식: 바로 제작",
         `생산 국가: ${countryLabel}`,

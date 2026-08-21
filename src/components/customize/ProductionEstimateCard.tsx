@@ -48,16 +48,14 @@ import {
 import {
   aggregateFromItems,
   normalizeEstimateQuantity,
-  recalculateEstimateQuantity,
 } from "@/lib/production-estimate-quantity";
 import {
-  applyProductionCountryPricing,
+  calculateEstimateByCountry,
   getEstimateDomesticMoq,
-  getProductionCountryMoq,
-  getProductionCountryMoqMessage,
   productionCountryConfig,
   type ProductionCountry,
 } from "@/lib/production-country";
+import { ProductionCountryPicker } from "./ProductionCountryPicker";
 
 interface ProductionEstimateCardProps {
   selectedType: string;
@@ -75,10 +73,10 @@ interface ProductionEstimateCardProps {
   onEstimateChange?: (estimate: ProductionEstimateResult | null) => void;
   /** Fires whenever a fresh AI analysis request starts/finishes — lets a parent page drive its own progress UI. */
   onLoadingChange?: (isLoading: boolean) => void;
-  /** Production country the visitor selected before entering this quote — required so the card can apply the right multiplier and MOQ. */
+  /** Production country currently applied to this quote — defaults to "korea" upstream. */
   productionCountry: ProductionCountry;
-  /** Lets the visitor change the production country from inside the quote result. */
-  onChangeCountry?: (country: ProductionCountry) => void;
+  /** Lets the visitor change the production country inline, at the top of the quote result. */
+  onChangeCountry: (country: ProductionCountry) => void;
 }
 
 const decorationLabelByKind = new Map(
@@ -200,26 +198,28 @@ export const ProductionEstimateCard = ({
   const requestIdRef = useRef(0);
   // For a multi-item design ("SET TOTAL"), the true floor is whichever item in the set has the
   // highest domestic MOQ — matches how `recalculateEstimateQuantity` clamps quantity internally.
+  // This is the ONLY floor applied to the input — a visitor can still type below the selected
+  // country's own (higher) MOQ, so the "MOQ 미달" notice below has something to react to instead
+  // of the input silently clamping the value back up.
   const domesticMinimumQuantity = baseEstimate ? getEstimateDomesticMoq(baseEstimate) : 20;
-  const minimumQuantity = getProductionCountryMoq(productionCountry, domesticMinimumQuantity);
   const activeQuantity = normalizeEstimateQuantity(
     quantity ?? internalQuantity,
-    minimumQuantity,
+    domesticMinimumQuantity,
   );
-  const domesticEstimate = useMemo(
+  // Single shared entry point (also used by useCustomizeForm's funding/direct-request submit
+  // paths) so the design-quote and AI-image-quote flows can never compute country pricing
+  // differently.
+  const countryResult = useMemo(
     () =>
       baseEstimate
-        ? recalculateEstimateQuantity(baseEstimate, activeQuantity)
+        ? calculateEstimateByCountry(baseEstimate, productionCountry, activeQuantity)
         : null,
-    [activeQuantity, baseEstimate],
+    [activeQuantity, baseEstimate, productionCountry],
   );
-  const estimate = useMemo(
-    () =>
-      domesticEstimate
-        ? applyProductionCountryPricing(domesticEstimate, productionCountry)
-        : null,
-    [domesticEstimate, productionCountry],
-  );
+  const estimate = countryResult?.estimate ?? null;
+  const meetsCountryMoq = countryResult?.meetsMoq ?? true;
+  const countryMoq = countryResult?.moq ?? domesticMinimumQuantity;
+  const countryMoqMessage = countryResult?.moqMessage ?? null;
 
   useEffect(() => {
     if (estimate?.items && estimate.items.length > 1) {
@@ -268,7 +268,7 @@ export const ProductionEstimateCard = ({
   }, [estimate, includedItemIndices]);
 
   const changeQuantity = (value: number) => {
-    const nextQuantity = normalizeEstimateQuantity(value, minimumQuantity);
+    const nextQuantity = normalizeEstimateQuantity(value, domesticMinimumQuantity);
     if (quantity === undefined) {
       setInternalQuantity(nextQuantity);
     }
@@ -392,8 +392,10 @@ export const ProductionEstimateCard = ({
   }, [loadEstimate]);
 
   useEffect(() => {
-    onEstimateChange?.(displayEstimate);
-  }, [displayEstimate, onEstimateChange]);
+    // Below the selected country's MOQ: report "no usable estimate yet" upward instead of a
+    // priced-but-not-actually-orderable quote, so submit flows correctly stay blocked.
+    onEstimateChange?.(meetsCountryMoq ? displayEstimate : null);
+  }, [displayEstimate, meetsCountryMoq, onEstimateChange]);
 
   useEffect(() => {
     onLoadingChange?.(isLoading);
@@ -456,7 +458,6 @@ export const ProductionEstimateCard = ({
     ? `${totals.quantity}장 기준 확인 가능한 합계`
     : `${totals.quantity}장 기준 예상 제작비`;
   const allItems = estimate.items && estimate.items.length > 1 ? estimate.items : null;
-  const countryMoqMessage = getProductionCountryMoqMessage(productionCountry, domesticMinimumQuantity);
 
   const updateManualAnalysis = (
     updater: (draft: ManualProductionAnalysis) => ManualProductionAnalysis,
@@ -512,6 +513,14 @@ export const ProductionEstimateCard = ({
 
   return (
     <Card className="w-full overflow-hidden border-brand/20 bg-gradient-to-br from-white via-white to-brand/5 shadow-sm">
+      <div className="border-b border-brand/10 bg-white px-5 py-4">
+        <ProductionCountryPicker
+          selected={productionCountry}
+          onSelect={onChangeCountry}
+          variant="compact"
+        />
+      </div>
+
       <div className="border-b border-brand/10 bg-brand px-5 py-5 text-white">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
@@ -539,22 +548,33 @@ export const ProductionEstimateCard = ({
             </p>
           </div>
           <div className="sm:text-right">
-            <p className="text-xs font-semibold text-white/70">{totalLabel}</p>
-            <p className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
-              {formatRange(
-                totals.totalMin,
-                totals.totalMax,
-                totals.totalIsStartingFrom,
-              )}
-            </p>
-            <p className="mt-1 text-xs font-bold text-white/80">
-              (원단 제외{isAbroad ? " · 예상 견적" : ""})
-            </p>
+            {meetsCountryMoq ? (
+              <>
+                <p className="text-xs font-semibold text-white/70">{totalLabel}</p>
+                <p className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
+                  {formatRange(
+                    totals.totalMin,
+                    totals.totalMax,
+                    totals.totalIsStartingFrom,
+                  )}
+                </p>
+                <p className="mt-1 text-xs font-bold text-white/80">
+                  (원단 제외{isAbroad ? " · 예상 견적" : ""})
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-white/70">MOQ 미달</p>
+                <p className="mt-1 text-lg font-black tracking-tight">
+                  최소 {countryMoq.toLocaleString("ko-KR")}장부터 견적 확인 가능
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {isAbroad && totals.domesticProductionMin != null && totals.domesticProductionMax != null && (
+      {meetsCountryMoq && isAbroad && totals.domesticProductionMin != null && totals.domesticProductionMax != null && (
         <div className="border-b border-brand/10 bg-brand/5 px-5 py-4">
           <p className="text-xs font-extrabold text-brand">
             {countryOption.label} 생산 적용 기준
@@ -591,9 +611,9 @@ export const ProductionEstimateCard = ({
           </div>
           <div className="relative w-full sm:w-48">
             <Input
-              aria-label={`견적 수량 (최소 ${minimumQuantity}장)`}
+              aria-label={`견적 수량 (최소 ${domesticMinimumQuantity}장)`}
               type="number"
-              min={minimumQuantity}
+              min={domesticMinimumQuantity}
               max={100000}
               step={1}
               value={activeQuantity}
@@ -606,10 +626,14 @@ export const ProductionEstimateCard = ({
           </div>
         </div>
         <p className="mt-2 text-xs font-bold text-brand">
-          {countryMoqMessage ||
-            `${garment.label} MOQ ${minimumQuantity}장부터 견적을 계산할 수 있습니다.`}
+          {garment.label} MOQ {domesticMinimumQuantity}장부터 견적을 계산할 수 있습니다.
         </p>
-        {totals.productionDiscountRate > 0 && (
+        {!meetsCountryMoq && countryMoqMessage && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-800">
+            {countryMoqMessage}
+          </div>
+        )}
+        {meetsCountryMoq && totals.productionDiscountRate > 0 && (
           <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
             {activeQuantity.toLocaleString("ko-KR")}장 기준 생산공임{" "}
             {Math.round(totals.productionDiscountRate * 100)}% 할인이 적용되었습니다.
@@ -617,7 +641,25 @@ export const ProductionEstimateCard = ({
         )}
       </div>
 
-      {allItems && (
+      {!meetsCountryMoq && (
+        <div className="mx-5 mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-extrabold text-amber-900">
+              {countryOption.flag} {countryOption.label} 생산 MOQ 미달
+            </p>
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              {countryMoqMessage}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-amber-700">
+              수량을 {countryMoq.toLocaleString("ko-KR")}장 이상으로 늘리거나, 위에서 다른 생산 국가를
+              선택해주세요.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {meetsCountryMoq && allItems && (
         <div className="border-b border-stone-200 bg-[#fbfaf8] p-5">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-brand" />
@@ -736,6 +778,8 @@ export const ProductionEstimateCard = ({
         </div>
       )}
 
+      {meetsCountryMoq && (
+      <>
       {ambiguousDecorations.length > 0 && (
         <div className="mx-5 mb-5 mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <div className="flex items-center gap-2">
@@ -1463,6 +1507,8 @@ export const ProductionEstimateCard = ({
             </p>
           </div>
         </div>
+      )}
+      </>
       )}
 
       <div className="mx-5 mb-5 flex items-start gap-2 rounded-xl bg-stone-100 px-4 py-4 text-xs leading-5 text-gray-600">

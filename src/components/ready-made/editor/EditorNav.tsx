@@ -22,7 +22,7 @@ export const EditorNav = ({ active, onSelect, orientation }: EditorNavProps) => 
     className={
       orientation === "vertical"
         ? "flex w-20 shrink-0 flex-col gap-1 border-r border-stone-200 bg-white py-3"
-        : "flex w-full items-stretch justify-between border-t border-stone-200 bg-white px-1 py-1.5"
+        : "flex w-full items-stretch justify-between overflow-hidden rounded-2xl border border-stone-200 bg-white p-1 shadow-sm"
     }
   >
     {EDITOR_PANELS.map(({ key, label, icon: Icon }) => {
@@ -37,8 +37,8 @@ export const EditorNav = ({ active, onSelect, orientation }: EditorNavProps) => 
               ? `flex flex-col items-center gap-1 px-1 py-3 text-[11px] font-bold transition ${
                   isActive ? "text-brand" : "text-stone-400 hover:text-stone-600"
                 }`
-              : `flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] font-bold transition ${
-                  isActive ? "bg-brand/10 text-brand" : "text-stone-400"
+              : `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-0.5 py-2 text-[9px] font-bold leading-none transition sm:text-[10px] ${
+                  isActive ? "bg-brand text-white shadow-sm" : "text-stone-500 hover:bg-stone-50 hover:text-stone-700"
                 }`
           }
         >

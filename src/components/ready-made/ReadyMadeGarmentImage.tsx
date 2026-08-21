@@ -125,6 +125,10 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
  */
 const PRODUCT_DIRECT_IMAGES: Record<string, ProductDirectImageMap> = {
   short_sleeve_tee: {
+    그레이: {
+      front: "/clothing-templates/separate/tshirt-gray-front.webp",
+      back: "/clothing-templates/separate/tshirt-gray-back.webp",
+    },
     화이트: {
       front: "/clothing-templates/separate/tshirt-white-front.webp",
       back: "/clothing-templates/separate/tshirt-white-back.webp",
@@ -186,6 +190,10 @@ const PRODUCT_DIRECT_IMAGES: Record<string, ProductDirectImageMap> = {
     블랙: {
       front: "/clothing-templates/separate/ziphoodie-black-front.webp",
       back: "/clothing-templates/separate/ziphoodie-black-back.webp",
+    },
+    그레이: {
+      front: "/clothing-templates/separate/ziphoodie-gray-front.webp",
+      back: "/clothing-templates/separate/ziphoodie-gray-back.webp",
     },
     화이트: {
       front: "/clothing-templates/separate/ziphoodie-white-front.webp",

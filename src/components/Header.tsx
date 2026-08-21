@@ -144,9 +144,14 @@ export const Header = () => {
               <Button asChild className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark">
                 <Link to="/customize">무료로 의류 만들어보기</Link>
               </Button>
-              <Button asChild variant="ghost" className="h-11 w-full rounded-full text-stone-500">
-                <Link to="/auth">로그인 · 회원가입</Link>
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button asChild variant="outline" className="h-11 w-full rounded-full border-stone-300">
+                  <Link to="/auth?mode=login">로그인</Link>
+                </Button>
+                <Button asChild variant="outline" className="h-11 w-full rounded-full border-stone-300">
+                  <Link to="/auth?mode=signup">회원가입</Link>
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -205,7 +210,10 @@ export const Header = () => {
           ) : (
             <>
               <Button asChild variant="ghost" className="rounded-full text-stone-600">
-                <Link to="/auth">로그인</Link>
+                <Link to="/auth?mode=login">로그인</Link>
+              </Button>
+              <Button asChild variant="outline" className="rounded-full border-stone-300 text-stone-700">
+                <Link to="/auth?mode=signup">회원가입</Link>
               </Button>
               <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark">
                 <Link to="/customize">

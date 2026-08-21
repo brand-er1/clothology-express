@@ -5,11 +5,13 @@ import {
   READY_MADE_LOCATION_SIDE,
   READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
   READY_MADE_MIN_ARTWORK_WIDTH_PERCENT,
+  READY_MADE_PRINT_METHOD_OPTIONS,
   READY_MADE_PRODUCT_OPTIONS,
   createEmptySizeQuantities,
   type ReadyMadeArtworkPlacement,
   type ReadyMadeGarmentSide,
   type ReadyMadePrintLocation,
+  type ReadyMadePrintMethod,
   type ReadyMadeSize,
   type ReadyMadeSizeQuantities,
 } from "@/data/ready-made-pricing-config";
@@ -202,6 +204,25 @@ export const useReadyMadeGroupWearForm = () => {
     setPrintJobs((previous) => (previous.length <= 1 ? previous : previous.filter((job) => job.id !== id)));
   }, []);
 
+  /** Copies an existing print job onto the same side, nudged slightly so the new instance is
+   * visibly distinct from the original instead of sitting exactly on top of it. */
+  const duplicatePrintJob = useCallback((id: string) => {
+    setPrintJobs((previous) => {
+      const source = previous.find((job) => job.id === id);
+      if (!source) return previous;
+      const duplicate: ReadyMadePrintJob = {
+        ...source,
+        id: createPrintJobId(),
+        placement: {
+          ...source.placement,
+          xPercent: Math.min(100, source.placement.xPercent + 6),
+          yPercent: Math.min(100, source.placement.yPercent + 6),
+        },
+      };
+      return [...previous, duplicate];
+    });
+  }, []);
+
   const updatePrintJob = useCallback((id: string, patch: Partial<ReadyMadePrintJob>) => {
     setPrintJobs((previous) => previous.map((job) => (job.id === id ? { ...job, ...patch } : job)));
   }, []);
@@ -225,6 +246,11 @@ export const useReadyMadeGroupWearForm = () => {
       }),
     [updatePrintJob],
   );
+
+  // Informational only — pricing is still purely location-count-based (see calculateReadyMadeQuote).
+  // No print-method price table exists, so this doesn't change the quote; it's folded into the
+  // order's free-text request note so production staff know which technique the customer wants.
+  const [printMethod, setPrintMethod] = useState<ReadyMadePrintMethod>("dtf");
 
   const [requestNote, setRequestNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -302,12 +328,17 @@ export const useReadyMadeGroupWearForm = () => {
 
     try {
       setIsSubmitting(true);
+      const printMethodLabel = READY_MADE_PRINT_METHOD_OPTIONS.find((option) => option.key === printMethod)?.label;
+      const noteWithPrintMethod = [
+        printMethodLabel ? `인쇄 방식: ${printMethodLabel}` : "",
+        requestNote.trim(),
+      ].filter(Boolean).join("\n");
       const result = await createReadyMadeGroupWearRequest({
         product: selectedProduct,
         color: selectedColor,
         quoteInput: { sizeQuantities, garmentBasePrice: selectedProduct.basePrice, printJobs },
         quote,
-        requestNote,
+        requestNote: noteWithPrintMethod,
         imageBase64: designArtwork.base64,
         imageMimeType: designArtwork.mimeType,
         trademarkDecision: trademarkScreening?.decision ?? null,
@@ -330,7 +361,7 @@ export const useReadyMadeGroupWearForm = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, printJobs, requestNote]);
+  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, printJobs, requestNote, printMethod]);
 
   return {
     currentStep,
@@ -362,9 +393,13 @@ export const useReadyMadeGroupWearForm = () => {
     printJobs,
     addPrintJob,
     removePrintJob,
+    duplicatePrintJob,
     updatePrintJob,
     setPrintJobLocation,
     setPrintJobPlacement,
+
+    printMethod,
+    setPrintMethod,
 
     requestNote,
     setRequestNote,

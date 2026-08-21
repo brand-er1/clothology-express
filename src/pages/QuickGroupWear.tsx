@@ -1,93 +1,130 @@
-import { ArrowLeft, ArrowRight, Layers, Timer, Palette, Shirt } from "lucide-react";
+import { useState } from "react";
 import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
-import { ReadyMadeStepIndicator } from "@/components/ready-made/ReadyMadeStepIndicator";
-import { ProductStep } from "@/components/ready-made/ProductStep";
-import { SizeQuantityStep } from "@/components/ready-made/SizeQuantityStep";
-import { DesignUploadStep } from "@/components/ready-made/DesignUploadStep";
-import { PrintOptionsStep } from "@/components/ready-made/PrintOptionsStep";
-import { QuoteStep } from "@/components/ready-made/QuoteStep";
-import { SubmitStep } from "@/components/ready-made/SubmitStep";
-import { useReadyMadeGroupWearForm, READY_MADE_TOTAL_STEPS } from "@/hooks/useReadyMadeGroupWearForm";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { GarmentCanvas } from "@/components/ready-made/editor/GarmentCanvas";
+import { EditorNav, EDITOR_PANELS, type EditorPanelKey } from "@/components/ready-made/editor/EditorNav";
+import { EditorSummaryBar } from "@/components/ready-made/editor/EditorSummaryBar";
+import { ProductPanel } from "@/components/ready-made/editor/ProductPanel";
+import { ColorPanel } from "@/components/ready-made/editor/ColorPanel";
+import { DesignPanel } from "@/components/ready-made/editor/DesignPanel";
+import { PrintPanel } from "@/components/ready-made/editor/PrintPanel";
+import { QuantityPanel } from "@/components/ready-made/editor/QuantityPanel";
+import { QuotePanel } from "@/components/ready-made/editor/QuotePanel";
+import { useReadyMadeGroupWearForm } from "@/hooks/useReadyMadeGroupWearForm";
+import type { ReadyMadeGarmentSide } from "@/data/ready-made-pricing-config";
 
-const badges = [
-  { icon: Timer, label: "약 7일 이내 제작" },
-  { icon: Shirt, label: "XS ~ 3XL" },
-  { icon: Layers, label: "소량 제작 가능" },
-  { icon: Palette, label: "로고/그래픽 인쇄" },
-];
+const PANEL_COMPONENTS: Record<EditorPanelKey, typeof ProductPanel> = {
+  product: ProductPanel,
+  color: ColorPanel,
+  design: DesignPanel,
+  print: PrintPanel,
+  quantity: QuantityPanel,
+  quote: QuotePanel,
+};
 
 const QuickGroupWear = () => {
   const form = useReadyMadeGroupWearForm();
+  const [activePanel, setActivePanel] = useState<EditorPanelKey>("product");
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [side, setSide] = useState<ReadyMadeGarmentSide>("front");
 
   useMascotPageContext({ page: "quick-group-wear", hasEstimate: Boolean(form.quote) });
 
-  const isLastStep = form.currentStep === READY_MADE_TOTAL_STEPS;
-  const isFirstStep = form.currentStep === 1;
+  const ActivePanelComponent = PANEL_COMPONENTS[activePanel];
+  const activePanelLabel = EDITOR_PANELS.find((panel) => panel.key === activePanel)?.label ?? "";
 
   return (
     <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
-      <main className="mx-auto max-w-[860px] px-4 pb-24 pt-24 sm:px-6 sm:pt-28 lg:px-8">
-        <div className="mb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Brand-er quick production</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.045em] text-stone-950 sm:text-5xl">
-            빠르게 만드는 단체복
+
+      <main className="mx-auto max-w-[1440px] pb-28 pt-20 lg:pb-8 lg:pt-24">
+        <div className="px-4 pb-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Brand-er design editor</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-[-0.045em] text-stone-950 sm:text-3xl">
+            단체복 직접 디자인하기
           </h1>
-          <p className="mt-4 max-w-2xl text-[15px] leading-7 text-stone-500">
-            기성 제품에 원하는 디자인만 더해 합리적인 가격으로 빠르게 제작하세요.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
+            옷을 고르고 색상을 바꾸고, 로고를 직접 옮기고 크기를 조절하면서 실시간으로 견적을 확인하세요.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {badges.map(({ icon: Icon, label }) => (
-              <span
-                key={label}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 bg-brand/5 px-3 py-1.5 text-xs font-bold text-brand"
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </span>
-            ))}
+        </div>
+
+        {/* Desktop / tablet: 3-column editor */}
+        <div className="hidden overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm lg:mx-4 lg:flex lg:h-[calc(100vh-220px)] lg:min-h-[640px] xl:mx-8">
+          <EditorNav active={activePanel} onSelect={setActivePanel} orientation="vertical" />
+
+          <div className="w-80 shrink-0 overflow-y-auto border-r border-stone-200 bg-white p-5">
+            <ActivePanelComponent form={form} />
+          </div>
+
+          <div className="flex flex-1 items-center justify-center bg-[#faf9f7] p-6">
+            <div className="w-full max-w-xl">
+              <GarmentCanvas
+                product={form.selectedProduct}
+                color={form.selectedColor}
+                side={side}
+                onSideChange={setSide}
+                designPreviewUrl={form.designPreviewUrl}
+                printJobs={form.printJobs}
+                onPlacementChange={form.setPrintJobPlacement}
+                onDuplicateJob={form.duplicatePrintJob}
+                onDeleteJob={form.removePrintJob}
+              />
+            </div>
+          </div>
+
+          <div className="w-72 shrink-0 overflow-y-auto border-l border-stone-200 bg-white p-5">
+            <EditorSummaryBar form={form} layout="column" />
           </div>
         </div>
 
-        <div className="mb-6" data-tutorial="quick-group-wear-steps">
-          <ReadyMadeStepIndicator currentStep={form.currentStep} />
-        </div>
+        {/* Mobile: canvas on top, condensed summary, bottom toolbar opens a sheet per menu item */}
+        <div className="lg:hidden">
+          <div className="px-4 sm:px-6">
+            <div className="rounded-2xl border border-stone-200 bg-white p-3">
+              <GarmentCanvas
+                product={form.selectedProduct}
+                color={form.selectedColor}
+                side={side}
+                onSideChange={setSide}
+                designPreviewUrl={form.designPreviewUrl}
+                printJobs={form.printJobs}
+                onPlacementChange={form.setPrintJobPlacement}
+                onDuplicateJob={form.duplicatePrintJob}
+                onDeleteJob={form.removePrintJob}
+              />
+            </div>
 
-        <div className="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-7" data-tutorial="quick-group-wear-content">
-          {form.currentStep === 1 && <ProductStep form={form} />}
-          {form.currentStep === 2 && <SizeQuantityStep form={form} />}
-          {form.currentStep === 3 && <DesignUploadStep form={form} />}
-          {form.currentStep === 4 && <PrintOptionsStep form={form} />}
-          {form.currentStep === 5 && <QuoteStep form={form} />}
-          {form.currentStep === 6 && <SubmitStep form={form} />}
-        </div>
-
-        {!(isLastStep && form.submittedOrderId) && (
-          <div className="mt-5 flex items-center justify-between gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-12 rounded-full border-stone-300 bg-white px-6"
-              onClick={form.handleBack}
-              disabled={isFirstStep}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              이전
-            </Button>
-            {!isLastStep && (
-              <Button
-                type="button"
-                className="h-12 rounded-full bg-brand px-6 hover:bg-brand-dark"
-                onClick={form.handleNext}
-              >
-                다음
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            )}
+            <div className="mt-3 rounded-2xl border border-stone-200 bg-white p-3.5">
+              <EditorSummaryBar form={form} layout="row" />
+            </div>
           </div>
-        )}
+
+          <div
+            data-testid="mobile-nav"
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
+          >
+            <EditorNav
+              active={activePanel}
+              orientation="horizontal"
+              onSelect={(panel) => {
+                setActivePanel(panel);
+                setMobileSheetOpen(true);
+              }}
+            />
+          </div>
+
+          <Drawer open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+            <DrawerContent className="max-h-[85vh]">
+              <DrawerHeader className="pb-0">
+                <DrawerTitle>{activePanelLabel}</DrawerTitle>
+              </DrawerHeader>
+              <div className="overflow-y-auto p-4 pt-2">
+                <ActivePanelComponent form={form} />
+              </div>
+            </DrawerContent>
+          </Drawer>
+        </div>
       </main>
     </div>
   );

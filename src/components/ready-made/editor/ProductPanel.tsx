@@ -4,7 +4,7 @@ import { ReadyMadeGarmentImage } from "@/components/ready-made/ReadyMadeGarmentI
 import { READY_MADE_PRODUCT_OPTIONS, type ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
 import type { UseReadyMadeGroupWearFormReturn } from "@/hooks/useReadyMadeGroupWearForm";
 
-interface ProductStepProps {
+interface ProductPanelProps {
   form: UseReadyMadeGroupWearFormReturn;
 }
 
@@ -29,33 +29,30 @@ const ProductCard = ({
           color="그레이"
           side="front"
           alt={`${product.label} 그레이 앞면`}
-          className="h-full w-full p-2 sm:p-3"
+          className="h-full w-full p-2"
         />
         {isSelected && (
-          <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
-            <Check className="h-3.5 w-3.5" />
+          <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white">
+            <Check className="h-3 w-3" />
           </span>
         )}
       </div>
-      <div className="p-3">
-        <p className="text-sm font-bold text-stone-950">{product.label}</p>
-        <p className="mt-0.5 truncate text-xs text-stone-500">{product.description}</p>
-        <p className="mt-1 text-xs font-black text-brand">
-          기본 {product.basePrice.toLocaleString("ko-KR")}원~
+      <div className="p-2">
+        <p className="text-xs font-bold text-stone-950">{product.label}</p>
+        <p className="mt-0.5 text-[11px] font-black text-brand">
+          {product.basePrice.toLocaleString("ko-KR")}원~
         </p>
       </div>
     </Card>
   </button>
 );
 
-export const ProductStep = ({ form }: ProductStepProps) => (
+export const ProductPanel = ({ form }: ProductPanelProps) => (
   <div>
-    <h2 className="text-xl font-black text-stone-950">기성 제품을 선택해주세요</h2>
-    <p className="mt-1 text-sm leading-6 text-stone-500">
-      선택한 제품 위에 로고·그래픽을 인쇄합니다. 원단과 핏은 기성품 규격을 그대로 사용해요.
-    </p>
+    <h3 className="text-sm font-black text-stone-950">상품</h3>
+    <p className="mt-1 text-xs leading-5 text-stone-500">원단과 핏은 기성품 규격을 그대로 사용해요.</p>
 
-    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="mt-4 grid grid-cols-2 gap-2.5">
       {READY_MADE_PRODUCT_OPTIONS.map((product) => (
         <ProductCard
           key={product.key}

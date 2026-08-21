@@ -5,7 +5,7 @@ interface StepIndicatorProps {
   totalSteps: number;
 }
 
-const labels = ["아이템", "원단", "디테일", "AI 생성", "생산 국가", "편집·견적", "사이즈"];
+const labels = ["아이템", "원단", "디테일", "AI 생성", "편집·견적", "사이즈"];
 
 export const StepIndicator = ({ currentStep, totalSteps }: StepIndicatorProps) => {
   const progress = totalSteps > 1 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0;

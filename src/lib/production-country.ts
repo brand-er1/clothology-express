@@ -2,7 +2,10 @@ import type {
   ProductionEstimateResult,
   ProductionEstimateTotals,
 } from "@/types/productionEstimate";
-import { aggregateFromItems } from "@/lib/production-estimate-quantity";
+import {
+  aggregateFromItems,
+  recalculateEstimateQuantity,
+} from "@/lib/production-estimate-quantity";
 
 export type ProductionCountry = "korea" | "china" | "japan";
 
@@ -11,6 +14,8 @@ export interface ProductionCountryOption {
   flag: string;
   label: string;
   headline: string;
+  /** One-line MOQ + price-character summary for the compact selector (embedded in the quote card). */
+  shortDescription: string;
   bullets: string[];
   buttonLabel: string;
   /** Applied to recurring, quantity-scaling production costs only — never to one-time development costs. */
@@ -27,6 +32,7 @@ export const productionCountryConfig: Record<ProductionCountry, ProductionCountr
     flag: "🇰🇷",
     label: "한국",
     headline: "소량 제작부터 안정적으로",
+    shortDescription: "소량 생산 및 빠른 커뮤니케이션",
     bullets: [
       "MOQ: 기존 국내 기준",
       "가격 기준: 국내 기본 견적",
@@ -42,6 +48,7 @@ export const productionCountryConfig: Record<ProductionCountry, ProductionCountr
     flag: "🇨🇳",
     label: "중국",
     headline: "대량 생산의 가격 경쟁력",
+    shortDescription: "MOQ 100장 · 가격 경쟁력 중심",
     bullets: [
       "MOQ: 100장",
       "국내 생산 기준 약 0.7배",
@@ -57,6 +64,7 @@ export const productionCountryConfig: Record<ProductionCountry, ProductionCountr
     flag: "🇯🇵",
     label: "일본",
     headline: "프리미엄 퀄리티 생산",
+    shortDescription: "MOQ 200장 · 프리미엄 생산",
     bullets: [
       "MOQ: 200장",
       "국내 생산 기준 약 1.5배",
@@ -212,3 +220,50 @@ export const getEstimateDomesticMoq = (estimate: ProductionEstimateResult) =>
   estimate.items && estimate.items.length > 1
     ? Math.max(...estimate.items.map((item) => item.garment.moq))
     : estimate.garment.moq;
+
+export interface CountryEstimateResult {
+  /** The requested-country, requested-quantity estimate. Numbers are still populated even when
+   *  `meetsMoq` is false — callers that must not show a below-MOQ quote should gate on `meetsMoq`. */
+  estimate: ProductionEstimateResult;
+  meetsMoq: boolean;
+  moq: number;
+  /** Guidance to show instead of/alongside the estimate when `meetsMoq` is false. */
+  moqMessage: string | null;
+}
+
+/**
+ * The single entry point every quote surface (design-quote upload, AI-generated design, saved
+ * designs, set/bundle estimates, …) must go through to turn a domestic (Korea-baseline) analysis
+ * into a country-priced, quantity-priced estimate. Keeping this logic in one function is what
+ * guarantees the design-quote and AI-image-quote flows can never drift apart:
+ *
+ *   1. Resolve this estimate's domestic MOQ and the requested country's MOQ.
+ *   2. Recompute quantity-dependent domestic totals (discount tier, quantity multiply) via the
+ *      existing `recalculateEstimateQuantity` — untouched, still the single source of truth for
+ *      domestic pricing math.
+ *   3. Apply the country multiplier to recurring per-unit costs only (`applyProductionCountryPricing`).
+ *   4. One-time development costs (pattern/sample/plate fees) are left untouched by construction —
+ *      `applyProductionCountryPricing` never scales them.
+ *   5. Return the priced estimate plus whether the requested quantity actually clears this
+ *      country's MOQ, so the caller can show a "buy more to unlock this country" message instead
+ *      of a real price.
+ */
+export const calculateEstimateByCountry = (
+  baseEstimate: ProductionEstimateResult,
+  country: ProductionCountry,
+  quantity: number,
+): CountryEstimateResult => {
+  const domesticMoq = getEstimateDomesticMoq(baseEstimate);
+  const moq = getProductionCountryMoq(country, domesticMoq);
+  const meetsMoq = quantity >= moq;
+
+  const domesticEstimate = recalculateEstimateQuantity(baseEstimate, Math.max(quantity, domesticMoq));
+  const estimate = applyProductionCountryPricing(domesticEstimate, country);
+
+  return {
+    estimate,
+    meetsMoq,
+    moq,
+    moqMessage: meetsMoq ? null : getProductionCountryMoqMessage(country, domesticMoq),
+  };
+};

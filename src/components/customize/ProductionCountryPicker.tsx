@@ -12,6 +12,9 @@ interface ProductionCountryPickerProps {
   onSelect: (country: ProductionCountry) => void;
   /** Optional heading override — omit to hide the built-in title/description (e.g. inside a dialog). */
   showHeading?: boolean;
+  /** "full" (default): big cards with bullet lists, for a dedicated selection screen.
+   *  "compact": small tab-like cards with a one-line summary, for embedding at the top of a quote result. */
+  variant?: "full" | "compact";
 }
 
 const multiplierLabel = (multiplier: number) => `${multiplier.toFixed(1)}×`;
@@ -20,7 +23,51 @@ export const ProductionCountryPicker = ({
   selected,
   onSelect,
   showHeading = true,
+  variant = "full",
 }: ProductionCountryPickerProps) => {
+  if (variant === "compact") {
+    return (
+      <div>
+        {showHeading && (
+          <p className="mb-2 text-xs font-extrabold text-stone-600">생산 국가 선택</p>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          {productionCountryOrder.map((countryKey) => {
+            const option = productionCountryConfig[countryKey];
+            const isSelected = selected === countryKey;
+
+            return (
+              <button
+                key={countryKey}
+                type="button"
+                onClick={() => onSelect(countryKey)}
+                aria-pressed={isSelected}
+                className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-3 text-center transition sm:flex-row sm:items-center sm:justify-center sm:gap-2 sm:px-3 ${
+                  isSelected
+                    ? "border-brand bg-brand/10"
+                    : "border-stone-200 bg-white hover:border-brand/40"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="text-lg leading-none">{option.flag}</span>
+                  <span className={`text-sm font-black ${isSelected ? "text-brand" : "text-stone-900"}`}>
+                    {option.label}
+                  </span>
+                  <span className="rounded-full bg-stone-950 px-1.5 py-0.5 text-[10px] font-black text-white">
+                    {multiplierLabel(option.multiplier)}
+                  </span>
+                </span>
+                <span className="text-[10px] font-semibold leading-4 text-stone-500 sm:text-[11px]">
+                  {option.shortDescription}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {showHeading && (

@@ -94,8 +94,11 @@ export const Header = () => {
           <Menu className="h-5.5 w-5.5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[min(88vw,340px)] border-l-gray-200 bg-[#f9fafb] px-5">
-        <div className="border-b border-stone-200 pb-6 pt-8">
+      <SheetContent
+        side="right"
+        className="flex h-[100dvh] w-[min(88vw,340px)] flex-col overflow-hidden border-l-gray-200 bg-[#f9fafb] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]"
+      >
+        <div className="shrink-0 border-b border-stone-200 pb-4 pt-2">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">BRAND-ER</p>
           {isAuthenticated ? (
             <>
@@ -106,13 +109,13 @@ export const Header = () => {
             <p className="mt-3 text-lg font-semibold">새로운 패션을 가장 먼저 만나보세요.</p>
           )}
         </div>
-        <nav className="flex flex-col gap-1 py-6">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto py-4">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `rounded-xl px-4 py-3.5 text-base font-semibold transition ${
+                `rounded-xl px-4 py-3 text-[15px] font-semibold transition ${
                   isActive ? "bg-brand text-white" : "text-stone-700 hover:bg-stone-100"
                 }`
               }
@@ -121,7 +124,7 @@ export const Header = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto space-y-2 border-t border-stone-200 pt-5">
+        <div className="shrink-0 space-y-2 border-t border-stone-200 pt-4">
           {isAuthenticated ? (
             <>
               {accountType === "seller" && (

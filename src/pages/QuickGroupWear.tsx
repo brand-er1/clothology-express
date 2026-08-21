@@ -38,7 +38,7 @@ const QuickGroupWear = () => {
     <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
 
-      <main className="mx-auto max-w-[1440px] pb-28 pt-20 lg:pb-8 lg:pt-24">
+      <main className="mx-auto max-w-[1440px] pb-10 pt-20 lg:pb-8 lg:pt-24">
         <div className="px-4 pb-4 sm:px-6 lg:px-8">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Brand-er design editor</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-[-0.045em] text-stone-950 sm:text-3xl">
@@ -78,9 +78,24 @@ const QuickGroupWear = () => {
           </div>
         </div>
 
-        {/* Mobile: canvas on top, condensed summary, bottom toolbar opens a sheet per menu item */}
+        {/* Mobile: the editor menu stays directly below the header so it is easy to reach and
+            never collides with the browser's bottom controls. Each item opens its panel in a drawer. */}
         <div className="lg:hidden">
-          <div className="px-4 sm:px-6">
+          <div
+            data-testid="mobile-nav"
+            className="sticky top-16 z-40 bg-[#f4f0ea]/95 px-4 py-2 backdrop-blur-md sm:top-[72px] sm:px-6"
+          >
+            <EditorNav
+              active={activePanel}
+              orientation="horizontal"
+              onSelect={(panel) => {
+                setActivePanel(panel);
+                setMobileSheetOpen(true);
+              }}
+            />
+          </div>
+
+          <div className="px-4 pt-1 sm:px-6">
             <div className="rounded-2xl border border-stone-200 bg-white p-3">
               <GarmentCanvas
                 product={form.selectedProduct}
@@ -100,22 +115,8 @@ const QuickGroupWear = () => {
             </div>
           </div>
 
-          <div
-            data-testid="mobile-nav"
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
-          >
-            <EditorNav
-              active={activePanel}
-              orientation="horizontal"
-              onSelect={(panel) => {
-                setActivePanel(panel);
-                setMobileSheetOpen(true);
-              }}
-            />
-          </div>
-
           <Drawer open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-            <DrawerContent className="max-h-[85vh]">
+            <DrawerContent className="max-h-[85svh] pb-[env(safe-area-inset-bottom)]">
               <DrawerHeader className="pb-0">
                 <DrawerTitle>{activePanelLabel}</DrawerTitle>
               </DrawerHeader>

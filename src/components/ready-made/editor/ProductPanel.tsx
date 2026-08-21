@@ -9,12 +9,12 @@ interface ProductPanelProps {
 }
 
 const PRODUCT_THUMBNAIL_COLORS: Record<string, string> = {
-  short_sleeve_tee: "화이트",
+  short_sleeve_tee: "그레이",
   polo: "그레이",
   sweatshirt: "그레이",
   half_pants: "그레이",
   hoodie: "그레이",
-  hoodie_zipup: "블랙",
+  hoodie_zipup: "그레이",
 };
 
 const ProductCard = ({

@@ -52,6 +52,7 @@ import {
 } from "@/lib/production-estimate-quantity";
 import {
   applyProductionCountryPricing,
+  getEstimateDomesticMoq,
   getProductionCountryMoq,
   getProductionCountryMoqMessage,
   productionCountryConfig,
@@ -197,7 +198,9 @@ export const ProductionEstimateCard = ({
   const [resolvingDecorationId, setResolvingDecorationId] = useState<string | null>(null);
   const [ambiguousError, setAmbiguousError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
-  const domesticMinimumQuantity = baseEstimate?.garment.moq ?? 20;
+  // For a multi-item design ("SET TOTAL"), the true floor is whichever item in the set has the
+  // highest domestic MOQ — matches how `recalculateEstimateQuantity` clamps quantity internally.
+  const domesticMinimumQuantity = baseEstimate ? getEstimateDomesticMoq(baseEstimate) : 20;
   const minimumQuantity = getProductionCountryMoq(productionCountry, domesticMinimumQuantity);
   const activeQuantity = normalizeEstimateQuantity(
     quantity ?? internalQuantity,

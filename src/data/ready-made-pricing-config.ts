@@ -57,14 +57,13 @@ export const createEmptySizeQuantities = (): ReadyMadeSizeQuantities => ({
 // to (see `src/lib/garment-recolor.ts`). Gray is the first/default selection.
 // ---------------------------------------------------------------------------
 
-export const READY_MADE_COLOR_OPTIONS = ["그레이", "화이트", "블랙", "네이비"] as const;
+export const READY_MADE_COLOR_OPTIONS = ["그레이", "화이트", "블랙"] as const;
 export type ReadyMadeColor = (typeof READY_MADE_COLOR_OPTIONS)[number];
 
 export const READY_MADE_COLOR_SWATCHES: Record<ReadyMadeColor, string> = {
   화이트: "#ffffff",
   블랙: "#1c1c1c",
   그레이: "#8f8f8f",
-  네이비: "#1e2a4a",
 };
 
 // ---------------------------------------------------------------------------

@@ -1,12 +1,21 @@
 import { Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { getAppPath } from "@/utils/appUrl";
+import { ReadyMadeGarmentImage } from "@/components/ready-made/ReadyMadeGarmentImage";
 import { READY_MADE_PRODUCT_OPTIONS, type ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
 import type { UseReadyMadeGroupWearFormReturn } from "@/hooks/useReadyMadeGroupWearForm";
 
 interface ProductPanelProps {
   form: UseReadyMadeGroupWearFormReturn;
 }
+
+const PRODUCT_THUMBNAIL_COLORS: Record<string, string> = {
+  short_sleeve_tee: "화이트",
+  polo: "블랙",
+  sweatshirt: "그레이",
+  half_pants: "그레이",
+  hoodie: "그레이",
+  hoodie_zipup: "블랙",
+};
 
 const ProductCard = ({
   product,
@@ -29,16 +38,23 @@ const ProductCard = ({
         isSelected ? "border-brand shadow-md" : "border-stone-200 hover:border-brand/40"
       }`}
     >
-      <div className="relative flex aspect-square w-full min-w-0 items-center justify-center overflow-hidden bg-white">
-        <img
-          src={getAppPath(product.mainThumbnail)}
-          alt={`${product.label} 그레이 앞면과 뒷면 전체`}
-          draggable={false}
-          data-testid={`ready-made-product-thumbnail-${product.key}`}
-          loading="eager"
-          decoding="async"
-          className="block min-h-0 min-w-0 select-none object-contain object-center"
-          style={{ width: "60%", height: "60%", maxWidth: "60%", maxHeight: "60%" }}
+      <div
+        data-testid={`ready-made-product-thumbnail-${product.key}`}
+        className="relative grid aspect-square w-full min-w-0 grid-cols-2 items-center gap-2 overflow-hidden bg-white p-[12%]"
+      >
+        <ReadyMadeGarmentImage
+          product={product}
+          color={PRODUCT_THUMBNAIL_COLORS[product.key] ?? product.defaultColor}
+          side="front"
+          alt={`${product.label} 앞면 전체`}
+          className="h-full w-full min-h-0 min-w-0"
+        />
+        <ReadyMadeGarmentImage
+          product={product}
+          color={PRODUCT_THUMBNAIL_COLORS[product.key] ?? product.defaultColor}
+          side="back"
+          alt={`${product.label} 뒷면 전체`}
+          className="h-full w-full min-h-0 min-w-0"
         />
         {isSelected && (
           <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white">

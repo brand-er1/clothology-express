@@ -235,12 +235,16 @@ export const recolorGarmentPhoto = async (imageUrl: string, colorHex: string): P
  * falling back to the original photo while recoloring is in flight or if the color has no
  * swatch.
  */
-export const useRecoloredGarmentImage = (imageUrl: string, colorName: string): string => {
+export const useRecoloredGarmentImage = (
+  imageUrl: string,
+  colorName: string,
+  enabled = true,
+): string => {
   const swatch = READY_MADE_COLOR_SWATCHES[colorName as ReadyMadeColor];
   const [resolvedUrl, setResolvedUrl] = useState(imageUrl);
 
   useEffect(() => {
-    if (!swatch) {
+    if (!enabled || !imageUrl || !swatch) {
       setResolvedUrl(imageUrl);
       return;
     }
@@ -257,7 +261,7 @@ export const useRecoloredGarmentImage = (imageUrl: string, colorName: string): s
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, colorName, swatch]);
+  }, [enabled, imageUrl, colorName, swatch]);
 
   return resolvedUrl;
 };

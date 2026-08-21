@@ -85,22 +85,36 @@ const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string;
   const imageHeightPercent = (sourceHeight / cropHeight) * 100;
   const leftPercent = -(x / cropWidth) * 100;
   const topPercent = -(y / cropHeight) * 100;
+  const cropAspectRatio = cropWidth / cropHeight;
 
   return (
-    <div role="img" aria-label={alt} className={`relative overflow-hidden ${className ?? ""}`}>
-      <img
-        src={getAppPath(crop.sheet)}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        className="pointer-events-none absolute max-w-none select-none"
+    <div
+      role="img"
+      aria-label={alt}
+      className={`flex items-center justify-center overflow-hidden ${className ?? ""}`}
+    >
+      <div
+        className="relative max-h-full max-w-full overflow-hidden"
         style={{
-          width: `${imageWidthPercent}%`,
-          height: `${imageHeightPercent}%`,
-          left: `${leftPercent}%`,
-          top: `${topPercent}%`,
+          aspectRatio: `${cropWidth} / ${cropHeight}`,
+          width: cropAspectRatio >= 1 ? "100%" : "auto",
+          height: cropAspectRatio < 1 ? "100%" : "auto",
         }}
-      />
+      >
+        <img
+          src={getAppPath(crop.sheet)}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className="pointer-events-none absolute max-w-none select-none"
+          style={{
+            width: `${imageWidthPercent}%`,
+            height: `${imageHeightPercent}%`,
+            left: `${leftPercent}%`,
+            top: `${topPercent}%`,
+          }}
+        />
+      </div>
     </div>
   );
 };
@@ -130,5 +144,5 @@ export const ReadyMadeGarmentImage = ({
     if (blackCrop) return <DirectSprite crop={blackCrop} alt={alt} className={className} />;
   }
 
-  return <img src={fallbackUrl} alt={alt} className={className} />;
+  return <img src={fallbackUrl} alt={alt} className={`${className ?? ""} object-contain`} />;
 };

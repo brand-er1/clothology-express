@@ -1,5 +1,6 @@
 
 import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +47,7 @@ import type {
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import type { TrademarkScreeningResult } from "@/types/trademark";
 import type { ProductionCountry } from "@/lib/production-country";
+import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 
 const placementExamples = [
   "앞면 왼쪽 가슴에 작게 넣어줘",
@@ -136,6 +138,7 @@ export const ModifyImageStep = ({
   productionCountry,
   onChangeCountry,
 }: ModifyImageStepProps) => {
+  const navigate = useNavigate();
   const [modificationPrompt, setModificationPrompt] = useState("");
   const [imageError, setImageError] = useState(false);
   const [uploadedArtwork, setUploadedArtwork] =
@@ -543,13 +546,45 @@ export const ModifyImageStep = ({
       <Card className="border-0 bg-transparent p-0 shadow-none sm:border sm:bg-card sm:p-6 sm:shadow-sm md:col-span-2">
         <div className="space-y-4">
           <div className="px-1 sm:px-0">
-            <h3 className="text-[17px] font-semibold sm:text-lg">이미지 수정</h3>
-            <p className="mt-1.5 text-[14px] leading-6 text-gray-500 sm:text-sm">
-              AI에게 선택한 이미지를 어떻게 수정할지 설명해주세요.
-              디테일, 컬러, 스타일 등 변경하고 싶은 부분을 자세히 설명하세요.
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[17px] font-semibold sm:text-lg">이미지 수정</h3>
+                <p className="mt-1.5 text-[14px] leading-6 text-gray-500 sm:text-sm">
+                  AI에게 선택한 이미지를 어떻게 수정할지 설명해주세요.
+                  디테일, 컬러, 스타일 등 변경하고 싶은 부분을 자세히 설명하세요.
+                </p>
+              </div>
+              {selectedImageUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 shrink-0 rounded-full border-brand/30 bg-brand/5 px-4 text-sm font-bold text-brand hover:bg-brand/10"
+                  onClick={() =>
+                    navigate("/closet", {
+                      state: {
+                        pendingGarment: {
+                          id: `ai-${Date.now()}`,
+                          slot: inferClosetSlotFromCategory(selectedType),
+                          label: designContext?.split("\n")[0]?.slice(0, 24) || "내가 만든 디자인",
+                          imageUrl: selectedImageUrl,
+                          source: "ai_design",
+                          designRef: {
+                            imageUrl: selectedImageUrl,
+                            selectedType,
+                            selectedMaterial,
+                            designContext,
+                          },
+                        },
+                      },
+                    })
+                  }
+                >
+                  🎮 브랜더에게 입혀보기
+                </Button>
+              )}
+            </div>
           </div>
-          
+
           <div className="flex flex-col items-center space-y-4">
             <div
               className={`relative w-full max-w-3xl select-none overflow-hidden rounded-[1.35rem] border bg-gray-50 shadow-[0_18px_55px_rgba(36,26,24,0.08)] sm:rounded-xl ${

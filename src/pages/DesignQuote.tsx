@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   Camera,
   CheckCircle2,
   ClipboardCheck,
+  Gamepad2,
   ImagePlus,
   Loader2,
   Plus,
@@ -23,12 +24,19 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ProductionEstimateCard } from "@/components/customize/ProductionEstimateCard";
 import { toast } from "@/components/ui/use-toast";
 import { createDirectProductionRequest } from "@/services/orderCreation";
+import { createFundingDraft } from "@/services/funding";
+import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { trackSiteEvent } from "@/lib/site-analytics";
-import type { ProductionEstimateResult } from "@/types/productionEstimate";
+import type {
+  ProductionEstimateImageInput,
+  ProductionEstimateResult,
+} from "@/types/productionEstimate";
 import {
   productionCountryConfig,
   type ProductionCountry,
 } from "@/lib/production-country";
+import { characterConfig, inferClosetSlotFromCategory } from "@/lib/closet-character-config";
+import type { CharacterGender } from "@/types/closet";
 
 const allowedImageTypes = new Set([
   "image/png",
@@ -62,7 +70,27 @@ const readFileAsBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+interface ClosetHandoffState {
+  presetImages?: ProductionEstimateImageInput[];
+  fromCloset?: {
+    character: CharacterGender;
+    garmentLabel: string;
+    imageUrl: string | null;
+    imagePath: string | null;
+    selectedType: string | null;
+    selectedMaterial: string | null;
+  };
+}
+
 const DesignQuote = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const closetHandoff = (location.state as ClosetHandoffState | null) || null;
+  const [closetImages] = useState<ProductionEstimateImageInput[] | null>(
+    closetHandoff?.presetImages?.length ? closetHandoff.presetImages : null,
+  );
+  const [isFundingSubmitting, setIsFundingSubmitting] = useState(false);
+  const [fundingCreated, setFundingCreated] = useState(false);
   const [productionCountry, setProductionCountry] = useState<ProductionCountry>("korea");
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [zoomImageId, setZoomImageId] = useState<string | null>(null);
@@ -186,6 +214,16 @@ const DesignQuote = () => {
     () => images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })),
     [images],
   );
+  const effectiveImages = closetImages ?? cardImages;
+
+  useEffect(() => {
+    if (closetImages?.length) {
+      setIsAnalyzing(true);
+      setAnalysisStarted(true);
+    }
+    // Only ever runs against the images this page mounted with — closet handoff is a one-shot seed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startAnalysis = () => {
     if (images.length === 0) {
@@ -299,6 +337,70 @@ const DesignQuote = () => {
     }
   };
 
+  const startFundingFromCloset = async () => {
+    const fromCloset = closetHandoff?.fromCloset;
+    if (!estimate || !fromCloset?.imageUrl) return;
+
+    try {
+      setIsFundingSubmitting(true);
+      const trademarkScreening = await screenTrademarkImage({
+        imageUrl: fromCloset.imageUrl,
+        source: "final_design",
+        selectedType: fromCloset.selectedType || undefined,
+        selectedMaterial: fromCloset.selectedMaterial || undefined,
+      });
+      if (trademarkScreening.decision === "blocked") {
+        toast({
+          title: "펀딩 등록이 거절되었습니다",
+          description: "유명 타사 상표 또는 매우 유사한 로고가 감지되었습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const clothTypeLabel = fromCloset.selectedType || estimate.garment.label;
+      const materialLabel = fromCloset.selectedMaterial || estimate.material.composition;
+      const description = [
+        `${fromCloset.garmentLabel} 디자인입니다. 목표 인원이 모이면 브랜더가 실제 제품으로 제작합니다.`,
+        `BRAND-ER CLOSET에서 ${characterConfig[fromCloset.character].label}에게 입혀보고 만든 펀딩입니다.`,
+      ].join("\n");
+
+      const funding = await createFundingDraft({
+        productName: fromCloset.garmentLabel,
+        clothType: clothTypeLabel,
+        material: materialLabel,
+        color: "기본 색상",
+        size: "M",
+        sizeOptions: ["M"],
+        measurements: null,
+        imageUrl: fromCloset.imageUrl,
+        imagePath: fromCloset.imagePath,
+        description,
+        estimateDirectUnitMin: estimate.totals.directUnitMin,
+        estimateDirectUnitMax: estimate.totals.directUnitMax,
+        estimateDevelopmentTotal: estimate.totals.developmentTotal,
+        trademarkScreeningId: trademarkScreening.id,
+      });
+
+      setFundingCreated(true);
+      toast({
+        title:
+          trademarkScreening.decision === "review"
+            ? "펀딩이 상표 검토 대기로 등록되었습니다"
+            : "펀딩 페이지가 만들어졌습니다",
+      });
+      navigate(`/fundings/${funding.id}/edit`);
+    } catch (error) {
+      toast({
+        title: "펀딩 시작 실패",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFundingSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
@@ -335,9 +437,16 @@ const DesignQuote = () => {
           </div>
         </div>
 
+        {closetHandoff?.fromCloset && (
+          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-bold text-brand">
+            <Gamepad2 className="h-4 w-4" />
+            BRAND-ER CLOSET에서 가져온 디자인 · {closetHandoff.fromCloset.garmentLabel}
+          </div>
+        )}
+
         <div className="mb-6 grid gap-2 sm:grid-cols-3" data-tutorial="quote-steps">
           {[
-            { label: "1. 디자인 업로드", done: images.length > 0 },
+            { label: "1. 디자인 업로드", done: effectiveImages.length > 0 },
             { label: "2. AI 분석·견적", done: Boolean(estimate) },
             { label: "3. 제작 의뢰 접수", done: Boolean(submittedOrderId) },
           ].map((step) => (
@@ -356,6 +465,29 @@ const DesignQuote = () => {
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[0.78fr_1.22fr]">
+          {closetImages ? (
+            <Card className="overflow-hidden rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
+              <p className="text-sm font-extrabold text-stone-950">가져온 디자인 이미지</p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {closetImages.map((image, index) => (
+                  <div
+                    key={index}
+                    className="aspect-square overflow-hidden rounded-xl border border-stone-200 bg-white"
+                  >
+                    <img
+                      src={image.url || `data:${image.mimeType || "image/png"};base64,${image.base64}`}
+                      alt={`가져온 디자인 ${index + 1}`}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs leading-5 text-stone-500">
+                BRAND-ER CLOSET에서 입힌 디자인으로 자동 분석을 진행했습니다. 이미지를 다시
+                올릴 필요는 없어요.
+              </p>
+            </Card>
+          ) : (
           <Card className="overflow-hidden rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
             {images.length === 0 ? (
               <button
@@ -520,9 +652,10 @@ const DesignQuote = () => {
               {!isPreparing && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </Card>
+          )}
 
           <div data-tutorial="quote-result">
-            {analysisStarted && cardImages.length > 0 ? (
+            {analysisStarted && effectiveImages.length > 0 ? (
               <div className="space-y-5">
                 {isAnalyzing && (
                   <Card className="flex min-h-48 w-full flex-col items-center justify-center gap-3 border-brand/20 px-6 py-10 text-center">
@@ -531,7 +664,7 @@ const DesignQuote = () => {
                     </div>
                     <div>
                       <p className="font-bold text-gray-950">
-                        이미지 {cardImages.length}장을 분석하고 있습니다
+                        이미지 {effectiveImages.length}장을 분석하고 있습니다
                       </p>
                       <p className="mt-1 text-sm text-gray-500">
                         여러 이미지를 하나의 제품으로 종합해 견적을 계산합니다.
@@ -543,17 +676,17 @@ const DesignQuote = () => {
                 {estimate && !isAnalyzing && (
                   <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    {estimate.imageCount ?? cardImages.length}장의 이미지를 종합하여{" "}
+                    {estimate.imageCount ?? effectiveImages.length}장의 이미지를 종합하여{" "}
                     {estimate.items?.length ?? 1}개의 제품으로 분석했습니다.
                   </div>
                 )}
 
                 <div className={isAnalyzing ? "hidden" : ""}>
                   <ProductionEstimateCard
-                    key={images.map((image) => image.id).join(",")}
+                    key={closetImages ? "closet" : images.map((image) => image.id).join(",")}
                     selectedType=""
                     selectedMaterial=""
-                    images={cardImages}
+                    images={effectiveImages}
                     designContext="사용자가 기존에 보유한 의류 디자인 이미지"
                     editable
                     onEstimateChange={setEstimate}
@@ -655,6 +788,59 @@ const DesignQuote = () => {
                           </>
                         )}
                       </Button>
+
+                      {closetHandoff?.fromCloset ? (
+                        closetHandoff.fromCloset.imageUrl ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-3 h-12 w-full rounded-full border-brand/30 bg-white text-base font-black text-brand hover:bg-brand/5"
+                            onClick={() => void startFundingFromCloset()}
+                            disabled={isFundingSubmitting || fundingCreated}
+                          >
+                            {isFundingSubmitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                펀딩 준비 중...
+                              </>
+                            ) : fundingCreated ? (
+                              "🚀 펀딩이 시작됐어요"
+                            ) : (
+                              "🚀 이 디자인으로 펀딩 시작하기"
+                            )}
+                          </Button>
+                        ) : (
+                          <p className="mt-3 text-center text-xs font-semibold text-stone-400">
+                            AI로 만든 디자인만 바로 펀딩으로 연결할 수 있어요. 업로드한 디자인은
+                            제작 의뢰로 진행해주세요.
+                          </p>
+                        )
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-3 h-12 w-full rounded-full border-stone-300 bg-white text-base font-black text-stone-700 hover:bg-stone-50"
+                          onClick={() =>
+                            navigate("/closet", {
+                              state: {
+                                pendingGarment: {
+                                  id: `upload-${Date.now()}`,
+                                  slot: inferClosetSlotFromCategory(estimate.analysis.categoryKey),
+                                  label: estimate.garment.label,
+                                  imageUrl: images[0]?.previewUrl || "",
+                                  source: "upload",
+                                  designRef: {
+                                    imageBase64: images[0]?.base64,
+                                    imageMimeType: images[0]?.mimeType,
+                                  },
+                                },
+                              },
+                            })
+                          }
+                        >
+                          🎮 브랜더에게 입혀보기
+                        </Button>
+                      )}
                     </Card>
                   ))}
               </div>

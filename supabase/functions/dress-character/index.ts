@@ -61,7 +61,7 @@ interface PreservationEvaluation {
 const isPreservationApproved = (evaluation: PreservationEvaluation | null) =>
   Boolean(
     evaluation &&
-      evaluation.score >= 0.98 &&
+      evaluation.score === 1 &&
       evaluation.characterMatch &&
       evaluation.unchangedOutfitMatch &&
       evaluation.violations.length === 0,

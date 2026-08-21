@@ -135,6 +135,10 @@ const PRODUCT_DIRECT_IMAGES: Record<string, ProductDirectImageMap> = {
       front: "/clothing-templates/separate/polo-black-front.webp",
       back: "/clothing-templates/separate/polo-black-back.webp",
     },
+    그레이: {
+      front: "/clothing-templates/separate/polo-gray-front.webp",
+      back: "/clothing-templates/separate/polo-gray-back.webp",
+    },
   },
   sweatshirt: {
     블랙: {

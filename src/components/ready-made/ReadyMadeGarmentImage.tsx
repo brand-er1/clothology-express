@@ -134,6 +134,13 @@ const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string;
           aspectRatio: `${cropWidth} / ${cropHeight}`,
           width: cropAspectRatio >= 1 ? "100%" : "auto",
           height: cropAspectRatio < 1 ? "100%" : "auto",
+          // Never stretch past the crop's own native pixel size — the editor canvas can be much
+          // bigger than these thumbnail-era crops, and filling 100% of a large canvas from a
+          // ~400px-wide source crop is what reads as blurry/broken. Capping here lets the box
+          // still shrink to fit small containers (mobile) via the width/height above, it just
+          // can't grow past 1:1 pixel scale.
+          maxWidth: `${cropWidth}px`,
+          maxHeight: `${cropHeight}px`,
         }}
       >
         <img

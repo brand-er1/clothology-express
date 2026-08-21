@@ -52,8 +52,18 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
       back: { sheet: "/clothing-templates/polo-black.png.png", viewBox: "791 72 728 845" },
     },
     그레이: {
-      front: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "10 45 744 811" },
-      back: { sheet: "/clothing-templates/polp-gray.png.png", viewBox: "799 45 711 811" },
+      front: {
+        sheet: "/clothing-templates/polp-gray.png.png",
+        viewBox: "0 0 512 683",
+        sourceWidth: 1024,
+        sourceHeight: 683,
+      },
+      back: {
+        sheet: "/clothing-templates/polp-gray.png.png",
+        viewBox: "512 0 512 683",
+        sourceWidth: 1024,
+        sourceHeight: 683,
+      },
     },
     화이트: {
       front: { sheet: "/clothing-templates/polo-white.png.png", viewBox: "34 88 729 810" },
@@ -140,8 +150,8 @@ const PRODUCT_DIRECT_IMAGES: Record<string, ProductDirectImageMap> = {
       back: "/clothing-templates/separate/polo-black-back.webp",
     },
     그레이: {
-      front: "/clothing-templates/separate/polo-gray-front.webp",
-      back: "/clothing-templates/separate/polo-gray-back.webp",
+      front: "/clothing-templates/separate/polo-gray-v2-front.webp",
+      back: "/clothing-templates/separate/polo-gray-v2-back.webp",
     },
   },
   sweatshirt: {

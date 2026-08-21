@@ -60,9 +60,9 @@ export const setCharacter = (character: CharacterGender) => {
   emit();
 };
 
-/** Equipping/removing a garment invalidates the previous AI render — the user re-triggers dressing. */
+/** Keep the last verified render until a replacement also passes the strict preservation gate. */
 export const setGarment = (slot: ClosetSlot, garment: ClosetGarment | null) => {
-  state = { ...state, outfit: { ...state.outfit, [slot]: garment }, renderedCharacterImage: null };
+  state = { ...state, outfit: { ...state.outfit, [slot]: garment } };
   persist();
   emit();
 };

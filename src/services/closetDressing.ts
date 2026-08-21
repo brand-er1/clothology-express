@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import type { CharacterGender, ClosetGarment } from "@/types/closet";
+import type { CharacterGender, ClosetGarment, ClosetSlot } from "@/types/closet";
 
 interface ImageRef {
   base64: string;
@@ -47,19 +47,29 @@ export interface DressCharacterResult {
   textResponse: string | null;
 }
 
+interface DressCharacterOptions {
+  /** The exact currently displayed look. Using it as the edit source keeps every other slot unchanged. */
+  editSourceImageUrl?: string | null;
+  /** Only these slots may differ from the current look. */
+  changedSlots?: ClosetSlot[];
+}
+
 /**
- * Calls the dress-character edge function to generate a new image of the base BRAND-ER character
- * actually wearing the given garments — a real AI re-render, never a client-side overlay. Always pass
- * the character's plain base reference image (not a previous render) plus every currently-equipped
- * design garment together, so same-slot swaps replace cleanly and multiple garments render coherently.
+ * Calls the dress-character edge function as a fail-closed clothing edit. The canonical base image is
+ * always the identity anchor. When an existing render is available it becomes the edit source and only
+ * changed slots are sent, so an unchanged top is not regenerated during a bottom swap.
  */
 export const dressCharacter = async (
   character: CharacterGender,
   characterBaseImageUrl: string,
   garments: ClosetGarment[],
+  options: DressCharacterOptions = {},
 ): Promise<DressCharacterResult | null> => {
   try {
-    const characterImage = await urlToImageRef(characterBaseImageUrl);
+    const identityImage = await urlToImageRef(characterBaseImageUrl);
+    const characterImage = options.editSourceImageUrl
+      ? await urlToImageRef(options.editSourceImageUrl)
+      : identityImage;
     const garmentPayload = await Promise.all(
       garments.map(async (garment) => ({
         slot: garment.slot,
@@ -75,16 +85,25 @@ export const dressCharacter = async (
       body: {
         characterGender: character,
         characterImage,
+        identityImage,
         garments: garmentPayload,
+        changedSlots: options.changedSlots,
         userId: user?.id,
       },
     });
 
-    if (error || !result?.renderedImageUrl) {
+    const identityScore = Number(result?.identityScore);
+    if (
+      error ||
+      !result?.renderedImageUrl ||
+      result?.preservationPassed !== true ||
+      !Number.isFinite(identityScore) ||
+      identityScore < 0.98
+    ) {
       console.error("dress-character error:", error, result);
       toast({
-        title: "옷을 입혀보지 못했어요",
-        description: "잠시 후 다시 시도해주세요.",
+        title: "기존 캐릭터를 그대로 유지했어요",
+        description: "조금이라도 달라질 수 있는 생성 결과는 적용하지 않았습니다. 다시 시도해주세요.",
         variant: "destructive",
       });
       return null;

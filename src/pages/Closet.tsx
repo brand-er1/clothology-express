@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { RefreshCw, Save, Share2, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -23,7 +23,7 @@ import {
   useWardrobeState,
   type MyWardrobeGarment,
 } from "@/lib/closet-store";
-import type { CharacterGender, ClosetGarment, ClosetOutfit } from "@/types/closet";
+import type { CharacterGender, ClosetGarment, ClosetOutfit, ClosetSlot } from "@/types/closet";
 
 type ClosetView = "select" | "transition" | "dressing" | "look-complete";
 
@@ -36,6 +36,16 @@ const wornDesignGarments = (outfit: ClosetOutfit) =>
     .map((slot) => outfit[slot])
     .filter((garment): garment is ClosetGarment => Boolean(garment && garment.source !== "preset"));
 
+const wornGarments = (outfit: ClosetOutfit) =>
+  closetSlotOrder
+    .map((slot) => outfit[slot])
+    .filter((garment): garment is ClosetGarment => Boolean(garment));
+
+interface DressingRequestOptions {
+  changedSlots?: ClosetSlot[];
+  editSourceImageUrl?: string | null;
+}
+
 const Closet = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -45,19 +55,37 @@ const Closet = () => {
   const [isDressing, setIsDressing] = useState(false);
   const [showBeforeAfter, setShowBeforeAfter] = useState<"after" | "before">("after");
   const [myWardrobe, setMyWardrobe] = useState<MyWardrobeGarment[]>(() => loadMyWardrobe());
+  const latestDressingRequest = useRef(0);
 
   const pendingGarment = (location.state as ClosetLocationState | null)?.pendingGarment ?? null;
 
-  const runDressing = async (targetOutfit: ClosetOutfit, targetCharacter: CharacterGender) => {
-    const designGarments = wornDesignGarments(targetOutfit);
-    if (designGarments.length === 0) return;
+  const runDressing = async (
+    targetOutfit: ClosetOutfit,
+    targetCharacter: CharacterGender,
+    options: DressingRequestOptions = {},
+  ) => {
+    const garmentsToRender = options.changedSlots
+      ? options.changedSlots
+        .map((slot) => targetOutfit[slot])
+        .filter((garment): garment is ClosetGarment => Boolean(garment))
+      : wornGarments(targetOutfit);
+    const changedSlots = options.changedSlots || garmentsToRender.map((garment) => garment.slot);
+    if (garmentsToRender.length === 0 && (!options.editSourceImageUrl || changedSlots.length === 0)) {
+      return;
+    }
+    const requestId = ++latestDressingRequest.current;
     setIsDressing(true);
     setShowBeforeAfter("after");
     const result = await dressCharacter(
       targetCharacter,
       characterConfig[targetCharacter].baseImage,
-      designGarments,
+      garmentsToRender,
+      {
+        editSourceImageUrl: options.editSourceImageUrl,
+        changedSlots,
+      },
     );
+    if (requestId !== latestDressingRequest.current) return;
     setIsDressing(false);
     if (result) {
       setRenderedCharacterImage(result.renderedImageUrl);
@@ -78,32 +106,78 @@ const Closet = () => {
     setView("transition");
     window.setTimeout(() => {
       setView("dressing");
-      if (pendingGarment) void runDressing(nextOutfit, gender);
+      if (pendingGarment) {
+        void runDressing(nextOutfit, gender, {
+          changedSlots: wornGarments(nextOutfit).map((garment) => garment.slot),
+        });
+      }
     }, 900);
   };
 
   const handleEquip = (slot: (typeof closetSlotOrder)[number], garment: ClosetGarment) => {
+    const editSourceImageUrl = renderedCharacterImage;
+    const targetOutfit = { ...outfit, [slot]: garment };
     setGarment(slot, garment);
     if (garment.source === "ai_design") {
       setMyWardrobe(addToMyWardrobe(garment));
     }
-    void runDressing({ ...outfit, [slot]: garment }, character);
+    void runDressing(targetOutfit, character, {
+      editSourceImageUrl,
+      changedSlots: editSourceImageUrl
+        ? [slot]
+        : wornGarments(targetOutfit).map((item) => item.slot),
+    });
   };
 
   const handleGarmentCreated = (garment: ClosetGarment) => {
+    const editSourceImageUrl = renderedCharacterImage;
+    const targetOutfit = { ...outfit, [garment.slot]: garment };
     setMyWardrobe(addToMyWardrobe(garment));
     setGarment(garment.slot, garment);
-    void runDressing({ ...outfit, [garment.slot]: garment }, character);
+    void runDressing(targetOutfit, character, {
+      editSourceImageUrl,
+      changedSlots: editSourceImageUrl
+        ? [garment.slot]
+        : wornGarments(targetOutfit).map((item) => item.slot),
+    });
     toast({ title: "새 옷을 만들었어요!", description: "브랜더에게 바로 입혀봤어요." });
   };
 
   const handleWearFromWardrobe = (garment: MyWardrobeGarment) => {
+    const editSourceImageUrl = renderedCharacterImage;
+    const targetOutfit = { ...outfit, [garment.slot]: garment };
     setGarment(garment.slot, garment);
-    void runDressing({ ...outfit, [garment.slot]: garment }, character);
+    void runDressing(targetOutfit, character, {
+      editSourceImageUrl,
+      changedSlots: editSourceImageUrl
+        ? [garment.slot]
+        : wornGarments(targetOutfit).map((item) => item.slot),
+    });
   };
 
   const handleRegenerate = () => {
-    void runDressing(outfit, character);
+    void runDressing(outfit, character, {
+      editSourceImageUrl: renderedCharacterImage,
+      changedSlots: wornGarments(outfit).map((garment) => garment.slot),
+    });
+  };
+
+  const handleRemove = (slot: ClosetSlot) => {
+    const editSourceImageUrl = renderedCharacterImage;
+    const targetOutfit = { ...outfit, [slot]: null };
+    setGarment(slot, null);
+    if (wornGarments(targetOutfit).length === 0) {
+      latestDressingRequest.current += 1;
+      setIsDressing(false);
+      setRenderedCharacterImage(null);
+      return;
+    }
+    if (editSourceImageUrl) {
+      void runDressing(targetOutfit, character, {
+        editSourceImageUrl,
+        changedSlots: [slot],
+      });
+    }
   };
 
   const wornSlotCount = closetSlotOrder.filter((slot) => outfit[slot]).length;
@@ -232,7 +306,9 @@ const Closet = () => {
                     type="button"
                     onClick={() => {
                       setCharacter(gender);
-                      void runDressing(outfit, gender);
+                      void runDressing(outfit, gender, {
+                        changedSlots: wornGarments(outfit).map((garment) => garment.slot),
+                      });
                     }}
                     className={`rounded-full px-4 py-2 text-sm font-bold transition ${
                       character === gender
@@ -299,10 +375,7 @@ const Closet = () => {
                       <WardrobeSlotPicker
                         outfit={outfit}
                         onEquip={handleEquip}
-                        onRemove={(slot) => {
-                          setGarment(slot, null);
-                          void runDressing({ ...outfit, [slot]: null }, character);
-                        }}
+                        onRemove={handleRemove}
                       />
                     </Card>
                     <Button

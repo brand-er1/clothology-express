@@ -4,35 +4,26 @@ export type CharacterGender = "male" | "female";
 
 export type ClosetSlot = "top" | "bottom" | "outer" | "shoes" | "accessory";
 
-export interface ClosetAnchor {
-  /** Center position of the garment overlay, as a percentage of the character canvas. */
-  xPercent: number;
-  yPercent: number;
-  /** Garment width as a percentage of the canvas width; height follows the source image's aspect ratio. */
-  widthPercent: number;
-  rotationDeg?: number;
-  zIndex: number;
-}
-
 export interface CharacterConfig {
   key: CharacterGender;
   label: string;
   /** Short line shown on the character-select card. */
   tagline: string;
+  /** Reference image used both for the plain "undressed" view and as the AI try-on identity anchor. */
   baseImage: string;
-  anchors: Record<ClosetSlot, ClosetAnchor>;
 }
 
 /**
  * A single garment worn (or wearable) in the closet. `designRef` carries what's needed to hand the
  * garment off to the existing quote/funding systems unchanged — the closet never recomputes pricing
- * or re-implements those flows itself.
+ * or re-implements those flows itself. The AI dressing call also reads `designRef`'s image data (or
+ * `imageUrl`) as the garment reference image — the closet never overlays this image on the character.
  */
 export interface ClosetGarment {
   id: string;
   slot: ClosetSlot;
   label: string;
-  /** Garment artwork used for the dressing-room overlay. */
+  /** Garment artwork thumbnail, and the AI try-on reference image for this garment. */
   imageUrl: string;
   source: "ai_design" | "upload" | "preset";
   designRef?: {
@@ -55,6 +46,12 @@ export type ClosetOutfit = Record<ClosetSlot, ClosetGarment | null>;
 export interface WardrobeState {
   character: CharacterGender;
   outfit: ClosetOutfit;
+  /**
+   * The latest AI-generated "character actually wearing the current outfit" preview image. This is a
+   * disposable preview only — quote/funding always read `outfit[slot].designRef`, the original design
+   * data, and must never analyze or depend on this rendered image.
+   */
+  renderedCharacterImage: string | null;
 }
 
 export interface SavedBrandErLook {
@@ -62,4 +59,5 @@ export interface SavedBrandErLook {
   savedAt: string;
   character: CharacterGender;
   outfit: ClosetOutfit;
+  renderedCharacterImage: string | null;
 }

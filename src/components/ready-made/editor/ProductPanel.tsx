@@ -22,20 +22,23 @@ const ProductCard = ({
     onClick={onSelect}
     aria-pressed={isSelected}
     data-testid={`ready-made-product-option-${product.key}`}
-    className="text-left"
+    className="w-full min-w-0 text-left"
   >
     <Card
-      className={`overflow-hidden rounded-2xl border-2 p-0 transition ${
+      className={`w-full min-w-0 overflow-hidden rounded-2xl border-2 p-0 transition ${
         isSelected ? "border-brand shadow-md" : "border-stone-200 hover:border-brand/40"
       }`}
     >
-      <div className="relative flex aspect-square items-center justify-center bg-white">
+      <div className="relative flex aspect-square w-full min-w-0 items-center justify-center overflow-hidden bg-white">
         <img
           src={getAppPath(product.mainThumbnail)}
           alt={`${product.label} 그레이 앞면과 뒷면 전체`}
           draggable={false}
           data-testid={`ready-made-product-thumbnail-${product.key}`}
-          className="block h-[72%] w-[72%] max-h-[72%] max-w-[72%] select-none object-contain object-center"
+          loading="eager"
+          decoding="async"
+          className="block min-h-0 min-w-0 select-none object-contain object-center"
+          style={{ width: "60%", height: "60%", maxWidth: "60%", maxHeight: "60%" }}
         />
         {isSelected && (
           <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white">
@@ -58,7 +61,7 @@ export const ProductPanel = ({ form }: ProductPanelProps) => (
     <h3 className="text-sm font-black text-stone-950">상품</h3>
     <p className="mt-1 text-xs leading-5 text-stone-500">원단과 핏은 기성품 규격을 그대로 사용해요.</p>
 
-    <div className="mt-4 grid grid-cols-2 gap-2.5">
+    <div className="mt-4 grid min-w-0 grid-cols-2 gap-2.5">
       {READY_MADE_PRODUCT_OPTIONS.map((product) => (
         <ProductCard
           key={product.key}

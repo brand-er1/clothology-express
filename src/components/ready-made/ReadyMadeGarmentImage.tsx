@@ -11,6 +11,9 @@ interface SpriteCrop {
 
 type DirectColor = "그레이" | "화이트" | "블랙";
 type ProductSpriteMap = Partial<Record<DirectColor, Record<ReadyMadeGarmentSide, SpriteCrop>>>;
+type ProductDirectImageMap = Partial<
+  Record<DirectColor, Partial<Record<ReadyMadeGarmentSide, string>>>
+>;
 
 const W = 1536;
 const H = 1024;
@@ -115,6 +118,77 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
   },
 };
 
+/**
+ * Standalone front/back photos supplied as individual files. These are preferred over the old
+ * side-by-side sprite sheets because the browser can render the complete source with
+ * `object-fit: contain`; no crop coordinates or overflow clipping are involved.
+ */
+const PRODUCT_DIRECT_IMAGES: Record<string, ProductDirectImageMap> = {
+  short_sleeve_tee: {
+    화이트: {
+      front: "/clothing-templates/separate/tshirt-white-front.webp",
+      back: "/clothing-templates/separate/tshirt-white-back.webp",
+    },
+  },
+  polo: {
+    블랙: {
+      front: "/clothing-templates/separate/polo-black-front.webp",
+      back: "/clothing-templates/separate/polo-black-back.webp",
+    },
+  },
+  sweatshirt: {
+    블랙: {
+      front: "/clothing-templates/separate/sweatshirt-black-front.webp",
+      back: "/clothing-templates/separate/sweatshirt-black-back.webp",
+    },
+    그레이: {
+      front: "/clothing-templates/separate/sweatshirt-gray-front.webp",
+      back: "/clothing-templates/separate/sweatshirt-gray-back.webp",
+    },
+    화이트: {
+      front: "/clothing-templates/separate/sweatshirt-white-front.webp",
+      back: "/clothing-templates/separate/sweatshirt-white-back.webp",
+    },
+  },
+  half_pants: {
+    블랙: {
+      front: "/clothing-templates/separate/shorts-black-front.webp",
+      back: "/clothing-templates/separate/shorts-black-back.webp",
+    },
+    그레이: {
+      front: "/clothing-templates/separate/shorts-gray-front.webp",
+      back: "/clothing-templates/separate/shorts-gray-back.webp",
+    },
+    화이트: {
+      front: "/clothing-templates/separate/shorts-white-front.webp",
+      back: "/clothing-templates/separate/shorts-white-back.webp",
+    },
+  },
+  hoodie: {
+    블랙: {
+      front: "/clothing-templates/separate/hoodie-black-front.webp",
+      back: "/clothing-templates/separate/hoodie-black-back.webp",
+    },
+    그레이: {
+      front: "/clothing-templates/separate/hoodie-gray-front.webp",
+      back: "/clothing-templates/separate/hoodie-gray-back.webp",
+    },
+    화이트: {
+      front: "/clothing-templates/separate/hoodie-white-front.webp",
+      back: "/clothing-templates/separate/hoodie-white-back.webp",
+    },
+  },
+  hoodie_zipup: {
+    블랙: {
+      front: "/clothing-templates/separate/ziphoodie-black-front.webp",
+      back: "/clothing-templates/separate/ziphoodie-black-back.webp",
+    },
+    화이트: {
+      front: "/clothing-templates/separate/ziphoodie-white-front.webp",
+    },
+  },
+};
+
 const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string; className?: string }) => {
   const sourceWidth = crop.sourceWidth ?? W;
   const sourceHeight = crop.sourceHeight ?? H;
@@ -168,6 +242,19 @@ const DirectSprite = ({ crop, alt, className }: { crop: SpriteCrop; alt: string;
   );
 };
 
+const DirectImage = ({ source, alt, className }: { source: string; alt: string; className?: string }) => (
+  <img
+    src={source.startsWith("data:") ? source : getAppPath(source)}
+    alt={alt}
+    draggable={false}
+    loading="eager"
+    decoding="async"
+    className={`block h-full w-full min-h-0 min-w-0 max-h-full max-w-full object-contain object-center ${
+      className ?? ""
+    }`}
+  />
+);
+
 /** Preference order for which real photo to recolor from when the requested color (e.g. 네이비)
  * has no sprite crop of its own. Black first: its strong garment/background contrast gives the
  * cleanest Otsu mask and the shading amplitude here was tuned against dark reference photos, so
@@ -188,7 +275,12 @@ export const ReadyMadeGarmentImage = ({
   className?: string;
 }) => {
   const directColor = color as DirectColor;
+  const directImage = PRODUCT_DIRECT_IMAGES[product.key]?.[directColor]?.[side];
   const crop = PRODUCT_SPRITES[product.key]?.[directColor]?.[side];
+
+  const directReferenceImage = REFERENCE_COLOR_ORDER.map(
+    (candidateColor) => PRODUCT_DIRECT_IMAGES[product.key]?.[candidateColor]?.[side],
+  ).find((candidate): candidate is string => Boolean(candidate));
 
   // No real photo/sprite for this exact color (currently: 네이비 on every product) — recolor the
   // best available real photo instead of the generic placeholder.png, so the fallback still shows
@@ -197,10 +289,17 @@ export const ReadyMadeGarmentImage = ({
     REFERENCE_COLOR_ORDER.map((c) => PRODUCT_SPRITES[product.key]?.[c]?.[side]).find(
       (candidate): candidate is SpriteCrop => Boolean(candidate),
     ) ?? null;
-  const recoloredSheetUrl = useRecoloredGarmentImage(
-    referenceCrop ? getAppPath(referenceCrop.sheet) : "",
-    color,
-  );
+  const recolorSource = directReferenceImage ?? referenceCrop?.sheet ?? "";
+  const shouldRecolor = !directImage && Boolean(directReferenceImage || (!crop && referenceCrop));
+  const recoloredSheetUrl = useRecoloredGarmentImage(getAppPath(recolorSource), color, shouldRecolor);
+
+  if (directImage) {
+    return <DirectImage source={directImage} alt={alt} className={className} />;
+  }
+
+  if (directReferenceImage) {
+    return <DirectImage source={recoloredSheetUrl} alt={alt} className={className} />;
+  }
 
   if (crop) return <DirectSprite crop={crop} alt={alt} className={className} />;
 

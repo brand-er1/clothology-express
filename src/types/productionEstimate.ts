@@ -184,6 +184,12 @@ export interface ProductionEstimateTotals {
   effectiveUnitMin: number;
   effectiveUnitMax: number;
   totalIsStartingFrom: boolean;
+  /** Present once a production-country multiplier has been applied (see `lib/production-country.ts`). */
+  productionCountry?: "korea" | "china" | "japan";
+  productionCountryMultiplier?: number;
+  /** Domestic (Korea-baseline) per-unit production price before the country multiplier. */
+  domesticProductionMin?: number | null;
+  domesticProductionMax?: number | null;
 }
 
 export interface ProductionEstimateGarment {

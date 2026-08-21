@@ -116,6 +116,7 @@ function App() {
           <WelcomeNotification />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/index.html" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />

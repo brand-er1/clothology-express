@@ -260,18 +260,10 @@ export const useCustomizeForm = () => {
         return false;
       }
       
-      // Get current user
+      // Guests can edit a generated design as well. The edge function stores
+      // anonymous results below the dedicated `anon` path.
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user;
-      
-      if (!user) {
-        toast({
-          title: "로그인 필요",
-          description: "이미지를 수정하려면 로그인해주세요.",
-          variant: "destructive",
-        });
-        return false;
-      }
       
       // Find material name
       const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
@@ -284,7 +276,7 @@ export const useCustomizeForm = () => {
           body: { 
             imageUrl: imageUrlToModify,
             modificationPrompt: prompt,
-            userId: user.id,
+            userId: user?.id,
             clothType: selectedType,
             originalPrompt: `${selectedMaterialName} ${selectedType}, ${selectedDetail}`,
             referenceImage: options.referenceImage,

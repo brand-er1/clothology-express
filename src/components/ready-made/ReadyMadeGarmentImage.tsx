@@ -135,6 +135,10 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
  */
 const PRODUCT_DIRECT_IMAGES: Record<string, ProductDirectImageMap> = {
   short_sleeve_tee: {
+    블랙: {
+      front: "/clothing-templates/separate/tshirt-black-front.png",
+      back: "/clothing-templates/separate/tshirt-black-back.png",
+    },
     그레이: {
       front: "/clothing-templates/separate/tshirt-gray-front.webp",
       back: "/clothing-templates/separate/tshirt-gray-back.webp",

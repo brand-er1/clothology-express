@@ -114,7 +114,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     imageBack: `${readyMadeUploadsBase}/placeholder.png`,
     mainThumbnail: `${clothingTemplatesBase}/polo-gray-white-front-back.webp`,
     defaultColor: "그레이",
-    hasPlaceholderImage: true,
     colors: READY_MADE_COLOR_OPTIONS,
   },
   {
@@ -137,7 +136,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     imageBack: `${readyMadeUploadsBase}/placeholder.png`,
     mainThumbnail: `${clothingTemplatesBase}/shorts-gray-white-front-back.webp`,
     defaultColor: "그레이",
-    hasPlaceholderImage: true,
     colors: READY_MADE_COLOR_OPTIONS,
   },
   {
@@ -160,7 +158,6 @@ export const READY_MADE_PRODUCT_OPTIONS: ReadyMadeProductOption[] = [
     imageBack: `${readyMadeUploadsBase}/placeholder.png`,
     mainThumbnail: `${clothingTemplatesBase}/zip-hoodie-gray-white-front-back.webp`,
     defaultColor: "그레이",
-    hasPlaceholderImage: true,
     colors: READY_MADE_COLOR_OPTIONS,
   },
 ];

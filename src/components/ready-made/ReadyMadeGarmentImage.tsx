@@ -45,11 +45,8 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
       back: { sheet: "/clothing-templates/sweatshirt-gray-white-front-back.webp", viewBox: `${(W * 3) / 4} ${H / 2} ${W / 4} ${H / 2}` },
     },
   },
-  // No 블랙 crop for polo: the uploaded polo-black-front-back.webp is corrupted (truncated
-  // mid-upload — its RIFF header declares more bytes than the file actually has, so no decoder
-  // can read it). 블랙 falls through to the placeholder-recolor fallback below until a valid
-  // photo is uploaded.
   polo: {
+    ...halfBlack("/clothing-templates/polo-black-front-back.webp"),
     ...grayWhite2x2("/clothing-templates/polo-gray-white-front-back.webp"),
   },
   sweatshirt: {
@@ -63,9 +60,10 @@ const PRODUCT_SPRITES: Record<string, ProductSpriteMap> = {
       back: { sheet: "/clothing-templates/sweatshirt-gray-white-front-back.webp", viewBox: `${(W * 3) / 4} 0 ${W / 4} ${H / 2}` },
     },
   },
-  // No crops for half_pants at all: both uploaded sheets (shorts-black-front-back.webp and
-  // shorts-gray-white-front-back.webp) are corrupted the same way as polo's above. Every color
-  // falls through to the placeholder-recolor fallback until valid photos are uploaded.
+  half_pants: {
+    ...halfBlack("/clothing-templates/shorts-black-front-back.webp"),
+    ...grayWhite2x2("/clothing-templates/shorts-gray-white-front-back.webp"),
+  },
   hoodie: {
     ...halfBlack("/clothing-templates/hoodie-black-front-back.webp"),
     ...grayWhite2x2("/clothing-templates/hoodie-gray-white-front-back.webp"),

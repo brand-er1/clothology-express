@@ -35,115 +35,80 @@ const loadState = (): WardrobeState => {
 
 let state: WardrobeState = loadState();
 const listeners = new Set<() => void>();
-
 const persist = () => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // localStorage unavailable (private mode, quota) — in-memory state still works for this tab.
-  }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* best effort */ }
 };
-
 const emit = () => listeners.forEach((listener) => listener());
 
 export const getWardrobeState = () => state;
-
 export const subscribeWardrobe = (listener: () => void) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
 
-/** Switching character keeps the currently-equipped outfit — only the stale AI render is cleared. */
 export const setCharacter = (character: CharacterGender) => {
   state = { ...state, character, renderedCharacterImage: null };
-  persist();
-  emit();
+  persist(); emit();
 };
-
-/** Keep the last verified render until a replacement also passes the strict preservation gate. */
 export const setGarment = (slot: ClosetSlot, garment: ClosetGarment | null) => {
   state = { ...state, outfit: { ...state.outfit, [slot]: garment } };
-  persist();
-  emit();
+  persist(); emit();
 };
-
 export const clearOutfit = () => {
   state = { ...state, outfit: emptyOutfit(), renderedCharacterImage: null };
-  persist();
-  emit();
+  persist(); emit();
 };
-
 export const setRenderedCharacterImage = (imageUrl: string | null) => {
   state = { ...state, renderedCharacterImage: imageUrl };
-  persist();
-  emit();
+  persist(); emit();
 };
-
-/** Garments the visitor actually authored (AI design or upload) — what quoting/funding can act on. */
-export const getWornDesignGarments = () =>
-  Object.values(state.outfit).filter(
-    (garment): garment is ClosetGarment => Boolean(garment && garment.source !== "preset"),
-  );
-
-export const useWardrobeState = () =>
-  useSyncExternalStore(subscribeWardrobe, getWardrobeState, getWardrobeState);
-
-// --- Saved looks (MY BRAND-ER LOOK) ---
+export const getWornDesignGarments = () => Object.values(state.outfit).filter(
+  (garment): garment is ClosetGarment => Boolean(garment && garment.source !== "preset"),
+);
+export const useWardrobeState = () => useSyncExternalStore(subscribeWardrobe, getWardrobeState, getWardrobeState);
 
 export const loadSavedLooks = (): SavedBrandErLook[] => {
   try {
     const raw = localStorage.getItem(SAVED_LOOKS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as SavedBrandErLook[];
-  } catch {
-    return [];
-  }
+    return raw ? JSON.parse(raw) as SavedBrandErLook[] : [];
+  } catch { return []; }
 };
-
 export const saveCurrentLook = (): SavedBrandErLook => {
   const look: SavedBrandErLook = {
-    id: typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}`,
-    savedAt: new Date().toISOString(),
-    character: state.character,
-    outfit: state.outfit,
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`,
+    savedAt: new Date().toISOString(), character: state.character, outfit: state.outfit,
     renderedCharacterImage: state.renderedCharacterImage,
   };
-  try {
-    const looks = [look, ...loadSavedLooks()].slice(0, 20);
-    localStorage.setItem(SAVED_LOOKS_KEY, JSON.stringify(looks));
-  } catch {
-    // Best-effort — the look is still visible for the rest of this session even if it can't persist.
-  }
+  try { localStorage.setItem(SAVED_LOOKS_KEY, JSON.stringify([look, ...loadSavedLooks()].slice(0, 20))); } catch { /* best effort */ }
   return look;
 };
 
-// --- My wardrobe (AI-created garments this session, browsable for quick re-equip) ---
-
-export interface MyWardrobeGarment extends ClosetGarment {
-  createdAt: string;
-}
-
+export interface MyWardrobeGarment extends ClosetGarment { createdAt: string; }
 const MY_WARDROBE_KEY = "brander-my-wardrobe-v1";
 
 export const loadMyWardrobe = (): MyWardrobeGarment[] => {
   try {
     const raw = sessionStorage.getItem(MY_WARDROBE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as MyWardrobeGarment[];
-  } catch {
-    return [];
-  }
+    return raw ? JSON.parse(raw) as MyWardrobeGarment[] : [];
+  } catch { return []; }
+};
+
+const persistMyWardrobe = (items: MyWardrobeGarment[]) => {
+  try { sessionStorage.setItem(MY_WARDROBE_KEY, JSON.stringify(items)); } catch { /* best effort */ }
+  return items;
 };
 
 export const addToMyWardrobe = (garment: ClosetGarment): MyWardrobeGarment[] => {
   const entry: MyWardrobeGarment = { ...garment, createdAt: new Date().toISOString() };
-  const next = [entry, ...loadMyWardrobe()].slice(0, 30);
-  try {
-    sessionStorage.setItem(MY_WARDROBE_KEY, JSON.stringify(next));
-  } catch {
-    // Best-effort — the item is still usable this turn even if it can't persist.
-  }
-  return next;
+  const withoutSameId = loadMyWardrobe().filter((item) => item.id !== garment.id);
+  return persistMyWardrobe([entry, ...withoutSameId].slice(0, 30));
+};
+
+/** Replace an authored garment after an AI edit while keeping its wardrobe identity and position. */
+export const replaceMyWardrobeGarment = (garment: MyWardrobeGarment): MyWardrobeGarment[] => {
+  const current = loadMyWardrobe();
+  const next = current.some((item) => item.id === garment.id)
+    ? current.map((item) => item.id === garment.id ? garment : item)
+    : [garment, ...current];
+  return persistMyWardrobe(next.slice(0, 30));
 };

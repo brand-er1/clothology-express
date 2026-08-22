@@ -74,6 +74,7 @@ export const Header = () => {
 
   const navItems = [
     { to: "/fundings", label: "SHOP", visible: true },
+    { to: "/portfolio", label: "제작 포트폴리오", visible: true },
     { to: "/my-fundings", label: "MY COLLECTION", visible: isAuthenticated && accountType === "buyer" },
     { to: "/customize", label: "BRAND-ER STUDIO", visible: !isAuthenticated || accountType === "seller" },
     { to: "/quick-group-wear", label: "빠른 단체복 제작", visible: !isAuthenticated || accountType === "seller" },

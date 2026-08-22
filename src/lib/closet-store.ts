@@ -119,7 +119,7 @@ export const saveCurrentLook = (): SavedBrandErLook => {
   return look;
 };
 
-// --- My wardrobe (AI-created garments this session, browsable for quick re-equip) ---
+// --- My wardrobe (AI-created garments this session, browsable for quick re-equip/edit) ---
 
 export interface MyWardrobeGarment extends ClosetGarment {
   createdAt: string;
@@ -137,13 +137,26 @@ export const loadMyWardrobe = (): MyWardrobeGarment[] => {
   }
 };
 
-export const addToMyWardrobe = (garment: ClosetGarment): MyWardrobeGarment[] => {
-  const entry: MyWardrobeGarment = { ...garment, createdAt: new Date().toISOString() };
-  const next = [entry, ...loadMyWardrobe()].slice(0, 30);
+const persistMyWardrobe = (items: MyWardrobeGarment[]) => {
   try {
-    sessionStorage.setItem(MY_WARDROBE_KEY, JSON.stringify(next));
+    sessionStorage.setItem(MY_WARDROBE_KEY, JSON.stringify(items));
   } catch {
     // Best-effort — the item is still usable this turn even if it can't persist.
   }
-  return next;
+  return items;
+};
+
+export const addToMyWardrobe = (garment: ClosetGarment): MyWardrobeGarment[] => {
+  const entry: MyWardrobeGarment = { ...garment, createdAt: new Date().toISOString() };
+  const withoutSameId = loadMyWardrobe().filter((item) => item.id !== garment.id);
+  return persistMyWardrobe([entry, ...withoutSameId].slice(0, 30));
+};
+
+/** Replace an authored garment after an AI edit while keeping its wardrobe identity and position. */
+export const replaceMyWardrobeGarment = (garment: MyWardrobeGarment): MyWardrobeGarment[] => {
+  const current = loadMyWardrobe();
+  const next = current.some((item) => item.id === garment.id)
+    ? current.map((item) => item.id === garment.id ? garment : item)
+    : [garment, ...current];
+  return persistMyWardrobe(next.slice(0, 30));
 };

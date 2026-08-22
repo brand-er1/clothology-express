@@ -43,7 +43,6 @@ const wornGarments = (outfit: ClosetOutfit) =>
 
 interface DressingRequestOptions {
   changedSlots?: ClosetSlot[];
-  editSourceImageUrl?: string | null;
 }
 
 const Closet = () => {
@@ -64,13 +63,12 @@ const Closet = () => {
     targetCharacter: CharacterGender,
     options: DressingRequestOptions = {},
   ) => {
-    const garmentsToRender = options.changedSlots
-      ? options.changedSlots
-        .map((slot) => targetOutfit[slot])
-        .filter((garment): garment is ClosetGarment => Boolean(garment))
-      : wornGarments(targetOutfit);
+    // Always rebuild the complete look from the immutable mascot plus every
+    // currently equipped original garment reference. Never feed a generated
+    // look back into the next generation (generation-drift prevention).
+    const garmentsToRender = wornGarments(targetOutfit);
     const changedSlots = options.changedSlots || garmentsToRender.map((garment) => garment.slot);
-    if (garmentsToRender.length === 0 && (!options.editSourceImageUrl || changedSlots.length === 0)) {
+    if (garmentsToRender.length === 0 && changedSlots.length === 0) {
       return;
     }
     const requestId = ++latestDressingRequest.current;
@@ -81,7 +79,6 @@ const Closet = () => {
       characterConfig[targetCharacter].baseImage,
       garmentsToRender,
       {
-        editSourceImageUrl: options.editSourceImageUrl,
         changedSlots,
       },
     );
@@ -115,55 +112,41 @@ const Closet = () => {
   };
 
   const handleEquip = (slot: (typeof closetSlotOrder)[number], garment: ClosetGarment) => {
-    const editSourceImageUrl = renderedCharacterImage;
     const targetOutfit = { ...outfit, [slot]: garment };
     setGarment(slot, garment);
     if (garment.source === "ai_design") {
       setMyWardrobe(addToMyWardrobe(garment));
     }
     void runDressing(targetOutfit, character, {
-      editSourceImageUrl,
-      changedSlots: editSourceImageUrl
-        ? [slot]
-        : wornGarments(targetOutfit).map((item) => item.slot),
+      changedSlots: [slot],
     });
   };
 
   const handleGarmentCreated = (garment: ClosetGarment) => {
-    const editSourceImageUrl = renderedCharacterImage;
     const targetOutfit = { ...outfit, [garment.slot]: garment };
     setMyWardrobe(addToMyWardrobe(garment));
     setGarment(garment.slot, garment);
     void runDressing(targetOutfit, character, {
-      editSourceImageUrl,
-      changedSlots: editSourceImageUrl
-        ? [garment.slot]
-        : wornGarments(targetOutfit).map((item) => item.slot),
+      changedSlots: [garment.slot],
     });
     toast({ title: "새 옷을 만들었어요!", description: "브랜더에게 바로 입혀봤어요." });
   };
 
   const handleWearFromWardrobe = (garment: MyWardrobeGarment) => {
-    const editSourceImageUrl = renderedCharacterImage;
     const targetOutfit = { ...outfit, [garment.slot]: garment };
     setGarment(garment.slot, garment);
     void runDressing(targetOutfit, character, {
-      editSourceImageUrl,
-      changedSlots: editSourceImageUrl
-        ? [garment.slot]
-        : wornGarments(targetOutfit).map((item) => item.slot),
+      changedSlots: [garment.slot],
     });
   };
 
   const handleRegenerate = () => {
     void runDressing(outfit, character, {
-      editSourceImageUrl: renderedCharacterImage,
       changedSlots: wornGarments(outfit).map((garment) => garment.slot),
     });
   };
 
   const handleRemove = (slot: ClosetSlot) => {
-    const editSourceImageUrl = renderedCharacterImage;
     const targetOutfit = { ...outfit, [slot]: null };
     setGarment(slot, null);
     if (wornGarments(targetOutfit).length === 0) {
@@ -172,12 +155,7 @@ const Closet = () => {
       setRenderedCharacterImage(null);
       return;
     }
-    if (editSourceImageUrl) {
-      void runDressing(targetOutfit, character, {
-        editSourceImageUrl,
-        changedSlots: [slot],
-      });
-    }
+    void runDressing(targetOutfit, character, { changedSlots: [slot] });
   };
 
   const wornSlotCount = closetSlotOrder.filter((slot) => outfit[slot]).length;

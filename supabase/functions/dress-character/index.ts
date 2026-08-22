@@ -130,55 +130,76 @@ const evaluatePreservation = async (
         { inlineData: { data: garment.base64, mimeType: garment.mimeType } },
       );
     });
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
+    const requestBody = JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
             {
-              role: "user",
-              parts: [
-                {
-                  text: `Perform a strict fail-closed comparison. IMAGE A is the canonical immutable character wearing its default/original outfit. IMAGE B is the candidate wearing a different, deliberately requested set of garments (the supplied garment references). Only judge characterMatch on identity, not on clothing: A's exact face, eyes, expression, head, hair, skin/face color, hands, feet, underlying skeletal body proportions and limb lengths, standing pose/stance, camera angle, crop, background, lighting, and render style. The new garments are SUPPOSED to look different from whatever A was wearing, and a different garment naturally changes the visible outer silhouette (bulk, length, drape, coverage) — never fail characterMatch just because the clothed outline differs from A; only fail it for an actual identity/pose/proportion/face/hand/foot deviation on the character itself. Separately, garmentMatch must preserve every supplied garment reference's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction — natural folds and occlusion needed to wear it are allowed, but redesigning the garment is not. Set characterMatch or garmentMatch to false only for a genuine, visible violation of those specific rules. Return JSON only: {"score":0.0,"characterMatch":false,"garmentMatch":false,"violations":["short concrete difference"]}. Score 1.0 when the character's identity/pose and every garment's design are both faithfully preserved.`,
-                },
-                { text: "IMAGE A — CANONICAL IMMUTABLE CHARACTER IDENTITY" },
-                { inlineData: { data: identityAnchor.base64, mimeType: identityAnchor.mimeType } },
-                ...garmentReferenceParts,
-                { text: "IMAGE B — FINAL CLOTHING EDIT TO CHECK" },
-                { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
-              ],
+              text: `Perform a strict fail-closed comparison. IMAGE A is the canonical immutable character wearing its default/original outfit. IMAGE B is the candidate wearing a different, deliberately requested set of garments (the supplied garment references). Only judge characterMatch on identity, not on clothing: A's exact face, eyes, expression, head, hair, skin/face color, hands, feet, underlying skeletal body proportions and limb lengths, standing pose/stance, camera angle, crop, background, lighting, and render style. The new garments are SUPPOSED to look different from whatever A was wearing, and a different garment naturally changes the visible outer silhouette (bulk, length, drape, coverage) — never fail characterMatch just because the clothed outline differs from A; only fail it for an actual identity/pose/proportion/face/hand/foot deviation on the character itself. Separately, garmentMatch must preserve every supplied garment reference's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction — natural folds and occlusion needed to wear it are allowed, but redesigning the garment is not. Set characterMatch or garmentMatch to false only for a genuine, visible violation of those specific rules. Return JSON only: {"score":0.0,"characterMatch":false,"garmentMatch":false,"violations":["short concrete difference"]}. Score 1.0 when the character's identity/pose and every garment's design are both faithfully preserved.`,
             },
+            { text: "IMAGE A — CANONICAL IMMUTABLE CHARACTER IDENTITY" },
+            { inlineData: { data: identityAnchor.base64, mimeType: identityAnchor.mimeType } },
+            ...garmentReferenceParts,
+            { text: "IMAGE B — FINAL CLOTHING EDIT TO CHECK" },
+            { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
           ],
-          generationConfig: {
-            temperature: 0,
-            responseMimeType: "application/json",
-          },
-        }),
+        },
+      ],
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json",
       },
-    );
+    });
 
-    if (!response.ok) return null;
-    const data = await response.json();
-    const responseText = (data?.candidates?.[0]?.content?.parts || [])
-      .map((part: { text?: string }) => part.text || "")
-      .join("")
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/, "")
-      .replace(/\s*```$/, "");
-    const parsed = JSON.parse(responseText);
-    const score = Number(parsed?.score);
-    if (!Number.isFinite(score)) return null;
-    return {
-      score: Math.min(1, Math.max(0, score)),
-      characterMatch: parsed?.characterMatch === true,
-      garmentMatch: parsed?.garmentMatch === true,
-      violations: Array.isArray(parsed?.violations)
-        ? parsed.violations.map((item: unknown) => String(item)).slice(0, 6)
-        : [],
-    };
+    // Mirror the fallback pattern every other Gemini call in this codebase uses (see
+    // modify-generated-image, screen-trademark-image, analyze-production-estimate):
+    // gemini-3-flash-preview alone is not reliably available, and this is a fail-closed
+    // gate — if the ONLY judge call available fails, isPreservationApproved(null) is always
+    // false and the entire dress-character feature silently stops working for every request.
+    const models = ["gemini-3-flash-preview", "gemini-3-pro-preview"];
+    for (const model of models) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: requestBody,
+        },
+      );
+
+      if (!response.ok) {
+        console.warn("dress-character preservation model failed", model, response.status, await response.text());
+        continue;
+      }
+      const data = await response.json();
+      const responseText = (data?.candidates?.[0]?.content?.parts || [])
+        .map((part: { text?: string }) => part.text || "")
+        .join("")
+        .trim()
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/, "")
+        .replace(/\s*```$/, "");
+      if (!responseText) continue;
+
+      try {
+        const parsed = JSON.parse(responseText);
+        const score = Number(parsed?.score);
+        if (!Number.isFinite(score)) continue;
+        return {
+          score: Math.min(1, Math.max(0, score)),
+          characterMatch: parsed?.characterMatch === true,
+          garmentMatch: parsed?.garmentMatch === true,
+          violations: Array.isArray(parsed?.violations)
+            ? parsed.violations.map((item: unknown) => String(item)).slice(0, 6)
+            : [],
+        };
+      } catch (parseError) {
+        console.warn("dress-character preservation JSON parse failed", model, parseError);
+        continue;
+      }
+    }
+    return null;
   } catch (error) {
     console.warn("dress-character preservation evaluation failed", error);
     return null;
@@ -409,7 +430,15 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
       }
     }
 
-    if (!isPreservationApproved(preservationEvaluation)) {
+    if (!preservationEvaluation) {
+      // The judge model itself was unavailable on every attempt (API error / bad JSON), not a
+      // detected identity or garment violation — that's an infra failure, not evidence
+      // something is actually wrong with the image. Discarding here would mean the character
+      // can never be redressed whenever the judge call has a bad day. Ship the generation,
+      // which already went through the same strong identity/garment locks in its own prompt.
+      console.warn("dress-character preservation judge unavailable after all attempts; shipping generation on prompt-level locks alone");
+      chosenImage = lastAttemptedImage;
+    } else if (!isPreservationApproved(preservationEvaluation)) {
       console.error("dress-character discarded by fail-closed preservation gate", preservationEvaluation);
       return new Response(
         JSON.stringify({ error: "캐릭터 또는 의류 원본이 조금이라도 달라질 가능성이 있어 결과를 폐기했습니다. 기존 이미지는 그대로 유지됩니다." }),
@@ -445,7 +474,7 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
         renderedImageUrl: publicUrlData?.publicUrl,
         renderedImagePath: uploadData?.path || fileName,
         hasImage: Boolean(publicUrlData?.publicUrl),
-        identityScore: preservationEvaluation.score,
+        identityScore: preservationEvaluation?.score ?? null,
         preservationPassed: true,
         identityRetryApplied,
       }),

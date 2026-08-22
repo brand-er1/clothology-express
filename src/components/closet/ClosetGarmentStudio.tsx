@@ -7,6 +7,7 @@ import { clothTypes } from "@/lib/customize-constants";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { generateImage } from "@/services/imageGeneration";
+import { logClosetActivity } from "@/services/closetActivityLog";
 import type { ClosetGarment } from "@/types/closet";
 
 interface ClosetGarmentStudioProps {
@@ -56,6 +57,16 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
         },
       };
       onGarmentCreated(garment);
+      void logClosetActivity({
+        eventType: "garment_created",
+        slot,
+        garmentId: garment.id,
+        label: garment.label,
+        prompt: result.optimizedPrompt || result.prompt,
+        imageUrl: garment.designRef?.imageUrl || garment.imageUrl,
+        imagePath: garment.designRef?.imagePath,
+        metadata: { clothType: category, material },
+      });
       setPrompt("");
     } finally {
       setIsGenerating(false);

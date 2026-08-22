@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { garmentToImageRef, urlToImageRef } from "@/lib/closet-image-ref";
+import { logClosetActivity } from "@/services/closetActivityLog";
 import type { CharacterGender, ClosetGarment, ClosetSlot } from "@/types/closet";
 
 export interface DressCharacterResult {
@@ -58,6 +59,20 @@ export const dressCharacter = async (
       });
       return null;
     }
+
+    void logClosetActivity({
+      eventType: "character_dressed",
+      characterGender: character,
+      slot: options.changedSlots?.[0],
+      imageUrl: result.renderedImageUrl,
+      imagePath: result.renderedImagePath,
+      label: garments.map((garment) => garment.label).join(", ") || "전체 벗기",
+      metadata: {
+        changedSlots: options.changedSlots || [],
+        wornSlots: garments.map((garment) => garment.slot),
+        garmentIds: garments.map((garment) => garment.id),
+      },
+    });
 
     return {
       renderedImageUrl: result.renderedImageUrl,

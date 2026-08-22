@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { garmentToImageRef } from "@/lib/closet-image-ref";
+import { logClosetActivity } from "@/services/closetActivityLog";
 import type { ClosetGarment } from "@/types/closet";
 
 export interface EditGarmentResult {
@@ -42,6 +43,16 @@ export const editGarment = async (
       });
       return null;
     }
+
+    void logClosetActivity({
+      eventType: "garment_edited",
+      slot: garment.slot,
+      garmentId: garment.id,
+      label: garment.label,
+      prompt: modificationPrompt,
+      imageUrl: result.editedImageUrl,
+      imagePath: result.editedImagePath,
+    });
 
     return {
       editedImageUrl: result.editedImageUrl,

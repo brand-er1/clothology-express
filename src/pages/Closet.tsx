@@ -16,6 +16,7 @@ import { characterConfig, closetSlotLabel, closetSlotOrder } from "@/lib/closet-
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import { dressCharacter } from "@/services/closetDressing";
 import { generateImage } from "@/services/imageGeneration";
+import { logClosetActivity } from "@/services/closetActivityLog";
 import {
   addToMyWardrobe,
   loadMyWardrobe,
@@ -247,6 +248,16 @@ const Closet = () => {
           changedSlots: [garment.slot],
         });
       }
+      void logClosetActivity({
+        eventType: "garment_regenerated",
+        slot: garment.slot,
+        garmentId: regenerated.id,
+        label: regenerated.label,
+        prompt,
+        imageUrl: regenerated.designRef?.imageUrl || regenerated.imageUrl,
+        imagePath: regenerated.designRef?.imagePath,
+        metadata: { previousGarmentId: garment.id, clothType: selectedType, material },
+      });
       toast({ title: "새로 생성했어요!" });
     } finally {
       setBusyGarmentId(null);
@@ -278,7 +289,24 @@ const Closet = () => {
   };
 
   const handleSave = () => {
-    saveCurrentLook();
+    const look = saveCurrentLook();
+    void logClosetActivity({
+      eventType: "look_saved",
+      characterGender: look.character,
+      label: closetSlotOrder
+        .filter((slot) => look.outfit[slot])
+        .map((slot) => look.outfit[slot]?.label)
+        .join(", ") || characterConfig[look.character].label,
+      imageUrl: look.renderedCharacterImage,
+      metadata: {
+        lookId: look.id,
+        outfit: closetSlotOrder.reduce<Record<string, unknown>>((acc, slot) => {
+          const garment = look.outfit[slot];
+          if (garment) acc[slot] = { id: garment.id, label: garment.label, imageUrl: garment.imageUrl };
+          return acc;
+        }, {}),
+      },
+    });
     toast({ title: "MY BRAND-ER LOOK 저장 완료", description: "마이페이지에서 다시 볼 수 있어요." });
   };
 

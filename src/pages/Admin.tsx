@@ -8,6 +8,7 @@ import {
   Image,
   PackageCheck,
   Settings,
+  Shirt,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -29,6 +30,8 @@ import type { FabricSwatchRequest, FabricSwatchStatus } from "@/types/fabricSwat
 import { GeneratedImageList } from "@/components/admin/GeneratedImageList";
 import type { AdminGeneratedImage } from "@/types/generatedImage";
 import { CustomerManagement } from "@/components/admin/CustomerManagement";
+import { ClosetActivityList } from "@/components/admin/ClosetActivityList";
+import type { AdminClosetActivity } from "@/types/closetActivity";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -36,6 +39,7 @@ const sectionMeta = {
   dashboard: { label: "대시보드", description: "전체 운영 현황을 빠르게 확인합니다.", icon: BarChart3 },
   customers: { label: "고객 관리", description: "회원 정보와 방문 활동을 확인합니다.", icon: Users },
   images: { label: "이미지 생성", description: "고객이 생성한 AI 의류 이미지를 관리합니다.", icon: Image },
+  closet: { label: "브랜더 옷장", description: "고객이 옷장에서 만들고 수정하고 입혀본 모든 활동을 확인합니다.", icon: Shirt },
   orders: { label: "제작 의뢰", description: "바로 제작 요청을 검토하고 상태를 변경합니다.", icon: PackageCheck },
   swatches: { label: "원단 스와치", description: "원단 추천 신청과 진행 상태를 관리합니다.", icon: FlaskConical },
   fundings: { label: "펀딩 관리", description: "펀딩 승인 요청과 진행 상태를 확인합니다.", icon: WalletCards },
@@ -61,6 +65,8 @@ const Admin = () => {
   const [fabricSwatchRequests, setFabricSwatchRequests] = useState<FabricSwatchRequest[]>([]);
   const [generatedImages, setGeneratedImages] = useState<AdminGeneratedImage[]>([]);
   const [isLoadingGeneratedImages, setIsLoadingGeneratedImages] = useState(true);
+  const [closetActivities, setClosetActivities] = useState<AdminClosetActivity[]>([]);
+  const [isLoadingClosetActivities, setIsLoadingClosetActivities] = useState(true);
 
   const section = useMemo<AdminSection>(() => {
     const value = location.pathname.split("/").filter(Boolean)[1] as AdminSection | undefined;
@@ -81,6 +87,7 @@ const Admin = () => {
     void loadFundings();
     void loadFabricSwatchRequests();
     void loadGeneratedImages();
+    void loadClosetActivities();
   }, [isAdmin]);
 
   const loadOrders = async () => {
@@ -135,6 +142,20 @@ const Admin = () => {
       toast({ title: "AI 생성 이미지 내역을 불러오지 못했습니다", variant: "destructive" });
     } finally {
       setIsLoadingGeneratedImages(false);
+    }
+  };
+
+  const loadClosetActivities = async () => {
+    try {
+      setIsLoadingClosetActivities(true);
+      const { data, error } = await supabase.rpc("get_admin_closet_activity", { p_limit: 500 });
+      if (error) throw error;
+      setClosetActivities((data || []) as AdminClosetActivity[]);
+    } catch (error) {
+      console.error("Error loading closet activity:", error);
+      toast({ title: "브랜더 옷장 활동 내역을 불러오지 못했습니다", variant: "destructive" });
+    } finally {
+      setIsLoadingClosetActivities(false);
     }
   };
 
@@ -205,6 +226,7 @@ const Admin = () => {
     dashboard: null,
     customers: null,
     images: generatedImages.length,
+    closet: closetActivities.length,
     orders: orders.filter((order) => order.status === "pending").length,
     swatches: fabricSwatchRequests.filter((request) => request.status === "pending").length,
     fundings: fundings.filter((funding) => funding.status === "pending").length,
@@ -214,6 +236,7 @@ const Admin = () => {
   const dashboardCards = [
     { section: "customers" as const, label: "고객 관리", value: "회원·방문", icon: Users },
     { section: "images" as const, label: "전체 이미지 생성", value: generatedImages.length.toLocaleString(), icon: FileImage },
+    { section: "closet" as const, label: "브랜더 옷장 활동", value: closetActivities.length.toLocaleString(), icon: Shirt },
     { section: "orders" as const, label: "신규 제작 의뢰", value: counts.orders?.toLocaleString() || "0", icon: PackageCheck },
     { section: "swatches" as const, label: "신규 스와치 신청", value: counts.swatches?.toLocaleString() || "0", icon: FlaskConical },
     { section: "fundings" as const, label: "펀딩 승인 대기", value: counts.fundings?.toLocaleString() || "0", icon: WalletCards },
@@ -265,6 +288,7 @@ const Admin = () => {
             )}
             {section === "customers" && <CustomerManagement />}
             {section === "images" && <GeneratedImageList images={generatedImages} isLoading={isLoadingGeneratedImages} />}
+            {section === "closet" && <ClosetActivityList activities={closetActivities} isLoading={isLoadingClosetActivities} />}
             {section === "orders" && <OrderList orders={orders} onReviewOrder={(order) => { setSelectedOrder(order); setIsReviewDialogOpen(true); }} />}
             {section === "swatches" && <FabricSwatchList requests={fabricSwatchRequests} isSaving={isSaving} onUpdate={handleUpdateFabricSwatch} />}
             {section === "fundings" && <FundingList fundings={fundings} onReview={(funding) => { setSelectedFunding(funding); setIsFundingReviewOpen(true); }} />}

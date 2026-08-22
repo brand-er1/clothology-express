@@ -11,16 +11,21 @@ import { DressingLoadingOverlay } from "@/components/closet/DressingLoadingOverl
 import { WardrobeSlotPicker } from "@/components/closet/WardrobeSlotPicker";
 import { ClosetGarmentStudio } from "@/components/closet/ClosetGarmentStudio";
 import { MyWardrobeList } from "@/components/closet/MyWardrobeList";
+import { GarmentEditPanel } from "@/components/closet/GarmentEditPanel";
 import { characterConfig, closetSlotLabel, closetSlotOrder } from "@/lib/closet-character-config";
+import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import { dressCharacter } from "@/services/closetDressing";
+import { generateImage } from "@/services/imageGeneration";
 import {
   addToMyWardrobe,
   loadMyWardrobe,
+  removeFromMyWardrobe,
   saveCurrentLook,
   setCharacter,
   setGarment,
   setRenderedCharacterImage,
   useWardrobeState,
+  withRestoredGarmentRevision,
   type MyWardrobeGarment,
 } from "@/lib/closet-store";
 import type { CharacterGender, ClosetGarment, ClosetOutfit, ClosetSlot } from "@/types/closet";
@@ -54,7 +59,10 @@ const Closet = () => {
   const [isDressing, setIsDressing] = useState(false);
   const [showBeforeAfter, setShowBeforeAfter] = useState<"after" | "before">("after");
   const [myWardrobe, setMyWardrobe] = useState<MyWardrobeGarment[]>(() => loadMyWardrobe());
+  const [editingGarmentId, setEditingGarmentId] = useState<string | null>(null);
+  const [busyGarmentId, setBusyGarmentId] = useState<string | null>(null);
   const latestDressingRequest = useRef(0);
+  const editingGarment = myWardrobe.find((item) => item.id === editingGarmentId) || null;
 
   const pendingGarment = (location.state as ClosetLocationState | null)?.pendingGarment ?? null;
 
@@ -157,6 +165,92 @@ const Closet = () => {
       return;
     }
     void runDressing(targetOutfit, character, { changedSlots: [slot] });
+  };
+
+  const handleOpenEditor = (garment: MyWardrobeGarment) => setEditingGarmentId(garment.id);
+
+  // "이 옷으로 입히기" from the edit panel — the edited image already carries every unmodified
+  // design detail forward (see edit-closet-garment), so this is just a normal same-slot replace.
+  const handleApplyEditedGarment = (updatedGarment: ClosetGarment) => {
+    setMyWardrobe(addToMyWardrobe(updatedGarment));
+    setGarment(updatedGarment.slot, updatedGarment);
+    const targetOutfit = { ...outfit, [updatedGarment.slot]: updatedGarment };
+    void runDressing(targetOutfit, character, { changedSlots: [updatedGarment.slot] });
+    toast({ title: "수정한 옷으로 갈아입혔어요!" });
+  };
+
+  const handleRestoreRevision = (garment: ClosetGarment, revisionId: string) => {
+    const restored = withRestoredGarmentRevision(garment, revisionId);
+    setMyWardrobe(addToMyWardrobe(restored));
+    if (outfit[restored.slot]?.id === restored.id) {
+      setGarment(restored.slot, restored);
+      void runDressing({ ...outfit, [restored.slot]: restored }, character, {
+        changedSlots: [restored.slot],
+      });
+    }
+  };
+
+  const handleSaveGarment = (garment: MyWardrobeGarment) => {
+    setMyWardrobe(addToMyWardrobe(garment));
+    toast({ title: "옷장에 저장했어요" });
+  };
+
+  const handleDeleteGarment = (garment: MyWardrobeGarment) => {
+    setMyWardrobe(removeFromMyWardrobe(garment.id));
+    if (editingGarmentId === garment.id) setEditingGarmentId(null);
+    if (outfit[garment.slot]?.id === garment.id) {
+      handleRemove(garment.slot);
+    }
+    toast({ title: "옷을 삭제했어요" });
+  };
+
+  // "다시 생성" — a fresh CREATE GARMENT roll from the same type/material/prompt (pipeline step
+  // A), producing a brand-new garment. Distinct from "수정하기" (EDIT GARMENT, step B), which
+  // constrains the result to the existing image plus only the requested change.
+  const handleRegenerateGarment = async (garment: MyWardrobeGarment) => {
+    if (garment.source !== "ai_design" || busyGarmentId) return;
+    const selectedType = garment.designRef?.selectedType;
+    if (!selectedType) {
+      toast({ title: "다시 생성할 수 없는 옷이에요", variant: "destructive" });
+      return;
+    }
+    setBusyGarmentId(garment.id);
+    try {
+      const materials = getRecommendedFabrics(selectedType);
+      const material = garment.designRef?.selectedMaterial || materials[0]?.id || "";
+      const prompt = garment.designRef?.designContext || garment.label;
+      const result = await generateImage(selectedType, material, prompt, materials);
+      if (!result) return;
+      const imageUrl = result.storedImageUrl || result.imageUrls?.[0];
+      if (!imageUrl) {
+        toast({ title: "이미지를 만들지 못했어요", variant: "destructive" });
+        return;
+      }
+      const regenerated: ClosetGarment = {
+        id: `ai-${Date.now()}`,
+        slot: garment.slot,
+        label: garment.label,
+        imageUrl,
+        source: "ai_design",
+        designRef: {
+          imageUrl: result.storedImageUrl || null,
+          imagePath: result.imagePath || null,
+          selectedType,
+          selectedMaterial: material,
+          designContext: result.optimizedPrompt || prompt,
+        },
+      };
+      setMyWardrobe(addToMyWardrobe(regenerated));
+      if (outfit[garment.slot]?.id === garment.id) {
+        setGarment(garment.slot, regenerated);
+        void runDressing({ ...outfit, [garment.slot]: regenerated }, character, {
+          changedSlots: [garment.slot],
+        });
+      }
+      toast({ title: "새로 생성했어요!" });
+    } finally {
+      setBusyGarmentId(null);
+    }
   };
 
   const wornSlotCount = closetSlotOrder.filter((slot) => outfit[slot]).length;
@@ -351,7 +445,21 @@ const Closet = () => {
                     <MyWardrobeList
                       items={myWardrobe}
                       outfit={outfit}
+                      busyGarmentId={busyGarmentId}
                       onWear={handleWearFromWardrobe}
+                      onEdit={handleOpenEditor}
+                      onRegenerate={(garment) => void handleRegenerateGarment(garment)}
+                      onSave={handleSaveGarment}
+                      onDelete={handleDeleteGarment}
+                    />
+                    <GarmentEditPanel
+                      garment={editingGarment}
+                      open={Boolean(editingGarmentId)}
+                      onOpenChange={(open) => {
+                        if (!open) setEditingGarmentId(null);
+                      }}
+                      onApply={handleApplyEditedGarment}
+                      onRestoreRevision={handleRestoreRevision}
                     />
                     <Card className="rounded-[1.5rem] border-stone-200 bg-white p-5 shadow-sm">
                       <p className="mb-3 text-sm font-black text-stone-950">코디 아이템</p>

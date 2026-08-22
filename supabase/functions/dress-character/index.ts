@@ -53,24 +53,23 @@ interface GeneratedImage {
 
 interface PreservationEvaluation {
   score: number;
-  characterMatch: boolean;
+  faceMatch: boolean;
   garmentMatch: boolean;
   violations: string[];
 }
 
-// A generative model can never be pixel-perfect across two independent calls (generation, then
-// judging), so requiring a mathematically exact score of 1.0 with zero noted violations made the
-// gate reject almost every attempt — including good ones — and the character effectively could
-// never be redressed. characterMatch/garmentMatch (the judge's actual pass/fail calls on identity
-// and garment fidelity) remain a hard requirement; the numeric score only needs to be high, and a
-// judge hedging with a minor noted violation no longer auto-fails a result it otherwise approved.
+// The only thing that must never change is the character's FACE identity — everything below the
+// neck (body shape, limbs, hands, feet, pose, and the outer silhouette a garment creates) is
+// expected to adapt so the clothing sits naturally. faceMatch/garmentMatch (the judge's actual
+// pass/fail calls) remain a hard requirement; the numeric score only needs to be high, and a judge
+// hedging with a minor noted violation no longer auto-fails a result it otherwise approved.
 const PRESERVATION_SCORE_THRESHOLD = 0.9;
 
 const isPreservationApproved = (evaluation: PreservationEvaluation | null) =>
   Boolean(
     evaluation &&
       evaluation.score >= PRESERVATION_SCORE_THRESHOLD &&
-      evaluation.characterMatch &&
+      evaluation.faceMatch &&
       evaluation.garmentMatch,
   );
 
@@ -136,9 +135,17 @@ const evaluatePreservation = async (
           role: "user",
           parts: [
             {
-              text: `Perform a strict fail-closed comparison. IMAGE A is the canonical immutable character wearing its default/original outfit. IMAGE B is the candidate wearing a different, deliberately requested set of garments (the supplied garment references). Only judge characterMatch on identity, not on clothing: A's exact face, eyes, expression, head, hair, skin/face color, hands, feet, underlying skeletal body proportions and limb lengths, standing pose/stance, camera angle, crop, background, lighting, and render style. The new garments are SUPPOSED to look different from whatever A was wearing, and a different garment naturally changes the visible outer silhouette (bulk, length, drape, coverage) — never fail characterMatch just because the clothed outline differs from A; only fail it for an actual identity/pose/proportion/face/hand/foot deviation on the character itself. Separately, garmentMatch must preserve every supplied garment reference's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction — natural folds and occlusion needed to wear it are allowed, but redesigning the garment is not. Set characterMatch or garmentMatch to false only for a genuine, visible violation of those specific rules. Return JSON only: {"score":0.0,"characterMatch":false,"garmentMatch":false,"violations":["short concrete difference"]}. Score 1.0 when the character's identity/pose and every garment's design are both faithfully preserved.`,
+              text: `Perform a strict fail-closed comparison, but scope it to FACE identity only — this is a clothing swap, and the body below the neck is expected to look different. IMAGE A is the Face Identity Reference (the character in its default/original outfit). IMAGE B is the candidate wearing a different, deliberately requested set of garments.
+
+faceMatch: judge ONLY the face — face shape and outline, the solid black face color, eye shape/size/position/spacing, expression, eyelashes (female character only), and the character's unique face design. Set faceMatch to false only for a genuine, visible change to one of those specific face elements (redrawn, reinterpreted, humanized, aged, or a facial feature added/removed/moved).
+
+Do NOT judge faceMatch on, and NEVER fail it because of: body shape/proportions, shoulder or torso volume, arms, hands, legs, feet, standing pose/stance, camera angle, or the outer silhouette — a new garment is SUPPOSED to change all of these (a bulky hoodie reads wider than a slim shirt, pants replace bare legs with fabric, sleeves cover the arms differently, the pose may shift naturally to wear the item), and none of that is a face or identity problem.
+
+garmentMatch: separately, preserve every supplied garment reference's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction — natural folds and occlusion needed to wear it are allowed, but redesigning the garment is not.
+
+Return JSON only: {"score":0.0,"faceMatch":false,"garmentMatch":false,"violations":["short concrete difference"]}. Score 1.0 when the face identity and every garment's design are both faithfully preserved, regardless of how much the body/pose/silhouette changed to wear the clothes.`,
             },
-            { text: "IMAGE A — CANONICAL IMMUTABLE CHARACTER IDENTITY" },
+            { text: "IMAGE A — FACE IDENTITY REFERENCE" },
             { inlineData: { data: identityAnchor.base64, mimeType: identityAnchor.mimeType } },
             ...garmentReferenceParts,
             { text: "IMAGE B — FINAL CLOTHING EDIT TO CHECK" },
@@ -188,7 +195,7 @@ const evaluatePreservation = async (
         if (!Number.isFinite(score)) continue;
         return {
           score: Math.min(1, Math.max(0, score)),
-          characterMatch: parsed?.characterMatch === true,
+          faceMatch: parsed?.faceMatch === true,
           garmentMatch: parsed?.garmentMatch === true,
           violations: Array.isArray(parsed?.violations)
             ? parsed.violations.map((item: unknown) => String(item)).slice(0, 6)
@@ -302,9 +309,9 @@ serve(async (req) => {
       );
     }
 
-    const characterIdentityRules = gender === "female"
-      ? "This is the FEMALE BRAND-ER mascot: solid black face, large round white eyes, visible eyelashes (her signature distinguishing feature), her existing hair, and her existing body proportions and hand shape."
-      : "This is the MALE BRAND-ER mascot: solid black face, large round white eyes, and his existing body proportions and hand shape.";
+    const faceIdentityRules = gender === "female"
+      ? "This is the FEMALE BRAND-ER mascot's face: solid black face color, large round white eyes, visible eyelashes (her signature distinguishing feature), and her unique face design."
+      : "This is the MALE BRAND-ER mascot's face: solid black face color, large round white eyes, and his unique face design.";
 
     const garmentList = garments
       .map((garment, index) => {
@@ -324,17 +331,24 @@ serve(async (req) => {
       : "";
 
     const prompt = `
-EDIT Reference Image 1. This is a tightly constrained CLOTHING-ONLY image edit, not a request to create, redraw, or reinterpret the scene.
+EDIT Reference Image 1. This is a constrained image edit: dress the BRAND-ER character in the supplied garments, keeping its FACE identical while letting the body adapt naturally to the clothing.
 
-Reference Image 1 is the one and only canonical immutable BRAND-ER character identity anchor. ${characterIdentityRules}
+Reference Image 1 is the Face Identity Reference for this character. ${faceIdentityRules}
 
-IMMUTABLE CHARACTER LOCK — HIGHEST PRIORITY:
-- Preserve the exact identity of the provided character. The output must visibly be Reference Image 1 with only the requested wardrobe applied, never a new character inspired by it.
-- Preserve exactly: black face color, eyes, eye spacing and shape, eyelashes when present, expression, head outline, hair/headwear not explicitly replaced, neck, underlying skeletal body proportions and limb length/thickness, hands, fingers, feet, standing pose/stance/camera angle, gender presentation, crop, scale, framing, lighting, background, and overall 3D render style.
-- "Pose" means the character's stance, joint angles, and camera framing — it does NOT mean the outer silhouette. A new garment is EXPECTED to change the visible outline (a bulky hoodie reads wider than a slim shirt, a long coat covers more leg, etc.); that expected silhouette change from wearing different clothing is correct and must never be treated as a character deviation.
-- Keep all visible uncovered character regions (face, hands, feet, and any skin/fur not covered by the new wardrobe) as close to pixel-identical to Reference Image 1 as generatively possible.
-- Do not redesign, reinterpret, regenerate, beautify, humanize, age, recolor, reshape, rotate, mirror, or replace the character. Never add or remove a facial feature or limb.
-- Do not change the character's underlying body to fit a garment. If proportions conflict, tailor and drape the GARMENT to the unchanged character body — but the garment itself may naturally bulk, drape, or lengthen over that body.
+FACE IDENTITY LOCK — HIGHEST PRIORITY, THE ONLY IMMUTABLE ELEMENT:
+- Preserve exactly, from Reference Image 1: face shape and outline, the solid black face color, eye shape/size/position/spacing, expression, eyelashes when present (female character), and every other element of the character's unique face design.
+- Wherever possible, keep the face region pixel-identical to Reference Image 1 and edit only the body/clothing area below the neck.
+- Do not redraw, reinterpret, regenerate, beautify, humanize, or age the face. Never add, remove, or move a facial feature.
+- Do not change gender presentation or hair/headwear that isn't explicitly replaced by a supplied garment.
+
+ALLOWED TO CHANGE — needed for natural clothing, never a violation:
+- The outer body silhouette created by the new garments (bulk, width, length, coverage).
+- Shoulder and torso volume under a top/outer layer.
+- Arms as covered/reshaped by sleeves, and legs as covered/reshaped by pants or a skirt.
+- Hands, feet, and the character's standing pose/stance, to whatever degree is natural for wearing the item.
+- Garment fit, wrinkles, drape, and hem length.
+- Any natural repositioning of the body needed to wear the garment convincingly.
+None of the above should ever be treated as a character mismatch or cause this result to be discarded — only a change to the FACE itself (per the lock above) is a violation.
 
 WARDROBE COMPOSITION LOCK — SAME PRIORITY:
 - Build the complete wardrobe only from the garment references supplied in this request: ${slotsSentence}.
@@ -344,7 +358,7 @@ WARDROBE COMPOSITION LOCK — SAME PRIORITY:
 ${garmentList || "No garment reference is supplied."}
 ${clearedSlotsInstruction}
 
-TASK: Starting only from canonical Reference Image 1, make the exact same character naturally wear every supplied garment reference at once. Make each garment genuinely wrap around the locked body with natural fit, drape, folds, seams, occlusion, and contact shadows. Garment realism must come from adapting the clothing, never from changing the character.
+TASK: Starting only from Reference Image 1, make the same character (same face) naturally wear every supplied garment reference at once. Make each garment genuinely wrap around the body with natural fit, drape, folds, seams, occlusion, and contact shadows — adjusting body volume, limb coverage, and pose as needed for a convincing, natural result. Garment and pose realism come from adapting to the clothing, never from changing the face.
 
 Clothing identity lock — for every garment reference image, preserve exactly:
 - garment type and silhouette
@@ -358,7 +372,7 @@ Preserve the exact design identity of every provided garment. Do not change its 
 
 Do not invent new design details that are not present in the garment reference image (for example: do not add a zipper if there isn't one, do not add graphics that aren't there, do not change a plain garment into a patterned one).
 
-OUTPUT: Return exactly ONE edited full-body image. No before/after split, comparison layout, caption, watermark, extra person, prop, or text overlay. The result must look like the exact same character naturally wearing the exact referenced garments. Preserve Reference Image 1's background, camera, pose, framing, and character identity.
+OUTPUT: Return exactly ONE edited full-body image. No before/after split, comparison layout, caption, watermark, extra person, prop, or text overlay. The result must show the same face identity as Reference Image 1, naturally wearing the exact referenced garments — the body, pose, and silhouette should look however is natural for that outfit.
 `.trim();
 
     const garmentParts: Array<Record<string, unknown>> = [];
@@ -371,10 +385,10 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
 
     const generationParts: Array<Record<string, unknown>> = [
       { text: prompt },
-      { text: "Reference Image 1: CANONICAL IMMUTABLE CHARACTER. This is always the sole character source." },
+      { text: "Reference Image 1: FACE IDENTITY REFERENCE. This face is always the sole source of the character's identity." },
       { inlineData: { data: identityBase64, mimeType: identityMimeType } },
       ...garmentParts,
-      { text: "FINAL LOCK: exact same face, eyes, head, hands, feet, underlying body/pose, style, camera, framing, lighting, and background as Reference Image 1; exact garment design from every garment reference. Change the clothing, and only the clothing — the outer silhouette is expected to change to match the new garments." },
+      { text: "FINAL LOCK: exact same face (shape, black color, eyes, expression, eyelashes if present) as Reference Image 1, and exact garment design from every garment reference. The body, pose, and silhouette should adapt naturally to the new clothing — that adaptation is expected, not a deviation." },
     ];
 
     const firstImage = await generateDressedImage(geminiApiKey, generationParts);
@@ -399,14 +413,14 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
       console.warn("dress-character preservation failure detected", preservationEvaluation);
       const retryParts: Array<Record<string, unknown>> = [
         {
-          text: `${prompt}\n\nCORRECTION PASS: Discard the rejected draft and rebuild from canonical Reference Image 1 plus all original garment references. Detected differences: ${preservationEvaluation?.violations.join("; ") || "the strict character/garment preservation check was unavailable or found a difference"}.`,
+          text: `${prompt}\n\nCORRECTION PASS: Discard the rejected draft and rebuild from the Face Identity Reference plus all original garment references. Detected differences: ${preservationEvaluation?.violations.join("; ") || "the strict face/garment preservation check was unavailable or found a difference"}.`,
         },
-        { text: "Reference Image 1: CANONICAL IMMUTABLE CHARACTER. This exact character must survive unchanged." },
+        { text: "Reference Image 1: FACE IDENTITY REFERENCE. This exact face must survive unchanged; the body may adapt naturally to the clothing." },
         { inlineData: { data: identityBase64, mimeType: identityMimeType } },
-        { text: "REJECTED DRAFT: use only as an example of what NOT to change outside clothing." },
+        { text: "REJECTED DRAFT: use only as an example of what NOT to change on the face." },
         { inlineData: { data: lastAttemptedImage.base64, mimeType: lastAttemptedImage.mimeType } },
         ...garmentParts,
-        { text: "FINAL CHECK: exact canonical character and exact garment references; only clothing pixels needed for natural wearing may differ." },
+        { text: "FINAL CHECK: exact face identity and exact garment references; the body, pose, and silhouette may differ as much as needed to wear the clothes naturally." },
       ];
       const retryImage = await generateDressedImage(geminiApiKey, retryParts);
       if (!retryImage) continue;
@@ -432,16 +446,16 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
 
     if (!preservationEvaluation) {
       // The judge model itself was unavailable on every attempt (API error / bad JSON), not a
-      // detected identity or garment violation — that's an infra failure, not evidence
-      // something is actually wrong with the image. Discarding here would mean the character
-      // can never be redressed whenever the judge call has a bad day. Ship the generation,
-      // which already went through the same strong identity/garment locks in its own prompt.
+      // detected face or garment violation — that's an infra failure, not evidence something is
+      // actually wrong with the image. Discarding here would mean the character can never be
+      // redressed whenever the judge call has a bad day. Ship the generation, which already went
+      // through the same strong face/garment locks in its own prompt.
       console.warn("dress-character preservation judge unavailable after all attempts; shipping generation on prompt-level locks alone");
       chosenImage = lastAttemptedImage;
     } else if (!isPreservationApproved(preservationEvaluation)) {
       console.error("dress-character discarded by fail-closed preservation gate", preservationEvaluation);
       return new Response(
-        JSON.stringify({ error: "캐릭터 또는 의류 원본이 조금이라도 달라질 가능성이 있어 결과를 폐기했습니다. 기존 이미지는 그대로 유지됩니다." }),
+        JSON.stringify({ error: "캐릭터 얼굴 또는 의류 원본이 조금이라도 달라질 가능성이 있어 결과를 폐기했습니다. 기존 이미지는 그대로 유지됩니다." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 422 },
       );
     }
@@ -474,7 +488,7 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
         renderedImageUrl: publicUrlData?.publicUrl,
         renderedImagePath: uploadData?.path || fileName,
         hasImage: Boolean(publicUrlData?.publicUrl),
-        identityScore: preservationEvaluation?.score ?? null,
+        faceScore: preservationEvaluation?.score ?? null,
         preservationPassed: true,
         identityRetryApplied,
       }),

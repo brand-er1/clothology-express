@@ -114,7 +114,7 @@ const Closet = () => {
   const handleEquip = (slot: (typeof closetSlotOrder)[number], garment: ClosetGarment) => {
     const targetOutfit = { ...outfit, [slot]: garment };
     setGarment(slot, garment);
-    if (garment.source === "ai_design") {
+    if (garment.source !== "preset") {
       setMyWardrobe(addToMyWardrobe(garment));
     }
     void runDressing(targetOutfit, character, {
@@ -134,6 +134,7 @@ const Closet = () => {
 
   const handleWearFromWardrobe = (garment: MyWardrobeGarment) => {
     const targetOutfit = { ...outfit, [garment.slot]: garment };
+    setMyWardrobe(addToMyWardrobe(garment));
     setGarment(garment.slot, garment);
     void runDressing(targetOutfit, character, {
       changedSlots: [garment.slot],
@@ -347,11 +348,16 @@ const Closet = () => {
                 {view === "dressing" ? (
                   <>
                     <ClosetGarmentStudio onGarmentCreated={handleGarmentCreated} />
-                    <MyWardrobeList items={myWardrobe} onWear={handleWearFromWardrobe} />
+                    <MyWardrobeList
+                      items={myWardrobe}
+                      outfit={outfit}
+                      onWear={handleWearFromWardrobe}
+                    />
                     <Card className="rounded-[1.5rem] border-stone-200 bg-white p-5 shadow-sm">
                       <p className="mb-3 text-sm font-black text-stone-950">코디 아이템</p>
                       <WardrobeSlotPicker
                         outfit={outfit}
+                        wardrobe={myWardrobe}
                         onEquip={handleEquip}
                         onRemove={handleRemove}
                       />

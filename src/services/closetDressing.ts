@@ -7,6 +7,8 @@ interface ImageRef {
   mimeType: string;
 }
 
+const imageRefCache = new Map<string, Promise<ImageRef>>();
+
 const blobToBase64 = (blob: Blob): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -23,22 +25,28 @@ const blobToBase64 = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
-/** Fetches any http(s) or same-origin image URL and returns it as base64 for the Gemini call. */
-const urlToImageRef = async (url: string): Promise<ImageRef> => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("이미지를 불러올 수 없습니다.");
-  }
-  const blob = await response.blob();
-  return { base64: await blobToBase64(blob), mimeType: blob.type || "image/png" };
+/** Cache static mascot and garment URL conversions so repeated try-ons do not re-download/re-encode them. */
+const urlToImageRef = (url: string): Promise<ImageRef> => {
+  const cached = imageRefCache.get(url);
+  if (cached) return cached;
+
+  const pending = (async () => {
+    const response = await fetch(url, { cache: "force-cache" });
+    if (!response.ok) throw new Error("이미지를 불러올 수 없습니다.");
+    const blob = await response.blob();
+    return { base64: await blobToBase64(blob), mimeType: blob.type || "image/png" };
+  })();
+
+  imageRefCache.set(url, pending);
+  pending.catch(() => imageRefCache.delete(url));
+  return pending;
 };
 
 const garmentToImageRef = async (garment: ClosetGarment): Promise<ImageRef> => {
   if (garment.designRef?.imageBase64 && garment.designRef.imageMimeType) {
     return { base64: garment.designRef.imageBase64, mimeType: garment.designRef.imageMimeType };
   }
-  const sourceUrl = garment.designRef?.imageUrl || garment.imageUrl;
-  return urlToImageRef(sourceUrl);
+  return urlToImageRef(garment.designRef?.imageUrl || garment.imageUrl);
 };
 
 export interface DressCharacterResult {
@@ -48,14 +56,12 @@ export interface DressCharacterResult {
 }
 
 interface DressCharacterOptions {
-  /** Slots changed by the last user action (all equipped references are still sent). */
   changedSlots?: ClosetSlot[];
 }
 
 /**
- * Calls the dress-character edge function as a fail-closed clothing edit. Every request starts from the
- * canonical base image and includes every currently equipped original garment reference. A generated
- * output is deliberately never used as input, which prevents cumulative identity and garment drift.
+ * Every request starts from the immutable canonical mascot and all currently equipped original
+ * garment references. A generated character image is never reused as input, preventing cumulative drift.
  */
 export const dressCharacter = async (
   character: CharacterGender,
@@ -64,14 +70,17 @@ export const dressCharacter = async (
   options: DressCharacterOptions = {},
 ): Promise<DressCharacterResult | null> => {
   try {
-    const identityImage = await urlToImageRef(characterBaseImageUrl);
-    const garmentPayload = await Promise.all(
-      garments.map(async (garment) => ({
-        slot: garment.slot,
-        label: garment.label,
-        image: await garmentToImageRef(garment),
-      })),
-    );
+    // Resolve mascot and garments concurrently. Cached refs make subsequent swaps substantially cheaper.
+    const [identityImage, garmentPayload] = await Promise.all([
+      urlToImageRef(characterBaseImageUrl),
+      Promise.all(
+        garments.map(async (garment) => ({
+          slot: garment.slot,
+          label: garment.label,
+          image: await garmentToImageRef(garment),
+        })),
+      ),
+    ]);
 
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user;
@@ -97,8 +106,8 @@ export const dressCharacter = async (
     ) {
       console.error("dress-character error:", error, result);
       toast({
-        title: "기존 캐릭터를 그대로 유지했어요",
-        description: "조금이라도 달라질 수 있는 생성 결과는 적용하지 않았습니다. 다시 시도해주세요.",
+        title: "기본 캐릭터를 유지하지 못해 적용하지 않았어요",
+        description: "캐릭터가 달라진 결과는 화면에 반영하지 않습니다. 다시 시도해주세요.",
         variant: "destructive",
       });
       return null;

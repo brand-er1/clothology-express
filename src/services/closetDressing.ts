@@ -87,15 +87,11 @@ export const dressCharacter = async (
       },
     });
 
-    if (
-      error ||
-      !result?.renderedImageUrl ||
-      result?.preservationPassed !== true
-    ) {
+    if (error || !result?.renderedImageUrl) {
       console.error("dress-character error:", error, result);
       toast({
-        title: "기존 캐릭터를 그대로 유지했어요",
-        description: "조금이라도 달라질 수 있는 생성 결과는 적용하지 않았습니다. 다시 시도해주세요.",
+        title: "옷 적용을 다시 시도해주세요",
+        description: "잠시 후 다시 시도해주세요.",
         variant: "destructive",
       });
       return null;

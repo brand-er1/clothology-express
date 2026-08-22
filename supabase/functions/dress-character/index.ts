@@ -55,14 +55,17 @@ interface PreservationEvaluation {
   score: number;
   faceMatch: boolean;
   garmentMatch: boolean;
+  garmentApplied: boolean;
   violations: string[];
 }
 
 // The only thing that must never change is the character's FACE identity — everything below the
 // neck (body shape, limbs, hands, feet, pose, and the outer silhouette a garment creates) is
-// expected to adapt so the clothing sits naturally. faceMatch/garmentMatch (the judge's actual
-// pass/fail calls) remain a hard requirement; the numeric score only needs to be high, and a judge
-// hedging with a minor noted violation no longer auto-fails a result it otherwise approved.
+// expected to adapt so the clothing sits naturally. faceMatch/garmentMatch/garmentApplied (the
+// judge's actual pass/fail calls) decide whether this attempt is good enough to stop retrying —
+// they are NOT a gate that can discard the request outright. Even when every retry still falls
+// short, the best-scoring attempt is always shipped: preserving the character is never a reason to
+// skip putting the garment on it. See the end-of-pipeline selection logic below.
 const PRESERVATION_SCORE_THRESHOLD = 0.9;
 
 const isPreservationApproved = (evaluation: PreservationEvaluation | null) =>
@@ -70,7 +73,8 @@ const isPreservationApproved = (evaluation: PreservationEvaluation | null) =>
     evaluation &&
       evaluation.score >= PRESERVATION_SCORE_THRESHOLD &&
       evaluation.faceMatch &&
-      evaluation.garmentMatch,
+      evaluation.garmentMatch &&
+      evaluation.garmentApplied,
   );
 
 const generateDressedImage = async (
@@ -135,15 +139,17 @@ const evaluatePreservation = async (
           role: "user",
           parts: [
             {
-              text: `Perform a strict fail-closed comparison, but scope it to FACE identity only — this is a clothing swap, and the body below the neck is expected to look different. IMAGE A is the Face Identity Reference (the character in its default/original outfit). IMAGE B is the candidate wearing a different, deliberately requested set of garments.
+              text: `Perform a comparison scoped to FACE identity and to whether the requested garments were actually put on the character — this is a clothing swap, and the body below the neck is expected to look different. IMAGE A is the Face Identity Reference (the character in its default/original outfit, or its previous outfit). IMAGE B is the candidate wearing a different, deliberately requested set of garments.
 
 faceMatch: judge ONLY the face — face shape and outline, the solid black face color, eye shape/size/position/spacing, expression, eyelashes (female character only), and the character's unique face design. Set faceMatch to false only for a genuine, visible change to one of those specific face elements (redrawn, reinterpreted, humanized, aged, or a facial feature added/removed/moved).
 
 Do NOT judge faceMatch on, and NEVER fail it because of: body shape/proportions, shoulder or torso volume, arms, hands, legs, feet, standing pose/stance, camera angle, or the outer silhouette — a new garment is SUPPOSED to change all of these (a bulky hoodie reads wider than a slim shirt, pants replace bare legs with fabric, sleeves cover the arms differently, the pose may shift naturally to wear the item), and none of that is a face or identity problem.
 
-garmentMatch: separately, preserve every supplied garment reference's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction — natural folds and occlusion needed to wear it are allowed, but redesigning the garment is not.
+garmentApplied: for EVERY garment reference image supplied below, confirm it is actually, visibly worn on the character in IMAGE B, on the correct body region, replacing whatever previously occupied that slot. Set garmentApplied to false if: IMAGE B looks like the untouched Face Identity Reference (the garment was never applied), a garment reference is missing from the render, the wrong garment/slot was rendered, or only part of a garment reference was applied. Applying every supplied garment is just as important as preserving the face — do not let a cautious render that skips the clothing change count as success.
 
-Return JSON only: {"score":0.0,"faceMatch":false,"garmentMatch":false,"violations":["short concrete difference"]}. Score 1.0 when the face identity and every garment's design are both faithfully preserved, regardless of how much the body/pose/silhouette changed to wear the clothes.`,
+garmentMatch: separately from whether it was applied, judge design fidelity — preserve every supplied garment reference's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction — natural folds and occlusion needed to wear it are allowed, but redesigning the garment is not.
+
+Return JSON only: {"score":0.0,"faceMatch":false,"garmentMatch":false,"garmentApplied":false,"violations":["short concrete difference"]}. Score 1.0 when the face identity is preserved AND every supplied garment is both actually worn and faithfully rendered, regardless of how much the body/pose/silhouette changed to wear the clothes.`,
             },
             { text: "IMAGE A — FACE IDENTITY REFERENCE" },
             { inlineData: { data: identityAnchor.base64, mimeType: identityAnchor.mimeType } },
@@ -197,6 +203,7 @@ Return JSON only: {"score":0.0,"faceMatch":false,"garmentMatch":false,"violation
           score: Math.min(1, Math.max(0, score)),
           faceMatch: parsed?.faceMatch === true,
           garmentMatch: parsed?.garmentMatch === true,
+          garmentApplied: parsed?.garmentApplied === true,
           violations: Array.isArray(parsed?.violations)
             ? parsed.violations.map((item: unknown) => String(item)).slice(0, 6)
             : [],
@@ -329,11 +336,23 @@ serve(async (req) => {
     const clearedSlotsInstruction = clearedSlots.length > 0
       ? `Leave these empty slots bare exactly as they appear on the canonical character (${clearedSlots.map((slot) => slotDescriptionEn[slot]).join(", ")}). Do not retain or invent an item in them.`
       : "";
+    const replacedSlotsInstruction = garments.length > 0
+      ? garments
+        .map((garment) =>
+          `REMOVE THE CURRENT ${garment.slot.toUpperCase()} GARMENT AND REPLACE IT WITH THE PROVIDED ${garment.slot.toUpperCase()} GARMENT (Reference Image for ${slotDescriptionEn[garment.slot]}). Do not leave the old ${garment.slot} in place, and do not layer the new one on top of it.`)
+        .join("\n")
+      : "";
 
     const prompt = `
 EDIT Reference Image 1. This is a constrained image edit: dress the BRAND-ER character in the supplied garments, keeping its FACE identical while letting the body adapt naturally to the clothing.
 
-Reference Image 1 is the Face Identity Reference for this character. ${faceIdentityRules}
+Reference Image 1 is both the Full Character Reference and the Face Identity Reference for this character — the highest-priority identity anchor. ${faceIdentityRules}
+
+GENERATION PRIORITY ORDER (in order, but Priority 1 must never be used as a reason to abandon Priority 2):
+Priority 1 — Preserve the character's face identity (shape, black color, eyes, expression, eyelashes if present, hairstyle).
+Priority 2 — Actually put the supplied garment(s) on the character, replacing only the requested clothing slot(s).
+Priority 3 — Keep every other currently worn item (any slot not part of this request) unchanged.
+DO NOT REFUSE TO APPLY THE GARMENT. DO NOT RETURN THE ORIGINAL CHARACTER WITHOUT THE NEW GARMENT. THE CHARACTER MUST WEAR THE PROVIDED GARMENT. PRESERVE THE CHARACTER IDENTITY WHILE REPLACING ONLY THE REQUESTED CLOTHING SLOT. DO NOT SOLVE IDENTITY PRESERVATION BY SKIPPING THE CLOTHING CHANGE. A render that keeps the face perfect but fails to show the new garment is a FAILED result, not a safe one.
 
 FACE IDENTITY LOCK — HIGHEST PRIORITY, THE ONLY IMMUTABLE ELEMENT:
 - Preserve exactly, from Reference Image 1: face shape and outline, the solid black face color, eye shape/size/position/spacing, expression, eyelashes when present (female character), and every other element of the character's unique face design.
@@ -356,6 +375,7 @@ WARDROBE COMPOSITION LOCK — SAME PRIORITY:
 - Never carry clothing forward from a previous generated result and never invent clothing for an empty slot.
 
 ${garmentList || "No garment reference is supplied."}
+${replacedSlotsInstruction}
 ${clearedSlotsInstruction}
 
 TASK: Starting only from Reference Image 1, make the same character (same face) naturally wear every supplied garment reference at once. Make each garment genuinely wrap around the body with natural fit, drape, folds, seams, occlusion, and contact shadows — adjusting body volume, limb coverage, and pose as needed for a convincing, natural result. Garment and pose realism come from adapting to the clothing, never from changing the face.
@@ -372,7 +392,7 @@ Preserve the exact design identity of every provided garment. Do not change its 
 
 Do not invent new design details that are not present in the garment reference image (for example: do not add a zipper if there isn't one, do not add graphics that aren't there, do not change a plain garment into a patterned one).
 
-OUTPUT: Return exactly ONE edited full-body image. No before/after split, comparison layout, caption, watermark, extra person, prop, or text overlay. The result must show the same face identity as Reference Image 1, naturally wearing the exact referenced garments — the body, pose, and silhouette should look however is natural for that outfit.
+OUTPUT: Return exactly ONE edited full-body image. No before/after split, comparison layout, caption, watermark, extra person, prop, or text overlay. The result must show the same face identity as Reference Image 1, VISIBLY AND ACTUALLY wearing the exact referenced garments — not the old outfit, not no outfit, not the garments floating beside the character. The body, pose, and silhouette should look however is natural for that outfit. Returning Reference Image 1 unchanged, or with the garment missing/only partially applied, is not an acceptable output.
 `.trim();
 
     const garmentParts: Array<Record<string, unknown>> = [];
@@ -388,76 +408,88 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
       { text: "Reference Image 1: FACE IDENTITY REFERENCE. This face is always the sole source of the character's identity." },
       { inlineData: { data: identityBase64, mimeType: identityMimeType } },
       ...garmentParts,
-      { text: "FINAL LOCK: exact same face (shape, black color, eyes, expression, eyelashes if present) as Reference Image 1, and exact garment design from every garment reference. The body, pose, and silhouette should adapt naturally to the new clothing — that adaptation is expected, not a deviation." },
+      { text: "FINAL LOCK: exact same face (shape, black color, eyes, expression, eyelashes if present) as Reference Image 1, and exact garment design from every garment reference, ACTUALLY WORN on the character. The body, pose, and silhouette should adapt naturally to the new clothing — that adaptation is expected, not a deviation. Do not solve identity preservation by skipping the clothing change." },
     ];
 
     const firstImage = await generateDressedImage(geminiApiKey, generationParts);
     if (!firstImage) throw new Error("Gemini did not return an image");
 
     const identityAnchor = { base64: identityBase64, mimeType: identityMimeType };
-    let chosenImage = firstImage;
-    let preservationEvaluation = await evaluatePreservation(
-      geminiApiKey,
-      identityAnchor,
-      firstImage,
-      garments,
-    );
+
+    interface Attempt {
+      image: GeneratedImage;
+      evaluation: PreservationEvaluation | null;
+    }
+
+    const attempts: Attempt[] = [
+      {
+        image: firstImage,
+        evaluation: await evaluatePreservation(geminiApiKey, identityAnchor, firstImage, garments),
+      },
+    ];
     let identityRetryApplied = false;
 
-    // Generation is stochastic, so a single rejected draft doesn't mean the request is
-    // impossible — give it a couple of correction passes before discarding it outright.
-    const maxRetries = 2;
-    let lastAttemptedImage = firstImage;
-    for (let attempt = 0; attempt < maxRetries && !isPreservationApproved(preservationEvaluation); attempt++) {
+    // Generation is stochastic, so a single imperfect draft doesn't mean the request is
+    // impossible — give it a few correction passes with escalating emphasis. Unlike before, a
+    // retry loop that never reaches full approval does NOT discard the request: the
+    // best-scoring attempt is always shipped at the end (see selection below), because refusing
+    // to apply the garment in order to "protect" the character is exactly the failure mode this
+    // pipeline must avoid.
+    const maxRetries = 3;
+    const escalationNote = [
+      "CORRECTION PASS 1: Discard the rejected draft and rebuild from the Face Identity Reference plus all original garment references.",
+      "CORRECTION PASS 2 (stronger): The previous attempts still did not both keep the exact face AND actually show the garment worn. Re-anchor harder on Reference Image 1's face while making absolutely sure every supplied garment is rendered on the body in its correct slot — a safe-looking result that omits the garment is a failure, not a safe fallback.",
+      "CORRECTION PASS 3 (final, strongest): This is the last automatic attempt. Prioritize BOTH constraints simultaneously — keep the face identical to Reference Image 1 AND make the character visibly wear every supplied garment reference, replacing the requested slot. Do not default to returning the character without the new clothing.",
+    ];
+    for (
+      let attempt = 0;
+      attempt < maxRetries && !isPreservationApproved(attempts[attempts.length - 1].evaluation);
+      attempt++
+    ) {
       identityRetryApplied = true;
-      console.warn("dress-character preservation failure detected", preservationEvaluation);
+      const previous = attempts[attempts.length - 1];
+      console.warn("dress-character preservation retry", attempt + 1, previous.evaluation);
       const retryParts: Array<Record<string, unknown>> = [
         {
-          text: `${prompt}\n\nCORRECTION PASS: Discard the rejected draft and rebuild from the Face Identity Reference plus all original garment references. Detected differences: ${preservationEvaluation?.violations.join("; ") || "the strict face/garment preservation check was unavailable or found a difference"}.`,
+          text: `${prompt}\n\n${escalationNote[Math.min(attempt, escalationNote.length - 1)]} Detected differences: ${previous.evaluation?.violations.join("; ") || "the strict face/garment preservation check was unavailable or found a difference"}.`,
         },
         { text: "Reference Image 1: FACE IDENTITY REFERENCE. This exact face must survive unchanged; the body may adapt naturally to the clothing." },
         { inlineData: { data: identityBase64, mimeType: identityMimeType } },
-        { text: "REJECTED DRAFT: use only as an example of what NOT to change on the face." },
-        { inlineData: { data: lastAttemptedImage.base64, mimeType: lastAttemptedImage.mimeType } },
+        { text: "PREVIOUS DRAFT: use only as an example of what to fix — either the face drifted, the garment wasn't actually applied, or both." },
+        { inlineData: { data: previous.image.base64, mimeType: previous.image.mimeType } },
         ...garmentParts,
-        { text: "FINAL CHECK: exact face identity and exact garment references; the body, pose, and silhouette may differ as much as needed to wear the clothes naturally." },
+        { text: "FINAL CHECK: exact face identity AND every garment reference actually worn on the character; the body, pose, and silhouette may differ as much as needed to wear the clothes naturally. Do not solve identity preservation by skipping the clothing change." },
       ];
       const retryImage = await generateDressedImage(geminiApiKey, retryParts);
       if (!retryImage) continue;
-      lastAttemptedImage = retryImage;
-      const retryEvaluation = await evaluatePreservation(
-        geminiApiKey,
-        identityAnchor,
-        retryImage,
-        garments,
-      );
-      if (isPreservationApproved(retryEvaluation)) {
-        chosenImage = retryImage;
-        preservationEvaluation = retryEvaluation;
-      } else if (
-        !preservationEvaluation ||
-        (retryEvaluation && retryEvaluation.score > preservationEvaluation.score)
-      ) {
-        // Keep the best-scoring draft as the correction-pass basis for the next retry, even
-        // though it's not approved yet.
-        preservationEvaluation = retryEvaluation;
-      }
+      const retryEvaluation = await evaluatePreservation(geminiApiKey, identityAnchor, retryImage, garments);
+      attempts.push({ image: retryImage, evaluation: retryEvaluation });
     }
+
+    // Never discard the request outright. Ship the first fully-approved attempt if one exists;
+    // otherwise ship the best-scoring attempt so far (character preservation concerns alone are
+    // never a reason to return the character without the requested garment). The very last
+    // attempt is the final fallback if no attempt was ever successfully scored.
+    const approvedAttempt = attempts.find((attempt) => isPreservationApproved(attempt.evaluation));
+    const bestAttempt = approvedAttempt ?? attempts.reduce((best, current) => {
+      const bestScore = best.evaluation?.score ?? -1;
+      const currentScore = current.evaluation?.score ?? -1;
+      return currentScore > bestScore ? current : best;
+    }, attempts[0]);
+
+    const chosenImage = bestAttempt.image;
+    const preservationEvaluation = bestAttempt.evaluation;
 
     if (!preservationEvaluation) {
       // The judge model itself was unavailable on every attempt (API error / bad JSON), not a
       // detected face or garment violation — that's an infra failure, not evidence something is
-      // actually wrong with the image. Discarding here would mean the character can never be
-      // redressed whenever the judge call has a bad day. Ship the generation, which already went
-      // through the same strong face/garment locks in its own prompt.
+      // actually wrong with the image. Ship the generation, which already went through the same
+      // strong face/garment locks in its own prompt.
       console.warn("dress-character preservation judge unavailable after all attempts; shipping generation on prompt-level locks alone");
-      chosenImage = lastAttemptedImage;
     } else if (!isPreservationApproved(preservationEvaluation)) {
-      console.error("dress-character discarded by fail-closed preservation gate", preservationEvaluation);
-      return new Response(
-        JSON.stringify({ error: "캐릭터 얼굴 또는 의류 원본이 조금이라도 달라질 가능성이 있어 결과를 폐기했습니다. 기존 이미지는 그대로 유지됩니다." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 422 },
-      );
+      // Best-effort ship: preservation never reached full approval, but the character must still
+      // end up wearing the garment. Log for visibility, never block the response.
+      console.warn("dress-character shipping best-effort result after preservation retries", preservationEvaluation);
     }
 
     const generatedImageBase64 = chosenImage.base64;
@@ -490,6 +522,8 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
         hasImage: Boolean(publicUrlData?.publicUrl),
         faceScore: preservationEvaluation?.score ?? null,
         preservationPassed: true,
+        preservationApproved: isPreservationApproved(preservationEvaluation),
+        garmentApplied: preservationEvaluation?.garmentApplied ?? null,
         identityRetryApplied,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

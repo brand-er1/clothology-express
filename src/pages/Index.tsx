@@ -6,6 +6,7 @@ import { BrandMascot } from "@/components/BrandMascot";
 import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
+import { portfolioProducts } from "@/data/portfolioProducts";
 
 type CollectionItem = Pick<
   Funding,
@@ -298,6 +299,52 @@ const Index = () => {
                   </div>
                 </Link>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-black/10 bg-[#f1f0ed]">
+          <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
+            <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">Production portfolio</p>
+                <h2 className="mt-3 font-serif text-4xl font-normal tracking-[-0.04em] sm:text-6xl">
+                  아이디어에서<br />실제 제품까지
+                </h2>
+                <p className="mt-5 max-w-md text-sm leading-7 text-stone-600 sm:text-base">
+                  브랜더가 제작한 다양한 의류와<br />
+                  AI 디자인부터 샘플·본생산까지 이어지는 제작 과정을 확인해보세요.
+                </p>
+                <Link
+                  to="/portfolio"
+                  className="mt-7 inline-flex h-12 items-center justify-center bg-brand px-7 text-sm font-bold text-white transition hover:bg-brand-dark sm:h-14"
+                >
+                  제작 포트폴리오 보기 <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {portfolioProducts
+                  .filter((product) =>
+                    ["burgundy-leather-jacket", "technical-shell", "studded-hoodie", "work-jacket"].includes(product.id),
+                  )
+                  .map((product, index) => (
+                    <Link
+                      key={product.id}
+                      to="/portfolio"
+                      className={`aspect-[3/4] overflow-hidden bg-[#e9e5dd] transition hover:opacity-90 ${
+                        index % 2 === 1 ? "mt-6 sm:mt-10" : ""
+                      }`}
+                    >
+                      <img
+                        src={product.image}
+                        alt={product.nameKo}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-contain p-4 sm:p-5"
+                      />
+                    </Link>
+                  ))}
+              </div>
             </div>
           </div>
         </section>

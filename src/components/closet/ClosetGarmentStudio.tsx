@@ -67,6 +67,9 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
       <p className="flex items-center gap-2 text-sm font-black text-stone-950">
         <Sparkles className="h-4 w-4 text-brand" />✨ 새 옷 만들기
       </p>
+      <p className="text-xs leading-5 text-stone-500">
+        같은 부위에 이미 입은 옷이 있으면 새로 만든 옷으로 바로 교체됩니다.
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {clothTypes.map((type) => (
           <button
@@ -101,7 +104,7 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
             만드는 중...
           </>
         ) : (
-          "✨ 옷 만들기"
+          "✨ 옷 만들고 바로 입히기"
         )}
       </Button>
     </div>

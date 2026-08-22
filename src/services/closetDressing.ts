@@ -87,13 +87,10 @@ export const dressCharacter = async (
       },
     });
 
-    const identityScore = Number(result?.identityScore);
     if (
       error ||
       !result?.renderedImageUrl ||
-      result?.preservationPassed !== true ||
-      !Number.isFinite(identityScore) ||
-      identityScore !== 1
+      result?.preservationPassed !== true
     ) {
       console.error("dress-character error:", error, result);
       toast({

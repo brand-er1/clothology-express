@@ -58,13 +58,20 @@ interface PreservationEvaluation {
   violations: string[];
 }
 
+// A generative model can never be pixel-perfect across two independent calls (generation, then
+// judging), so requiring a mathematically exact score of 1.0 with zero noted violations made the
+// gate reject almost every attempt — including good ones — and the character effectively could
+// never be redressed. characterMatch/garmentMatch (the judge's actual pass/fail calls on identity
+// and garment fidelity) remain a hard requirement; the numeric score only needs to be high, and a
+// judge hedging with a minor noted violation no longer auto-fails a result it otherwise approved.
+const PRESERVATION_SCORE_THRESHOLD = 0.9;
+
 const isPreservationApproved = (evaluation: PreservationEvaluation | null) =>
   Boolean(
     evaluation &&
-      evaluation.score === 1 &&
+      evaluation.score >= PRESERVATION_SCORE_THRESHOLD &&
       evaluation.characterMatch &&
-      evaluation.garmentMatch &&
-      evaluation.violations.length === 0,
+      evaluation.garmentMatch,
   );
 
 const generateDressedImage = async (
@@ -362,7 +369,11 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
     );
     let identityRetryApplied = false;
 
-    if (!isPreservationApproved(preservationEvaluation)) {
+    // Generation is stochastic, so a single rejected draft doesn't mean the request is
+    // impossible — give it a couple of correction passes before discarding it outright.
+    const maxRetries = 2;
+    let lastAttemptedImage = firstImage;
+    for (let attempt = 0; attempt < maxRetries && !isPreservationApproved(preservationEvaluation); attempt++) {
       identityRetryApplied = true;
       console.warn("dress-character preservation failure detected", preservationEvaluation);
       const retryParts: Array<Record<string, unknown>> = [
@@ -372,22 +383,29 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
         { text: "Reference Image 1: CANONICAL IMMUTABLE CHARACTER. This exact character must survive unchanged." },
         { inlineData: { data: identityBase64, mimeType: identityMimeType } },
         { text: "REJECTED DRAFT: use only as an example of what NOT to change outside clothing." },
-        { inlineData: { data: firstImage.base64, mimeType: firstImage.mimeType } },
+        { inlineData: { data: lastAttemptedImage.base64, mimeType: lastAttemptedImage.mimeType } },
         ...garmentParts,
         { text: "FINAL CHECK: exact canonical character and exact garment references; only clothing pixels needed for natural wearing may differ." },
       ];
       const retryImage = await generateDressedImage(geminiApiKey, retryParts);
-      if (retryImage) {
-        const retryEvaluation = await evaluatePreservation(
-          geminiApiKey,
-          identityAnchor,
-          retryImage,
-          garments,
-        );
-        if (isPreservationApproved(retryEvaluation)) {
-          chosenImage = retryImage;
-          preservationEvaluation = retryEvaluation;
-        }
+      if (!retryImage) continue;
+      lastAttemptedImage = retryImage;
+      const retryEvaluation = await evaluatePreservation(
+        geminiApiKey,
+        identityAnchor,
+        retryImage,
+        garments,
+      );
+      if (isPreservationApproved(retryEvaluation)) {
+        chosenImage = retryImage;
+        preservationEvaluation = retryEvaluation;
+      } else if (
+        !preservationEvaluation ||
+        (retryEvaluation && retryEvaluation.score > preservationEvaluation.score)
+      ) {
+        // Keep the best-scoring draft as the correction-pass basis for the next retry, even
+        // though it's not approved yet.
+        preservationEvaluation = retryEvaluation;
       }
     }
 

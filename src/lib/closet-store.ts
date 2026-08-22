@@ -119,19 +119,52 @@ export const saveCurrentLook = (): SavedBrandErLook => {
   return look;
 };
 
-// --- My wardrobe (AI-created garments this session, browsable for quick re-equip) ---
+// --- My wardrobe (AI-created and uploaded garments, browsable for quick replacement) ---
 
 export interface MyWardrobeGarment extends ClosetGarment {
   createdAt: string;
 }
 
-const MY_WARDROBE_KEY = "brander-my-wardrobe-v1";
+const MY_WARDROBE_KEY = "brander-my-wardrobe-v2";
+const LEGACY_MY_WARDROBE_KEY = "brander-my-wardrobe-v1";
+
+const normalizeMyWardrobe = (items: MyWardrobeGarment[]) => {
+  const seenIds = new Set<string>();
+  return items
+    .filter((item) => {
+      if (!item?.id || seenIds.has(item.id)) return false;
+      seenIds.add(item.id);
+      return item.source !== "preset";
+    })
+    .slice(0, 30);
+};
+
+const persistMyWardrobe = (items: MyWardrobeGarment[]) => {
+  const serialized = JSON.stringify(items);
+  try {
+    // Keep authored garments available after a reload so the user can swap back to them later.
+    localStorage.setItem(MY_WARDROBE_KEY, serialized);
+    return;
+  } catch {
+    // Large uploaded data URLs can exceed localStorage quota. Session storage is a useful fallback.
+  }
+  try {
+    sessionStorage.setItem(MY_WARDROBE_KEY, serialized);
+  } catch {
+    // Best-effort — the caller still receives the in-memory list for this render.
+  }
+};
 
 export const loadMyWardrobe = (): MyWardrobeGarment[] => {
   try {
-    const raw = sessionStorage.getItem(MY_WARDROBE_KEY);
+    const raw =
+      localStorage.getItem(MY_WARDROBE_KEY) ||
+      sessionStorage.getItem(MY_WARDROBE_KEY) ||
+      sessionStorage.getItem(LEGACY_MY_WARDROBE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as MyWardrobeGarment[];
+    const items = normalizeMyWardrobe(JSON.parse(raw) as MyWardrobeGarment[]);
+    persistMyWardrobe(items);
+    return items;
   } catch {
     return [];
   }
@@ -139,11 +172,10 @@ export const loadMyWardrobe = (): MyWardrobeGarment[] => {
 
 export const addToMyWardrobe = (garment: ClosetGarment): MyWardrobeGarment[] => {
   const entry: MyWardrobeGarment = { ...garment, createdAt: new Date().toISOString() };
-  const next = [entry, ...loadMyWardrobe()].slice(0, 30);
-  try {
-    sessionStorage.setItem(MY_WARDROBE_KEY, JSON.stringify(next));
-  } catch {
-    // Best-effort — the item is still usable this turn even if it can't persist.
-  }
+  const next = normalizeMyWardrobe([
+    entry,
+    ...loadMyWardrobe().filter((item) => item.id !== garment.id),
+  ]);
+  persistMyWardrobe(next);
   return next;
 };

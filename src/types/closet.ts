@@ -39,6 +39,24 @@ export interface ClosetGarment {
     fitLabel?: string;
     productionEstimate?: ProductionEstimateResult | null;
   };
+  /** Edit history for this garment ("수정하기" trail). Absent/empty means only the original exists. */
+  revisions?: ClosetGarmentRevision[];
+  /** Id of the revision currently reflected by this garment's top-level `imageUrl`/`designRef`. */
+  activeRevisionId?: string;
+}
+
+/**
+ * One snapshot in a garment's edit history. `revisions[0]` is always the original generation;
+ * each later entry is the result of one "수정하기" (edit) pass, with `promptLabel` holding the
+ * user's modification instruction (empty for the original). Restoring an older revision only
+ * changes which one is "current" — the array itself is never truncated.
+ */
+export interface ClosetGarmentRevision {
+  id: string;
+  promptLabel: string;
+  imageUrl: string;
+  designRef?: ClosetGarment["designRef"];
+  createdAt: string;
 }
 
 export type ClosetOutfit = Record<ClosetSlot, ClosetGarment | null>;

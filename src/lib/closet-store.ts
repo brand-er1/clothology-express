@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import type {
   CharacterGender,
   ClosetGarment,
+  ClosetGarmentRevision,
   ClosetSlot,
   SavedBrandErLook,
   WardrobeState,
@@ -171,11 +172,70 @@ export const loadMyWardrobe = (): MyWardrobeGarment[] => {
 };
 
 export const addToMyWardrobe = (garment: ClosetGarment): MyWardrobeGarment[] => {
-  const entry: MyWardrobeGarment = { ...garment, createdAt: new Date().toISOString() };
+  const existing = loadMyWardrobe().find((item) => item.id === garment.id);
+  const entry: MyWardrobeGarment = { ...garment, createdAt: existing?.createdAt || new Date().toISOString() };
   const next = normalizeMyWardrobe([
     entry,
     ...loadMyWardrobe().filter((item) => item.id !== garment.id),
   ]);
   persistMyWardrobe(next);
   return next;
+};
+
+export const removeFromMyWardrobe = (garmentId: string): MyWardrobeGarment[] => {
+  const next = loadMyWardrobe().filter((item) => item.id !== garmentId);
+  persistMyWardrobe(next);
+  return next;
+};
+
+// --- Garment revision history ("수정하기" trail) ---
+
+/** Every garment always has at least one revision — the original — even if it predates this field. */
+export const ensureGarmentRevisions = (garment: ClosetGarment): ClosetGarmentRevision[] =>
+  garment.revisions?.length
+    ? garment.revisions
+    : [
+        {
+          id: `${garment.id}-original`,
+          promptLabel: "",
+          imageUrl: garment.imageUrl,
+          designRef: garment.designRef,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+/** Appends a new revision (the result of an "수정하기" edit) and makes it the current one. */
+export const withNewGarmentRevision = (
+  garment: ClosetGarment,
+  next: { imageUrl: string; designRef?: ClosetGarment["designRef"]; promptLabel: string },
+): ClosetGarment => {
+  const baseRevisions = ensureGarmentRevisions(garment);
+  const revision: ClosetGarmentRevision = {
+    id: `${garment.id}-rev-${baseRevisions.length}-${Date.now()}`,
+    promptLabel: next.promptLabel,
+    imageUrl: next.imageUrl,
+    designRef: next.designRef,
+    createdAt: new Date().toISOString(),
+  };
+  return {
+    ...garment,
+    imageUrl: next.imageUrl,
+    designRef: next.designRef ?? garment.designRef,
+    revisions: [...baseRevisions, revision],
+    activeRevisionId: revision.id,
+  };
+};
+
+/** Restores an earlier revision as the current one, without discarding any newer revisions. */
+export const withRestoredGarmentRevision = (garment: ClosetGarment, revisionId: string): ClosetGarment => {
+  const revisions = ensureGarmentRevisions(garment);
+  const target = revisions.find((revision) => revision.id === revisionId);
+  if (!target) return garment;
+  return {
+    ...garment,
+    imageUrl: target.imageUrl,
+    designRef: target.designRef ?? garment.designRef,
+    revisions,
+    activeRevisionId: target.id,
+  };
 };

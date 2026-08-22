@@ -7,6 +7,7 @@ import { clothTypes } from "@/lib/customize-constants";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { generateImage } from "@/services/imageGeneration";
+import { logClosetActivity } from "@/services/closetActivityLog";
 import type { ClosetGarment } from "@/types/closet";
 
 interface ClosetGarmentStudioProps {
@@ -56,6 +57,16 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
         },
       };
       onGarmentCreated(garment);
+      void logClosetActivity({
+        eventType: "garment_created",
+        slot,
+        garmentId: garment.id,
+        label: garment.label,
+        prompt: result.optimizedPrompt || result.prompt,
+        imageUrl: garment.designRef?.imageUrl || garment.imageUrl,
+        imagePath: garment.designRef?.imagePath,
+        metadata: { clothType: category, material },
+      });
       setPrompt("");
     } finally {
       setIsGenerating(false);
@@ -90,7 +101,7 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
         value={prompt}
         onChange={(event) => setPrompt(event.target.value)}
         placeholder="예: 블랙 오버사이즈 맨투맨, 왼쪽 가슴에 작은 로고"
-        className="min-h-[72px] resize-none rounded-2xl border-stone-200 bg-white text-sm"
+        className="min-h-[72px] resize-none rounded-2xl border-stone-200 bg-white text-base"
       />
       <Button
         type="button"
@@ -101,7 +112,7 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
         {isGenerating ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            만드는 중...
+            옷을 만들고 있어요...
           </>
         ) : (
           "✨ 옷 만들고 바로 입히기"

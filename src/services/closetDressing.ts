@@ -1,45 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
+import { garmentToImageRef, urlToImageRef } from "@/lib/closet-image-ref";
+import { logClosetActivity } from "@/services/closetActivityLog";
 import type { CharacterGender, ClosetGarment, ClosetSlot } from "@/types/closet";
-
-interface ImageRef {
-  base64: string;
-  mimeType: string;
-}
-
-const blobToBase64 = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result || "");
-      const base64 = result.split(",")[1];
-      if (!base64) {
-        reject(new Error("이미지를 변환할 수 없습니다."));
-        return;
-      }
-      resolve(base64);
-    };
-    reader.onerror = () => reject(new Error("이미지를 변환할 수 없습니다."));
-    reader.readAsDataURL(blob);
-  });
-
-/** Fetches any http(s) or same-origin image URL and returns it as base64 for the Gemini call. */
-const urlToImageRef = async (url: string): Promise<ImageRef> => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("이미지를 불러올 수 없습니다.");
-  }
-  const blob = await response.blob();
-  return { base64: await blobToBase64(blob), mimeType: blob.type || "image/png" };
-};
-
-const garmentToImageRef = async (garment: ClosetGarment): Promise<ImageRef> => {
-  if (garment.designRef?.imageBase64 && garment.designRef.imageMimeType) {
-    return { base64: garment.designRef.imageBase64, mimeType: garment.designRef.imageMimeType };
-  }
-  const sourceUrl = garment.designRef?.imageUrl || garment.imageUrl;
-  return urlToImageRef(sourceUrl);
-};
 
 export interface DressCharacterResult {
   renderedImageUrl: string;
@@ -87,19 +50,29 @@ export const dressCharacter = async (
       },
     });
 
-    if (
-      error ||
-      !result?.renderedImageUrl ||
-      result?.preservationPassed !== true
-    ) {
+    if (error || !result?.renderedImageUrl) {
       console.error("dress-character error:", error, result);
       toast({
-        title: "기존 캐릭터를 그대로 유지했어요",
-        description: "조금이라도 달라질 수 있는 생성 결과는 적용하지 않았습니다. 다시 시도해주세요.",
+        title: "옷 적용을 다시 시도해주세요",
+        description: "잠시 후 다시 시도해주세요.",
         variant: "destructive",
       });
       return null;
     }
+
+    void logClosetActivity({
+      eventType: "character_dressed",
+      characterGender: character,
+      slot: options.changedSlots?.[0],
+      imageUrl: result.renderedImageUrl,
+      imagePath: result.renderedImagePath,
+      label: garments.map((garment) => garment.label).join(", ") || "전체 벗기",
+      metadata: {
+        changedSlots: options.changedSlots || [],
+        wornSlots: garments.map((garment) => garment.slot),
+        garmentIds: garments.map((garment) => garment.id),
+      },
+    });
 
     return {
       renderedImageUrl: result.renderedImageUrl,

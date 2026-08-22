@@ -8,6 +8,11 @@ interface ImageRef {
 }
 
 const imageRefCache = new Map<string, Promise<ImageRef>>();
+const hatIdentityImage: Record<CharacterGender, string> = {
+  male: "/mascot/brand-er-male.png",
+  female: "/mascot/brand-er-female.png",
+};
+const hatPattern = /hat|cap|beanie|bucket|모자|캡|비니|버킷/i;
 
 const blobToBase64 = (blob: Blob): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -46,6 +51,9 @@ const garmentToImageRef = async (garment: ClosetGarment): Promise<ImageRef> => {
   return urlToImageRef(garment.designRef?.imageUrl || garment.imageUrl);
 };
 
+const isHatGarment = (garment: ClosetGarment) =>
+  garment.slot === "accessory" && hatPattern.test(`${garment.label} ${garment.designRef?.designContext || ""}`);
+
 export interface DressCharacterResult {
   renderedImageUrl: string;
   renderedImagePath: string | null;
@@ -61,8 +69,13 @@ export const dressCharacter = async (
   options: DressCharacterOptions = {},
 ): Promise<DressCharacterResult | null> => {
   try {
+    // Hats always use the explicit canonical gender mascot requested for headwear fitting.
+    const effectiveIdentityUrl = garments.some(isHatGarment)
+      ? hatIdentityImage[character]
+      : characterBaseImageUrl;
+
     const [identityImage, garmentPayload] = await Promise.all([
-      urlToImageRef(characterBaseImageUrl),
+      urlToImageRef(effectiveIdentityUrl),
       Promise.all(garments.map(async (garment) => ({
         slot: garment.slot,
         label: garment.label,
@@ -129,7 +142,6 @@ export const modifyClosetGarment = async (
       toast({ title: "옷 수정에 실패했어요", variant: "destructive" });
       return null;
     }
-    // Ensure a previously cached old garment URL can never be reused for this edited item.
     imageRefCache.delete(imageUrl);
     return {
       ...garment,

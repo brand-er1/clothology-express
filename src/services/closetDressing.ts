@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
+import { getAppPath } from "@/utils/appUrl";
 import type { CharacterGender, ClosetGarment, ClosetSlot } from "@/types/closet";
 
 interface ImageRef {
@@ -9,8 +10,8 @@ interface ImageRef {
 
 const imageRefCache = new Map<string, Promise<ImageRef>>();
 const hatIdentityImage: Record<CharacterGender, string> = {
-  male: "/mascot/brand-er-male.png",
-  female: "/mascot/brand-er-female.png",
+  male: getAppPath("/mascot/brand-er-male.png"),
+  female: getAppPath("/mascot/brand-er-female.png"),
 };
 const hatPattern = /hat|cap|beanie|bucket|모자|캡|비니|버킷/i;
 
@@ -70,6 +71,7 @@ export const dressCharacter = async (
 ): Promise<DressCharacterResult | null> => {
   try {
     // Hats always use the explicit canonical gender mascot requested for headwear fitting.
+    // getAppPath keeps this working both on the custom domain and GitHub Pages' repository subpath.
     const effectiveIdentityUrl = garments.some(isHatGarment)
       ? hatIdentityImage[character]
       : characterBaseImageUrl;

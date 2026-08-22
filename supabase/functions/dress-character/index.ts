@@ -134,7 +134,7 @@ const evaluatePreservation = async (
               role: "user",
               parts: [
                 {
-                  text: `Perform a strict fail-closed identity comparison. IMAGE A is the canonical immutable character. IMAGE B is the candidate wearing the supplied garment references. The candidate must preserve A's exact face, eyes, expression, head, hair, skin/face color, body proportions, limb lengths, hands, feet, pose, camera, crop, background, lighting, and render style. It must also preserve every supplied garment's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction. Natural folds and occlusion needed to wear it are allowed, but redesign is not. Set characterMatch or garmentMatch to false if there is any visible doubt. Return JSON only: {"score":0.0,"characterMatch":false,"garmentMatch":false,"violations":["short concrete difference"]}. Score 1.0 only when both the character identity and every garment identity are effectively exact.`,
+                  text: `Perform a strict fail-closed comparison. IMAGE A is the canonical immutable character wearing its default/original outfit. IMAGE B is the candidate wearing a different, deliberately requested set of garments (the supplied garment references). Only judge characterMatch on identity, not on clothing: A's exact face, eyes, expression, head, hair, skin/face color, hands, feet, underlying skeletal body proportions and limb lengths, standing pose/stance, camera angle, crop, background, lighting, and render style. The new garments are SUPPOSED to look different from whatever A was wearing, and a different garment naturally changes the visible outer silhouette (bulk, length, drape, coverage) — never fail characterMatch just because the clothed outline differs from A; only fail it for an actual identity/pose/proportion/face/hand/foot deviation on the character itself. Separately, garmentMatch must preserve every supplied garment reference's exact color, silhouette, fit, length, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve shape, material, and construction — natural folds and occlusion needed to wear it are allowed, but redesigning the garment is not. Set characterMatch or garmentMatch to false only for a genuine, visible violation of those specific rules. Return JSON only: {"score":0.0,"characterMatch":false,"garmentMatch":false,"violations":["short concrete difference"]}. Score 1.0 when the character's identity/pose and every garment's design are both faithfully preserved.`,
                 },
                 { text: "IMAGE A — CANONICAL IMMUTABLE CHARACTER IDENTITY" },
                 { inlineData: { data: identityAnchor.base64, mimeType: identityAnchor.mimeType } },
@@ -302,10 +302,11 @@ Reference Image 1 is the one and only canonical immutable BRAND-ER character ide
 
 IMMUTABLE CHARACTER LOCK — HIGHEST PRIORITY:
 - Preserve the exact identity of the provided character. The output must visibly be Reference Image 1 with only the requested wardrobe applied, never a new character inspired by it.
-- Preserve exactly: black face color, eyes, eye spacing and shape, eyelashes when present, expression, head outline, hair/headwear not explicitly replaced, neck, body proportions, limb length and thickness, hands, fingers, feet, pose, gender presentation, camera angle, crop, scale, framing, lighting, background, and overall 3D render style.
-- Keep all visible uncovered character regions as close to pixel-identical to Reference Image 1 as generatively possible.
+- Preserve exactly: black face color, eyes, eye spacing and shape, eyelashes when present, expression, head outline, hair/headwear not explicitly replaced, neck, underlying skeletal body proportions and limb length/thickness, hands, fingers, feet, standing pose/stance/camera angle, gender presentation, crop, scale, framing, lighting, background, and overall 3D render style.
+- "Pose" means the character's stance, joint angles, and camera framing — it does NOT mean the outer silhouette. A new garment is EXPECTED to change the visible outline (a bulky hoodie reads wider than a slim shirt, a long coat covers more leg, etc.); that expected silhouette change from wearing different clothing is correct and must never be treated as a character deviation.
+- Keep all visible uncovered character regions (face, hands, feet, and any skin/fur not covered by the new wardrobe) as close to pixel-identical to Reference Image 1 as generatively possible.
 - Do not redesign, reinterpret, regenerate, beautify, humanize, age, recolor, reshape, rotate, mirror, or replace the character. Never add or remove a facial feature or limb.
-- Do not change the character to fit a garment. If proportions conflict, tailor and drape the GARMENT to the unchanged character body.
+- Do not change the character's underlying body to fit a garment. If proportions conflict, tailor and drape the GARMENT to the unchanged character body — but the garment itself may naturally bulk, drape, or lengthen over that body.
 
 WARDROBE COMPOSITION LOCK — SAME PRIORITY:
 - Build the complete wardrobe only from the garment references supplied in this request: ${slotsSentence}.
@@ -345,7 +346,7 @@ OUTPUT: Return exactly ONE edited full-body image. No before/after split, compar
       { text: "Reference Image 1: CANONICAL IMMUTABLE CHARACTER. This is always the sole character source." },
       { inlineData: { data: identityBase64, mimeType: identityMimeType } },
       ...garmentParts,
-      { text: "FINAL LOCK: exact same face, eyes, head, body, pose, hands, feet, style, camera, framing, lighting, and background as Reference Image 1; exact garment design from every garment reference. Change clothing only." },
+      { text: "FINAL LOCK: exact same face, eyes, head, hands, feet, underlying body/pose, style, camera, framing, lighting, and background as Reference Image 1; exact garment design from every garment reference. Change the clothing, and only the clothing — the outer silhouette is expected to change to match the new garments." },
     ];
 
     const firstImage = await generateDressedImage(geminiApiKey, generationParts);

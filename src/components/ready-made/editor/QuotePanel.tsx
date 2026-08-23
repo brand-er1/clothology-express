@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, Send, Timer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   READY_MADE_ESTIMATE_VARIANCE_NOTICE,
@@ -25,12 +26,14 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
         <h3 className="text-sm font-black text-emerald-950">제작 의뢰가 접수되었습니다</h3>
         <p className="mt-2 text-xs leading-5 text-emerald-800">관리자가 확인 후 등록된 연락처로 안내드립니다.</p>
         <div className="mt-4 grid gap-2">
-          <Button asChild className="h-10 rounded-full bg-emerald-700 text-sm hover:bg-emerald-800">
-            <Link to="/orders">
-              <CheckCircle2 className="mr-1.5 h-4 w-4" />
-              내 제작 의뢰 확인
-            </Link>
-          </Button>
+          {form.isAuthenticated && (
+            <Button asChild className="h-10 rounded-full bg-emerald-700 text-sm hover:bg-emerald-800">
+              <Link to="/orders">
+                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                내 제작 의뢰 확인
+              </Link>
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -98,6 +101,34 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
         </Card>
       )}
 
+      {!form.isAuthenticated && (
+        <div className="mt-4 grid gap-2.5 rounded-xl border border-stone-200 bg-white p-3.5">
+          <p className="text-xs font-bold text-stone-700">
+            안내받을 연락처 <span className="text-brand">(필수)</span>
+          </p>
+          <label className="block text-xs font-bold text-stone-700">
+            이름
+            <Input
+              value={form.guestName}
+              onChange={(event) => form.setGuestName(event.target.value)}
+              placeholder="담당자 이름"
+              maxLength={50}
+              className="mt-1.5 h-10 bg-white text-sm"
+            />
+          </label>
+          <label className="block text-xs font-bold text-stone-700">
+            연락처
+            <Input
+              value={form.guestPhone}
+              onChange={(event) => form.setGuestPhone(event.target.value)}
+              placeholder="010-0000-0000"
+              maxLength={30}
+              className="mt-1.5 h-10 bg-white text-sm"
+            />
+          </label>
+        </div>
+      )}
+
       <label className="mt-4 block text-xs font-bold text-stone-700">
         관리자에게 전달할 추가 요청사항
         <Textarea
@@ -113,7 +144,12 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
         type="button"
         className="mt-3 h-11 w-full rounded-full bg-brand text-sm font-black hover:bg-brand-dark"
         onClick={() => void form.submitRequest()}
-        disabled={form.isSubmitting || !quote || !form.designArtwork}
+        disabled={
+          form.isSubmitting ||
+          !quote ||
+          !form.designArtwork ||
+          (!form.isAuthenticated && (!form.guestName.trim() || !form.guestPhone.trim()))
+        }
       >
         {form.isSubmitting ? (
           <>

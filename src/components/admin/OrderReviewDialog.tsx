@@ -74,6 +74,8 @@ export const OrderReviewDialog = ({
     }
   }, [order]);
 
+  const isGuestOrder = Boolean(order && !order.user_id && (order.guest_name || order.guest_phone));
+
   // 고객이 자동견적 시 올린 참고 이미지 전체(정면·후면·디테일 등)를 갤러리로 표시
   useEffect(() => {
     const paths = order?.reference_image_paths;
@@ -328,7 +330,23 @@ export const OrderReviewDialog = ({
                 <UserRound className="h-4 w-4 text-brand" />
                 고객 정보
               </h3>
-              {isLoadingProfile ? (
+              {isGuestOrder ? (
+                <div className="bg-gray-50 p-3 rounded">
+                  <p className="mb-2 text-xs font-bold text-amber-700">
+                    비회원으로 접수된 의뢰입니다. 아래 연락처로 안내해주세요.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 text-xs md:text-sm">
+                    <div>
+                      <span className="text-gray-500">이름:</span>
+                      <span className="ml-2">{order.guest_name || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">연락처:</span>
+                      <span className="ml-2">{order.guest_phone || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : isLoadingProfile ? (
                 <p className="text-sm text-gray-500">고객 정보를 불러오는 중...</p>
               ) : userProfile ? (
                 <div className="bg-gray-50 p-3 rounded">

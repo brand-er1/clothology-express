@@ -218,6 +218,11 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                             빠른 단체복
                           </Badge>
                         )}
+                        {!order.user_id && (order.guest_name || order.guest_phone) && (
+                          <Badge variant="outline" className="border-stone-300 bg-white text-stone-600">
+                            비회원
+                          </Badge>
+                        )}
                       </div>
 
                       <h3 className="mt-3 truncate text-lg font-black text-stone-950">
@@ -226,6 +231,11 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                       <p className="mt-1 truncate text-sm font-semibold text-stone-500">
                         {order.cloth_type} · {order.material}
                       </p>
+                      {!order.user_id && (order.guest_name || order.guest_phone) && (
+                        <p className="mt-1 truncate text-xs font-semibold text-stone-500">
+                          {[order.guest_name, order.guest_phone].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
                       <p className="mt-2 text-xs text-stone-400">
                         {formatDate(order.created_at)}
                       </p>

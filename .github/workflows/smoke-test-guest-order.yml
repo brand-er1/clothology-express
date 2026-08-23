@@ -1,0 +1,29 @@
+name: Smoke test guest order (temporary)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call save-order as a guest
+        run: |
+          set -x
+          curl -sS -i -X POST "https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/save-order" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "userId": null,
+              "clothType": "기성품 단체복 · 스모크테스트",
+              "material": "기성 원단 (변경 불가)",
+              "detailDescription": "CI 스모크 테스트용 게스트 제작 의뢰입니다.",
+              "size": "XS~3XL (사이즈별 수량 개별 지정)",
+              "requestSource": "ready_made_group_wear",
+              "requestTitle": "스모크 테스트 단체복 빠른 제작 (1장)",
+              "requestedQuantity": 1,
+              "guestName": "CI 스모크 테스트",
+              "guestPhone": "010-0000-0000",
+              "status": "pending"
+            }'

@@ -10,23 +10,11 @@ jobs:
   smoke-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Submit one more guest order with a distinctive title, for the admin to look for
+      - name: Confirm get_admin_orders RPC is deployed and admin-gated
         run: |
           set -x
-          curl -sS -i -X POST "https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/save-order" \
+          curl -sS -i -X POST "https://jwmzjszdjlrqrhadbggr.supabase.co/rest/v1/rpc/get_admin_orders" \
             -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
             -H "Content-Type: application/json" \
-            -d '{
-              "userId": null,
-              "clothType": "기성품 단체복 · 확인용테스트",
-              "material": "기성 원단 (변경 불가)",
-              "detailDescription": "관리자 화면 노출 여부 확인용 두번째 테스트입니다.",
-              "size": "XS~3XL (사이즈별 수량 개별 지정)",
-              "requestSource": "ready_made_group_wear",
-              "requestTitle": "관리자화면확인용 단체복 빠른 제작 (1장)",
-              "requestedQuantity": 1,
-              "guestName": "관리자확인용",
-              "guestPhone": "010-1111-2222",
-              "status": "pending"
-            }'
+            -d '{}'

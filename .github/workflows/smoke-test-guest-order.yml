@@ -7,34 +7,26 @@ on:
       - claude/smoke-test-guest-order
 
 jobs:
-  cleanup-test-order:
+  smoke-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Refresh session for the CI test user and soft-delete its test order
+      - name: Submit one more guest order with a distinctive title, for the admin to look for
         run: |
-          set -e
-          ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc"
-          BASE_URL="https://jwmzjszdjlrqrhadbggr.supabase.co"
-          ORDER_ID="cab60e31-c93a-43c5-8cdd-4f7ff40869b6"
-          USER_ID="4679bd4c-26f8-401f-9eb8-e80e00f98c08"
-          REFRESH_TOKEN="mvxatvnhjsyh"
-
-          echo "== Refresh session for the earlier CI test user =="
-          REFRESH_RESPONSE=$(curl -sS -X POST "$BASE_URL/auth/v1/token?grant_type=refresh_token" \
-            -H "apikey: $ANON_KEY" \
+          set -x
+          curl -sS -i -X POST "https://jwmzjszdjlrqrhadbggr.supabase.co/functions/v1/save-order" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
             -H "Content-Type: application/json" \
-            -d "{\"refresh_token\":\"$REFRESH_TOKEN\"}")
-          ACCESS_TOKEN=$(echo "$REFRESH_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token') or '')")
-
-          if [ -z "$ACCESS_TOKEN" ]; then
-            echo "Could not refresh session (refresh token likely expired) — skipping, needs manual admin cleanup."
-            exit 0
-          fi
-
-          echo "== Soft-delete (status=deleted) the test order via the app's own owner-scoped update path =="
-          curl -sS -i -X PATCH "$BASE_URL/rest/v1/orders?id=eq.$ORDER_ID&user_id=eq.$USER_ID" \
-            -H "apikey: $ANON_KEY" \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -H "Prefer: return=representation" \
-            -d '{"status":"deleted"}'
+            -d '{
+              "userId": null,
+              "clothType": "기성품 단체복 · 확인용테스트",
+              "material": "기성 원단 (변경 불가)",
+              "detailDescription": "관리자 화면 노출 여부 확인용 두번째 테스트입니다.",
+              "size": "XS~3XL (사이즈별 수량 개별 지정)",
+              "requestSource": "ready_made_group_wear",
+              "requestTitle": "관리자화면확인용 단체복 빠른 제작 (1장)",
+              "requestedQuantity": 1,
+              "guestName": "관리자확인용",
+              "guestPhone": "010-1111-2222",
+              "status": "pending"
+            }'

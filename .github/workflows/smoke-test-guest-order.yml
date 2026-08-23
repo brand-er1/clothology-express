@@ -7,72 +7,34 @@ on:
       - claude/smoke-test-guest-order
 
 jobs:
-  smoke-test:
+  cleanup-test-order:
     runs-on: ubuntu-latest
     steps:
-      - name: Full flow test (signup -> submit order -> read back as owner)
+      - name: Refresh session for the CI test user and soft-delete its test order
         run: |
           set -e
           ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc"
           BASE_URL="https://jwmzjszdjlrqrhadbggr.supabase.co"
-          TEST_EMAIL="ci-smoke-test-$(date +%s)@example.com"
-          TEST_PASSWORD="SmokeTest123!$(date +%s)"
+          ORDER_ID="cab60e31-c93a-43c5-8cdd-4f7ff40869b6"
+          USER_ID="4679bd4c-26f8-401f-9eb8-e80e00f98c08"
+          REFRESH_TOKEN="mvxatvnhjsyh"
 
-          echo "== 1. Sign up test user: $TEST_EMAIL =="
-          SIGNUP_RESPONSE=$(curl -sS -X POST "$BASE_URL/auth/v1/signup" \
+          echo "== Refresh session for the earlier CI test user =="
+          REFRESH_RESPONSE=$(curl -sS -X POST "$BASE_URL/auth/v1/token?grant_type=refresh_token" \
             -H "apikey: $ANON_KEY" \
             -H "Content-Type: application/json" \
-            -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
-          echo "$SIGNUP_RESPONSE"
-
-          ACCESS_TOKEN=$(echo "$SIGNUP_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token') or '')")
-          USER_ID=$(echo "$SIGNUP_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); u=d.get('user') or d; print(u.get('id') or '')")
+            -d "{\"refresh_token\":\"$REFRESH_TOKEN\"}")
+          ACCESS_TOKEN=$(echo "$REFRESH_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token') or '')")
 
           if [ -z "$ACCESS_TOKEN" ]; then
-            echo "== No session from signup (email confirmation likely required) — trying sign-in =="
-            SIGNIN_RESPONSE=$(curl -sS -X POST "$BASE_URL/auth/v1/token?grant_type=password" \
-              -H "apikey: $ANON_KEY" \
-              -H "Content-Type: application/json" \
-              -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
-            echo "$SIGNIN_RESPONSE"
-            ACCESS_TOKEN=$(echo "$SIGNIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token') or '')")
-            USER_ID=$(echo "$SIGNIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); u=d.get('user') or {}; print(u.get('id') or '')")
-          fi
-
-          if [ -z "$ACCESS_TOKEN" ]; then
-            echo "RESULT: could not obtain a logged-in session (email confirmation is required for this project) — logged-in path cannot be live-tested this way."
+            echo "Could not refresh session (refresh token likely expired) — skipping, needs manual admin cleanup."
             exit 0
           fi
 
-          echo "== Logged in as user_id=$USER_ID =="
-
-          echo "== 2. Submit a ready_made_group_wear order as this logged-in user =="
-          SUBMIT_RESPONSE=$(curl -sS -i -X POST "$BASE_URL/functions/v1/save-order" \
+          echo "== Soft-delete (status=deleted) the test order via the app's own owner-scoped update path =="
+          curl -sS -i -X PATCH "$BASE_URL/rest/v1/orders?id=eq.$ORDER_ID&user_id=eq.$USER_ID" \
             -H "apikey: $ANON_KEY" \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "clothType": "기성품 단체복 · 로그인유저스모크테스트",
-              "material": "기성 원단 (변경 불가)",
-              "detailDescription": "CI 스모크 테스트용 로그인 사용자 제작 의뢰입니다.",
-              "size": "XS~3XL (사이즈별 수량 개별 지정)",
-              "requestSource": "ready_made_group_wear",
-              "requestTitle": "로그인유저 스모크 테스트 단체복 빠른 제작 (1장)",
-              "requestedQuantity": 1,
-              "status": "pending"
-            }')
-          echo "$SUBMIT_RESPONSE"
-
-          ORDER_ID=$(echo "$SUBMIT_RESPONSE" | tail -n1 | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id') or '')")
-          echo "Created order id: $ORDER_ID"
-
-          echo "== 3. Read it back AS THE SAME USER (simulates '내 제작관리' RLS-scoped query) =="
-          curl -sS -i "$BASE_URL/rest/v1/orders?select=id,user_id,status,request_source,request_title&user_id=eq.$USER_ID" \
-            -H "apikey: $ANON_KEY" \
-            -H "Authorization: Bearer $ACCESS_TOKEN"
-
-          echo ""
-          echo "== 4. Read it back as a DIFFERENT anonymous session (should be blocked by RLS if correctly scoped) =="
-          curl -sS -i "$BASE_URL/rest/v1/orders?select=id,user_id,status&id=eq.$ORDER_ID" \
-            -H "apikey: $ANON_KEY" \
-            -H "Authorization: Bearer $ANON_KEY"
+            -H "Prefer: return=representation" \
+            -d '{"status":"deleted"}'

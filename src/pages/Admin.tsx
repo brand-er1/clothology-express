@@ -92,7 +92,11 @@ const Admin = () => {
 
   const loadOrders = async () => {
     try {
-      const { data, error } = await supabase.from("orders").select("*").neq("status", "draft").neq("status", "deleted").order("created_at", { ascending: false });
+      // Uses the same SECURITY DEFINER RPC pattern as every other admin list
+      // (get_admin_customers, get_admin_closet_activity, ...) rather than a
+      // direct select — a guest order (user_id null) wasn't reliably visible
+      // through the plain RLS-scoped select.
+      const { data, error } = await supabase.rpc("get_admin_orders");
       if (error) throw error;
       setOrders(data || []);
     } catch (error) {

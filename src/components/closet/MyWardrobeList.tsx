@@ -29,7 +29,10 @@ export const MyWardrobeList = ({
   if (items.length === 0) return null;
 
   return (
-    <div className="space-y-3 rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm">
+    <div
+      data-mascot-safezone
+      className="space-y-3 rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm"
+    >
       <div>
         <p className="text-sm font-black text-stone-950">👗 내가 만든 옷</p>
         <p className="mt-1 text-xs leading-5 text-stone-500">
@@ -105,25 +108,25 @@ export const MyWardrobeList = ({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 rounded-full border-stone-300 px-1 text-[10px] font-bold text-stone-700"
+                    className="h-7 min-h-0 w-full gap-1 whitespace-nowrap rounded-full border-stone-300 px-1 text-[10px] font-bold text-stone-700"
                     onClick={() => onEdit(garment)}
                     disabled={isBusy}
                   >
-                    <Wand2 className="mr-1 h-3 w-3" /> 수정하기
+                    <Wand2 className="h-3 w-3 shrink-0" /> 수정하기
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 rounded-full border-stone-300 px-1 text-[10px] font-bold text-stone-700 disabled:opacity-40"
+                    className="h-7 min-h-0 w-full gap-1 whitespace-nowrap rounded-full border-stone-300 px-1 text-[10px] font-bold text-stone-700 disabled:opacity-40"
                     onClick={() => onRegenerate(garment)}
                     disabled={isBusy || !canRegenerate}
                     title={canRegenerate ? undefined : "업로드한 이미지는 다시 생성할 수 없어요"}
                   >
                     {isBusy ? (
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
                     ) : (
-                      <Sparkles className="mr-1 h-3 w-3" />
+                      <Sparkles className="h-3 w-3 shrink-0" />
                     )}
                     다시 생성
                   </Button>

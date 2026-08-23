@@ -7,14 +7,32 @@ on:
       - claude/smoke-test-guest-order
 
 jobs:
-  check-live-bundle:
+  smoke-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch the live site's index.html and check which JS bundle + cache headers it serves
+      - name: Confirm the .neq('status','draft') query no longer 22P02s
         run: |
-          set -x
-          curl -sS -i "https://brand-er1.github.io/clothology-express/" -o /tmp/live-index.html
-          echo "=== Referenced script tags ==="
-          grep -oE '(src|href)="[^"]*\.(js|css)"' /tmp/live-index.html || true
-          echo "=== Headers only ==="
-          curl -sS -I "https://brand-er1.github.io/clothology-express/"
+          set -e
+          ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc"
+          BASE_URL="https://jwmzjszdjlrqrhadbggr.supabase.co"
+          TEST_EMAIL="ci-enum-check-$(date +%s)@example.com"
+          TEST_PASSWORD="EnumCheck123!$(date +%s)"
+
+          SIGNUP_RESPONSE=$(curl -sS -X POST "$BASE_URL/auth/v1/signup" \
+            -H "apikey: $ANON_KEY" -H "Content-Type: application/json" \
+            -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
+          ACCESS_TOKEN=$(echo "$SIGNUP_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token') or '')")
+          USER_ID=$(echo "$SIGNUP_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); u=d.get('user') or d; print(u.get('id') or '')")
+
+          echo "== Query with the exact filter 내 제작관리 uses: .eq(user_id).neq(status,draft).neq(status,deleted) =="
+          curl -sS -i "$BASE_URL/rest/v1/orders?select=id,status&user_id=eq.$USER_ID&status=neq.draft&status=neq.deleted&order=created_at.desc" \
+            -H "apikey: $ANON_KEY" \
+            -H "Authorization: Bearer $ACCESS_TOKEN"
+
+          echo ""
+          echo "== Also confirm get_admin_orders (still admin-gated, but should no longer 400 with 22P02 if it did reach the query) =="
+          curl -sS -i -X POST "$BASE_URL/rest/v1/rpc/get_admin_orders" \
+            -H "apikey: $ANON_KEY" \
+            -H "Authorization: Bearer $ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'

@@ -11,7 +11,7 @@ interface ReferenceImageInput {
 }
 
 interface OrderData {
-  userId: string;
+  userId: string | null;
   clothType: string;
   material: string;
   detailDescription?: string;
@@ -28,6 +28,10 @@ interface OrderData {
   requestedQuantity?: number | null;
   estimateSnapshot?: Record<string, unknown> | null;
   status: 'pending' | 'approved' | 'rejected' | 'draft' | 'deleted';
+  /** Contact info for a guest (not logged in) submission — only used/required when
+   * requestSource is 'ready_made_group_wear' and no authenticated user was found. */
+  guestName?: string | null;
+  guestPhone?: string | null;
 }
 
 const maxReferenceImages = 10;
@@ -78,20 +82,33 @@ Deno.serve(async (req) => {
 
     const authorization = req.headers.get('Authorization') || '';
     const accessToken = authorization.replace(/^Bearer\s+/i, '');
-    const { data: userData, error: userError } = await supabase.auth.getUser(
-      accessToken,
-    );
-    if (userError || !userData.user) {
+    const { data: userData } = await supabase.auth.getUser(accessToken);
+    const authenticatedUser = userData?.user ?? null;
+
+    const orderData: OrderData = await req.json();
+
+    // Every other request source still requires a logged-in user. Only the ready-made
+    // group wear ("빠른 단체복 제작") service is meant to work for visitors who never
+    // signed up — for that one source a guest may submit with name/phone instead of
+    // an account, since there's no `user_id` to notify or look up.
+    const isGuestReadyMadeRequest =
+      !authenticatedUser && orderData.requestSource === 'ready_made_group_wear';
+
+    if (!authenticatedUser && !isGuestReadyMadeRequest) {
       return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const orderData: OrderData = await req.json();
-    orderData.userId = userData.user.id;
+    orderData.userId = authenticatedUser?.id ?? null;
+
+    const guestName = String(orderData.guestName || '').trim();
+    const guestPhone = String(orderData.guestPhone || '').trim();
+
     console.log('Received order data:', {
       userId: orderData.userId,
+      isGuest: isGuestReadyMadeRequest,
       clothType: orderData.clothType,
       requestSource: orderData.requestSource,
       requestedQuantity: orderData.requestedQuantity,
@@ -100,11 +117,21 @@ Deno.serve(async (req) => {
     });
 
     // Validate required fields
-    if (!orderData.userId) {
+    if (!orderData.userId && !isGuestReadyMadeRequest) {
       return new Response(JSON.stringify({ error: 'User ID is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
+    }
+
+    if (isGuestReadyMadeRequest && (!guestName || !guestPhone)) {
+      return new Response(
+        JSON.stringify({ error: '이름과 연락처를 입력해주세요.' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        },
+      );
     }
 
     if (!orderData.clothType) {
@@ -153,8 +180,11 @@ Deno.serve(async (req) => {
 
     // If this is a finalized order (pending), look for a draft to update
     let existingOrder = null;
-    
-    if (orderData.status === 'pending') {
+
+    // A guest has no user_id to match a prior draft against — and the ready-made
+    // group wear flow never creates drafts in the first place — so skip straight
+    // to inserting a new order.
+    if (orderData.status === 'pending' && orderData.userId) {
       // Look for a draft with matching basic information
       const { data: drafts, error: draftError } = await supabase
         .from('orders')
@@ -174,7 +204,7 @@ Deno.serve(async (req) => {
       }
     } 
     // If this is a draft, check for an existing draft to update
-    else if (orderData.status === 'draft') {
+    else if (orderData.status === 'draft' && orderData.userId) {
       // Look for an existing draft with matching image path (if available) or basic info
       let query = supabase
         .from('orders')
@@ -235,7 +265,7 @@ Deno.serve(async (req) => {
           ? 'webp'
           : 'jpg';
       storedImagePath =
-        `design-quotes/${orderData.userId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        `design-quotes/${orderData.userId || 'guest'}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage
         .from('generated_images')
         .upload(storedImagePath, imageBytes, {
@@ -275,7 +305,7 @@ Deno.serve(async (req) => {
         const extension =
           mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
         const path =
-          `design-quotes/${orderData.userId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+          `design-quotes/${orderData.userId || 'guest'}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
         const { error: uploadError } = await supabase.storage
           .from('generated_images')
           .upload(path, bytes, {
@@ -317,6 +347,8 @@ Deno.serve(async (req) => {
       request_title: orderData.requestTitle || null,
       requested_quantity: normalizedRequestedQuantity,
       estimate_snapshot: orderData.estimateSnapshot || null,
+      guest_name: isGuestReadyMadeRequest ? guestName : null,
+      guest_phone: isGuestReadyMadeRequest ? guestPhone : null,
       status: orderData.status
     };
 

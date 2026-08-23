@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 import {
   READY_MADE_LOCATION_PLACEMENT_PRESET,
   READY_MADE_LOCATION_SIDE,
@@ -57,6 +58,26 @@ const createDefaultPrintJob = (): ReadyMadePrintJob => ({
 
 export const useReadyMadeGroupWearForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
+
+  // This service, unlike the other production-request flows, works for visitors who
+  // aren't logged in — they submit as a guest with a name/phone instead of an account.
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (isMounted) setIsAuthenticated(Boolean(data.session));
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session));
+    });
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const [selectedProductKey, setSelectedProductKey] = useState(READY_MADE_PRODUCT_OPTIONS[0].key);
   const selectedProduct = useMemo(
@@ -325,6 +346,14 @@ export const useReadyMadeGroupWearForm = () => {
       });
       return;
     }
+    if (!isAuthenticated && (!guestName.trim() || !guestPhone.trim())) {
+      toast({
+        title: "연락처 정보가 필요합니다",
+        description: "안내를 받을 이름과 연락처를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -342,6 +371,8 @@ export const useReadyMadeGroupWearForm = () => {
         imageBase64: designArtwork.base64,
         imageMimeType: designArtwork.mimeType,
         trademarkDecision: trademarkScreening?.decision ?? null,
+        guestName: isAuthenticated ? null : guestName.trim(),
+        guestPhone: isAuthenticated ? null : guestPhone.trim(),
       });
       setSubmittedOrderId(String(result.id || "submitted"));
       toast({
@@ -361,7 +392,7 @@ export const useReadyMadeGroupWearForm = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, printJobs, requestNote, printMethod]);
+  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, printJobs, requestNote, printMethod, isAuthenticated, guestName, guestPhone]);
 
   return {
     currentStep,
@@ -406,6 +437,12 @@ export const useReadyMadeGroupWearForm = () => {
     isSubmitting,
     submittedOrderId,
     submitRequest,
+
+    isAuthenticated,
+    guestName,
+    setGuestName,
+    guestPhone,
+    setGuestPhone,
 
     quote,
   };

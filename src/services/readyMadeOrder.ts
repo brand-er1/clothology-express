@@ -13,6 +13,10 @@ export interface ReadyMadeGroupWearRequestInput {
   imageBase64: string | null;
   imageMimeType: string | null;
   trademarkDecision: TrademarkScreeningDecision | null;
+  /** Only used when the visitor isn't logged in — save-order accepts this service's
+   * requests as a guest, since it doesn't require an account like the other flows. */
+  guestName?: string | null;
+  guestPhone?: string | null;
 }
 
 const formatWon = (amount: number) => `${amount.toLocaleString("ko-KR")}원`;
@@ -70,6 +74,10 @@ const buildDetailDescription = (input: ReadyMadeGroupWearRequestInput) => {
  * a custom-clothing `ProductionEstimateResult` — the full ready-made
  * breakdown is written into the plain-text `detailDescription` instead, which
  * every admin view already renders safely.
+ *
+ * Unlike the other request flows, this one does not require a Brand-er
+ * account: a visitor who isn't logged in can still submit as a guest, as
+ * long as they provide a name and phone number so the admin can reach them.
  */
 export const createReadyMadeGroupWearRequest = async (
   input: ReadyMadeGroupWearRequestInput,
@@ -77,13 +85,13 @@ export const createReadyMadeGroupWearRequest = async (
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user;
 
-  if (!user) {
-    throw new Error("제작 의뢰를 접수하려면 로그인이 필요합니다.");
+  if (!user && (!input.guestName?.trim() || !input.guestPhone?.trim())) {
+    throw new Error("이름과 연락처를 입력해주세요.");
   }
 
   const { data: orderData, error } = await supabase.functions.invoke("save-order", {
     body: {
-      userId: user.id,
+      userId: user?.id ?? null,
       clothType: `기성품 단체복 · ${input.product.label}`,
       material: "기성 원단 (변경 불가)",
       detailDescription: buildDetailDescription(input),
@@ -96,6 +104,8 @@ export const createReadyMadeGroupWearRequest = async (
       requestSource: "ready_made_group_wear",
       requestTitle: `${input.product.label} 단체복 빠른 제작 (${input.quote.quantity}장)`,
       requestedQuantity: input.quote.quantity,
+      guestName: user ? null : input.guestName?.trim(),
+      guestPhone: user ? null : input.guestPhone?.trim(),
       status: "pending",
     },
   });

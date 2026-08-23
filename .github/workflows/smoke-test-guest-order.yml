@@ -7,14 +7,14 @@ on:
       - claude/smoke-test-guest-order
 
 jobs:
-  smoke-test:
+  check-live-bundle:
     runs-on: ubuntu-latest
     steps:
-      - name: Confirm get_admin_orders RPC is deployed and admin-gated
+      - name: Fetch the live site's index.html and check which JS bundle + cache headers it serves
         run: |
           set -x
-          curl -sS -i -X POST "https://jwmzjszdjlrqrhadbggr.supabase.co/rest/v1/rpc/get_admin_orders" \
-            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3bXpqc3pkamxycXJoYWRiZ2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA1MDAsImV4cCI6MjA1NjExNjUwMH0.PRCN-ynznky69N5pMYGALFZZpjj2OaFoPNbB7AvRaGc" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+          curl -sS -i "https://brand-er1.github.io/clothology-express/" -o /tmp/live-index.html
+          echo "=== Referenced script tags ==="
+          grep -oE '(src|href)="[^"]*\.(js|css)"' /tmp/live-index.html || true
+          echo "=== Headers only ==="
+          curl -sS -I "https://brand-er1.github.io/clothology-express/"

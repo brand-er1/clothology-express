@@ -1,0 +1,12 @@
+-- The real root cause of orders never showing up anywhere: orders.status is a
+-- Postgres enum (order_status), and 'draft' was never a valid label on it —
+-- even though the app has always filtered both the admin list and each
+-- user's "내 제작관리" with `.neq('status', 'draft')` (see save-order's own
+-- OrderData.status union, orderHistory.ts, and the old Admin.tsx query).
+-- Comparing a column against an enum-invalid literal fails the whole query
+-- at parse time ("invalid input value for enum order_status: \"draft\""),
+-- so those .neq('status','draft') filters have been erroring out (not
+-- silently returning fewer rows) for every viewer, on every order type,
+-- independent of anything about the ready-made group wear work — confirmed
+-- live via the browser console on the admin screen (code 22P02).
+alter type public.order_status add value if not exists 'draft';

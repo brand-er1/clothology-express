@@ -5,6 +5,7 @@ import {
   Boxes,
   FileImage,
   FlaskConical,
+  GalleryHorizontalEnd,
   Image,
   PackageCheck,
   Settings,
@@ -32,6 +33,9 @@ import type { AdminGeneratedImage } from "@/types/generatedImage";
 import { CustomerManagement } from "@/components/admin/CustomerManagement";
 import { ClosetActivityList } from "@/components/admin/ClosetActivityList";
 import type { AdminClosetActivity } from "@/types/closetActivity";
+import { PortfolioProjectList } from "@/components/admin/PortfolioProjectList";
+import { fetchAllPortfolioProjectsForAdmin } from "@/services/portfolioProjects";
+import type { PortfolioProject } from "@/types/portfolio";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -41,6 +45,7 @@ const sectionMeta = {
   images: { label: "이미지 생성", description: "고객이 생성한 AI 의류 이미지를 관리합니다.", icon: Image },
   closet: { label: "브랜더 옷장", description: "고객이 옷장에서 만들고 수정하고 입혀본 모든 활동을 확인합니다.", icon: Shirt },
   orders: { label: "제작 의뢰", description: "바로 제작 요청을 검토하고 상태를 변경합니다.", icon: PackageCheck },
+  portfolio: { label: "포트폴리오", description: "Selected Works에 노출되는 프로젝트를 관리합니다.", icon: GalleryHorizontalEnd },
   swatches: { label: "원단 스와치", description: "원단 추천 신청과 진행 상태를 관리합니다.", icon: FlaskConical },
   fundings: { label: "펀딩 관리", description: "펀딩 승인 요청과 진행 상태를 확인합니다.", icon: WalletCards },
   settings: { label: "AI 설정", description: "이미지 생성용 시스템 프롬프트를 관리합니다.", icon: Settings },
@@ -67,6 +72,8 @@ const Admin = () => {
   const [isLoadingGeneratedImages, setIsLoadingGeneratedImages] = useState(true);
   const [closetActivities, setClosetActivities] = useState<AdminClosetActivity[]>([]);
   const [isLoadingClosetActivities, setIsLoadingClosetActivities] = useState(true);
+  const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>([]);
+  const [isLoadingPortfolioProjects, setIsLoadingPortfolioProjects] = useState(true);
 
   const section = useMemo<AdminSection>(() => {
     const value = location.pathname.split("/").filter(Boolean)[1] as AdminSection | undefined;
@@ -88,6 +95,7 @@ const Admin = () => {
     void loadFabricSwatchRequests();
     void loadGeneratedImages();
     void loadClosetActivities();
+    void loadPortfolioProjects();
   }, [isAdmin]);
 
   const loadOrders = async () => {
@@ -163,6 +171,18 @@ const Admin = () => {
     }
   };
 
+  const loadPortfolioProjects = async () => {
+    try {
+      setIsLoadingPortfolioProjects(true);
+      setPortfolioProjects(await fetchAllPortfolioProjectsForAdmin());
+    } catch (error) {
+      console.error("Error loading portfolio projects:", error);
+      toast({ title: "포트폴리오 목록을 불러오지 못했습니다", variant: "destructive" });
+    } finally {
+      setIsLoadingPortfolioProjects(false);
+    }
+  };
+
   const handleUpdateFabricSwatch = async (request: FabricSwatchRequest, status: FabricSwatchStatus, adminNote: string) => {
     try {
       setIsSaving(true);
@@ -232,6 +252,7 @@ const Admin = () => {
     images: generatedImages.length,
     closet: closetActivities.length,
     orders: orders.filter((order) => order.status === "pending").length,
+    portfolio: portfolioProjects.length,
     swatches: fabricSwatchRequests.filter((request) => request.status === "pending").length,
     fundings: fundings.filter((funding) => funding.status === "pending").length,
     settings: null,
@@ -294,6 +315,13 @@ const Admin = () => {
             {section === "images" && <GeneratedImageList images={generatedImages} isLoading={isLoadingGeneratedImages} />}
             {section === "closet" && <ClosetActivityList activities={closetActivities} isLoading={isLoadingClosetActivities} />}
             {section === "orders" && <OrderList orders={orders} onReviewOrder={(order) => { setSelectedOrder(order); setIsReviewDialogOpen(true); }} />}
+            {section === "portfolio" && (
+              <PortfolioProjectList
+                projects={portfolioProjects}
+                isLoading={isLoadingPortfolioProjects}
+                onReload={loadPortfolioProjects}
+              />
+            )}
             {section === "swatches" && <FabricSwatchList requests={fabricSwatchRequests} isSaving={isSaving} onUpdate={handleUpdateFabricSwatch} />}
             {section === "fundings" && <FundingList fundings={fundings} onReview={(funding) => { setSelectedFunding(funding); setIsFundingReviewOpen(true); }} />}
             {section === "settings" && <SystemPromptEditor systemPrompt={systemPrompt} isLoading={isLoading} onSave={handleSaveSystemPrompt} />}

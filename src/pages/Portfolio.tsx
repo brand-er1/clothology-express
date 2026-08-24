@@ -75,9 +75,9 @@ const Portfolio = () => {
         <section className="border-b border-black/10">
           <div className="mx-auto max-w-[1440px] px-5 pb-16 pt-20 sm:px-8 sm:pb-24 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-36 xl:px-16">
             <Reveal>
-              <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.3em] text-brand sm:text-xs">
+              <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">
                 <span className="h-px w-8 bg-brand" />
-                Our Work
+                우리의 작업
               </p>
             </Reveal>
             <Reveal delayMs={100}>
@@ -86,11 +86,6 @@ const Portfolio = () => {
                 <br />
                 실제 옷이 되는 과정.
               </h1>
-            </Reveal>
-            <Reveal delayMs={200}>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-400 sm:text-sm">
-                Ideas become garments.
-              </p>
             </Reveal>
             <Reveal delayMs={280}>
               <p className="mt-8 max-w-xl text-base leading-8 text-stone-600 sm:text-lg">
@@ -112,8 +107,8 @@ const Portfolio = () => {
         <section className="border-b border-black/10 bg-[#f1f0ed]">
           <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 xl:px-16">
             <Reveal>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand sm:text-xs">
-                Brand-er in Numbers
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">
+                브랜더, 숫자로 보다
               </p>
             </Reveal>
             <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 sm:gap-y-14 lg:grid-cols-4">
@@ -122,7 +117,7 @@ const Portfolio = () => {
                   <p className="font-serif text-[clamp(1.6rem,3.4vw,2.6rem)] font-normal leading-[1.05] tracking-[-0.03em]">
                     {stat.value}
                   </p>
-                  <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-500 sm:text-[11px]">
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.02em] text-stone-500 sm:text-[11px]">
                     {stat.label}
                   </p>
                 </Reveal>
@@ -136,14 +131,14 @@ const Portfolio = () => {
           <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
             <div className="flex flex-wrap items-end justify-between gap-6 border-b border-black/10 pb-8">
               <Reveal>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand sm:text-xs">
-                  Selected Works
+                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">
+                  프로젝트
                 </p>
                 <h2 className="mt-3 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.04em] sm:text-6xl">
-                  Selected Works
+                  대표 프로젝트
                 </h2>
-                <p className="mt-4 text-sm font-semibold uppercase tracking-[0.1em] text-stone-400">
-                  From idea to production.
+                <p className="mt-4 text-sm font-semibold text-stone-400">
+                  아이디어에서 생산까지.
                 </p>
               </Reveal>
             </div>
@@ -154,13 +149,13 @@ const Portfolio = () => {
                   key={category}
                   type="button"
                   onClick={() => setFilter(category)}
-                  className={`shrink-0 whitespace-nowrap border-b-2 pb-1.5 text-xs font-bold uppercase tracking-[0.12em] transition ${
+                  className={`shrink-0 whitespace-nowrap border-b-2 pb-1.5 text-xs font-bold uppercase tracking-[0.04em] transition ${
                     filter === category
                       ? "border-brand text-[#211b1c]"
                       : "border-transparent text-stone-400 hover:text-stone-700"
                   }`}
                 >
-                  {category === "ALL" ? "All" : PORTFOLIO_CATEGORY_LABEL_KO[category] || category}
+                  {category === "ALL" ? "전체" : PORTFOLIO_CATEGORY_LABEL_KO[category] || category}
                 </button>
               ))}
             </div>
@@ -195,11 +190,11 @@ const Portfolio = () => {
         <section className="border-b border-black/10 bg-[#211b1c] text-white">
           <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
             <Reveal>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#d7a6b2] sm:text-xs">
-                Our Capabilities
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#d7a6b2] sm:text-xs">
+                우리의 제작 역량
               </p>
               <h2 className="mt-3 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.04em] sm:text-6xl">
-                From Concept to Production.
+                컨셉에서 생산까지.
               </h2>
             </Reveal>
 
@@ -223,9 +218,9 @@ const Portfolio = () => {
         <section className="border-b border-black/10 bg-[#f1f0ed]">
           <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
             <Reveal>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand sm:text-xs">Our Process</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">제작 과정</p>
               <h2 className="mt-3 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.04em] sm:text-6xl">
-                How We Make.
+                이렇게 만듭니다.
               </h2>
             </Reveal>
 
@@ -250,9 +245,9 @@ const Portfolio = () => {
           <div className="mx-auto max-w-[1440px] px-5 py-20 text-center sm:px-8 sm:py-32 lg:px-12 xl:px-16">
             <Reveal>
               <h2 className="mx-auto max-w-3xl font-serif text-[clamp(2.4rem,6vw,5rem)] font-normal leading-[1.02] tracking-[-0.05em]">
-                Have an idea?
+                아이디어가 있으신가요?
                 <br />
-                Let&apos;s make it real.
+                함께 현실로 만들어요.
               </h2>
             </Reveal>
             <Reveal delayMs={120}>

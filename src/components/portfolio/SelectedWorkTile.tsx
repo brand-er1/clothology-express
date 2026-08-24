@@ -38,27 +38,27 @@ export const SelectedWorkTile = ({ project, index, size, onSelect, revealDelayMs
         {/* Desktop hover overlay — project name / category / services / country only. */}
         <div className="pointer-events-none absolute inset-0 hidden items-end bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100 sm:flex">
           <div className="w-full p-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">
+            <p className="text-[10px] font-bold uppercase tracking-[0.04em] text-white/70">
               {PORTFOLIO_CATEGORY_LABEL_KO[project.category] || project.category}
               {project.country ? ` · ${project.country}` : ""}
             </p>
-            <p className="mt-1.5 font-serif text-xl font-normal tracking-[-0.02em] text-white">{project.nameEn}</p>
-            <p className="mt-1.5 text-xs font-semibold text-white/75">{services.join(" / ")}</p>
+            <p className="mt-1.5 font-serif text-xl font-normal tracking-[-0.02em] text-white">{project.nameKo}</p>
+            <p className="mt-1.5 text-xs font-semibold text-white/75">{services.join(" · ")}</p>
           </div>
         </div>
       </RevealImage>
 
       <div className="mt-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand">
+          <p className="text-[10px] font-bold uppercase tracking-[0.04em] text-brand">
             {orderLabel} · {PORTFOLIO_CATEGORY_LABEL_KO[project.category] || project.category}
           </p>
           <h3 className={`mt-1.5 truncate font-serif font-normal tracking-[-0.02em] text-[#211b1c] ${
             size === "large" ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl"
           }`}>
-            {project.nameEn}
+            {project.nameKo}
           </h3>
-          <p className="mt-1 truncate text-xs text-stone-500 sm:text-sm">{project.nameKo}</p>
+          <p className="mt-1 truncate text-xs text-stone-500 sm:text-sm">{project.nameEn}</p>
         </div>
       </div>
     </button>

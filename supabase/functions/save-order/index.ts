@@ -32,6 +32,16 @@ interface OrderData {
    * requestSource is 'ready_made_group_wear' and no authenticated user was found. */
   guestName?: string | null;
   guestPhone?: string | null;
+  /** WYSIWYG capture of the ready-made group wear editor canvas at submission time — a clean
+   * (no UI chrome) PNG of the garment + placed design exactly as the customer configured it.
+   * Only present for requestSource 'ready_made_group_wear', and only per side actually used. */
+  frontPreviewBase64?: string | null;
+  frontPreviewMimeType?: string | null;
+  backPreviewBase64?: string | null;
+  backPreviewMimeType?: string | null;
+  /** Structured design snapshot behind the preview images (product, color, sizes, per-job
+   * normalized placement) — see ready_made_design_data column comment. */
+  readyMadeDesignData?: Record<string, unknown> | null;
 }
 
 const maxReferenceImages = 10;
@@ -326,6 +336,56 @@ Deno.serve(async (req) => {
       }
     }
 
+    // WYSIWYG final-design preview(s) for the ready-made group wear editor — captured
+    // client-side from the actual editor canvas, so this is a straight upload, never
+    // regenerated/composited here. The folder is named after the order's own id (generated
+    // up front so it's known before the row exists) so front.png/back.png stay traceable
+    // back to the order that produced them.
+    let frontPreviewUrl: string | null = null;
+    let backPreviewUrl: string | null = null;
+    const uploadedPreviewPaths: string[] = [];
+    const previewOrderId =
+      orderData.frontPreviewBase64 || orderData.backPreviewBase64 ? crypto.randomUUID() : null;
+
+    if (previewOrderId) {
+      const uploadPreview = async (base64: string, mimeTypeInput: string | null, side: 'front' | 'back') => {
+        const mimeType = allowedImageMimeTypes.has(String(mimeTypeInput || '').toLowerCase())
+          ? String(mimeTypeInput).toLowerCase()
+          : 'image/png';
+        const bytes = decodeBase64Image(base64);
+        if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) {
+          throw new Error('제작 시안 이미지 용량이 올바르지 않습니다.');
+        }
+        const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+        const path = `order-previews/${previewOrderId}/${side}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from('generated_images')
+          .upload(path, bytes, {
+            contentType: mimeType,
+            cacheControl: '3600',
+            upsert: false,
+          });
+        if (uploadError) throw uploadError;
+        uploadedPreviewPaths.push(path);
+        const { data: publicUrlData } = supabase.storage.from('generated_images').getPublicUrl(path);
+        return publicUrlData.publicUrl;
+      };
+
+      try {
+        if (orderData.frontPreviewBase64) {
+          frontPreviewUrl = await uploadPreview(orderData.frontPreviewBase64, orderData.frontPreviewMimeType, 'front');
+        }
+        if (orderData.backPreviewBase64) {
+          backPreviewUrl = await uploadPreview(orderData.backPreviewBase64, orderData.backPreviewMimeType, 'back');
+        }
+      } catch (previewError) {
+        if (uploadedPreviewPaths.length) {
+          await supabase.storage.from('generated_images').remove(uploadedPreviewPaths);
+        }
+        throw previewError;
+      }
+    }
+
     const requestedQuantity = Number(orderData.requestedQuantity);
     const normalizedRequestedQuantity =
       Number.isFinite(requestedQuantity) && requestedQuantity > 0
@@ -349,11 +409,26 @@ Deno.serve(async (req) => {
       estimate_snapshot: orderData.estimateSnapshot || null,
       guest_name: isGuestReadyMadeRequest ? guestName : null,
       guest_phone: isGuestReadyMadeRequest ? guestPhone : null,
+      front_preview_url: frontPreviewUrl,
+      back_preview_url: backPreviewUrl,
+      ready_made_design_data: orderData.readyMadeDesignData || null,
       status: orderData.status
     };
 
     let result;
-    
+
+    const cleanupUploads = async () => {
+      if (uploadedNewImage && storedImagePath) {
+        await supabase.storage.from('generated_images').remove([storedImagePath]);
+      }
+      if (uploadedReferencePaths.length) {
+        await supabase.storage.from('generated_images').remove(uploadedReferencePaths);
+      }
+      if (uploadedPreviewPaths.length) {
+        await supabase.storage.from('generated_images').remove(uploadedPreviewPaths);
+      }
+    };
+
     if (existingOrder) {
       // Update existing draft
       const { data, error } = await supabase
@@ -361,33 +436,24 @@ Deno.serve(async (req) => {
         .update(orderObject)
         .eq('id', existingOrder.id)
         .select();
-      
+
       if (error) {
-        if (uploadedNewImage && storedImagePath) {
-          await supabase.storage.from('generated_images').remove([storedImagePath]);
-        }
-        if (uploadedReferencePaths.length) {
-          await supabase.storage.from('generated_images').remove(uploadedReferencePaths);
-        }
+        await cleanupUploads();
         throw error;
       }
 
       result = { id: existingOrder.id, updated: true, data, success: true };
       console.log('Updated existing order:', existingOrder.id);
     } else {
-      // Insert new order
+      // Insert new order — reuse the id already used for the preview storage path (if any)
+      // so front_preview_url/back_preview_url stay traceable to this exact row.
       const { data, error } = await supabase
         .from('orders')
-        .insert(orderObject)
+        .insert(previewOrderId ? { ...orderObject, id: previewOrderId } : orderObject)
         .select();
-      
+
       if (error) {
-        if (uploadedNewImage && storedImagePath) {
-          await supabase.storage.from('generated_images').remove([storedImagePath]);
-        }
-        if (uploadedReferencePaths.length) {
-          await supabase.storage.from('generated_images').remove(uploadedReferencePaths);
-        }
+        await cleanupUploads();
         throw error;
       }
 

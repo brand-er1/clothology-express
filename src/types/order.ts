@@ -24,4 +24,11 @@ export type Order = {
    * (currently only possible for request_source "ready_made_group_wear"). */
   guest_name?: string | null;
   guest_phone?: string | null;
+  /** WYSIWYG capture of the ready-made group wear editor at submission time — the garment +
+   * customer-placed design exactly as configured, not the raw uploaded artwork. Only set for
+   * request_source "ready_made_group_wear"; back_preview_url is null when nothing was placed
+   * on the back. */
+  front_preview_url?: string | null;
+  back_preview_url?: string | null;
+  ready_made_design_data?: import("./readyMadeOrder").ReadyMadeOrderDesignData | null;
 };

@@ -20,6 +20,14 @@ interface GarmentCanvasProps {
   onPlacementChange: (jobId: string, placement: ReadyMadeArtworkPlacement) => void;
   onDuplicateJob: (jobId: string) => void;
   onDeleteJob: (jobId: string) => void;
+  /** True only for the brief moment a final-design preview image is being captured from this
+   * exact DOM node — hides every editing affordance (safe-zone guide, selection border, resize
+   * handle, duplicate/delete buttons, empty-state hint) so the capture is a clean product shot,
+   * not a screenshot of the editor UI. Never true during normal editing. */
+  captureMode?: boolean;
+  /** Exposes the captured canvas container node to a parent that needs to snapshot it (see
+   * `captureReadyMadeDesignPreviews`). Purely additive — normal editing never sets this. */
+  stageRef?: React.Ref<HTMLDivElement>;
 }
 
 type GestureKind = "move" | "resize";
@@ -60,8 +68,20 @@ export const GarmentCanvas = ({
   onPlacementChange,
   onDuplicateJob,
   onDeleteJob,
+  captureMode = false,
+  stageRef,
 }: GarmentCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const setContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node;
+      if (typeof stageRef === "function") stageRef(node);
+      else if (stageRef && "current" in stageRef) {
+        (stageRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }
+    },
+    [stageRef],
+  );
   const gestureRef = useRef<Gesture | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
@@ -152,7 +172,7 @@ export const GarmentCanvas = ({
       </div>
 
       <div
-        ref={containerRef}
+        ref={setContainerRef}
         className="relative mt-3 h-[52vh] min-h-[360px] w-full touch-none overflow-hidden rounded-2xl bg-stone-50 sm:h-[60vh] lg:h-[70vh]"
         onPointerMove={handlePointerMove}
         onPointerUp={endGesture}
@@ -167,22 +187,25 @@ export const GarmentCanvas = ({
           className="pointer-events-none h-full w-full select-none p-8"
         />
 
-        <div
-          className="pointer-events-none absolute rounded-lg border border-dashed border-brand/25 bg-brand/[0.03]"
-          style={{
-            left: `${SAFE_ZONE.left}%`,
-            top: `${SAFE_ZONE.top}%`,
-            right: `${100 - SAFE_ZONE.right}%`,
-            bottom: `${100 - SAFE_ZONE.bottom}%`,
-          }}
-        />
+        {!captureMode && (
+          <div
+            className="pointer-events-none absolute rounded-lg border border-dashed border-brand/25 bg-brand/[0.03]"
+            style={{
+              left: `${SAFE_ZONE.left}%`,
+              top: `${SAFE_ZONE.top}%`,
+              right: `${100 - SAFE_ZONE.right}%`,
+              bottom: `${100 - SAFE_ZONE.bottom}%`,
+            }}
+          />
+        )}
 
         {designPreviewUrl &&
           jobsForSide.map((job) => {
-            const isSelected = job.id === selectedJobId;
+            const isSelected = !captureMode && job.id === selectedJobId;
             return (
               <div
                 key={job.id}
+                data-job-id={job.id}
                 className="absolute -translate-x-1/2 -translate-y-1/2 cursor-move"
                 style={{
                   left: `${job.placement.xPercent}%`,
@@ -235,7 +258,7 @@ export const GarmentCanvas = ({
             );
           })}
 
-        {jobsForSide.length === 0 && (
+        {!captureMode && jobsForSide.length === 0 && (
           <div className="absolute inset-x-0 bottom-4 text-center text-xs font-semibold text-stone-400">
             {designPreviewUrl ? "이 면에는 아직 인쇄 위치가 없어요" : "디자인을 업로드하면 여기에 표시돼요"}
           </div>

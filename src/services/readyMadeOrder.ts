@@ -1,6 +1,10 @@
 import { supabase } from "@/lib/supabase";
 import type { ReadyMadeProductOption } from "@/data/ready-made-pricing-config";
-import type { ReadyMadeQuoteInput, ReadyMadeQuoteResult } from "@/types/readyMadeOrder";
+import type {
+  ReadyMadeOrderDesignData,
+  ReadyMadeQuoteInput,
+  ReadyMadeQuoteResult,
+} from "@/types/readyMadeOrder";
 import type { TrademarkScreeningDecision } from "@/types/trademark";
 import { READY_MADE_PRINT_LOCATION_OPTIONS } from "@/data/ready-made-pricing-config";
 
@@ -17,6 +21,14 @@ export interface ReadyMadeGroupWearRequestInput {
    * requests as a guest, since it doesn't require an account like the other flows. */
   guestName?: string | null;
   guestPhone?: string | null;
+  /** WYSIWYG capture of the editor canvas at submission time (base64, no data: prefix) —
+   * see `front_preview_url`/`back_preview_url` on the order row. Either may be absent if that
+   * side has no placed design, or if the capture itself failed (submission still proceeds). */
+  frontPreviewBase64?: string | null;
+  backPreviewBase64?: string | null;
+  previewMimeType?: string;
+  /** Structured design snapshot stored alongside the preview images. */
+  designData: ReadyMadeOrderDesignData;
 }
 
 const formatWon = (amount: number) => `${amount.toLocaleString("ko-KR")}원`;
@@ -106,6 +118,11 @@ export const createReadyMadeGroupWearRequest = async (
       requestedQuantity: input.quote.quantity,
       guestName: user ? null : input.guestName?.trim(),
       guestPhone: user ? null : input.guestPhone?.trim(),
+      frontPreviewBase64: input.frontPreviewBase64 || null,
+      frontPreviewMimeType: input.frontPreviewBase64 ? input.previewMimeType || "image/png" : null,
+      backPreviewBase64: input.backPreviewBase64 || null,
+      backPreviewMimeType: input.backPreviewBase64 ? input.previewMimeType || "image/png" : null,
+      readyMadeDesignData: input.designData,
       status: "pending",
     },
   });

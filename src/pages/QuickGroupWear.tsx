@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -12,6 +12,7 @@ import { PrintPanel } from "@/components/ready-made/editor/PrintPanel";
 import { QuantityPanel } from "@/components/ready-made/editor/QuantityPanel";
 import { QuotePanel } from "@/components/ready-made/editor/QuotePanel";
 import { useReadyMadeGroupWearForm } from "@/hooks/useReadyMadeGroupWearForm";
+import { captureReadyMadeDesignPreviews } from "@/lib/ready-made-design-capture";
 import type { ReadyMadeGarmentSide } from "@/data/ready-made-pricing-config";
 
 const PANEL_COMPONENTS: Record<EditorPanelKey, typeof ProductPanel> = {
@@ -29,10 +30,55 @@ const QuickGroupWear = () => {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [side, setSide] = useState<ReadyMadeGarmentSide>("front");
 
+  // Only one of these is actually laid out at a time (the other is `display:none` under the
+  // responsive breakpoint) — capture always targets whichever one currently has a real size.
+  const desktopStageRef = useRef<HTMLDivElement>(null);
+  const mobileStageRef = useRef<HTMLDivElement>(null);
+  const [isCapturingDesign, setIsCapturingDesign] = useState(false);
+
   useMascotPageContext({ page: "quick-group-wear", hasEstimate: Boolean(form.quote) });
 
   const ActivePanelComponent = PANEL_COMPONENTS[activePanel];
   const activePanelLabel = EDITOR_PANELS.find((panel) => panel.key === activePanel)?.label ?? "";
+
+  const getVisibleStageNode = useCallback(() => {
+    const desktop = desktopStageRef.current;
+    if (desktop && desktop.clientWidth > 0 && desktop.clientHeight > 0) return desktop;
+    const mobile = mobileStageRef.current;
+    if (mobile && mobile.clientWidth > 0 && mobile.clientHeight > 0) return mobile;
+    return null;
+  }, []);
+
+  // Wraps the hook's submitRequest so the exact editor canvas the customer just used is
+  // captured as the order's WYSIWYG final-design preview right before submission — never
+  // recomputed from stored percentages, which is what keeps mobile/desktop submissions landing
+  // in the same spot on the admin side. A capture failure never blocks the actual submission;
+  // it just means that order goes out with no preview image, same as before this feature existed.
+  const handleSubmit = useCallback(async () => {
+    setIsCapturingDesign(true);
+    try {
+      let previews: Awaited<ReturnType<typeof captureReadyMadeDesignPreviews>> = [];
+      try {
+        previews = await captureReadyMadeDesignPreviews({
+          printJobs: form.printJobs,
+          currentSide: side,
+          setSide,
+          getStageNode: getVisibleStageNode,
+        });
+      } catch (error) {
+        console.error("Failed to capture ready-made design preview:", error);
+      }
+      await form.submitRequest(previews);
+    } finally {
+      setIsCapturingDesign(false);
+    }
+  }, [form, side, getVisibleStageNode]);
+
+  const formForPanels = {
+    ...form,
+    submitRequest: handleSubmit,
+    isSubmitting: form.isSubmitting || isCapturingDesign,
+  };
 
   return (
     <div className="min-h-screen bg-[#f4f0ea]">
@@ -54,7 +100,7 @@ const QuickGroupWear = () => {
           <EditorNav active={activePanel} onSelect={setActivePanel} orientation="vertical" />
 
           <div className="w-80 shrink-0 overflow-y-auto border-r border-stone-200 bg-white p-5">
-            <ActivePanelComponent form={form} />
+            <ActivePanelComponent form={formForPanels} />
           </div>
 
           <div className="flex flex-1 items-center justify-center bg-[#faf9f7] p-6">
@@ -69,6 +115,8 @@ const QuickGroupWear = () => {
                 onPlacementChange={form.setPrintJobPlacement}
                 onDuplicateJob={form.duplicatePrintJob}
                 onDeleteJob={form.removePrintJob}
+                captureMode={isCapturingDesign}
+                stageRef={desktopStageRef}
               />
             </div>
           </div>
@@ -107,6 +155,8 @@ const QuickGroupWear = () => {
                 onPlacementChange={form.setPrintJobPlacement}
                 onDuplicateJob={form.duplicatePrintJob}
                 onDeleteJob={form.removePrintJob}
+                captureMode={isCapturingDesign}
+                stageRef={mobileStageRef}
               />
             </div>
 
@@ -121,7 +171,7 @@ const QuickGroupWear = () => {
                 <DrawerTitle>{activePanelLabel}</DrawerTitle>
               </DrawerHeader>
               <div className="overflow-y-auto p-4 pt-2">
-                <ActivePanelComponent form={form} />
+                <ActivePanelComponent form={formForPanels} />
               </div>
             </DrawerContent>
           </Drawer>

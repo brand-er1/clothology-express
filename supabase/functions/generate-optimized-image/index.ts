@@ -3,6 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { tryRemoveGarmentBackground } from "../_shared/removeGarmentBackground.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,17 +95,23 @@ serve(async (req) => {
 
     // Base64 -> Uint8Array
     const binaryString = atob(base64Image);
-    const bytes = new Uint8Array(binaryString.length);
+    const rawBytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+      rawBytes[i] = binaryString.charCodeAt(i);
     }
 
+    // The style prompt always requests a clean white background, so strip it
+    // to transparent before storing (falls back to the original bytes if the
+    // background can't be confidently detected).
+    const { bytes, mimeType: uploadMimeType } = await tryRemoveGarmentBackground(rawBytes, mimeType);
+
     // 업로드
-    const fileName = `${crypto.randomUUID()}.png`;
+    const fileExtension = uploadMimeType === "image/png" ? "png" : "jpg";
+    const fileName = `${crypto.randomUUID()}.${fileExtension}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("generated_images")
       .upload(fileName, bytes, {
-        contentType: mimeType,
+        contentType: uploadMimeType,
         upsert: false,
       });
 

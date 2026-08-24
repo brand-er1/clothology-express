@@ -2,6 +2,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
+import { tryRemoveGarmentBackground } from "../_shared/removeGarmentBackground.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -486,17 +487,21 @@ ${isKnit
       throw new Error(reason);
     }
 
-    // Store the image in Supabase Storage
-    const bytes = decodeBase64Image(generatedImageBase64);
+    // Store the image in Supabase Storage. The modification prompt always asks
+    // Gemini to keep the "clean white background" style, so strip it to
+    // transparent before storing (falls back to the original bytes if the
+    // background can't be confidently detected).
+    const rawBytes = decodeBase64Image(generatedImageBase64);
+    const { bytes, mimeType: uploadMimeType } = await tryRemoveGarmentBackground(rawBytes, mimeType);
 
-    const extension = extensionForMimeType(mimeType);
+    const extension = extensionForMimeType(uploadMimeType);
     const fileName =
       `${userId || "anon"}/${Date.now()}_${crypto.randomUUID()}.${extension}`;
     // Use generated_images bucket (ensure it exists in Supabase project)
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('generated_images')
       .upload(fileName, bytes, {
-        contentType: mimeType,
+        contentType: uploadMimeType,
         upsert: false
       });
     

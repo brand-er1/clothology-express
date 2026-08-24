@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { SelectedWorkTile } from "@/components/portfolio/SelectedWorkTile";
 import { PortfolioProjectDetail } from "@/components/portfolio/PortfolioProjectDetail";
 import { Reveal } from "@/components/portfolio/ScrollReveal";
+import { HeroCarousel, type HeroSlide } from "@/components/portfolio/HeroCarousel";
 import { useParallax } from "@/hooks/useParallax";
 import { fetchVisiblePortfolioProjects } from "@/services/portfolioProjects";
 import { PORTFOLIO_CATEGORY_LABEL_KO, type PortfolioProject } from "@/types/portfolio";
@@ -44,7 +45,27 @@ const Portfolio = () => {
     [filter, projects],
   );
 
-  const heroImage = projects[0];
+  // One sample photo per category (not several of the same garment type back to back) so the
+  // hero band reads as "a range of what we make" rather than landing on a single odd-one-out
+  // item (e.g. one lone pair of shorts) with nothing else to give it context.
+  const heroSlides: HeroSlide[] = useMemo(() => {
+    const seenCategories = new Set<string>();
+    const diverse: PortfolioProject[] = [];
+    for (const project of projects) {
+      if (seenCategories.has(project.category)) continue;
+      seenCategories.add(project.category);
+      diverse.push(project);
+    }
+    for (const project of projects) {
+      if (diverse.length >= 6) break;
+      if (!diverse.includes(project)) diverse.push(project);
+    }
+    return diverse.slice(0, 6).map((project) => ({
+      id: project.id,
+      src: project.images[0],
+      alt: project.nameKo,
+    }));
+  }, [projects]);
 
   return (
     <div className="min-h-screen bg-[#f4f0ea] text-[#211b1c]">
@@ -80,17 +101,9 @@ const Portfolio = () => {
             </Reveal>
           </div>
 
-          {heroImage && (
-            <div className="overflow-hidden bg-[#e9e5dd]">
-              <div ref={heroParallaxRef} className="mx-auto flex h-[46vh] max-w-[1600px] items-center justify-center sm:h-[58vh]">
-                <img
-                  src={heroImage.images[0]}
-                  alt={heroImage.nameKo}
-                  className="h-full w-full object-contain p-10 sm:p-16"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
+          {heroSlides.length > 0 && (
+            <div ref={heroParallaxRef} className="overflow-hidden bg-[#e9e5dd]">
+              <HeroCarousel slides={heroSlides} />
             </div>
           )}
         </section>

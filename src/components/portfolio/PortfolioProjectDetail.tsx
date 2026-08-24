@@ -27,9 +27,9 @@ const DetailBody = ({ project }: { project: PortfolioProject }) => {
   const services = project.services.length > 0 ? project.services : PORTFOLIO_DEFAULT_SERVICES;
 
   const specs: Array<[string, string]> = [
-    ["Category", PORTFOLIO_CATEGORY_LABEL_KO[project.category] || project.category],
-    ["Production", project.country || "제작 사양 상담 후 확정"],
-    ["Quantity", project.quantity || "제작 사양 상담 후 확정"],
+    ["카테고리", PORTFOLIO_CATEGORY_LABEL_KO[project.category] || project.category],
+    ["제작 국가", project.country || "제작 사양 상담 후 확정"],
+    ["제작 수량", project.quantity || "제작 사양 상담 후 확정"],
   ];
 
   return (
@@ -62,11 +62,11 @@ const DetailBody = ({ project }: { project: PortfolioProject }) => {
         )}
 
         <div className="px-5 py-6 sm:px-8">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand">Project</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand">프로젝트</p>
           <h2 className="mt-2 font-serif text-3xl font-normal tracking-[-0.03em] text-[#211b1c] sm:text-4xl">
-            {project.nameEn}
+            {project.nameKo}
           </h2>
-          <p className="mt-1 text-sm text-stone-500">{project.nameKo}</p>
+          <p className="mt-1 text-sm text-stone-500">{project.nameEn}</p>
 
           {project.description && (
             <p className="mt-4 text-sm leading-6 text-stone-600">{project.description}</p>
@@ -80,7 +80,7 @@ const DetailBody = ({ project }: { project: PortfolioProject }) => {
               </div>
             ))}
             <div className="grid grid-cols-[110px_1fr] gap-3 py-3">
-              <dt className="font-semibold text-stone-500">Services</dt>
+              <dt className="font-semibold text-stone-500">제작 서비스</dt>
               <dd className="flex flex-wrap gap-1.5">
                 {services.map((service) => (
                   <span key={service} className="border border-black/15 px-2 py-0.5 text-xs font-semibold text-stone-700">
@@ -92,7 +92,7 @@ const DetailBody = ({ project }: { project: PortfolioProject }) => {
           </dl>
 
           <div className="mt-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand">Process</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand">제작 과정</p>
             <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs font-semibold text-stone-500">
               {PORTFOLIO_PROCESS_STEPS.map((step, index) => (
                 <span key={step.number} className="flex items-center gap-2">

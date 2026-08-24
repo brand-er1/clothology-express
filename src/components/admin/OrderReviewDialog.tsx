@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
+import { ReadyMadeOrderPreview } from "@/components/admin/ReadyMadeOrderPreview";
 
 interface OrderReviewDialogProps {
   order: Order | null;
@@ -58,6 +59,11 @@ export const OrderReviewDialog = ({
   const [userProfile, setUserProfile] = useState<RequestUserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const estimate = order?.estimate_snapshot || null;
+  const hasReadyMadePreview = Boolean(
+    order &&
+      order.request_source === "ready_made_group_wear" &&
+      (order.front_preview_url || order.back_preview_url),
+  );
 
   // 주문 정보가 변경되면 댓글 초기화 및 사용자 정보 가져오기
   useEffect(() => {
@@ -192,6 +198,10 @@ export const OrderReviewDialog = ({
               )}
             </div>
 
+            {hasReadyMadePreview && (
+              <ReadyMadeOrderPreview order={order} originalImageUrl={imageUrl} />
+            )}
+
             {estimate && (
               <div className="grid gap-3 rounded-2xl border border-brand/15 bg-brand/5 p-4 sm:grid-cols-3">
                 <div>
@@ -221,7 +231,13 @@ export const OrderReviewDialog = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div
+              className={
+                hasReadyMadePreview
+                  ? "grid grid-cols-1 gap-4"
+                  : "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
+              }
+            >
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold mb-2 text-base md:text-lg">
@@ -268,58 +284,60 @@ export const OrderReviewDialog = ({
                 )}
               </div>
 
-              <div>
-                <h3 className="font-semibold mb-2 text-base md:text-lg">
-                  고객 디자인 이미지
-                  {galleryUrls.length > 1 && (
-                    <span className="ml-2 text-xs font-bold text-brand">
-                      ({galleryUrls.length}장)
-                    </span>
-                  )}
-                </h3>
-                {galleryUrls.length > 1 ? (
-                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-                    {galleryUrls.map((url, index) => (
-                      <a
-                        key={url}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
-                      >
-                        <img
-                          src={url}
-                          alt={`고객 업로드 이미지 ${index + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="w-full h-auto min-h-32 md:min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
-                    {imageUrl && !imageError ? (
-                      <img
-                        src={imageUrl}
-                        alt="Generated design"
-                        className="w-full h-auto rounded-lg"
-                        onLoad={() => console.log("Image loaded successfully in review dialog")}
-                        onError={(e) => {
-                          console.error("Image loading error in review dialog:", imageUrl);
-                          setImageError(true);
-                        }}
-                      />
-                    ) : (
-                      <div className="p-4 flex flex-col items-center justify-center h-32 md:h-48 text-center">
-                        <ImageOff className="w-6 h-6 md:w-8 md:h-8 mb-2 text-gray-400" />
-                        <p className="text-xs md:text-sm text-gray-400">이미지를 불러올 수 없습니다</p>
-                        {order.image_path && (
-                          <p className="text-xs mt-2 text-gray-400 truncate max-w-full">파일 경로: {order.image_path}</p>
-                        )}
-                      </div>
+              {!hasReadyMadePreview && (
+                <div>
+                  <h3 className="font-semibold mb-2 text-base md:text-lg">
+                    고객 디자인 이미지
+                    {galleryUrls.length > 1 && (
+                      <span className="ml-2 text-xs font-bold text-brand">
+                        ({galleryUrls.length}장)
+                      </span>
                     )}
-                  </div>
-                )}
-              </div>
+                  </h3>
+                  {galleryUrls.length > 1 ? (
+                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                      {galleryUrls.map((url, index) => (
+                        <a
+                          key={url}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
+                        >
+                          <img
+                            src={url}
+                            alt={`고객 업로드 이미지 ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="w-full h-auto min-h-32 md:min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
+                      {imageUrl && !imageError ? (
+                        <img
+                          src={imageUrl}
+                          alt="Generated design"
+                          className="w-full h-auto rounded-lg"
+                          onLoad={() => console.log("Image loaded successfully in review dialog")}
+                          onError={(e) => {
+                            console.error("Image loading error in review dialog:", imageUrl);
+                            setImageError(true);
+                          }}
+                        />
+                      ) : (
+                        <div className="p-4 flex flex-col items-center justify-center h-32 md:h-48 text-center">
+                          <ImageOff className="w-6 h-6 md:w-8 md:h-8 mb-2 text-gray-400" />
+                          <p className="text-xs md:text-sm text-gray-400">이미지를 불러올 수 없습니다</p>
+                          {order.image_path && (
+                            <p className="text-xs mt-2 text-gray-400 truncate max-w-full">파일 경로: {order.image_path}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <Separator />

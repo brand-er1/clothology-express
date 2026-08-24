@@ -2,6 +2,7 @@ import type {
   ReadyMadeArtworkPlacement,
   ReadyMadeGarmentSide,
   ReadyMadePrintLocation,
+  ReadyMadePrintMethod,
   ReadyMadeSizeQuantities,
 } from "@/data/ready-made-pricing-config";
 
@@ -43,4 +44,42 @@ export interface ReadyMadeQuoteResult {
   /** 최종 예상금액 (VAT 포함) */
   total: number;
   estimatedLeadTimeLabel: string;
+}
+
+/**
+ * One print job's placement as actually rendered, saved at submission time for the admin's
+ * "제작 데이터" view. `x`/`y` are the artwork's CENTER point and `width`/`height` its size — all
+ * four normalized 0-1 against the garment mockup's own on-screen box, exactly like `placement`
+ * above but measured directly from the live editor DOM (not recomputed) so device/viewport
+ * differences (mobile vs. desktop) can never shift the saved position relative to what the
+ * customer actually saw.
+ *
+ * `scale`/`rotation` are reserved for a future zoom/rotate control — the editor currently sizes
+ * artwork purely via `width` (see `ReadyMadeArtworkPlacement`) and has no rotation handle, so
+ * these are always 1 and 0 today.
+ */
+export interface ReadyMadeOrderDesignJob {
+  id: string;
+  location: ReadyMadePrintLocation;
+  locationLabel: string;
+  side: ReadyMadeGarmentSide;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scale: number;
+  rotation: number;
+}
+
+/** Structured design snapshot saved alongside `front_preview_url`/`back_preview_url` on the
+ * order row (`orders.ready_made_design_data`) — see that column's migration comment. */
+export interface ReadyMadeOrderDesignData {
+  product: { id: string; type: string; name: string };
+  color: string;
+  garmentImages: { front: string; back: string };
+  sizeQuantities: ReadyMadeSizeQuantities;
+  totalQuantity: number;
+  printJobs: ReadyMadeOrderDesignJob[];
+  printMethod: ReadyMadePrintMethod;
+  requestNote: string;
 }

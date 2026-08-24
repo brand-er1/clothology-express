@@ -6,6 +6,7 @@ import {
   READY_MADE_LOCATION_SIDE,
   READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
   READY_MADE_MIN_ARTWORK_WIDTH_PERCENT,
+  READY_MADE_PRINT_LOCATION_OPTIONS,
   READY_MADE_PRINT_METHOD_OPTIONS,
   READY_MADE_PRODUCT_OPTIONS,
   createEmptySizeQuantities,
@@ -23,11 +24,17 @@ import {
 import { prepareArtworkReference } from "@/lib/artwork-upload";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { generateReadyMadeDesignGraphic } from "@/services/readyMadeDesignGeneration";
-import type { ReadyMadePrintJob, ReadyMadeQuoteResult } from "@/types/readyMadeOrder";
+import type {
+  ReadyMadeOrderDesignData,
+  ReadyMadeOrderDesignJob,
+  ReadyMadePrintJob,
+  ReadyMadeQuoteResult,
+} from "@/types/readyMadeOrder";
 import type { ArtworkReference } from "@/types/customize";
 import type { TrademarkScreeningResult } from "@/types/trademark";
 import { createReadyMadeGroupWearRequest } from "@/services/readyMadeOrder";
 import { trackSiteEvent } from "@/lib/site-analytics";
+import type { CapturedSidePreview } from "@/lib/ready-made-design-capture";
 
 export const READY_MADE_TOTAL_STEPS = 6;
 
@@ -329,7 +336,7 @@ export const useReadyMadeGroupWearForm = () => {
     setCurrentStep((step) => Math.max(1, step - 1));
   }, []);
 
-  const submitRequest = useCallback(async () => {
+  const submitRequest = useCallback(async (capturedPreviews: CapturedSidePreview[] = []) => {
     if (!quote || !designArtwork) {
       toast({
         title: "견적 확인이 필요합니다",
@@ -362,6 +369,43 @@ export const useReadyMadeGroupWearForm = () => {
         printMethodLabel ? `인쇄 방식: ${printMethodLabel}` : "",
         requestNote.trim(),
       ].filter(Boolean).join("\n");
+
+      // Prefer the jobs measured directly from the captured DOM (real on-screen position); only
+      // fall back to the stored percentages if the capture step failed entirely, so a preview
+      // hiccup never blocks the submission itself.
+      const capturedJobs = capturedPreviews.flatMap((preview) => preview.jobs);
+      const designJobs: ReadyMadeOrderDesignJob[] =
+        capturedJobs.length > 0
+          ? capturedJobs
+          : printJobs.map((job) => ({
+              id: job.id,
+              location: job.location,
+              locationLabel:
+                READY_MADE_PRINT_LOCATION_OPTIONS.find((option) => option.key === job.location)?.label ||
+                job.location,
+              side: job.side,
+              x: job.placement.xPercent / 100,
+              y: job.placement.yPercent / 100,
+              width: job.placement.widthPercent / 100,
+              height: job.placement.widthPercent / 100,
+              scale: 1,
+              rotation: 0,
+            }));
+
+      const designData: ReadyMadeOrderDesignData = {
+        product: { id: selectedProduct.key, type: selectedProduct.key, name: selectedProduct.label },
+        color: selectedColor,
+        garmentImages: { front: selectedProduct.imageFront, back: selectedProduct.imageBack },
+        sizeQuantities,
+        totalQuantity,
+        printJobs: designJobs,
+        printMethod,
+        requestNote: requestNote.trim(),
+      };
+
+      const frontPreview = capturedPreviews.find((preview) => preview.side === "front");
+      const backPreview = capturedPreviews.find((preview) => preview.side === "back");
+
       const result = await createReadyMadeGroupWearRequest({
         product: selectedProduct,
         color: selectedColor,
@@ -373,6 +417,9 @@ export const useReadyMadeGroupWearForm = () => {
         trademarkDecision: trademarkScreening?.decision ?? null,
         guestName: isAuthenticated ? null : guestName.trim(),
         guestPhone: isAuthenticated ? null : guestPhone.trim(),
+        frontPreviewBase64: frontPreview?.base64 ?? null,
+        backPreviewBase64: backPreview?.base64 ?? null,
+        designData,
       });
       setSubmittedOrderId(String(result.id || "submitted"));
       toast({
@@ -392,7 +439,7 @@ export const useReadyMadeGroupWearForm = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, printJobs, requestNote, printMethod, isAuthenticated, guestName, guestPhone]);
+  }, [quote, designArtwork, trademarkScreening, selectedProduct, selectedColor, sizeQuantities, totalQuantity, printJobs, requestNote, printMethod, isAuthenticated, guestName, guestPhone]);
 
   return {
     currentStep,

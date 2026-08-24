@@ -181,9 +181,9 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                 <CardContent className="p-0">
                   <div className="grid min-h-52 grid-cols-[116px_minmax(0,1fr)] sm:grid-cols-[150px_minmax(0,1fr)]">
                     <div className="relative flex items-center justify-center bg-stone-100">
-                      {order.generated_image_url ? (
+                      {order.front_preview_url || order.generated_image_url ? (
                         <img
-                          src={order.generated_image_url}
+                          src={order.front_preview_url || order.generated_image_url || undefined}
                           alt={order.request_title || order.cloth_type}
                           className="h-full max-h-64 w-full object-cover"
                         />

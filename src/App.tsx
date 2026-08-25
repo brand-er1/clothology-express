@@ -19,6 +19,9 @@ import KakaoPayResult from './pages/KakaoPayResult';
 import FabricSwatch from './pages/FabricSwatch';
 import DesignQuote from './pages/DesignQuote';
 import Closet from './pages/Closet';
+import Outfits from './pages/Outfits';
+import OutfitDetail from './pages/OutfitDetail';
+import MyOutfits from './pages/MyOutfits';
 import Portfolio from './pages/Portfolio';
 import QuickGroupWear from './pages/QuickGroupWear';
 import { supabase } from './lib/supabase';
@@ -125,6 +128,9 @@ function App() {
             <Route path="/customize" element={<Customize />} />
             <Route path="/design-quote" element={<DesignQuote />} />
             <Route path="/closet" element={<Closet />} />
+            <Route path="/outfits" element={<Outfits />} />
+            <Route path="/outfits/:id" element={<OutfitDetail />} />
+            <Route path="/my-outfits" element={<AuthGuard><MyOutfits /></AuthGuard>} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
             <Route path="/fundings" element={<Fundings />} />

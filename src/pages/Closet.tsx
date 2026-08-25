@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { RefreshCw, Save, Share2, Sparkles } from "lucide-react";
+import { Heart, RefreshCw, Save, Share2, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { WardrobeSlotPicker } from "@/components/closet/WardrobeSlotPicker";
 import { ClosetGarmentStudio } from "@/components/closet/ClosetGarmentStudio";
 import { MyWardrobeList } from "@/components/closet/MyWardrobeList";
 import { GarmentEditPanel } from "@/components/closet/GarmentEditPanel";
+import { SaveOutfitDialog } from "@/components/closet/SaveOutfitDialog";
 import { characterConfig, closetSlotLabel, closetSlotOrder } from "@/lib/closet-character-config";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import { dressCharacter } from "@/services/closetDressing";
@@ -30,11 +31,18 @@ import {
   type MyWardrobeGarment,
 } from "@/lib/closet-store";
 import type { CharacterGender, ClosetGarment, ClosetOutfit, ClosetSlot } from "@/types/closet";
+import type { OutfitItem } from "@/types/outfit";
 
 type ClosetView = "select" | "transition" | "dressing" | "look-complete";
 
+interface ReferenceOutfitState {
+  characterGender: CharacterGender;
+  items: OutfitItem[];
+}
+
 interface ClosetLocationState {
   pendingGarment?: ClosetGarment;
+  referenceOutfit?: ReferenceOutfitState;
 }
 
 const wornDesignGarments = (outfit: ClosetOutfit) =>
@@ -62,10 +70,13 @@ const Closet = () => {
   const [myWardrobe, setMyWardrobe] = useState<MyWardrobeGarment[]>(() => loadMyWardrobe());
   const [editingGarmentId, setEditingGarmentId] = useState<string | null>(null);
   const [busyGarmentId, setBusyGarmentId] = useState<string | null>(null);
+  const [showSaveOutfit, setShowSaveOutfit] = useState(false);
+  const [saveDialogInitialPublic, setSaveDialogInitialPublic] = useState(false);
   const latestDressingRequest = useRef(0);
   const editingGarment = myWardrobe.find((item) => item.id === editingGarmentId) || null;
 
   const pendingGarment = (location.state as ClosetLocationState | null)?.pendingGarment ?? null;
+  const referenceOutfit = (location.state as ClosetLocationState | null)?.referenceOutfit ?? null;
 
   const runDressing = async (
     targetOutfit: ClosetOutfit,
@@ -343,6 +354,34 @@ const Closet = () => {
     });
   };
 
+  // "이 코디 참고하기" from another user's outfit — load its item images as Garment References for
+  // the current outfit, exactly like any other garment reference. Never touches the source outfit.
+  useEffect(() => {
+    if (!referenceOutfit) return;
+    const nextOutfit: ClosetOutfit = { top: null, bottom: null, outer: null, shoes: null, accessory: null };
+    referenceOutfit.items.forEach((item) => {
+      const garment: ClosetGarment = {
+        id: `ref-${item.garmentId || item.slot}-${Date.now()}`,
+        slot: item.slot,
+        label: item.label || closetSlotLabel[item.slot],
+        imageUrl: item.imageUrl,
+        source: item.source === "upload" ? "upload" : "ai_design",
+        designRef: { imageUrl: item.imageUrl },
+      };
+      nextOutfit[item.slot] = garment;
+      setGarment(item.slot, garment);
+      setMyWardrobe(addToMyWardrobe(garment));
+    });
+    setCharacter(referenceOutfit.characterGender);
+    setView("dressing");
+    navigate(location.pathname, { replace: true, state: null });
+    void runDressing(nextOutfit, referenceOutfit.characterGender, {
+      changedSlots: closetSlotOrder.filter((slot) => nextOutfit[slot]),
+    });
+    toast({ title: "코디를 불러왔어요", description: "참고한 코디를 자유롭게 바꿔보세요." });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referenceOutfit]);
+
   useEffect(() => {
     setPendingCharacter(character);
   }, [character]);
@@ -524,26 +563,41 @@ const Closet = () => {
                           ))}
                       </div>
                     </Card>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         className="h-11 rounded-full border-stone-300 bg-white font-bold"
-                        onClick={handleSave}
+                        onClick={() => {
+                          handleSave();
+                          setSaveDialogInitialPublic(false);
+                          setShowSaveOutfit(true);
+                        }}
                       >
                         <Save className="mr-2 h-4 w-4" />
-                        LOOK 저장하기
+                        코디 저장
                       </Button>
                       <Button
                         type="button"
-                        variant="outline"
-                        className="h-11 rounded-full border-stone-300 bg-white font-bold"
-                        onClick={() => void shareLook()}
+                        className="h-11 rounded-full bg-brand font-bold hover:bg-brand-dark"
+                        onClick={() => {
+                          setSaveDialogInitialPublic(true);
+                          setShowSaveOutfit(true);
+                        }}
                       >
-                        <Share2 className="mr-2 h-4 w-4" />
-                        공유하기
+                        <Heart className="mr-2 h-4 w-4" />
+                        코디 올리기
                       </Button>
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-9 w-full rounded-full text-xs font-bold text-stone-400"
+                      onClick={() => void shareLook()}
+                    >
+                      <Share2 className="mr-1.5 h-3.5 w-3.5" />
+                      링크 공유하기
+                    </Button>
                     <Card className="rounded-[1.5rem] border-brand/20 bg-brand/5 p-5 text-center">
                       <p className="font-black text-stone-950">이 디자인, 실제로 만들어볼까요?</p>
                       <Button
@@ -569,6 +623,15 @@ const Closet = () => {
           </div>
         )}
       </main>
+      <SaveOutfitDialog
+        open={showSaveOutfit}
+        onOpenChange={setShowSaveOutfit}
+        outfit={outfit}
+        character={character}
+        renderedCharacterImage={renderedCharacterImage}
+        defaultTitle={`${characterConfig[character].label} 코디`}
+        initialPublic={saveDialogInitialPublic}
+      />
     </div>
   );
 };

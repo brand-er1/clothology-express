@@ -81,6 +81,8 @@ export const Header = () => {
     { to: "/fabric-swatch", label: "원단 스와치", visible: isAuthenticated && accountType === "seller" },
     { to: "/design-quote", label: "디자인 견적", visible: !isAuthenticated || accountType === "seller" },
     { to: "/closet", label: "BRAND-ER CLOSET", visible: !isAuthenticated || accountType === "seller" },
+    { to: "/outfits", label: "코디", visible: true },
+    { to: "/my-outfits", label: "내 코디", visible: isAuthenticated },
     { to: "/orders", label: "제작 관리", visible: isAuthenticated && accountType === "seller" },
     { to: "/my-fundings", label: "내 펀딩", visible: isAuthenticated && accountType === "seller" },
     { to: "/admin", label: "관리자", visible: isAdmin },

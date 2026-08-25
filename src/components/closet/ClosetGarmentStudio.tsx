@@ -8,6 +8,7 @@ import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { generateImage } from "@/services/imageGeneration";
 import { logClosetActivity } from "@/services/closetActivityLog";
+import { saveDesign } from "@/services/designs";
 import type { ClosetGarment } from "@/types/closet";
 
 interface ClosetGarmentStudioProps {
@@ -42,6 +43,23 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
         return;
       }
 
+      // Best-effort — a missing design_id just means this garment can't be traced back to a
+      // `designs` row later (e.g. from the outfit feed); the garment itself still works fine.
+      let designId: string | null = null;
+      try {
+        designId = await saveDesign({
+          frontImageUrl: imageUrl,
+          imagePath: result.imagePath || null,
+          productType: category,
+          fabric: material,
+          prompt: result.optimizedPrompt || result.prompt,
+          detail: prompt.trim(),
+          source: "closet",
+        });
+      } catch (designError) {
+        console.error("Failed to save design record for closet garment:", designError);
+      }
+
       const garment: ClosetGarment = {
         id: `ai-${Date.now()}`,
         slot,
@@ -54,6 +72,7 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
           selectedType: category,
           selectedMaterial: material,
           designContext: result.optimizedPrompt || result.prompt,
+          designId,
         },
       };
       onGarmentCreated(garment);

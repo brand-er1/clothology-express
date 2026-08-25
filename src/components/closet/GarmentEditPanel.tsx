@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { closetSlotLabel } from "@/lib/closet-character-config";
 import { withNewGarmentRevision } from "@/lib/closet-store";
 import { editGarment } from "@/services/closetGarmentEdit";
+import { saveDesign } from "@/services/designs";
 import { RevisionHistory } from "@/components/closet/RevisionHistory";
 import type { ClosetGarment } from "@/types/closet";
 
@@ -101,6 +102,19 @@ const GarmentEditBody = ({
     setPending(null);
     setPrompt("");
     onClose();
+
+    // Keep the SAME design_id pointing at the current image — "생성 → 수정" must stay one design,
+    // never look like a new one to the rest of the flow (자동견적/코디). Best-effort: the edit is
+    // already applied locally either way.
+    const designId = garment.designRef?.designId;
+    if (designId) {
+      void saveDesign({
+        designId,
+        frontImageUrl: pending.imageUrl,
+        imagePath: pending.imagePath,
+        detail: pending.promptLabel,
+      }).catch((error) => console.error("Failed to update design record after garment edit:", error));
+    }
   };
 
   return (

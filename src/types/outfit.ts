@@ -7,6 +7,7 @@ export interface OutfitItem {
   label: string | null;
   imageUrl: string;
   source: string | null;
+  designId: string | null;
 }
 
 /** Minimal card data for the outfit feed — image / author / title / like count only. */

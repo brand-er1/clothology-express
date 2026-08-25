@@ -78,6 +78,9 @@ const Customize = () => {
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,
+    designId,
+    isSavingDesign,
+    handleGoToEstimate,
   } = useCustomizeForm();
 
   const stepContent = [
@@ -257,6 +260,9 @@ const Customize = () => {
                 onSelectHistoryImage={handleSelectHistoryImage}
                 productionCountry={productionCountry}
                 onChangeCountry={setProductionCountry}
+                designId={designId}
+                isSavingDesign={isSavingDesign}
+                onGoToEstimate={() => void handleGoToEstimate()}
               />
             )}
 

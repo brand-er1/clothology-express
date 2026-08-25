@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  AlertCircle,
   ArrowRight,
   Camera,
   CheckCircle2,
@@ -37,6 +38,7 @@ import {
 } from "@/lib/production-country";
 import { characterConfig, inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import type { CharacterGender } from "@/types/closet";
+import { getDesign, getDesignErrorMessage, type DesignRecord } from "@/services/designs";
 
 const allowedImageTypes = new Set([
   "image/png",
@@ -85,10 +87,15 @@ interface ClosetHandoffState {
 const DesignQuote = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const designId = searchParams.get("designId");
   const closetHandoff = (location.state as ClosetHandoffState | null) || null;
   const [closetImages] = useState<ProductionEstimateImageInput[] | null>(
     closetHandoff?.presetImages?.length ? closetHandoff.presetImages : null,
   );
+  const [design, setDesign] = useState<DesignRecord | null>(null);
+  const [isLoadingDesign, setIsLoadingDesign] = useState(Boolean(designId));
+  const [designLoadError, setDesignLoadError] = useState<string | null>(null);
   const [isFundingSubmitting, setIsFundingSubmitting] = useState(false);
   const [fundingCreated, setFundingCreated] = useState(false);
   const [productionCountry, setProductionCountry] = useState<ProductionCountry>("korea");
@@ -214,7 +221,54 @@ const DesignQuote = () => {
     () => images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })),
     [images],
   );
-  const effectiveImages = closetImages ?? cardImages;
+  const designImages = useMemo<ProductionEstimateImageInput[] | null>(() => {
+    if (!design) return null;
+    const list: ProductionEstimateImageInput[] = [{ url: design.frontImageUrl, mimeType: "image/png" }];
+    if (design.backImageUrl) list.push({ url: design.backImageUrl, mimeType: "image/png" });
+    return list;
+  }, [design]);
+  // closetImages (richer — every worn item, via a one-shot location.state handoff) wins on first
+  // load; designImages (via ?designId=, resolved from Supabase) is what survives a refresh once
+  // that location.state is gone.
+  const effectiveImages = closetImages ?? designImages ?? cardImages;
+
+  // Loads the shared `design` record by ?designId=... so this page (and a refresh of it) never
+  // depends on ephemeral location.state — see src/services/designs.ts.
+  useEffect(() => {
+    if (!designId) {
+      setIsLoadingDesign(false);
+      return;
+    }
+    let active = true;
+    setIsLoadingDesign(true);
+    setDesignLoadError(null);
+    getDesign(designId)
+      .then((record) => {
+        if (!active) return;
+        if (!record) {
+          setDesignLoadError("디자인을 찾을 수 없습니다. 다시 생성하거나 이미지를 직접 업로드해주세요.");
+          return;
+        }
+        setDesign(record);
+        setProductionCountry((current) =>
+          record.productionCountry === "korea" || record.productionCountry === "china" || record.productionCountry === "japan"
+            ? (record.productionCountry as ProductionCountry)
+            : current,
+        );
+        setIsAnalyzing(true);
+        setAnalysisStarted(true);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setDesignLoadError(getDesignErrorMessage(error, "디자인을 불러오지 못했습니다."));
+      })
+      .finally(() => {
+        if (active) setIsLoadingDesign(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [designId]);
 
   useEffect(() => {
     if (closetImages?.length) {
@@ -430,7 +484,18 @@ const DesignQuote = () => {
                 AI 디자인 생성하기
               </Link>
             </Button>
-            <Button className="h-12 rounded-full bg-brand px-6 hover:bg-brand-dark">
+            <Button
+              type="button"
+              className="h-12 rounded-full bg-brand px-6 hover:bg-brand-dark"
+              onClick={() => {
+                if (effectiveImages.length > 0) {
+                  setIsAnalyzing(true);
+                  setAnalysisStarted(true);
+                  return;
+                }
+                startAnalysis();
+              }}
+            >
               <Upload className="mr-2 h-4 w-4" />
               자동견적 확인하기
             </Button>
@@ -464,12 +529,54 @@ const DesignQuote = () => {
           ))}
         </div>
 
+        {designId && isLoadingDesign && (
+          <Card className="mb-6 flex items-center gap-3 rounded-2xl border-brand/20 bg-white px-5 py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-brand" />
+            <p className="text-sm font-bold text-stone-600">디자인을 불러오고 있습니다...</p>
+          </Card>
+        )}
+
+        {designLoadError && !isLoadingDesign && (
+          <Card className="mb-6 flex items-start gap-3 rounded-2xl border-rose-200 bg-rose-50/60 px-5 py-4">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-rose-900">{designLoadError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 bg-white"
+                onClick={() => {
+                  setDesignLoadError(null);
+                  setDesign(null);
+                  setIsLoadingDesign(true);
+                  getDesign(designId as string)
+                    .then((record) => {
+                      if (!record) {
+                        setDesignLoadError("디자인을 찾을 수 없습니다. 다시 생성하거나 이미지를 직접 업로드해주세요.");
+                        return;
+                      }
+                      setDesign(record);
+                      setIsAnalyzing(true);
+                      setAnalysisStarted(true);
+                    })
+                    .catch((error) => setDesignLoadError(getDesignErrorMessage(error, "디자인을 불러오지 못했습니다.")))
+                    .finally(() => setIsLoadingDesign(false));
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                다시 불러오기
+              </Button>
+            </div>
+          </Card>
+        )}
+
         <div className="grid items-start gap-6 lg:grid-cols-[0.78fr_1.22fr]">
-          {closetImages ? (
+          {designImages || closetImages ? (
             <Card className="overflow-hidden rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
               <p className="text-sm font-extrabold text-stone-950">가져온 디자인 이미지</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                {closetImages.map((image, index) => (
+                {(designImages || closetImages || []).map((image, index) => (
                   <div
                     key={index}
                     className="aspect-square overflow-hidden rounded-xl border border-stone-200 bg-white"
@@ -683,11 +790,14 @@ const DesignQuote = () => {
 
                 <div className={isAnalyzing ? "hidden" : ""}>
                   <ProductionEstimateCard
-                    key={closetImages ? "closet" : images.map((image) => image.id).join(",")}
-                    selectedType=""
-                    selectedMaterial=""
+                    key={design?.id || (closetImages ? "closet" : images.map((image) => image.id).join(","))}
+                    selectedType={design?.productType || ""}
+                    selectedMaterial={design?.fabric || ""}
                     images={effectiveImages}
-                    designContext="사용자가 기존에 보유한 의류 디자인 이미지"
+                    designContext={
+                      [design?.prompt, design?.detail].filter(Boolean).join("\n") ||
+                      "사용자가 기존에 보유한 의류 디자인 이미지"
+                    }
                     editable
                     onEstimateChange={setEstimate}
                     onLoadingChange={setIsAnalyzing}

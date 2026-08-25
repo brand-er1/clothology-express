@@ -6,6 +6,7 @@ import { generateImage, storeSelectedImage } from "@/services/imageGeneration";
 import { createFundingDraft } from "@/services/funding";
 import { createDirectProductionRequest } from "@/services/orderCreation";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
+import { getDesignErrorMessage, saveDesign } from "@/services/designs";
 import type {
   ArtworkPlacement,
   ArtworkReference,
@@ -95,6 +96,11 @@ export const useCustomizeForm = () => {
     useState<ProductionEstimateResult | null>(null);
   const [productionCountry, setProductionCountry] =
     useState<ProductionCountry>("korea");
+  // The single `design` row this generation/edit session traces back to (see src/services/designs.ts).
+  // Created right after the first successful generation so it survives a refresh and lets the
+  // design-complete screen link straight to /design-quote?designId=... without losing state.
+  const [designId, setDesignId] = useState<string | null>(null);
+  const [isSavingDesign, setIsSavingDesign] = useState(false);
   const domesticMinimumOrderQuantity = getMinimumOrderQuantity(
     selectedType,
     selectedMaterial,
@@ -200,7 +206,10 @@ export const useCustomizeForm = () => {
       setCurrentArtworkScreeningId(null);
       setLastFinalScreeningId(null);
       setCurrentProductionEstimate(null);
-      
+      // A brand-new generation starts a brand-new design — never carry the previous design_id
+      // forward, or an unrelated design would silently get overwritten below.
+      setDesignId(null);
+
       const result = await generateImage(
         selectedType,
         selectedMaterial,
@@ -236,6 +245,38 @@ export const useCustomizeForm = () => {
           cloth_type: selectedType,
           material: selectedMaterial,
         });
+
+        const frontImageUrl = result.storedImageUrls?.[0] || result.imageUrls?.[0];
+        if (frontImageUrl) {
+          setIsSavingDesign(true);
+          try {
+            const newDesignId = await saveDesign({
+              frontImageUrl,
+              imagePath: result.imagePaths?.[0] || null,
+              productType: selectedType,
+              color: selectedColor || null,
+              fabric: selectedMaterial,
+              fit: selectedFit || null,
+              quantity: directQuantity,
+              productionCountry,
+              prompt: result.optimizedPrompt || result.prompt,
+              detail: selectedDetail || null,
+              source: "customize",
+            });
+            setDesignId(newDesignId);
+          } catch (designError) {
+            // Non-fatal — the generated image is still shown and can be modified/quoted from
+            // React state this session; it just won't survive a refresh until a retry succeeds.
+            console.error("Failed to save design record:", designError);
+            toast({
+              title: "디자인 저장에 실패했어요",
+              description: getDesignErrorMessage(designError),
+              variant: "destructive",
+            });
+          } finally {
+            setIsSavingDesign(false);
+          }
+        }
       }
     } catch (err) {
       console.error("Error generating images:", err);
@@ -362,8 +403,25 @@ export const useCustomizeForm = () => {
       void trackSiteEvent("design_modified", {
         has_artwork: Boolean(options.referenceImage),
       });
+
+      // Keep updating the SAME design row across every edit — the whole point of design_id is
+      // that "생성 → 수정" never looks like a brand-new design to the rest of the flow.
+      if (newImageUrl) {
+        try {
+          const updatedDesignId = await saveDesign({
+            designId,
+            frontImageUrl: newImageUrl,
+            imagePath: newImagePath || null,
+            prompt: [generatedPrompt, prompt].filter(Boolean).join(" / "),
+          });
+          if (!designId) setDesignId(updatedDesignId);
+        } catch (designError) {
+          console.error("Failed to update design record after edit:", designError);
+        }
+      }
+
       return true;
-      
+
     } catch (err) {
       console.error("Error modifying image:", err);
       toast({
@@ -804,6 +862,54 @@ export const useCustomizeForm = () => {
     }
   };
 
+  // "자동 견적 확인하기" — persists the latest selections onto the design row (self-healing if it
+  // somehow doesn't exist yet) and hands off by designId, not by React state, so the estimate page
+  // survives a refresh and always reflects what was actually chosen during design.
+  const handleGoToEstimate = async () => {
+    const frontImageUrl =
+      currentModifiedImageUrl ||
+      storedImageUrl ||
+      (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null) ||
+      (generatedImageUrls && selectedImageIndex >= 0 ? generatedImageUrls[selectedImageIndex] : null);
+
+    if (!frontImageUrl) {
+      toast({
+        title: "디자인 이미지가 없습니다",
+        description: "자동 견적을 확인하기 전에 이미지를 먼저 생성해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingDesign(true);
+    try {
+      const resolvedDesignId = await saveDesign({
+        designId,
+        frontImageUrl,
+        imagePath: imagePath || null,
+        productType: selectedType,
+        color: selectedColor || null,
+        fabric: selectedMaterial,
+        fit: selectedFit || null,
+        quantity: directQuantity,
+        productionCountry,
+        prompt: generatedPrompt,
+        detail: selectedDetail || null,
+        source: "customize",
+      });
+      setDesignId(resolvedDesignId);
+      navigate(`/estimate?designId=${resolvedDesignId}`);
+    } catch (error) {
+      toast({
+        title: "자동 견적으로 이동하지 못했어요",
+        description: getDesignErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingDesign(false);
+    }
+  };
+
   const handleNext = () => {
     if (!validateCurrentStep()) {
       return;
@@ -910,5 +1016,8 @@ export const useCustomizeForm = () => {
     handleModifyImage,
     handleResetModifications,
     handleSelectHistoryImage,
+    designId,
+    isSavingDesign,
+    handleGoToEstimate,
   };
 };

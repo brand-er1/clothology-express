@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Calculator,
   ImageOff,
   ImagePlus,
+  Loader2,
   MapPin,
   Maximize2,
   Move,
@@ -118,6 +120,9 @@ interface ModifyImageStepProps {
   onSelectHistoryImage: (imageUrl: string | null, imagePath?: string | null, index?: number) => void;
   productionCountry: ProductionCountry;
   onChangeCountry: (country: ProductionCountry) => void;
+  designId?: string | null;
+  isSavingDesign?: boolean;
+  onGoToEstimate: () => void;
 }
 
 export const ModifyImageStep = ({
@@ -137,6 +142,9 @@ export const ModifyImageStep = ({
   onSelectHistoryImage,
   productionCountry,
   onChangeCountry,
+  designId,
+  isSavingDesign,
+  onGoToEstimate,
 }: ModifyImageStepProps) => {
   const navigate = useNavigate();
   const [modificationPrompt, setModificationPrompt] = useState("");
@@ -555,32 +563,49 @@ export const ModifyImageStep = ({
                 </p>
               </div>
               {selectedImageUrl && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 shrink-0 rounded-full border-brand/30 bg-brand/5 px-4 text-sm font-bold text-brand hover:bg-brand/10"
-                  onClick={() =>
-                    navigate("/closet", {
-                      state: {
-                        pendingGarment: {
-                          id: `ai-${Date.now()}`,
-                          slot: inferClosetSlotFromCategory(selectedType),
-                          label: designContext?.split("\n")[0]?.slice(0, 24) || "내가 만든 디자인",
-                          imageUrl: selectedImageUrl,
-                          source: "ai_design",
-                          designRef: {
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    className="h-11 rounded-full bg-brand px-4 text-sm font-bold hover:bg-brand-dark"
+                    onClick={onGoToEstimate}
+                    disabled={isSavingDesign}
+                    data-tutorial="customize-go-to-estimate"
+                  >
+                    {isSavingDesign ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Calculator className="mr-2 h-4 w-4" />
+                    )}
+                    자동 견적 확인하기
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 rounded-full border-brand/30 bg-brand/5 px-4 text-sm font-bold text-brand hover:bg-brand/10"
+                    onClick={() =>
+                      navigate("/closet", {
+                        state: {
+                          pendingGarment: {
+                            id: `ai-${Date.now()}`,
+                            slot: inferClosetSlotFromCategory(selectedType),
+                            label: designContext?.split("\n")[0]?.slice(0, 24) || "내가 만든 디자인",
                             imageUrl: selectedImageUrl,
-                            selectedType,
-                            selectedMaterial,
-                            designContext,
+                            source: "ai_design",
+                            designRef: {
+                              imageUrl: selectedImageUrl,
+                              selectedType,
+                              selectedMaterial,
+                              designContext,
+                              designId,
+                            },
                           },
                         },
-                      },
-                    })
-                  }
-                >
-                  🎮 브랜더에게 입혀보기
-                </Button>
+                      })
+                    }
+                  >
+                    🎮 브랜더에게 입혀보기
+                  </Button>
+                </div>
               )}
             </div>
           </div>

@@ -339,7 +339,12 @@ const Closet = () => {
       mimeType: garment.designRef?.imageMimeType || "image/png",
     }));
 
-    navigate("/design-quote", {
+    // Append ?designId= (when the primary worn item has one) purely as a refresh-survival
+    // fallback — location.state below still drives the richer multi-item view on first load.
+    const primaryDesignId = designGarments[0].designRef?.designId;
+    const quotePath = primaryDesignId ? `/design-quote?designId=${primaryDesignId}` : "/design-quote";
+
+    navigate(quotePath, {
       state: {
         presetImages,
         fromCloset: {
@@ -366,7 +371,7 @@ const Closet = () => {
         label: item.label || closetSlotLabel[item.slot],
         imageUrl: item.imageUrl,
         source: item.source === "upload" ? "upload" : "ai_design",
-        designRef: { imageUrl: item.imageUrl },
+        designRef: { imageUrl: item.imageUrl, designId: item.designId },
       };
       nextOutfit[item.slot] = garment;
       setGarment(item.slot, garment);

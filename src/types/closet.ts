@@ -38,6 +38,12 @@ export interface ClosetGarment {
     colorLabel?: string;
     fitLabel?: string;
     productionEstimate?: ProductionEstimateResult | null;
+    /**
+     * Id of the shared `designs` row this garment traces back to (see src/services/designs.ts).
+     * Kept stable across "수정하기" edits of the same garment so the AI design → estimate → outfit
+     * pipeline can always resolve back to one design, even after a refresh or page change.
+     */
+    designId?: string | null;
   };
   /** Edit history for this garment ("수정하기" trail). Absent/empty means only the original exists. */
   revisions?: ClosetGarmentRevision[];

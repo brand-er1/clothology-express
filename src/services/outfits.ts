@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { CharacterGender, ClosetOutfit } from "@/types/closet";
 import { closetSlotOrder } from "@/lib/closet-character-config";
+import { getGuestSessionId } from "@/lib/guest-session";
 import type { MyOutfitData, OutfitCardData, OutfitDetailData, OutfitItem } from "@/types/outfit";
 
 const requireUser = async () => {
@@ -8,6 +9,13 @@ const requireUser = async () => {
   const user = data.session?.user;
   if (!user) throw new Error("로그인이 필요합니다.");
   return user;
+};
+
+/** Resolves who's calling: a logged-in user id, or a guest_session_id for anonymous visitors. */
+const resolveCaller = async () => {
+  const { data } = await supabase.auth.getSession();
+  const isLoggedIn = Boolean(data.session?.user);
+  return { isLoggedIn, guestSessionId: isLoggedIn ? null : getGuestSessionId() };
 };
 
 export const getOutfitErrorMessage = (error: unknown, fallback = "잠시 후 다시 시도해주세요.") =>
@@ -24,6 +32,7 @@ export const buildOutfitItemsPayload = (outfit: ClosetOutfit) =>
       label: garment.label,
       image_url: garment.designRef?.imageUrl || garment.imageUrl,
       source: garment.source,
+      design_id: garment.designRef?.designId || null,
     }));
 
 interface SaveOutfitInput {
@@ -38,7 +47,10 @@ interface SaveOutfitInput {
 }
 
 export const saveOutfit = async (input: SaveOutfitInput): Promise<string> => {
-  await requireUser();
+  const { isLoggedIn, guestSessionId } = await resolveCaller();
+  if (input.isPublic && !isLoggedIn) {
+    throw new Error("공개 코디는 로그인 후 올릴 수 있습니다.");
+  }
   const { data, error } = await supabase.rpc("save_outfit", {
     p_title: input.title,
     p_description: input.description,
@@ -48,6 +60,7 @@ export const saveOutfit = async (input: SaveOutfitInput): Promise<string> => {
     p_is_public: input.isPublic,
     p_items: input.items,
     p_tags: input.tags,
+    p_guest_session_id: guestSessionId,
   });
   if (error) throw new Error(error.message || "코디를 저장하지 못했습니다.");
   return data as string;
@@ -62,20 +75,27 @@ interface UpdateOutfitInput {
 }
 
 export const updateOutfit = async (input: UpdateOutfitInput): Promise<void> => {
-  await requireUser();
+  const { isLoggedIn, guestSessionId } = await resolveCaller();
+  if (input.isPublic && !isLoggedIn) {
+    throw new Error("공개 코디는 로그인 후 올릴 수 있습니다.");
+  }
   const { error } = await supabase.rpc("update_outfit", {
     p_outfit_id: input.id,
     p_title: input.title,
     p_description: input.description,
     p_is_public: input.isPublic,
     p_tags: input.tags,
+    p_guest_session_id: guestSessionId,
   });
   if (error) throw new Error(error.message || "코디를 수정하지 못했습니다.");
 };
 
 export const deleteOutfit = async (id: string): Promise<void> => {
-  await requireUser();
-  const { error } = await supabase.rpc("delete_outfit", { p_outfit_id: id });
+  const { guestSessionId } = await resolveCaller();
+  const { error } = await supabase.rpc("delete_outfit", {
+    p_outfit_id: id,
+    p_guest_session_id: guestSessionId,
+  });
   if (error) throw new Error(error.message || "코디를 삭제하지 못했습니다.");
 };
 

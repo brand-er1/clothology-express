@@ -54,7 +54,7 @@ serve(async (req) => {
       throw new Error("GEMINI_API_KEY is not configured");
     }
 
-    const modelCandidates = ["gemini-3-pro-image", "gemini-3-pro-image-preview"];
+    const modelCandidates = ["gemini-3.1-flash-image", "gemini-3-pro-image", "gemini-2.5-flash-image"];
     let geminiData: any = null;
     let selectedModel = "";
     let lastGeminiError = "";
@@ -71,7 +71,7 @@ serve(async (req) => {
               responseModalities: ["IMAGE", "TEXT"],
               imageConfig: {
                 aspectRatio: "4:3",
-                imageSize: "2K",
+                imageSize: model === "gemini-2.5-flash-image" ? undefined : "2K",
               },
             },
           }),
@@ -90,7 +90,7 @@ serve(async (req) => {
       lastGeminiError = `Gemini API error [${category}] ${geminiResp.status} ${geminiResp.statusText} model=${model} - ${bodyText}`;
       console.error(lastGeminiError);
 
-      const retryWithFallback = geminiResp.status === 404 || geminiResp.status >= 500;
+      const retryWithFallback = [403, 404, 429].includes(geminiResp.status) || geminiResp.status >= 500;
       if (!retryWithFallback) {
         throw new Error(lastGeminiError);
       }

@@ -71,7 +71,7 @@ serve(async (req) => {
               responseModalities: ["IMAGE", "TEXT"],
               imageConfig: {
                 aspectRatio: "4:3",
-                imageSize: model === "gemini-2.5-flash-image" ? undefined : "2K",
+                imageSize: model === "gemini-2.5-flash-image" ? undefined : "1K",
               },
             },
           }),

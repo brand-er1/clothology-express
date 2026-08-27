@@ -15,6 +15,9 @@ const COMPACT_MAX_BOTTOM_PCT = 12;
 const ENTRY_START_PCT = 108;
 const RUN_FRAME_MS = 110;
 const MOVE_DURATION_MS = 1700;
+const INITIAL_IDLE_DELAY_MS = 2500;
+const IDLE_MOVE_MIN_MS = 10000;
+const IDLE_MOVE_MAX_MS = 18000;
 // A dragged-and-dropped character isn't idle wandering — it goes wherever the visitor puts it,
 // almost the full viewport, just short of clipping off an edge.
 const DRAG_MIN_PCT = 3;
@@ -143,7 +146,9 @@ export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamSt
       moveTimer = setTimeout(() => {
         if (frameInterval) clearInterval(frameInterval);
         setIsMoving(false);
-        if (!cancelled) scheduleNext(2500 + Math.random() * 3500);
+        if (!cancelled) {
+          scheduleNext(IDLE_MOVE_MIN_MS + Math.random() * (IDLE_MOVE_MAX_MS - IDLE_MOVE_MIN_MS));
+        }
       }, MOVE_DURATION_MS);
     };
 
@@ -151,7 +156,7 @@ export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamSt
       idleTimer = setTimeout(startMove, delay);
     };
 
-    scheduleNext(600);
+    scheduleNext(INITIAL_IDLE_DELAY_MS);
 
     return () => {
       cancelled = true;

@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type { MascotPose } from "@/components/BrandMascot";
 import { RUN_POSES, SAFE_ZONE_SELECTOR } from "./mascotConfig";
 
+export const MASCOT_WAIT_STORAGE_KEY = "brand-er:mascot-waiting";
+export const MASCOT_WAIT_EVENT = "brand-er:mascot-wait-change";
+
 const ROAM_MIN_PCT = 8;
 const ROAM_MAX_PCT = 80;
 const ROAM_MIN_BOTTOM_PCT = 4;
@@ -48,6 +51,11 @@ type RoamState = {
   setManualPosition: (xPercent: number, bottomPercent: number) => void;
 };
 
+const readManualWait = () => {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(MASCOT_WAIT_STORAGE_KEY) === "1";
+};
+
 export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamState => {
   const minPct = compact ? COMPACT_MIN_PCT : ROAM_MIN_PCT;
   const maxPct = compact ? COMPACT_MAX_PCT : ROAM_MAX_PCT;
@@ -60,10 +68,21 @@ export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamSt
   const [flip, setFlip] = useState(false);
   const [runFrame, setRunFrame] = useState(0);
   const [safeZoneActive, setSafeZoneActive] = useState(false);
+  const [manualWait, setManualWait] = useState(readManualWait);
   const xRef = useRef(ENTRY_START_PCT);
   // Once a visitor has dragged the character anywhere, it keeps wandering that whole space
   // afterwards instead of being pulled back into the narrow default band on the next idle move.
   const hasBeenDraggedRef = useRef(false);
+
+  useEffect(() => {
+    const syncWaitState = () => setManualWait(readManualWait());
+    window.addEventListener(MASCOT_WAIT_EVENT, syncWaitState);
+    window.addEventListener("storage", syncWaitState);
+    return () => {
+      window.removeEventListener(MASCOT_WAIT_EVENT, syncWaitState);
+      window.removeEventListener("storage", syncWaitState);
+    };
+  }, []);
 
   // Docks the mascot when a checkout/order/nav/form element (marked data-mascot-safezone)
   // is on screen, so it never roams over something the visitor needs to click.
@@ -113,7 +132,7 @@ export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamSt
       if (frameInterval) clearInterval(frameInterval);
     };
 
-    if (!enabled || paused || safeZoneActive) {
+    if (!enabled || paused || manualWait || safeZoneActive) {
       clearAll();
       setIsMoving(false);
       return () => clearAll();
@@ -162,7 +181,7 @@ export const useMascotRoam = ({ enabled, paused, compact }: RoamOptions): RoamSt
       cancelled = true;
       clearAll();
     };
-  }, [enabled, paused, safeZoneActive, minPct, maxPct, minBottomPct, maxBottomPct]);
+  }, [enabled, paused, manualWait, safeZoneActive, minPct, maxPct, minBottomPct, maxBottomPct]);
 
   const setManualPosition = (nextXPercent: number, nextBottomPercent: number) => {
     hasBeenDraggedRef.current = true;

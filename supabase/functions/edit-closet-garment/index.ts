@@ -105,37 +105,56 @@ Preserve the premium photorealistic 3D garment-render style: convincing three-di
 OUTPUT: Return exactly ONE edited product image of the garment alone (no person, no character, no mannequin unless the source image already has one). No before/after split, comparison layout, caption, watermark, or text overlay.
 `.trim();
 
-    const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: prompt },
-                { text: "Source garment image to edit:" },
-                { inlineData: { data: baseBase64, mimeType: baseMimeType } },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            responseModalities: ["IMAGE", "TEXT"],
-            imageConfig: { aspectRatio: "4:3", imageSize: "2K" },
-          },
-        }),
-      },
-    );
+    // "gemini-3-pro-image-preview" was retired by Google — fall back through the same working
+    // models generate-optimized-image already uses, instead of always failing on the dead name.
+    const imageModelCandidates = ["gemini-3.1-flash-image", "gemini-3-pro-image", "gemini-2.5-flash-image"];
+    let geminiData: any = null;
+    let lastGeminiError = "";
 
-    if (!geminiResp.ok) {
+    for (const model of imageModelCandidates) {
+      const geminiResp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: prompt },
+                  { text: "Source garment image to edit:" },
+                  { inlineData: { data: baseBase64, mimeType: baseMimeType } },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              responseModalities: ["IMAGE", "TEXT"],
+              imageConfig: {
+                aspectRatio: "4:3",
+                imageSize: model === "gemini-2.5-flash-image" ? undefined : "2K",
+              },
+            },
+          }),
+        },
+      );
+
+      if (geminiResp.ok) {
+        geminiData = await geminiResp.json();
+        break;
+      }
+
       const bodyText = await geminiResp.text();
-      throw new Error(`Gemini API error: ${geminiResp.status} ${geminiResp.statusText} - ${bodyText}`);
+      lastGeminiError = `Gemini API error: ${geminiResp.status} ${geminiResp.statusText} model=${model} - ${bodyText}`;
+      console.error(lastGeminiError);
+      const retryWithFallback = geminiResp.status === 404 || geminiResp.status >= 500;
+      if (!retryWithFallback) throw new Error(lastGeminiError);
     }
 
-    const geminiData = await geminiResp.json();
+    if (!geminiData) {
+      throw new Error(lastGeminiError || "Gemini image generation failed for all configured models");
+    }
     const parts = geminiData?.candidates?.[0]?.content?.parts || [];
     let generatedImageBase64 = "";
     let mimeType = "image/png";

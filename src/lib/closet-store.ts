@@ -6,14 +6,11 @@ import type {
   ClosetGarmentRevision,
   ClosetSlot,
   MannequinSize,
-  SavedBrandErLook,
   WardrobeState,
 } from "@/types/closet";
 
 const STORAGE_KEY = "brander-wardrobe-state-v3";
 const LEGACY_STORAGE_KEY = "brander-wardrobe-state-v2";
-const SAVED_LOOKS_KEY = "brander-saved-looks-v3";
-const LEGACY_SAVED_LOOKS_KEY = "brander-saved-looks-v2";
 
 const emptyOutfit = (): WardrobeState["outfit"] => ({
   top: null,
@@ -134,48 +131,6 @@ export const getWornDesignGarments = () =>
 
 export const useWardrobeState = () =>
   useSyncExternalStore(subscribeWardrobe, getWardrobeState, getWardrobeState);
-
-// --- Saved looks (MY BRAND-ER LOOK) ---
-
-export const loadSavedLooks = (): SavedBrandErLook[] => {
-  try {
-    const raw = localStorage.getItem(SAVED_LOOKS_KEY) || localStorage.getItem(LEGACY_SAVED_LOOKS_KEY);
-    if (!raw) return [];
-    return (JSON.parse(raw) as Partial<SavedBrandErLook>[]).map((look) => ({
-      id: look.id || `${Date.now()}`,
-      savedAt: look.savedAt || new Date().toISOString(),
-      character: look.character === "female" ? "female" : "male",
-      mannequinSize:
-        look.mannequinSize && isMannequinSizeForGender(look.character === "female" ? "female" : "male", look.mannequinSize)
-          ? look.mannequinSize
-          : defaultMannequinSize(look.character === "female" ? "female" : "male"),
-      outfit: { ...emptyOutfit(), ...look.outfit },
-      renderedCharacterImage: look.renderedCharacterImage || null,
-    }));
-  } catch {
-    return [];
-  }
-};
-
-export const saveCurrentLook = (): SavedBrandErLook => {
-  const look: SavedBrandErLook = {
-    id: typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}`,
-    savedAt: new Date().toISOString(),
-    character: state.character,
-    mannequinSize: state.mannequinSize,
-    outfit: state.outfit,
-    renderedCharacterImage: state.renderedCharacterImage,
-  };
-  try {
-    const looks = [look, ...loadSavedLooks()].slice(0, 20);
-    localStorage.setItem(SAVED_LOOKS_KEY, JSON.stringify(looks));
-  } catch {
-    // Best-effort — the look is still visible for the rest of this session even if it can't persist.
-  }
-  return look;
-};
 
 // --- My wardrobe (AI-created and uploaded garments, browsable for quick replacement) ---
 

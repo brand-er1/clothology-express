@@ -135,12 +135,3 @@ export interface WardrobeState {
   /** True when the last render was produced without any real garment measurements (shows AI-sim disclaimer). */
   lastRenderIsSimulated: boolean;
 }
-
-export interface SavedBrandErLook {
-  id: string;
-  savedAt: string;
-  character: CharacterGender;
-  mannequinSize: MannequinSize;
-  outfit: ClosetOutfit;
-  renderedCharacterImage: string | null;
-}

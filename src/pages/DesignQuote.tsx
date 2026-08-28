@@ -37,7 +37,12 @@ import {
   type ProductionCountry,
 } from "@/lib/production-country";
 import { characterConfig, inferClosetSlotFromCategory } from "@/lib/closet-character-config";
-import type { CharacterGender, MannequinSize } from "@/types/closet";
+import {
+  buildQuoteDesignContext,
+  clearPendingQuoteSnapshot,
+  loadPendingQuoteSnapshot,
+  type QuoteGarmentHandoff,
+} from "@/lib/quote-garment-handoff";
 import { getDesign, getDesignErrorMessage, type DesignRecord } from "@/services/designs";
 
 const allowedImageTypes = new Set([
@@ -74,15 +79,7 @@ const readFileAsBase64 = (file: File) =>
 
 interface ClosetHandoffState {
   presetImages?: ProductionEstimateImageInput[];
-  fromCloset?: {
-    character: CharacterGender;
-    mannequinSize: MannequinSize;
-    garmentLabel: string;
-    imageUrl: string | null;
-    imagePath: string | null;
-    selectedType: string | null;
-    selectedMaterial: string | null;
-  };
+  fromCloset?: QuoteGarmentHandoff;
 }
 
 const DesignQuote = () => {
@@ -90,7 +87,19 @@ const DesignQuote = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const designId = searchParams.get("designId");
-  const closetHandoff = (location.state as ClosetHandoffState | null) || null;
+  const locationHandoff = (location.state as ClosetHandoffState | null) || null;
+  // location.state (fresh navigation from /closet) always wins. It disappears on a page refresh —
+  // for that case (and for guest/upload garments with no designId to reload from) fall back to the
+  // short-lived sessionStorage snapshot the closet page saved right before navigating here, so the
+  // selected garment/design/fit info a visitor was just looking at never just vanishes.
+  const [snapshotHandoff] = useState<ClosetHandoffState | null>(() => {
+    if (locationHandoff?.presetImages?.length) return null;
+    if (designId) return null;
+    const snapshot = loadPendingQuoteSnapshot();
+    if (!snapshot?.presetImages?.length) return null;
+    return { presetImages: snapshot.presetImages, fromCloset: snapshot.handoff };
+  });
+  const closetHandoff = locationHandoff?.presetImages?.length ? locationHandoff : snapshotHandoff;
   const [closetImages] = useState<ProductionEstimateImageInput[] | null>(
     closetHandoff?.presetImages?.length ? closetHandoff.presetImages : null,
   );
@@ -297,6 +306,7 @@ const DesignQuote = () => {
     }
     setImages([]);
     resetAnalysis();
+    clearPendingQuoteSnapshot();
     fileInputRef.current?.click();
   };
 
@@ -369,6 +379,7 @@ const DesignQuote = () => {
         estimateSnapshot: estimate,
       });
       setSubmittedOrderId(String(result.id || "submitted"));
+      clearPendingQuoteSnapshot();
       toast({
         title: "제작 의뢰 접수 완료",
         description: "관리자가 이미지와 견적을 확인한 뒤 연락드립니다.",
@@ -772,10 +783,14 @@ const DesignQuote = () => {
                     </div>
                     <div>
                       <p className="font-bold text-gray-950">
-                        이미지 {effectiveImages.length}장을 분석하고 있습니다
+                        {closetHandoff?.fromCloset
+                          ? "가상 피팅에 사용한 원본 의류를 분석하고 있습니다."
+                          : `이미지 ${effectiveImages.length}장을 분석하고 있습니다`}
                       </p>
                       <p className="mt-1 text-sm text-gray-500">
-                        여러 이미지를 하나의 제품으로 종합해 견적을 계산합니다.
+                        {closetHandoff?.fromCloset
+                          ? "AI가 생성한 마네킹 착용 이미지가 아닌, 실제 등록한 의류 이미지로만 분석합니다."
+                          : "여러 이미지를 하나의 제품으로 종합해 견적을 계산합니다."}
                       </p>
                     </div>
                   </Card>
@@ -792,13 +807,20 @@ const DesignQuote = () => {
                 <div className={isAnalyzing ? "hidden" : ""}>
                   <ProductionEstimateCard
                     key={design?.id || (closetImages ? "closet" : images.map((image) => image.id).join(","))}
-                    selectedType={design?.productType || ""}
-                    selectedMaterial={design?.fabric || ""}
+                    selectedType={design?.productType || closetHandoff?.fromCloset?.selectedType || ""}
+                    selectedMaterial={design?.fabric || closetHandoff?.fromCloset?.selectedMaterial || ""}
                     images={effectiveImages}
-                    designContext={
-                      [design?.prompt, design?.detail].filter(Boolean).join("\n") ||
-                      "사용자가 기존에 보유한 의류 디자인 이미지"
-                    }
+                    designContext={buildQuoteDesignContext(
+                      closetHandoff?.fromCloset
+                        ? {
+                            slot: closetHandoff.fromCloset.slot,
+                            label: closetHandoff.fromCloset.garmentLabel,
+                            fitInfo: closetHandoff.fromCloset.fitInfo,
+                          }
+                        : null,
+                      design,
+                      "사용자가 기존에 보유한 의류 디자인 이미지",
+                    )}
                     editable
                     onEstimateChange={setEstimate}
                     onLoadingChange={setIsAnalyzing}

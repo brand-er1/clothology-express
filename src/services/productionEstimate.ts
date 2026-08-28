@@ -87,7 +87,12 @@ export const analyzeProductionEstimate = async ({
     );
 
     if (error) {
-      throw new Error(error.message || "자동 견적 분석에 실패했습니다.");
+      // Preserve the original FunctionsFetchError/FunctionsHttpError/FunctionsRelayError name so
+      // callers (see describeProductionEstimateError) can tell a network failure apart from the
+      // edge function itself rejecting the request, instead of everything collapsing into "Error".
+      const wrapped = new Error(error.message || "자동 견적 분석에 실패했습니다.");
+      wrapped.name = error.name || wrapped.name;
+      throw wrapped;
     }
 
     if (!data?.estimate) {

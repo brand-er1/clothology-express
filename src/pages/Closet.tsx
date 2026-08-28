@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Download, RefreshCw, Ruler, Shirt, Sparkles } from "lucide-react";
+import { Download, Loader2, RefreshCw, Ruler, Shirt, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,9 +14,16 @@ import { WardrobeSlotPicker } from "@/components/closet/WardrobeSlotPicker";
 import { ClosetGarmentStudio } from "@/components/closet/ClosetGarmentStudio";
 import { MyWardrobeList } from "@/components/closet/MyWardrobeList";
 import { GarmentEditPanel } from "@/components/closet/GarmentEditPanel";
+import { QuoteGarmentPicker } from "@/components/closet/QuoteGarmentPicker";
 import { characterConfig, closetSlotLabel, closetSlotOrder, slotsConflictingWith } from "@/lib/closet-character-config";
 import { defaultMannequinSize, isMannequinSizeForGender, mannequinSizeShortLabel } from "@/lib/mannequin-presets";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
+import {
+  QuoteImageResolutionError,
+  resolveGarmentQuoteImage,
+  savePendingQuoteSnapshot,
+  type QuoteGarmentHandoff,
+} from "@/lib/quote-garment-handoff";
 import { runVirtualFitting, withDefaultFitInfo } from "@/services/virtualFitting";
 import { generateImage } from "@/services/imageGeneration";
 import { logClosetActivity } from "@/services/closetActivityLog";
@@ -74,6 +81,8 @@ const Closet = () => {
   const [busyGarmentId, setBusyGarmentId] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showQuoteGarmentPicker, setShowQuoteGarmentPicker] = useState(false);
+  const [isPreparingQuote, setIsPreparingQuote] = useState(false);
   const latestDressingRequest = useRef(0);
   const editingGarment = myWardrobe.find((item) => item.id === editingGarmentId) || null;
 
@@ -325,6 +334,49 @@ const Closet = () => {
     }
   };
 
+  // AI 가상 피팅 → 자동견적: never analyzes renderedCharacterImage/사이즈 비교/여러 옷이 합쳐진 코디
+  // 이미지 — 오직 사용자가 선택한 슬롯 하나의 원본 Garment Reference만 견적 페이지로 넘긴다.
+  const navigateToQuote = async (garment: ClosetGarment) => {
+    setIsPreparingQuote(true);
+    try {
+      const resolved = await resolveGarmentQuoteImage(garment);
+      const handoff: QuoteGarmentHandoff = {
+        character,
+        mannequinSize,
+        slot: garment.slot,
+        garmentLabel: garment.label,
+        source: garment.source,
+        imageUrl: resolved.url,
+        imageBase64: resolved.base64,
+        imageMimeType: resolved.mimeType,
+        imagePath: garment.designRef?.imagePath || null,
+        selectedType: garment.designRef?.selectedType || null,
+        selectedMaterial: garment.designRef?.selectedMaterial || null,
+        fitLabel: garment.designRef?.fitLabel || null,
+        designId: garment.designRef?.designId || null,
+        fitInfo: garment.fitInfo || null,
+      };
+      const presetImages = [
+        { url: resolved.url || undefined, base64: resolved.base64 || undefined, mimeType: resolved.mimeType },
+      ];
+
+      // Refresh-survival independent of location.state and of designId (uploads never get one).
+      savePendingQuoteSnapshot({ handoff, presetImages, savedAt: new Date().toISOString() });
+
+      setShowQuoteGarmentPicker(false);
+      const quotePath = handoff.designId ? `/design-quote?designId=${handoff.designId}` : "/design-quote";
+      navigate(quotePath, { state: { presetImages, fromCloset: handoff } });
+    } catch (error) {
+      const description =
+        error instanceof QuoteImageResolutionError
+          ? error.message
+          : "자동견적을 준비하지 못했습니다. 잠시 후 다시 시도해주세요.";
+      toast({ title: "자동견적을 불러오지 못했습니다", description, variant: "destructive" });
+    } finally {
+      setIsPreparingQuote(false);
+    }
+  };
+
   const goToQuote = () => {
     const designGarments = wornDesignGarments(outfit);
 
@@ -337,31 +389,14 @@ const Closet = () => {
       return;
     }
 
-    const presetImages = designGarments.map((garment) => ({
-      url: garment.designRef?.imageUrl || undefined,
-      base64: garment.designRef?.imageBase64 || undefined,
-      mimeType: garment.designRef?.imageMimeType || "image/png",
-    }));
+    // 여러 벌을 동시에 착용 중이면 서로 다른 의류를 하나의 제품으로 합쳐 분석하지 않는다 — 반드시
+    // 하나를 선택하게 한다. 선택하지 않은 슬롯은 마네킹에 그대로 남는다.
+    if (designGarments.length > 1) {
+      setShowQuoteGarmentPicker(true);
+      return;
+    }
 
-    // Append ?designId= (when the primary worn item has one) purely as a refresh-survival
-    // fallback — location.state below still drives the richer multi-item view on first load.
-    const primaryDesignId = designGarments[0].designRef?.designId;
-    const quotePath = primaryDesignId ? `/design-quote?designId=${primaryDesignId}` : "/design-quote";
-
-    navigate(quotePath, {
-      state: {
-        presetImages,
-        fromCloset: {
-          character,
-          mannequinSize,
-          garmentLabel: designGarments[0].label,
-          imageUrl: designGarments[0].designRef?.imageUrl || null,
-          imagePath: designGarments[0].designRef?.imagePath || null,
-          selectedType: designGarments[0].designRef?.selectedType || null,
-          selectedMaterial: designGarments[0].designRef?.selectedMaterial || null,
-        },
-      },
-    });
+    void navigateToQuote(designGarments[0]);
   };
 
   useEffect(() => {
@@ -643,8 +678,16 @@ const Closet = () => {
                         type="button"
                         className="mt-3 h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
                         onClick={goToQuote}
+                        disabled={isPreparingQuote}
                       >
-                        💰 자동 견적 확인
+                        {isPreparingQuote ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            원본 의류 준비 중...
+                          </>
+                        ) : (
+                          "💰 이 옷 자동견적 확인하기"
+                        )}
                       </Button>
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <Button
@@ -652,6 +695,7 @@ const Closet = () => {
                           variant="outline"
                           className="h-10 rounded-full border-brand/30 bg-white text-sm font-bold text-brand"
                           onClick={goToQuote}
+                          disabled={isPreparingQuote}
                         >
                           제작 의뢰하기
                         </Button>
@@ -660,6 +704,7 @@ const Closet = () => {
                           variant="outline"
                           className="h-10 rounded-full border-brand/30 bg-white text-sm font-bold text-brand"
                           onClick={goToQuote}
+                          disabled={isPreparingQuote}
                         >
                           펀딩 등록하기
                         </Button>
@@ -687,6 +732,13 @@ const Closet = () => {
         currentSize={mannequinSize}
         garments={wornGarments(outfit).map(withDefaultFitInfo)}
         changedSlots={wornGarments(outfit).map((garment) => garment.slot)}
+      />
+      <QuoteGarmentPicker
+        open={showQuoteGarmentPicker}
+        onOpenChange={setShowQuoteGarmentPicker}
+        garments={wornDesignGarments(outfit)}
+        onSelect={(garment) => void navigateToQuote(garment)}
+        isPreparing={isPreparingQuote}
       />
     </div>
   );

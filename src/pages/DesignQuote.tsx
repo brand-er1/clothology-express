@@ -958,7 +958,7 @@ const DesignQuote = () => {
                               state: {
                                 pendingGarment: {
                                   id: `${design ? "ai" : "upload"}-${Date.now()}`,
-                                  slot: inferClosetSlotFromCategory(estimate.analysis.categoryKey),
+                                  slot: inferClosetSlotFromCategory(design?.productType || estimate.analysis.categoryKey),
                                   label: estimate.garment.label,
                                   imageUrl: images[0]?.previewUrl || design?.frontImageUrl || effectiveImages[0]?.url || "",
                                   source: design ? "ai_design" : "upload",

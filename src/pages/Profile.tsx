@@ -7,8 +7,8 @@ import { useProfileForm } from "@/hooks/useProfileForm";
 import { ReadOnlyFields } from "@/components/profile/ReadOnlyFields";
 import { EditableFields } from "@/components/profile/EditableFields";
 import { AddressFields } from "@/components/profile/AddressFields";
-import { Link, useSearchParams } from "react-router-dom";
-import { Shirt, ShieldCheck } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
 
 const Profile = () => {
   const [searchParams] = useSearchParams();
@@ -40,21 +40,6 @@ const Profile = () => {
           <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em]">브랜드 프로필</h1>
           <p className="mt-3 text-sm leading-6 text-stone-500">고객에게 보이는 브랜드명과 닉네임, 제작·배송 정보를 관리하세요.</p>
         </div>
-        <Link
-          to="/my-outfits"
-          className="mb-6 flex items-center justify-between rounded-[1.5rem] border border-stone-200 bg-white px-6 py-4 shadow-sm transition hover:border-brand/30"
-        >
-          <span className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
-              <Shirt className="h-5 w-5" />
-            </span>
-            <span>
-              <span className="block text-sm font-black text-stone-950">내 코디</span>
-              <span className="block text-xs text-stone-500">저장한 코디를 확인하고 공개/비공개를 관리하세요</span>
-            </span>
-          </span>
-          <span className="text-sm font-bold text-brand">보기 →</span>
-        </Link>
         <Card className="mx-auto rounded-[2rem] border-stone-200 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.06)]">
           <CardHeader className="px-6 pt-8 sm:px-10">
             <CardTitle className="text-2xl">기본 정보</CardTitle>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
 import NotFound from './pages/NotFound';
@@ -19,9 +19,6 @@ import KakaoPayResult from './pages/KakaoPayResult';
 import FabricSwatch from './pages/FabricSwatch';
 import DesignQuote from './pages/DesignQuote';
 import Closet from './pages/Closet';
-import Outfits from './pages/Outfits';
-import OutfitDetail from './pages/OutfitDetail';
-import MyOutfits from './pages/MyOutfits';
 import Portfolio from './pages/Portfolio';
 import QuickGroupWear from './pages/QuickGroupWear';
 import { supabase } from './lib/supabase';
@@ -119,10 +116,10 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event !== 'SIGNED_IN') return;
       void claimGuestSession().then((result) => {
-        if (result && (result.designs > 0 || result.outfits > 0)) {
+        if (result && result.designs > 0) {
           toast({
             title: '기존 작업물을 계정으로 옮겼어요',
-            description: `디자인 ${result.designs}개 · 코디 ${result.outfits}개를 이어서 확인할 수 있어요.`,
+            description: `디자인 ${result.designs}개를 이어서 확인할 수 있어요.`,
           });
         }
       });
@@ -148,9 +145,10 @@ function App() {
             <Route path="/design-quote" element={<DesignQuote />} />
             <Route path="/estimate" element={<DesignQuote />} />
             <Route path="/closet" element={<Closet />} />
-            <Route path="/outfits" element={<Outfits />} />
-            <Route path="/outfits/:id" element={<OutfitDetail />} />
-            <Route path="/my-outfits" element={<AuthGuard><MyOutfits /></AuthGuard>} />
+            {/* 코디 피드/내 코디(커뮤니티 기능)는 제거되었다 — 기존 링크/북마크는 AI 가상 피팅으로 보낸다. */}
+            <Route path="/outfits" element={<Navigate to="/closet" replace />} />
+            <Route path="/outfits/:id" element={<Navigate to="/closet" replace />} />
+            <Route path="/my-outfits" element={<Navigate to="/closet" replace />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
             <Route path="/fundings" element={<Fundings />} />

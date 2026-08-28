@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Download, RefreshCw, Ruler, Save, Share2, Shirt, Sparkles } from "lucide-react";
+import { Download, RefreshCw, Ruler, Shirt, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,6 @@ import { WardrobeSlotPicker } from "@/components/closet/WardrobeSlotPicker";
 import { ClosetGarmentStudio } from "@/components/closet/ClosetGarmentStudio";
 import { MyWardrobeList } from "@/components/closet/MyWardrobeList";
 import { GarmentEditPanel } from "@/components/closet/GarmentEditPanel";
-import { SaveOutfitDialog } from "@/components/closet/SaveOutfitDialog";
 import { characterConfig, closetSlotLabel, closetSlotOrder, slotsConflictingWith } from "@/lib/closet-character-config";
 import { defaultMannequinSize, isMannequinSizeForGender, mannequinSizeShortLabel } from "@/lib/mannequin-presets";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
@@ -25,7 +24,6 @@ import {
   addToMyWardrobe,
   loadMyWardrobe,
   removeFromMyWardrobe,
-  saveCurrentLook,
   setCharacter,
   setGarment,
   setMannequinSize,
@@ -42,29 +40,12 @@ import type {
   GarmentFitInfo,
   MannequinSize,
 } from "@/types/closet";
-import type { OutfitItem } from "@/types/outfit";
 
 type ClosetView = "select-gender" | "select-size" | "transition" | "dressing" | "look-complete";
 
-interface ReferenceOutfitState {
-  characterGender: CharacterGender;
-  items: OutfitItem[];
-}
-
 interface ClosetLocationState {
   pendingGarment?: ClosetGarment;
-  referenceOutfit?: ReferenceOutfitState;
 }
-
-const emptyOutfit = (): ClosetOutfit => ({
-  top: null,
-  bottom: null,
-  outer: null,
-  skirt: null,
-  dress: null,
-  shoes: null,
-  accessory: null,
-});
 
 const wornDesignGarments = (outfit: ClosetOutfit) =>
   closetSlotOrder
@@ -91,15 +72,12 @@ const Closet = () => {
   const [myWardrobe, setMyWardrobe] = useState<MyWardrobeGarment[]>(() => loadMyWardrobe());
   const [editingGarmentId, setEditingGarmentId] = useState<string | null>(null);
   const [busyGarmentId, setBusyGarmentId] = useState<string | null>(null);
-  const [showSaveOutfit, setShowSaveOutfit] = useState(false);
-  const [saveDialogInitialPublic, setSaveDialogInitialPublic] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const latestDressingRequest = useRef(0);
   const editingGarment = myWardrobe.find((item) => item.id === editingGarmentId) || null;
 
   const pendingGarment = (location.state as ClosetLocationState | null)?.pendingGarment ?? null;
-  const referenceOutfit = (location.state as ClosetLocationState | null)?.referenceOutfit ?? null;
 
   const runDressing = async (
     targetOutfit: ClosetOutfit,
@@ -326,27 +304,6 @@ const Closet = () => {
 
   const wornSlotCount = closetSlotOrder.filter((slot) => outfit[slot]).length;
 
-  const shareLook = async () => {
-    const summary = `${mannequinSizeShortLabel[mannequinSize]} 사이즈 · ${closetSlotOrder
-      .filter((slot) => outfit[slot])
-      .map((slot) => outfit[slot]?.label)
-      .join(", ")}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "MY BRAND-ER FITTING", text: summary, url: window.location.href });
-        return;
-      } catch {
-        // Cancelled or unsupported mid-flow — fall through to clipboard.
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(summary);
-      toast({ title: "링크 대신 피팅 요약을 복사했어요", description: summary });
-    } catch {
-      toast({ title: "공유하기를 지원하지 않는 브라우저입니다", variant: "destructive" });
-    }
-  };
-
   const handleDownload = async () => {
     if (!renderedCharacterImage || isDownloading) return;
     setIsDownloading(true);
@@ -366,29 +323,6 @@ const Closet = () => {
     } finally {
       setIsDownloading(false);
     }
-  };
-
-  const handleSave = () => {
-    const look = saveCurrentLook();
-    void logClosetActivity({
-      eventType: "look_saved",
-      characterGender: look.character,
-      label: closetSlotOrder
-        .filter((slot) => look.outfit[slot])
-        .map((slot) => look.outfit[slot]?.label)
-        .join(", ") || characterConfig[look.character].label,
-      imageUrl: look.renderedCharacterImage,
-      metadata: {
-        lookId: look.id,
-        mannequinSize: look.mannequinSize,
-        outfit: closetSlotOrder.reduce<Record<string, unknown>>((acc, slot) => {
-          const garment = look.outfit[slot];
-          if (garment) acc[slot] = { id: garment.id, label: garment.label, imageUrl: garment.imageUrl };
-          return acc;
-        }, {}),
-      },
-    });
-    toast({ title: "MY BRAND-ER FITTING 저장 완료", description: "마이페이지에서 다시 볼 수 있어요." });
   };
 
   const goToQuote = () => {
@@ -429,44 +363,6 @@ const Closet = () => {
       },
     });
   };
-
-  // "이 코디 참고하기" from another user's outfit — load its item images as Garment References for
-  // the current outfit, exactly like any other garment reference. Never touches the source outfit.
-  useEffect(() => {
-    if (!referenceOutfit) return;
-    const nextOutfit: ClosetOutfit = emptyOutfit();
-    referenceOutfit.items.forEach((item) => {
-      const garment: ClosetGarment = {
-        id: `ref-${item.garmentId || item.slot}-${Date.now()}`,
-        slot: item.slot,
-        label: item.label || closetSlotLabel[item.slot],
-        imageUrl: item.imageUrl,
-        source: item.source === "upload" ? "upload" : "ai_design",
-        designRef: { imageUrl: item.imageUrl, designId: item.designId },
-        fitInfo: {
-          baseSize: item.baseSize || undefined,
-          fitType: item.fitType || "regular",
-          measurements: item.measurements || undefined,
-          fabric: item.fabric || undefined,
-          hasMeasurements: item.hasMeasurements ?? false,
-        },
-      };
-      nextOutfit[item.slot] = garment;
-      setGarment(item.slot, garment);
-      setMyWardrobe(addToMyWardrobe(garment));
-    });
-    setCharacter(referenceOutfit.characterGender);
-    setView("dressing");
-    navigate(location.pathname, { replace: true, state: null });
-    const referenceSize = isMannequinSizeForGender(referenceOutfit.characterGender, mannequinSize)
-      ? mannequinSize
-      : defaultMannequinSize(referenceOutfit.characterGender);
-    void runDressing(nextOutfit, referenceOutfit.characterGender, referenceSize, {
-      changedSlots: closetSlotOrder.filter((slot) => nextOutfit[slot]),
-    });
-    toast({ title: "코디를 불러왔어요", description: "참고한 코디를 자유롭게 바꿔보세요." });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referenceOutfit]);
 
   useEffect(() => {
     setPendingCharacter(character);
@@ -727,39 +623,15 @@ const Closet = () => {
                       사이즈별 비교하기
                     </Button>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 rounded-full border-stone-300 bg-white font-bold"
-                        onClick={() => {
-                          handleSave();
-                          setSaveDialogInitialPublic(false);
-                          setShowSaveOutfit(true);
-                        }}
-                      >
-                        <Save className="mr-2 h-4 w-4" />
-                        코디 저장
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 rounded-full border-stone-300 bg-white font-bold"
-                        onClick={() => void handleDownload()}
-                        disabled={isDownloading}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        이미지 다운로드
-                      </Button>
-                    </div>
                     <Button
                       type="button"
-                      variant="ghost"
-                      className="h-9 w-full rounded-full text-xs font-bold text-stone-400"
-                      onClick={() => void shareLook()}
+                      variant="outline"
+                      className="h-11 w-full rounded-full border-stone-300 bg-white font-bold"
+                      onClick={() => void handleDownload()}
+                      disabled={isDownloading}
                     >
-                      <Share2 className="mr-1.5 h-3.5 w-3.5" />
-                      링크 공유하기
+                      <Download className="mr-2 h-4 w-4" />
+                      {isDownloading ? "저장하는 중..." : "피팅 이미지 저장"}
                     </Button>
 
                     <Card className="rounded-[1.5rem] border-brand/20 bg-brand/5 p-5 text-center">
@@ -808,16 +680,6 @@ const Closet = () => {
           </div>
         )}
       </main>
-      <SaveOutfitDialog
-        open={showSaveOutfit}
-        onOpenChange={setShowSaveOutfit}
-        outfit={outfit}
-        character={character}
-        mannequinSize={mannequinSize}
-        renderedCharacterImage={renderedCharacterImage}
-        defaultTitle={`${characterConfig[character].label} ${mannequinSizeShortLabel[mannequinSize]} 코디`}
-        initialPublic={saveDialogInitialPublic}
-      />
       <SizeComparisonView
         open={showComparison}
         onOpenChange={setShowComparison}

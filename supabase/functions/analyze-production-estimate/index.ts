@@ -479,25 +479,28 @@ const normalizeUploadedArtwork = (
   };
 };
 
+/**
+ * Category resolution follows a strict priority order so the AI's own image analysis can never
+ * silently flip a user-selected garment into the wrong body-region category (e.g. a hoodie
+ * selected by the user being priced as pants because the generated artwork confused the model):
+ *   1. The user-selected garment type (selectedType), whenever it resolves to a known category —
+ *      this is the ground truth from garment creation and is never overridden by image analysis.
+ *   2. rawAnalysis.categoryKey (AI image analysis) — used ONLY as a fallback when no valid
+ *      selectedType was provided at all, e.g. a plain image upload with no known garment type.
+ */
 const resolveGarmentCategory = (
   rawAnalysis: RawAnalysis,
   selectedType: string,
   availableKeys: Set<string>,
 ) => {
   const selectedKey = selectedTypeAliases[selectedType] || selectedType;
-  const selectedSpecialCategory =
-    selectedKey === "knit" ||
-    selectedKey === "leggings" ||
-    virtualGarmentMap.has(selectedKey);
-  let categoryKey = selectedSpecialCategory
-    ? selectedKey
-    : String(rawAnalysis.categoryKey || "");
-  const fallbackKey = selectedTypeAliases[selectedType] || selectedType;
   const isAvailable = (key: string) =>
     availableKeys.has(key) || virtualGarmentMap.has(key);
 
-  if (!isAvailable(categoryKey)) {
-    categoryKey = isAvailable(fallbackKey) ? fallbackKey : "";
+  let categoryKey = isAvailable(selectedKey) ? selectedKey : "";
+  if (!categoryKey) {
+    const analysisKey = String(rawAnalysis.categoryKey || "");
+    categoryKey = isAvailable(analysisKey) ? analysisKey : "";
   }
 
   if (

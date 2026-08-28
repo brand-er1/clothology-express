@@ -171,46 +171,61 @@ const measurementsSentence = (slot: ClosetSlot, m: Measurements): string => {
   return `Real measurements for this ${slotDescriptionEn[slot]} (highest priority — reflect these exactly over any general fit-type assumption): ${parts.join(", ")}.`;
 };
 
+// "gemini-3-pro-image-preview" was retired by Google; generate-optimized-image already moved to
+// this fallback list (see its modelCandidates) — this pipeline must use the same working models
+// instead of the retired preview name, or every virtual-fitting request fails outright.
+const imageModelCandidates = ["gemini-3.1-flash-image", "gemini-3-pro-image", "gemini-2.5-flash-image"];
+
 const generateDressedImage = async (
   geminiApiKey: string,
   parts: Array<Record<string, unknown>>,
 ): Promise<GeneratedImage | null> => {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${geminiApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: {
-          temperature: 0.1,
-          responseModalities: ["IMAGE", "TEXT"],
-          imageConfig: { aspectRatio: "3:4", imageSize: "2K" },
-        },
-      }),
-    },
-  );
+  for (const model of imageModelCandidates) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts }],
+          generationConfig: {
+            temperature: 0.1,
+            responseModalities: ["IMAGE", "TEXT"],
+            imageConfig: {
+              aspectRatio: "3:4",
+              imageSize: model === "gemini-2.5-flash-image" ? undefined : "2K",
+            },
+          },
+        }),
+      },
+    );
 
-  if (!response.ok) {
-    const bodyText = await response.text();
-    console.error("virtual-fitting Gemini error", response.status, bodyText);
-    return null;
-  }
-
-  const data = await response.json();
-  const responseParts = data?.candidates?.[0]?.content?.parts || [];
-  let base64 = "";
-  let mimeType = "image/png";
-  let textResponse = "";
-  for (const part of responseParts) {
-    if (part.inlineData?.data && !base64) {
-      base64 = part.inlineData.data;
-      mimeType = part.inlineData.mimeType || "image/png";
+    if (!response.ok) {
+      const bodyText = await response.text();
+      console.error("virtual-fitting Gemini error", model, response.status, bodyText);
+      const retryWithFallback = response.status === 404 || response.status >= 500;
+      if (!retryWithFallback) return null;
+      continue;
     }
-    if (part.text) textResponse += part.text;
+
+    const data = await response.json();
+    const responseParts = data?.candidates?.[0]?.content?.parts || [];
+    let base64 = "";
+    let mimeType = "image/png";
+    let textResponse = "";
+    for (const part of responseParts) {
+      if (part.inlineData?.data && !base64) {
+        base64 = part.inlineData.data;
+        mimeType = part.inlineData.mimeType || "image/png";
+      }
+      if (part.text) textResponse += part.text;
+    }
+
+    if (base64) return { base64, mimeType, textResponse };
+    console.error("virtual-fitting Gemini returned no image", model);
   }
 
-  return base64 ? { base64, mimeType, textResponse } : null;
+  return null;
 };
 
 const evaluatePreservation = async (

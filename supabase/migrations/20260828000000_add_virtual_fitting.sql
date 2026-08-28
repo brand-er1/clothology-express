@@ -145,9 +145,11 @@ $$;
 revoke all on function public.save_outfit(text, text, text, text, text, boolean, jsonb, jsonb, text, text) from public;
 grant execute on function public.save_outfit(text, text, text, text, text, boolean, jsonb, jsonb, text, text) to anon, authenticated;
 
--- 코디 상세/내 코디 조회에 mannequin_size + 슬롯별 핏 정보를 포함하도록 재정의 (컬럼만 추가, 함수
--- 시그니처는 동일하므로 OR REPLACE로 충분하다). 새로고침 후에도 저장한 코디를 그대로 복원하는 데 쓰인다.
-create or replace function public.get_outfit_detail(p_outfit_id uuid)
+-- 코디 상세/내 코디 조회에 mannequin_size + 슬롯별 핏 정보를 포함하도록 재정의. 새로고침 후에도
+-- 저장한 코디를 그대로 복원하는 데 쓰인다. returns table의 컬럼 목록이 바뀌므로(mannequin_size 등
+-- 추가) Postgres가 CREATE OR REPLACE를 거부한다(42P13) — 먼저 DROP 후 다시 만든다.
+drop function if exists public.get_outfit_detail(uuid);
+create function public.get_outfit_detail(p_outfit_id uuid)
 returns table (
   id uuid,
   user_id uuid,
@@ -200,7 +202,11 @@ begin
 end;
 $$;
 
-create or replace function public.list_my_outfits()
+revoke all on function public.get_outfit_detail(uuid) from public;
+grant execute on function public.get_outfit_detail(uuid) to anon, authenticated;
+
+drop function if exists public.list_my_outfits();
+create function public.list_my_outfits()
 returns table (
   id uuid,
   title text,
@@ -236,6 +242,9 @@ begin
   order by o.created_at desc;
 end;
 $$;
+
+revoke all on function public.list_my_outfits() from public;
+grant execute on function public.list_my_outfits() to authenticated;
 
 -- --- 가상 피팅 생성 요청의 중복 실행 방지 (request-id 기반). AI 생성 자체는 저장되는 코디와 별개로,
 -- 같은 요청이 두 번 재생성되지 않도록 짧게 상태만 추적한다. Edge Function(서비스 역할 키)만 접근한다.

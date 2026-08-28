@@ -3,7 +3,7 @@ import type { ProductionEstimateResult } from "@/types/productionEstimate";
 /** Mannequin gender. Kept as `CharacterGender` for backward compatibility with existing code/DB columns. */
 export type CharacterGender = "male" | "female";
 
-export type FemaleMannequinSize = "44" | "55" | "66" | "77";
+export type FemaleMannequinSize = "44" | "55" | "66";
 export type MaleMannequinSize = "l" | "xl" | "2xl";
 /** Korean clothing-size-system body preset, e.g. "female-66" or "male-xl". */
 export type MannequinSize = FemaleMannequinSize | MaleMannequinSize;

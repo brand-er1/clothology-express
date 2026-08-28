@@ -20,6 +20,7 @@ import {
 } from "@/services/funding";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import type { Funding } from "@/types/funding";
+import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -30,6 +31,7 @@ import {
   Plus,
   Scissors,
   ShieldCheck,
+  Shirt,
   SquarePen,
   Truck,
   Users,
@@ -202,6 +204,26 @@ const FundingDetail = () => {
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
   const customerDescription = getCustomerDescription(funding);
 
+  const tryOnFundingGarment = () => {
+    navigate("/closet", {
+      state: {
+        pendingGarment: {
+          id: `funding-${funding.id}-${Date.now()}`,
+          slot: inferClosetSlotFromCategory(funding.cloth_type),
+          label: funding.product_name,
+          imageUrl: funding.image_url,
+          source: "ai_design",
+          designRef: {
+            imageUrl: funding.image_url,
+            selectedType: funding.cloth_type,
+            selectedMaterial: funding.material,
+            designContext: funding.description || "",
+          },
+        },
+      },
+    });
+  };
+
   const purchaseButton = !isPreview && funding.price && !currentUserId ? (
     <Button asChild className="h-14 w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark" data-tutorial="funding-detail-participate">
       <Link to={loginReturnTo}>
@@ -342,6 +364,15 @@ const FundingDetail = () => {
               </div>
 
               {purchaseButton}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={tryOnFundingGarment}
+                className="h-12 w-full rounded-none border-brand/40 bg-brand/5 text-sm font-bold text-brand hover:bg-brand/10 hover:text-brand"
+              >
+                <Shirt className="mr-2 h-4 w-4" /> 이 옷을 가상 마네킹에 입혀보기
+              </Button>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>

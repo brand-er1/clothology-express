@@ -94,7 +94,7 @@ const Outfits = () => {
               코디 피드
             </h1>
             <p className="mt-2 text-sm leading-6 text-stone-500">
-              다른 사용자들이 브랜더에게 입힌 코디를 구경하고 마음에 들면 ❤️를 눌러보세요.
+              다른 사용자들이 가상 마네킹에 피팅한 코디를 구경하고 마음에 들면 ❤️를 눌러보세요.
             </p>
           </div>
           <Button asChild variant="outline" className="h-10 rounded-full border-stone-300 font-bold">

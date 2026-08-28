@@ -12,11 +12,14 @@ import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
+import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 
 const Customize = () => {
+  const navigate = useNavigate();
   const [userGender, setUserGender] = useState<string>("남성");
 
   const {
@@ -130,6 +133,35 @@ const Customize = () => {
   }, []);
 
   useMascotPageContext({ page: "customize", step: currentStep, detailLength: selectedDetail.length });
+
+  const fittingImageUrl = currentModifiedImageUrl ||
+    (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null);
+
+  const openVirtualFitting = () => {
+    if (!fittingImageUrl) {
+      toast({ title: "입혀볼 디자인 이미지가 없어요", variant: "destructive" });
+      return;
+    }
+    navigate("/closet", {
+      state: {
+        pendingGarment: {
+          id: `ai-${Date.now()}`,
+          slot: inferClosetSlotFromCategory(selectedType),
+          label: selectedDetail.split("\n")[0]?.slice(0, 24) || "내가 만든 디자인",
+          imageUrl: fittingImageUrl,
+          source: "ai_design",
+          designRef: {
+            imageUrl: fittingImageUrl,
+            selectedType,
+            selectedMaterial,
+            designContext: [generatedPrompt, selectedDetail].filter(Boolean).join("\n"),
+            fitLabel: selectedFit,
+            designId,
+          },
+        },
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#f2f3f5]">
@@ -248,6 +280,7 @@ const Customize = () => {
                 selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
                 selectedType={selectedType}
                 selectedMaterial={selectedMaterial}
+                selectedFit={selectedFit}
                 designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
                 modificationHistory={modificationHistory}
                 currentArtworkAnalysis={currentArtworkAnalysis}
@@ -295,13 +328,21 @@ const Customize = () => {
               {currentStep === TOTAL_STEPS ? (
                 <div className="grid min-w-0 flex-1 gap-2 sm:flex sm:flex-none sm:gap-3">
                   <Button
+                    variant="outline"
+                    onClick={openVirtualFitting}
+                    disabled={isSubmitting || !fittingImageUrl}
+                    className="h-12 rounded-full border-brand/40 bg-brand/5 px-5 text-[14px] font-bold text-brand hover:bg-brand/10 hover:text-brand sm:px-7 sm:text-sm"
+                  >
+                    가상 마네킹에 입혀보기
+                  </Button>
+                  <Button
                     onClick={() => void handleCreateFunding()}
                     disabled={isSubmitting}
                     className="h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark sm:px-7 sm:text-sm"
                   >
                     {isSubmitting
                       ? "처리 중..."
-                      : "이 이미지로 펀딩 만들기"}
+                      : "이 디자인으로 펀딩 만들기"}
                   </Button>
                   <Button
                     variant="outline"

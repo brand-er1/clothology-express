@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 const loadingMessages = [
-  "브랜더 캐릭터가 옷을 입고 있어요...",
+  "가상 마네킹에 옷을 피팅하고 있어요...",
   "핏을 확인하고 있어요... ✨",
   "거의 다 입었어요!",
 ];

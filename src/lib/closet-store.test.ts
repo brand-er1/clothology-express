@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ClosetGarment } from "@/types/closet";
+import type { ClosetGarment, MannequinSize } from "@/types/closet";
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -83,5 +83,21 @@ describe("closet my wardrobe", () => {
 
     expect(loadMyWardrobe().map((item) => item.id)).toEqual(["legacy"]);
     expect(localStorage.getItem("brander-my-wardrobe-v2")).toContain("legacy");
+  });
+
+  it("removes the retired female 77 preset from current and restored state", async () => {
+    localStorage.setItem(
+      "brander-wardrobe-state-v3",
+      JSON.stringify({ character: "female", mannequinSize: "77", outfit: {} }),
+    );
+
+    const { getWardrobeState, setMannequinSize } = await import("@/lib/closet-store");
+    const { femaleMannequinSizes } = await import("@/lib/mannequin-presets");
+
+    expect(femaleMannequinSizes).toEqual(["44", "55", "66"]);
+    expect(getWardrobeState().mannequinSize).toBe("55");
+
+    setMannequinSize("77" as MannequinSize);
+    expect(getWardrobeState().mannequinSize).toBe("55");
   });
 });

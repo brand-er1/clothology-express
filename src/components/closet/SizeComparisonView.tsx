@@ -46,7 +46,7 @@ const ComparisonBody = ({
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />
         <p className="text-sm font-bold text-stone-950">
-          같은 얼굴·포즈·배경·조명으로 {gender === "female" ? "44·55·66·77" : "L·XL·2XL"} 사이즈를 모두 생성하고 있어요...
+          같은 얼굴·포즈·배경·조명으로 {gender === "female" ? "44·55·66" : "L·XL·2XL"} 사이즈를 모두 생성하고 있어요...
         </p>
         <p className="text-xs text-stone-500">의류와 카메라, 조명은 동일하게 유지하고 체형만 비교합니다.</p>
       </div>
@@ -61,7 +61,7 @@ const ComparisonBody = ({
         동일한 의류·얼굴·포즈·카메라 거리·배경·조명 기준으로 체형별 핏 차이만 비교합니다.
       </p>
       {/* Grid on desktop, horizontal swipe on mobile (scroll-snap). */}
-      <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible">
+      <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible">
         {entries.map(({ size, result }) => (
           <div
             key={size}

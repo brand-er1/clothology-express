@@ -4,7 +4,7 @@ import type { CharacterConfig, CharacterGender, ClosetOutfit, ClosetSlot } from 
 
 /**
  * Base BRAND-ER mannequin references, kept for legacy call sites (CharacterCard, saved-look
- * fallbacks). `baseImage` now resolves to that gender's default-size vector mannequin preset — see
+ * fallbacks). `baseImage` resolves to that gender's default-size photoreal mannequin preset — see
  * mannequin-presets.ts for the full per-size registry used by the virtual fitting flow itself.
  */
 export const characterConfig: Record<CharacterGender, CharacterConfig> = {

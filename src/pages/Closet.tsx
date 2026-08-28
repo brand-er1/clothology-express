@@ -419,6 +419,7 @@ const Closet = () => {
         presetImages,
         fromCloset: {
           character,
+          mannequinSize,
           garmentLabel: designGarments[0].label,
           imageUrl: designGarments[0].designRef?.imageUrl || null,
           imagePath: designGarments[0].designRef?.imagePath || null,

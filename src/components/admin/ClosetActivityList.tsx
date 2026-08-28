@@ -47,7 +47,7 @@ const eventDisplay: Record<
     icon: Repeat,
   },
   character_dressed: {
-    label: "캐릭터 착용",
+    label: "가상 마네킹 피팅",
     className: "border-emerald-200 bg-emerald-50 text-emerald-800",
     icon: Shirt,
   },
@@ -63,7 +63,7 @@ const filters: { value: ActivityFilter; label: string }[] = [
   { value: "garment_created", label: "옷 생성" },
   { value: "garment_edited", label: "옷 수정" },
   { value: "garment_regenerated", label: "다시 생성" },
-  { value: "character_dressed", label: "캐릭터 착용" },
+  { value: "character_dressed", label: "가상 마네킹 피팅" },
   { value: "look_saved", label: "룩 저장" },
 ];
 
@@ -138,7 +138,7 @@ export const ClosetActivityList = ({ activities, isLoading }: ClosetActivityList
                 브랜더 옷장 활동
               </CardTitle>
               <p className="mt-2 text-sm leading-6 text-stone-500">
-                고객이 만들고, 수정하고, 캐릭터에게 입혀보고, 저장한 모든 브랜더 옷장 활동을
+                고객이 만들고, 수정하고, 가상 마네킹에 입혀보고, 저장한 모든 AI 피팅 활동을
                 확인합니다. 로그인한 고객의 활동만 기록됩니다.
               </p>
             </div>
@@ -320,7 +320,7 @@ export const ClosetActivityList = ({ activities, isLoading }: ClosetActivityList
                     </div>
                     <dl className="mt-4 space-y-3 text-sm">
                       <div>
-                        <dt className="text-stone-400">캐릭터 / 부위</dt>
+                        <dt className="text-stone-400">마네킹 / 부위</dt>
                         <dd className="mt-1 font-semibold text-stone-800">
                           {[genderLabel(selected.character_gender), slotLabel(selected.slot)]
                             .filter(Boolean)

@@ -22,6 +22,7 @@ import {
   createFundingSizeMeasurements,
   getProductionSizeGuide,
 } from "@/lib/production-size-guide";
+import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import {
   ArrowLeft,
   Calculator,
@@ -31,6 +32,7 @@ import {
   LockKeyhole,
   Plus,
   Sparkles,
+  Shirt,
   TrendingUp,
   Users,
   X,
@@ -307,6 +309,32 @@ const FundingEditor = () => {
             <p className="mt-2 text-gray-500">생성한 이미지와 옵션을 가져왔습니다. 소개 문구와 가격만 확인해주세요.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full border-brand/30 text-brand hover:bg-brand/5 hover:text-brand"
+              onClick={() =>
+                navigate("/closet", {
+                  state: {
+                    pendingGarment: {
+                      id: `funding-${funding.id}`,
+                      slot: inferClosetSlotFromCategory(funding.cloth_type),
+                      label: funding.product_name,
+                      imageUrl: funding.image_url,
+                      source: "ai_design",
+                      designRef: {
+                        imageUrl: funding.image_url,
+                        selectedType: funding.cloth_type,
+                        selectedMaterial: funding.material,
+                        designContext: funding.description || "",
+                      },
+                    },
+                  },
+                })
+              }
+            >
+              <Shirt className="mr-2 h-4 w-4" /> 가상 마네킹에 입혀보기
+            </Button>
             <Button asChild variant="outline" className="rounded-full" data-tutorial="funding-preview">
               <Link to={`/fundings/${funding.id}`}><Eye className="mr-2 h-4 w-4" /> 미리보기</Link>
             </Button>

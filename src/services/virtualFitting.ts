@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
-import { garmentToImageRef, urlToImageRef, type ImageRef } from "@/lib/closet-image-ref";
-import { rasterizeMannequinToPngDataUrl } from "@/lib/mannequin-figure";
+import { garmentToImageRef, urlToImageRef } from "@/lib/closet-image-ref";
+import { getFaceReferenceImage, getMannequinPreset } from "@/lib/mannequin-presets";
 import { logClosetActivity } from "@/services/closetActivityLog";
 import type { CharacterGender, ClosetGarment, ClosetSlot, GarmentFitInfo, MannequinSize } from "@/types/closet";
 
@@ -21,12 +21,6 @@ interface RunVirtualFittingOptions {
   silent?: boolean;
 }
 
-const dataUrlToImageRef = (dataUrl: string): ImageRef => {
-  const [, mimeType, base64] = dataUrl.match(/^data:([^;]+);base64,(.+)$/) || [];
-  if (!base64) throw new Error("마네킹 기준 이미지를 준비하지 못했습니다.");
-  return { base64, mimeType: mimeType || "image/png" };
-};
-
 const defaultFitInfo = (): GarmentFitInfo => ({ fitType: "regular", hasMeasurements: false });
 
 /**
@@ -42,8 +36,10 @@ export const runVirtualFitting = async (
   options: RunVirtualFittingOptions = {},
 ): Promise<VirtualFittingResult | null> => {
   try {
-    const mannequinDataUrl = await rasterizeMannequinToPngDataUrl(gender, mannequinSize);
-    const identityImage = dataUrlToImageRef(mannequinDataUrl);
+    const [mannequinImage, identityImage] = await Promise.all([
+      urlToImageRef(getMannequinPreset(gender, mannequinSize).previewImage),
+      urlToImageRef(getFaceReferenceImage(gender)),
+    ]);
 
     const garmentPayload = await Promise.all(
       garments.map(async (garment) => ({
@@ -72,6 +68,7 @@ export const runVirtualFitting = async (
         requestId,
         gender,
         mannequinSize,
+        mannequinImage,
         identityImage,
         garments: garmentPayload,
         changedSlots: options.changedSlots,

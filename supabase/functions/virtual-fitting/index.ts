@@ -39,13 +39,12 @@ const bodyDescriptionByKey: Record<string, string> = {
   "female-44": "the slimmest female body preset: narrow shoulders, slim chest/waist/hip, slender arms and legs",
   "female-55": "a slim-to-standard female body preset: close to the average reference silhouette",
   "female-66": "a standard-to-fuller female body preset: slightly more volume through chest, waist, hip, arms and legs than the 55 preset",
-  "female-77": "a fuller female body preset: noticeably more volume through shoulders, chest, waist, hip, arms and legs than the 66 preset, still a natural, realistic body — never exaggerated or unrealistic",
   "male-l": "a standard male body preset: average shoulder, chest, waist, arm and leg proportions",
   "male-xl": "a slightly fuller male body preset: somewhat broader shoulders, chest, waist, arms and legs than the L preset",
   "male-2xl": "a fuller male body preset: noticeably broader upper and lower body volume than the XL preset, still a natural, realistic body — never exaggerated or unrealistic",
 };
 
-const femaleSizes = new Set(["44", "55", "66", "77"]);
+const femaleSizes = new Set(["44", "55", "66"]);
 const maleSizes = new Set(["l", "xl", "2xl"]);
 
 const fitTypeGuidance: Record<FitType, string> = {
@@ -216,7 +215,8 @@ const generateDressedImage = async (
 
 const evaluatePreservation = async (
   geminiApiKey: string,
-  identityAnchor: { base64: string; mimeType: string },
+  mannequinAnchor: { base64: string; mimeType: string },
+  faceAnchor: { base64: string; mimeType: string },
   candidate: { base64: string; mimeType: string },
   garments: GarmentInput[],
 ): Promise<PreservationEvaluation | null> => {
@@ -234,22 +234,24 @@ const evaluatePreservation = async (
           role: "user",
           parts: [
             {
-              text: `Compare IMAGE A (the Mannequin/Face Identity Reference — the fixed BRAND-ER mannequin in its base pose) and IMAGE B (the candidate wearing a different, deliberately requested set of garments). This is a clothing swap on a fixed-identity mannequin — the garments and how they drape are SUPPOSED to differ; only specific things below count as violations.
+              text: `Compare IMAGE A (the canonical full-body BRAND-ER mannequin), IMAGE B (the close-up Face Identity Reference), and IMAGE C (the candidate wearing a different, deliberately requested set of garments). This is a clothing swap on a fixed-identity mannequin — the garments and how they drape are SUPPOSED to differ; only specific things below count as violations.
 
-faceMatch: judge ONLY the face — face shape, features, eyes, expression, hairstyle, skin tone. false only for a genuinely different face/identity (a different person), not for minor rendering noise.
+faceMatch: compare the candidate's face in IMAGE C against the exact close-up identity in IMAGE B. Judge face shape, features, eyes, expression, hairstyle, and skin tone. False only for a genuinely different face/identity, not minor rendering noise.
 
-sceneMatch: judge pose, camera angle/distance, background, and lighting — false only if any of these visibly changed from IMAGE A. Body-shape volume changing to fit the garment is fine; the mannequin's stance, the framing, backdrop and light direction/color should not change.
+sceneMatch: compare IMAGE C against IMAGE A. Judge body proportions, pose, camera angle/distance, background, and lighting — false if any visibly changed. Garment drape changing is fine; the body preset, stance, framing, backdrop and light direction/color must not change.
 
-garmentApplied: for EVERY garment reference image supplied below, confirm it is actually, visibly worn on the mannequin in IMAGE B, on the correct body region, replacing whatever previously occupied that slot. False if IMAGE B looks like the untouched reference, a garment is missing, or the wrong slot was rendered.
+garmentApplied: for EVERY garment reference image supplied below, confirm it is actually, visibly worn on the mannequin in IMAGE C, on the correct body region, replacing whatever previously occupied that slot. False if IMAGE C looks like the untouched reference, a garment is missing, or the wrong slot was rendered.
 
 garmentMatch: judge design fidelity separately from whether it was applied — preserve each garment's exact color, silhouette, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve/leg shape, and material. Natural folds/occlusion from being worn are fine; redesigning the garment is not.
 
 Return JSON only: {"score":0.0,"faceMatch":false,"garmentMatch":false,"garmentApplied":false,"sceneMatch":false,"violations":["short concrete difference"]}. Score 1.0 when identity, pose/camera/background/lighting, and every supplied garment (applied + faithfully rendered) are all preserved.`,
             },
-            { text: "IMAGE A — MANNEQUIN / FACE IDENTITY REFERENCE" },
-            { inlineData: { data: identityAnchor.base64, mimeType: identityAnchor.mimeType } },
+            { text: "IMAGE A — CANONICAL FULL-BODY MANNEQUIN / BODY AND SCENE REFERENCE" },
+            { inlineData: { data: mannequinAnchor.base64, mimeType: mannequinAnchor.mimeType } },
+            { text: "IMAGE B — CLOSE-UP FACE IDENTITY REFERENCE" },
+            { inlineData: { data: faceAnchor.base64, mimeType: faceAnchor.mimeType } },
             ...garmentReferenceParts,
-            { text: "IMAGE B — FINAL VIRTUAL FITTING RESULT TO CHECK" },
+            { text: "IMAGE C — FINAL VIRTUAL FITTING RESULT TO CHECK" },
             { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
           ],
         },
@@ -334,6 +336,7 @@ serve(async (req) => {
       requestId: rawRequestId,
       gender: rawGender,
       mannequinSize: rawMannequinSize,
+      mannequinImage,
       identityImage,
       garments: rawGarments,
       changedSlots: rawChangedSlots,
@@ -394,10 +397,15 @@ serve(async (req) => {
     const presetKey = `${gender}-${mannequinSize}`;
     const bodyDescription = bodyDescriptionByKey[presetKey];
 
+    const mannequinBase64 = stripDataUrlPrefix(String(mannequinImage?.base64 || identityImage?.base64 || ""));
+    const mannequinMimeType = String(mannequinImage?.mimeType || identityImage?.mimeType || "");
     const identityBase64 = stripDataUrlPrefix(String(identityImage?.base64 || ""));
     const identityMimeType = String(identityImage?.mimeType || "");
+    if (!mannequinBase64 || !supportedImageMimeTypes.has(mannequinMimeType)) {
+      return failRequest({ error: "전신 마네킹 기준 이미지가 필요합니다." }, 400);
+    }
     if (!identityBase64 || !supportedImageMimeTypes.has(identityMimeType)) {
-      return failRequest({ error: "마네킹/얼굴 기준 이미지가 필요합니다." }, 400);
+      return failRequest({ error: "얼굴 Identity 기준 이미지가 필요합니다." }, 400);
     }
 
     const garments: GarmentInput[] = Array.isArray(rawGarments)
@@ -466,7 +474,7 @@ serve(async (req) => {
       return failRequest({ error: "같은 슬롯에는 하나의 의류만 선택할 수 있습니다." }, 400);
     }
 
-    const totalBytes = identityBase64.length + garments.reduce((sum, g) => sum + g.base64.length + (g.backBase64?.length || 0), 0);
+    const totalBytes = mannequinBase64.length + identityBase64.length + garments.reduce((sum, g) => sum + g.base64.length + (g.backBase64?.length || 0), 0);
     if (totalBytes > 40 * 1024 * 1024) {
       return failRequest({ error: "이미지 용량이 너무 큽니다." }, 400);
     }
@@ -475,7 +483,7 @@ serve(async (req) => {
 
     const garmentList = garments
       .map((garment, index) => {
-        const ordinal = index + 2;
+        const ordinal = index + 3;
         const fit = garment.fitInfo;
         const measurementLine = fit.measurements ? measurementsSentence(garment.slot, fit.measurements) : "";
         const fitLine = fit.hasMeasurements
@@ -504,10 +512,10 @@ serve(async (req) => {
     const prompt = `
 EDIT Reference Image 1. This is a constrained image edit for an AI VIRTUAL FITTING tool: dress the fixed BRAND-ER mannequin in the supplied garment reference(s), on ${bodyDescription}, while keeping identity, pose, camera, background and lighting identical.
 
-Reference Image 1 is both the Mannequin Body Reference for ${gender} size ${mannequinSize.toUpperCase()} and the Face Identity Reference — the highest-priority identity anchor.
+Reference Image 1 is the canonical full-body Mannequin Body Reference for ${gender} size ${mannequinSize.toUpperCase()}. Reference Image 2 is the dedicated close-up Face Identity Reference and the highest-priority identity anchor.
 
 THE 8 RULES OF THIS PIPELINE (apply all of them together — none excuses skipping another):
-1. Do not change the face or the mannequin's identity in any way.
+1. Do not change the face from Reference Image 2 or the mannequin's identity in any way.
 2. Preserve exactly the body shape for the selected size (${bodyDescription}) — do not slim it down, exaggerate it, or drift toward a different size.
 3. Do not change pose, background, camera angle/distance, or lighting.
 4. Do not redesign any garment — color, material, logo, graphic, print, pattern, seams, pockets, zipper, buttons, collar, sleeves, hood, hem, and overall construction must stay exactly as supplied.
@@ -519,7 +527,7 @@ THE 8 RULES OF THIS PIPELINE (apply all of them together — none excuses skippi
 DO NOT REFUSE TO APPLY THE GARMENT. DO NOT RETURN THE MANNEQUIN WITHOUT THE NEW GARMENT. A render that keeps identity perfect but fails to show the new garment is a FAILED result.
 
 IDENTITY + BODY-SIZE LOCK — HIGHEST PRIORITY:
-- Preserve exactly from Reference Image 1: face shape, features, expression, hairstyle, skin tone.
+- Preserve exactly from Reference Image 2: face shape, features, expression, hairstyle, skin tone and overall impression.
 - Preserve the body proportions of this exact size preset: ${bodyDescription}. Never enlarge/shrink height or head size — only the body volume already present in Reference Image 1 matters, and it must not drift toward a slimmer or fuller preset than the one shown.
 - Preserve pose (standing, arms and legs in the same position), camera framing/distance/angle, background, and lighting exactly.
 
@@ -537,7 +545,7 @@ ${garmentList || "No garment reference is supplied."}
 ${replacedSlotsInstruction}
 ${clearedSlotsInstruction}
 
-TASK: Starting only from Reference Image 1, make the mannequin naturally wear every supplied garment reference at once, with fit/drape/tension appropriate to this body size and the garment's stated fit type or real measurements. Garment realism comes from adapting to THIS body, never from changing identity, pose, scene, or the garment's own design.
+TASK: Starting from the canonical body/scene in Reference Image 1 and exact face identity in Reference Image 2, make the mannequin naturally wear every supplied garment reference at once, with fit/drape/tension appropriate to this body size and the garment's stated fit type or real measurements. Garment realism comes from adapting to THIS body, never from changing identity, pose, scene, or the garment's own design.
 
 OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full body visible (no cropping at head/hands/feet), no before/after split, no caption, no watermark, no extra person or prop. Returning Reference Image 1 unchanged, or with the garment missing/only partially applied, is not acceptable.
 `.trim();
@@ -545,7 +553,7 @@ OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full b
     const garmentParts: Array<Record<string, unknown>> = [];
     garments.forEach((garment, index) => {
       garmentParts.push(
-        { text: `Reference Image ${index + 2}: EXACT GARMENT IDENTITY for ${slotDescriptionEn[garment.slot]} (front view).` },
+        { text: `Reference Image ${index + 3}: EXACT GARMENT IDENTITY for ${slotDescriptionEn[garment.slot]} (front view).` },
         { inlineData: { data: garment.base64, mimeType: garment.mimeType } },
       );
       if (garment.backBase64 && garment.backMimeType) {
@@ -558,10 +566,12 @@ OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full b
 
     const generationParts: Array<Record<string, unknown>> = [
       { text: prompt },
-      { text: "Reference Image 1: MANNEQUIN + FACE IDENTITY REFERENCE. Always the sole source of identity, body size, pose, scene and lighting." },
+      { text: "Reference Image 1: CANONICAL FULL-BODY MANNEQUIN. Always the sole source of body size, pose, scene and lighting." },
+      { inlineData: { data: mannequinBase64, mimeType: mannequinMimeType } },
+      { text: "Reference Image 2: CLOSE-UP FACE IDENTITY REFERENCE. Always the sole source of face, hair, skin tone and identity." },
       { inlineData: { data: identityBase64, mimeType: identityMimeType } },
       ...garmentParts,
-      { text: "FINAL LOCK: exact same identity/body-size/pose/scene as Reference Image 1, and exact garment design from every garment reference, ACTUALLY WORN with realistic fit for this body. Do not solve identity preservation by skipping the clothing change." },
+      { text: "FINAL LOCK: exact face identity from Reference Image 2, exact body-size/pose/scene from Reference Image 1, and exact garment design from every garment reference, ACTUALLY WORN with realistic fit for this body. Do not solve identity preservation by skipping the clothing change." },
     ];
 
     const firstImage = await generateDressedImage(geminiApiKey, generationParts);
@@ -569,7 +579,8 @@ OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full b
       return failRequest({ error: "이미지를 생성하지 못했습니다. 다시 시도해주세요." }, 502);
     }
 
-    const identityAnchor = { base64: identityBase64, mimeType: identityMimeType };
+    const mannequinAnchor = { base64: mannequinBase64, mimeType: mannequinMimeType };
+    const faceAnchor = { base64: identityBase64, mimeType: identityMimeType };
 
     interface Attempt {
       image: GeneratedImage;
@@ -577,15 +588,15 @@ OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full b
     }
 
     const attempts: Attempt[] = [
-      { image: firstImage, evaluation: await evaluatePreservation(geminiApiKey, identityAnchor, firstImage, garments) },
+      { image: firstImage, evaluation: await evaluatePreservation(geminiApiKey, mannequinAnchor, faceAnchor, firstImage, garments) },
     ];
     let identityRetryApplied = false;
 
     const maxRetries = 3;
     const escalationNote = [
-      "CORRECTION PASS 1: Discard the rejected draft and rebuild from the Mannequin/Face Identity Reference plus all original garment references.",
-      "CORRECTION PASS 2 (stronger): The previous attempt still did not preserve identity/body-size/scene AND actually show every garment worn. Re-anchor harder on Reference Image 1 while making sure every supplied garment is rendered on the body in its correct slot.",
-      "CORRECTION PASS 3 (final, strongest): This is the last automatic attempt. Prioritize BOTH constraints simultaneously — keep identity/body-size/pose/scene identical to Reference Image 1 AND make the mannequin visibly wear every supplied garment reference, replacing the requested slot(s).",
+      "CORRECTION PASS 1: Discard the rejected draft and rebuild from the canonical full-body mannequin, close-up Face Identity Reference and all original garment references.",
+      "CORRECTION PASS 2 (stronger): The previous attempt still did not preserve face/body-size/scene AND actually show every garment worn. Re-anchor the face on Reference Image 2 and body/scene on Reference Image 1 while rendering every garment in its correct slot.",
+      "CORRECTION PASS 3 (final, strongest): This is the last automatic attempt. Keep face identity identical to Reference Image 2, body-size/pose/scene identical to Reference Image 1, and visibly wear every supplied garment reference.",
     ];
     for (
       let attempt = 0;
@@ -599,16 +610,18 @@ OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full b
         {
           text: `${prompt}\n\n${escalationNote[Math.min(attempt, escalationNote.length - 1)]} Detected differences: ${previous.evaluation?.violations.join("; ") || "the strict preservation check was unavailable or found a difference"}.`,
         },
-        { text: "Reference Image 1: MANNEQUIN + FACE IDENTITY REFERENCE. This exact identity/body-size/pose/scene must survive unchanged." },
+        { text: "Reference Image 1: CANONICAL FULL-BODY MANNEQUIN. This exact body-size/pose/scene must survive unchanged." },
+        { inlineData: { data: mannequinBase64, mimeType: mannequinMimeType } },
+        { text: "Reference Image 2: CLOSE-UP FACE IDENTITY REFERENCE. This exact face, hair, skin tone and identity must survive unchanged." },
         { inlineData: { data: identityBase64, mimeType: identityMimeType } },
         { text: "PREVIOUS DRAFT: use only as an example of what to fix." },
         { inlineData: { data: previous.image.base64, mimeType: previous.image.mimeType } },
         ...garmentParts,
-        { text: "FINAL CHECK: exact identity/body-size/pose/scene AND every garment reference actually worn with realistic fit." },
+        { text: "FINAL CHECK: exact face identity from Reference Image 2, exact body-size/pose/scene from Reference Image 1, and every garment reference actually worn with realistic fit." },
       ];
       const retryImage = await generateDressedImage(geminiApiKey, retryParts);
       if (!retryImage) continue;
-      const retryEvaluation = await evaluatePreservation(geminiApiKey, identityAnchor, retryImage, garments);
+      const retryEvaluation = await evaluatePreservation(geminiApiKey, mannequinAnchor, faceAnchor, retryImage, garments);
       attempts.push({ image: retryImage, evaluation: retryEvaluation });
     }
 

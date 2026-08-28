@@ -101,6 +101,7 @@ interface ModifyImageStepProps {
   selectedImageUrl: string | null;
   selectedType: string;
   selectedMaterial: string;
+  selectedFit?: string;
   designContext?: string;
   modificationHistory: ImageModificationEntry[];
   currentArtworkAnalysis: UploadedArtworkAnalysis | null;
@@ -130,6 +131,7 @@ export const ModifyImageStep = ({
   selectedImageUrl,
   selectedType,
   selectedMaterial,
+  selectedFit,
   designContext,
   modificationHistory,
   currentArtworkAnalysis,
@@ -595,6 +597,7 @@ export const ModifyImageStep = ({
                               imageUrl: selectedImageUrl,
                               selectedType,
                               selectedMaterial,
+                              fitLabel: selectedFit,
                               designContext,
                               designId,
                             },
@@ -603,7 +606,7 @@ export const ModifyImageStep = ({
                       })
                     }
                   >
-                    🎮 브랜더에게 입혀보기
+                    가상 마네킹에 입혀보기
                   </Button>
                 </div>
               )}

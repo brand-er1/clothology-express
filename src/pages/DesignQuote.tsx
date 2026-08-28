@@ -37,7 +37,7 @@ import {
   type ProductionCountry,
 } from "@/lib/production-country";
 import { characterConfig, inferClosetSlotFromCategory } from "@/lib/closet-character-config";
-import type { CharacterGender } from "@/types/closet";
+import type { CharacterGender, MannequinSize } from "@/types/closet";
 import { getDesign, getDesignErrorMessage, type DesignRecord } from "@/services/designs";
 
 const allowedImageTypes = new Set([
@@ -76,6 +76,7 @@ interface ClosetHandoffState {
   presetImages?: ProductionEstimateImageInput[];
   fromCloset?: {
     character: CharacterGender;
+    mannequinSize: MannequinSize;
     garmentLabel: string;
     imageUrl: string | null;
     imagePath: string | null;
@@ -217,7 +218,7 @@ const DesignQuote = () => {
     resetAnalysis();
   };
 
-  const cardImages = useMemo(
+  const cardImages = useMemo<ProductionEstimateImageInput[]>(
     () => images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })),
     [images],
   );
@@ -416,7 +417,7 @@ const DesignQuote = () => {
       const materialLabel = fromCloset.selectedMaterial || estimate.material.composition;
       const description = [
         `${fromCloset.garmentLabel} 디자인입니다. 목표 인원이 모이면 브랜더가 실제 제품으로 제작합니다.`,
-        `BRAND-ER CLOSET에서 ${characterConfig[fromCloset.character].label}에게 입혀보고 만든 펀딩입니다.`,
+        `BRAND-ER AI 가상 피팅에서 ${characterConfig[fromCloset.character].label} ${fromCloset.mannequinSize.toUpperCase()} 체형에 입혀보고 만든 펀딩입니다.`,
       ].join("\n");
 
       const funding = await createFundingDraft({
@@ -505,7 +506,7 @@ const DesignQuote = () => {
         {closetHandoff?.fromCloset && (
           <div className="mb-6 flex items-center gap-2 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-bold text-brand">
             <Gamepad2 className="h-4 w-4" />
-            BRAND-ER CLOSET에서 가져온 디자인 · {closetHandoff.fromCloset.garmentLabel}
+            AI 가상 피팅에서 가져온 디자인 · {closetHandoff.fromCloset.garmentLabel}
           </div>
         )}
 
@@ -590,7 +591,7 @@ const DesignQuote = () => {
                 ))}
               </div>
               <p className="mt-3 text-xs leading-5 text-stone-500">
-                BRAND-ER CLOSET에서 입힌 디자인으로 자동 분석을 진행했습니다. 이미지를 다시
+                AI 가상 피팅에서 입힌 디자인으로 자동 분석을 진행했습니다. 이미지를 다시
                 올릴 필요는 없어요.
               </p>
             </Card>
@@ -934,21 +935,27 @@ const DesignQuote = () => {
                             navigate("/closet", {
                               state: {
                                 pendingGarment: {
-                                  id: `upload-${Date.now()}`,
+                                  id: `${design ? "ai" : "upload"}-${Date.now()}`,
                                   slot: inferClosetSlotFromCategory(estimate.analysis.categoryKey),
                                   label: estimate.garment.label,
-                                  imageUrl: images[0]?.previewUrl || "",
-                                  source: "upload",
+                                  imageUrl: images[0]?.previewUrl || design?.frontImageUrl || effectiveImages[0]?.url || "",
+                                  source: design ? "ai_design" : "upload",
                                   designRef: {
-                                    imageBase64: images[0]?.base64,
-                                    imageMimeType: images[0]?.mimeType,
+                                    imageUrl: design?.frontImageUrl || effectiveImages[0]?.url || null,
+                                    imagePath: design?.imagePath || null,
+                                    imageBase64: images[0]?.base64 || effectiveImages[0]?.base64,
+                                    imageMimeType: images[0]?.mimeType || effectiveImages[0]?.mimeType,
+                                    selectedType: design?.productType || estimate.analysis.categoryKey,
+                                    selectedMaterial: design?.fabric || estimate.material.composition,
+                                    fitLabel: design?.fit || undefined,
+                                    designId: design?.id || null,
                                   },
                                 },
                               },
                             })
                           }
                         >
-                          🎮 브랜더에게 입혀보기
+                          가상 마네킹에 입혀보기
                         </Button>
                       )}
                     </Card>

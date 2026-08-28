@@ -20,7 +20,7 @@ alter table public.outfit_items add column if not exists has_measurements boolea
 alter table public.outfit_items add column if not exists back_image_url text;
 
 comment on column public.outfits.mannequin_size is
-  '저장 시점의 마네킹 체형 사이즈 (여성: 44/55/66/77, 남성: l/xl/2xl).';
+  '저장 시점의 마네킹 체형 사이즈 (여성: 44/55/66, 남성: l/xl/2xl).';
 comment on column public.outfit_items.fit_type is
   '의류 기준 핏 (오버핏/세미오버핏/레귤러핏/슬림핏). 실측값이 없을 때 시각적 피팅의 기준이 된다.';
 comment on column public.outfit_items.has_measurements is

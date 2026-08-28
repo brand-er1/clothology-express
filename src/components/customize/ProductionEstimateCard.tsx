@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
+import { describeProductionEstimateError } from "@/lib/production-estimate-error";
 import type {
   ArtworkType,
   DecorationAnalysisKind,
@@ -281,6 +282,14 @@ export const ProductionEstimateCard = ({
     setIsLoading(true);
     setError(null);
 
+    const hasAnyImage = (images && images.length > 0) || Boolean(imageUrl) || Boolean(imageBase64);
+    if (!hasAnyImage) {
+      setBaseEstimate(null);
+      setError(describeProductionEstimateError({ reason: "no_source_image" }).message);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const result = await analyzeProductionEstimate({
         images,
@@ -300,11 +309,7 @@ export const ProductionEstimateCard = ({
       if (requestIdRef.current !== requestId) return;
       console.error("Production estimate analysis error:", analysisError);
       setBaseEstimate(null);
-      setError(
-        analysisError instanceof Error
-          ? analysisError.message
-          : "자동 견적 분석에 실패했습니다.",
-      );
+      setError(describeProductionEstimateError(analysisError).message);
     } finally {
       if (requestIdRef.current === requestId) {
         setIsLoading(false);

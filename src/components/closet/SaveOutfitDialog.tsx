@@ -21,14 +21,16 @@ import {
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { closetSlotLabel, closetSlotOrder } from "@/lib/closet-character-config";
+import { mannequinSizeShortLabel } from "@/lib/mannequin-presets";
 import { buildOutfitItemsPayload, getOutfitErrorMessage, saveOutfit } from "@/services/outfits";
-import type { CharacterGender, ClosetOutfit } from "@/types/closet";
+import type { CharacterGender, ClosetOutfit, MannequinSize } from "@/types/closet";
 
 interface SaveOutfitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   outfit: ClosetOutfit;
   character: CharacterGender;
+  mannequinSize: MannequinSize;
   renderedCharacterImage: string | null;
   defaultTitle: string;
   /** Whether the public toggle starts on — lets "코디 저장" (off) and "코디 올리기" (on) share one dialog. */
@@ -48,6 +50,7 @@ const parseTags = (raw: string) =>
 const SaveOutfitBody = ({
   outfit,
   character,
+  mannequinSize,
   renderedCharacterImage,
   defaultTitle,
   initialPublic,
@@ -55,6 +58,7 @@ const SaveOutfitBody = ({
 }: {
   outfit: ClosetOutfit;
   character: CharacterGender;
+  mannequinSize: MannequinSize;
   renderedCharacterImage: string | null;
   defaultTitle: string;
   initialPublic: boolean;
@@ -87,6 +91,7 @@ const SaveOutfitBody = ({
         imageUrl: renderedCharacterImage,
         imagePath: null,
         characterGender: character,
+        mannequinSize,
         isPublic,
         items,
         tags: parseTags(tagsInput),
@@ -157,6 +162,9 @@ const SaveOutfitBody = ({
         </div>
 
         <div className="flex flex-wrap gap-1.5">
+          <span className="rounded-full bg-brand/10 px-3 py-1 text-[11px] font-bold text-brand">
+            {mannequinSizeShortLabel[mannequinSize]} 사이즈
+          </span>
           {wornSlots.map((slot) => (
             <span
               key={slot}
@@ -244,6 +252,7 @@ export const SaveOutfitDialog = ({
   onOpenChange,
   outfit,
   character,
+  mannequinSize,
   renderedCharacterImage,
   defaultTitle,
   initialPublic = false,
@@ -260,6 +269,7 @@ export const SaveOutfitDialog = ({
       key={instanceKey}
       outfit={outfit}
       character={character}
+      mannequinSize={mannequinSize}
       renderedCharacterImage={renderedCharacterImage}
       defaultTitle={defaultTitle}
       initialPublic={initialPublic}

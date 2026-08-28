@@ -1,8 +1,56 @@
 import type { ProductionEstimateResult } from "@/types/productionEstimate";
 
+/** Mannequin gender. Kept as `CharacterGender` for backward compatibility with existing code/DB columns. */
 export type CharacterGender = "male" | "female";
 
-export type ClosetSlot = "top" | "bottom" | "outer" | "shoes" | "accessory";
+export type FemaleMannequinSize = "44" | "55" | "66" | "77";
+export type MaleMannequinSize = "l" | "xl" | "2xl";
+/** Korean clothing-size-system body preset, e.g. "female-66" or "male-xl". */
+export type MannequinSize = FemaleMannequinSize | MaleMannequinSize;
+
+export type ClosetSlot = "top" | "bottom" | "outer" | "skirt" | "dress" | "shoes" | "accessory";
+
+/** 의류 기준 핏 (오버핏/세미오버핏/레귤러핏/슬림핏). */
+export type FitType = "oversize" | "semi_oversize" | "regular" | "slim";
+
+/** Optional real measurements (cm). Only the fields relevant to a garment's slot are ever shown/used. */
+export interface GarmentMeasurements {
+  totalLength?: number;
+  shoulderWidth?: number;
+  chestWidth?: number;
+  waistWidth?: number;
+  hemWidth?: number;
+  sleeveLength?: number;
+  bottomWaist?: number;
+  bottomHip?: number;
+  bottomRise?: number;
+  bottomThigh?: number;
+  bottomHem?: number;
+  bottomLength?: number;
+}
+
+export type FabricStretch = "none" | "low" | "medium" | "high";
+export type FabricThickness = "thin" | "medium" | "thick";
+export type FabricDrape = "stiff" | "medium" | "fluid";
+
+export interface FabricInfo {
+  stretch?: FabricStretch;
+  thickness?: FabricThickness;
+  drape?: FabricDrape;
+}
+
+/**
+ * Sizing/fit metadata for one garment, entered before AI fitting generation. `hasMeasurements`
+ * drives whether the "AI 시뮬레이션" disclaimer is shown — measurements always take priority over
+ * baseSize/fitType when present (see virtual-fitting edge function).
+ */
+export interface GarmentFitInfo {
+  baseSize?: string;
+  fitType?: FitType;
+  measurements?: GarmentMeasurements;
+  fabric?: FabricInfo;
+  hasMeasurements: boolean;
+}
 
 export interface CharacterConfig {
   key: CharacterGender;
@@ -49,6 +97,10 @@ export interface ClosetGarment {
   revisions?: ClosetGarmentRevision[];
   /** Id of the revision currently reflected by this garment's top-level `imageUrl`/`designRef`. */
   activeRevisionId?: string;
+  /** Sizing/fit metadata entered before AI fitting generation (base size, fit type, measurements, fabric). */
+  fitInfo?: GarmentFitInfo;
+  /** Set when this garment reference has a separate back-view image (logo/pocket placement must match). */
+  backImageUrl?: string | null;
 }
 
 /**
@@ -69,19 +121,26 @@ export type ClosetOutfit = Record<ClosetSlot, ClosetGarment | null>;
 
 export interface WardrobeState {
   character: CharacterGender;
+  /** Mannequin body-size preset for this gender (e.g. "66" for female, "xl" for male). */
+  mannequinSize: MannequinSize;
   outfit: ClosetOutfit;
   /**
-   * The latest AI-generated "character actually wearing the current outfit" preview image. This is a
+   * The latest AI-generated "mannequin actually wearing the current outfit" preview image. This is a
    * disposable preview only — quote/funding always read `outfit[slot].designRef`, the original design
    * data, and must never analyze or depend on this rendered image.
    */
   renderedCharacterImage: string | null;
+  /** Id of the last virtual-fitting generation request, for idempotency/dedupe and re-fetching. */
+  lastRequestId: string | null;
+  /** True when the last render was produced without any real garment measurements (shows AI-sim disclaimer). */
+  lastRenderIsSimulated: boolean;
 }
 
 export interface SavedBrandErLook {
   id: string;
   savedAt: string;
   character: CharacterGender;
+  mannequinSize: MannequinSize;
   outfit: ClosetOutfit;
   renderedCharacterImage: string | null;
 }

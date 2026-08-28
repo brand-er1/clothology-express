@@ -1,36 +1,59 @@
 import { useSyncExternalStore } from "react";
+import { defaultMannequinSize, isMannequinSizeForGender } from "@/lib/mannequin-presets";
 import type {
   CharacterGender,
   ClosetGarment,
   ClosetGarmentRevision,
   ClosetSlot,
+  MannequinSize,
   SavedBrandErLook,
   WardrobeState,
 } from "@/types/closet";
 
-const STORAGE_KEY = "brander-wardrobe-state-v2";
-const SAVED_LOOKS_KEY = "brander-saved-looks-v2";
+const STORAGE_KEY = "brander-wardrobe-state-v3";
+const LEGACY_STORAGE_KEY = "brander-wardrobe-state-v2";
+const SAVED_LOOKS_KEY = "brander-saved-looks-v3";
+const LEGACY_SAVED_LOOKS_KEY = "brander-saved-looks-v2";
 
 const emptyOutfit = (): WardrobeState["outfit"] => ({
   top: null,
   bottom: null,
   outer: null,
+  skirt: null,
+  dress: null,
   shoes: null,
   accessory: null,
 });
 
+const freshState = (character: CharacterGender = "male"): WardrobeState => ({
+  character,
+  mannequinSize: defaultMannequinSize(character),
+  outfit: emptyOutfit(),
+  renderedCharacterImage: null,
+  lastRequestId: null,
+  lastRenderIsSimulated: false,
+});
+
 const loadState = (): WardrobeState => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { character: "male", outfit: emptyOutfit(), renderedCharacterImage: null };
-    const parsed = JSON.parse(raw) as WardrobeState;
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!raw) return freshState();
+    const parsed = JSON.parse(raw) as Partial<WardrobeState>;
+    const character: CharacterGender = parsed.character === "female" ? "female" : "male";
+    const mannequinSize: MannequinSize =
+      parsed.mannequinSize && isMannequinSizeForGender(character, parsed.mannequinSize)
+        ? parsed.mannequinSize
+        : defaultMannequinSize(character);
     return {
-      character: parsed.character === "female" ? "female" : "male",
+      character,
+      mannequinSize,
       outfit: { ...emptyOutfit(), ...parsed.outfit },
       renderedCharacterImage: parsed.renderedCharacterImage || null,
+      lastRequestId: parsed.lastRequestId || null,
+      lastRenderIsSimulated: Boolean(parsed.lastRenderIsSimulated),
     };
   } catch {
-    return { character: "male", outfit: emptyOutfit(), renderedCharacterImage: null };
+    return freshState();
   }
 };
 
@@ -54,9 +77,24 @@ export const subscribeWardrobe = (listener: () => void) => {
   return () => listeners.delete(listener);
 };
 
-/** Switching character keeps the currently-equipped outfit — only the stale AI render is cleared. */
+/** Switching gender keeps the currently-equipped outfit and resets to that gender's default size — only the stale AI render is cleared. */
 export const setCharacter = (character: CharacterGender) => {
-  state = { ...state, character, renderedCharacterImage: null };
+  state = {
+    ...state,
+    character,
+    mannequinSize: isMannequinSizeForGender(character, state.mannequinSize)
+      ? state.mannequinSize
+      : defaultMannequinSize(character),
+    renderedCharacterImage: null,
+  };
+  persist();
+  emit();
+};
+
+/** Changes the body-size preset within the same gender — outfit and garment references are untouched. */
+export const setMannequinSize = (size: MannequinSize) => {
+  if (!isMannequinSizeForGender(state.character, size)) return;
+  state = { ...state, mannequinSize: size, renderedCharacterImage: null };
   persist();
   emit();
 };
@@ -74,8 +112,16 @@ export const clearOutfit = () => {
   emit();
 };
 
-export const setRenderedCharacterImage = (imageUrl: string | null) => {
-  state = { ...state, renderedCharacterImage: imageUrl };
+export const setRenderedCharacterImage = (
+  imageUrl: string | null,
+  options: { requestId?: string | null; isSimulated?: boolean } = {},
+) => {
+  state = {
+    ...state,
+    renderedCharacterImage: imageUrl,
+    lastRequestId: options.requestId ?? state.lastRequestId,
+    lastRenderIsSimulated: options.isSimulated ?? state.lastRenderIsSimulated,
+  };
   persist();
   emit();
 };
@@ -93,9 +139,19 @@ export const useWardrobeState = () =>
 
 export const loadSavedLooks = (): SavedBrandErLook[] => {
   try {
-    const raw = localStorage.getItem(SAVED_LOOKS_KEY);
+    const raw = localStorage.getItem(SAVED_LOOKS_KEY) || localStorage.getItem(LEGACY_SAVED_LOOKS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as SavedBrandErLook[];
+    return (JSON.parse(raw) as Partial<SavedBrandErLook>[]).map((look) => ({
+      id: look.id || `${Date.now()}`,
+      savedAt: look.savedAt || new Date().toISOString(),
+      character: look.character === "female" ? "female" : "male",
+      mannequinSize:
+        look.mannequinSize && isMannequinSizeForGender(look.character === "female" ? "female" : "male", look.mannequinSize)
+          ? look.mannequinSize
+          : defaultMannequinSize(look.character === "female" ? "female" : "male"),
+      outfit: { ...emptyOutfit(), ...look.outfit },
+      renderedCharacterImage: look.renderedCharacterImage || null,
+    }));
   } catch {
     return [];
   }
@@ -108,6 +164,7 @@ export const saveCurrentLook = (): SavedBrandErLook => {
       : `${Date.now()}`,
     savedAt: new Date().toISOString(),
     character: state.character,
+    mannequinSize: state.mannequinSize,
     outfit: state.outfit,
     renderedCharacterImage: state.renderedCharacterImage,
   };

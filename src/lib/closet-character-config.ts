@@ -1,40 +1,72 @@
 import { getAppPath } from "@/utils/appUrl";
-import type { CharacterConfig, CharacterGender } from "@/types/closet";
+import { defaultMannequinSize, getMannequinPreset } from "@/lib/mannequin-presets";
+import type { CharacterConfig, CharacterGender, ClosetOutfit, ClosetSlot } from "@/types/closet";
 
 /**
- * Base BRAND-ER mascot references. These images are never redesigned — they're passed to the
- * dress-character AI call as the character-identity reference image (Reference Image 1), and shown
- * as-is whenever nothing has been AI-dressed yet.
+ * Base BRAND-ER mannequin references, kept for legacy call sites (CharacterCard, saved-look
+ * fallbacks). `baseImage` now resolves to that gender's default-size vector mannequin preset — see
+ * mannequin-presets.ts for the full per-size registry used by the virtual fitting flow itself.
  */
 export const characterConfig: Record<CharacterGender, CharacterConfig> = {
   male: {
     key: "male",
-    label: "남자 브랜더",
-    tagline: "브랜더 오리지널 캐릭터",
-    baseImage: getAppPath("/mascot/idle.png"),
+    label: "남자 마네킹",
+    tagline: "AI Virtual Fitting · 남성",
+    baseImage: getMannequinPreset("male", defaultMannequinSize("male")).previewImage,
   },
   female: {
     key: "female",
-    label: "여자 브랜더",
-    tagline: "속눈썹이 포인트인 브랜더",
-    baseImage: getAppPath("/mascot/character-female.png"),
+    label: "여자 마네킹",
+    tagline: "AI Virtual Fitting · 여성",
+    baseImage: getMannequinPreset("female", defaultMannequinSize("female")).previewImage,
   },
 };
 
-export const closetSlotOrder = ["top", "bottom", "outer", "shoes", "accessory"] as const;
+/** Retained for anything still reading a static file path (e.g. og-image-style previews). */
+export const legacyMascotImage = getAppPath("/mascot/idle.png");
 
-export const closetSlotLabel: Record<(typeof closetSlotOrder)[number], string> = {
+export const closetSlotOrder: ClosetSlot[] = ["top", "outer", "bottom", "skirt", "dress", "shoes", "accessory"];
+
+export const closetSlotLabel: Record<ClosetSlot, string> = {
   top: "상의",
-  bottom: "하의",
   outer: "아우터",
+  bottom: "하의",
+  skirt: "스커트",
+  dress: "원피스",
   shoes: "신발",
-  accessory: "액세서리",
+  accessory: "기타 착용 의류",
+};
+
+/** Slots whose garment covers the same body region as a 원피스(dress) — mutually exclusive with it. */
+export const dressConflictSlots: ClosetSlot[] = ["top", "bottom", "skirt"];
+
+/**
+ * Slots that would be made redundant by equipping `slot`, following the 코디 슬롯 규칙: a 원피스
+ * conflicts with 상의/하의/스커트 (and vice versa) since they cover the same region; every other
+ * slot (아우터/신발/기타) layers independently and never conflicts.
+ */
+export const slotsConflictingWith = (outfit: ClosetOutfit, slot: ClosetSlot): ClosetSlot[] => {
+  if (slot === "dress") {
+    return dressConflictSlots.filter((candidate) => Boolean(outfit[candidate]));
+  }
+  if (dressConflictSlots.includes(slot) && outfit.dress) {
+    return ["dress"];
+  }
+  return [];
 };
 
 /** Maps a clothType/analysis category id (e.g. "hoodie", "long_pants", "jacket") to a closet slot. */
-export const inferClosetSlotFromCategory = (categoryKey: string): (typeof closetSlotOrder)[number] => {
+export const inferClosetSlotFromCategory = (categoryKey: string): ClosetSlot => {
   const key = categoryKey.toLowerCase();
-  if (/jacket/.test(key)) return "outer";
-  if (/pants|legging|bottom/.test(key)) return "bottom";
+  if (/dress|onepiece|one_piece/.test(key)) return "dress";
+  if (/skirt/.test(key)) return "skirt";
+  if (/jacket|coat|outer/.test(key)) return "outer";
+  if (/pants|legging|bottom|short/.test(key)) return "bottom";
   return "top";
 };
+
+/** Whether a slot's fit-info form should show top-style measurements (length/shoulder/chest/waist/hem/sleeve). */
+export const isTopLikeSlot = (slot: ClosetSlot) => slot === "top" || slot === "outer" || slot === "dress";
+
+/** Whether a slot's fit-info form should show bottom-style measurements (waist/hip/rise/thigh/hem/length). */
+export const isBottomLikeSlot = (slot: ClosetSlot) => slot === "bottom" || slot === "skirt" || slot === "dress";

@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { Check, ChevronDown, ImagePlus, RefreshCw, Upload, X } from "lucide-react";
+import { Check, ChevronDown, ImagePlus, RefreshCw, Settings2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { closetSlotLabel, closetSlotOrder } from "@/lib/closet-character-config";
-import type { ClosetGarment, ClosetOutfit, ClosetSlot } from "@/types/closet";
+import { GarmentFitInfoForm } from "@/components/closet/GarmentFitInfoForm";
+import type { ClosetGarment, ClosetOutfit, ClosetSlot, GarmentFitInfo } from "@/types/closet";
 import type { MyWardrobeGarment } from "@/lib/closet-store";
 import { toast } from "@/components/ui/use-toast";
 
@@ -11,7 +12,10 @@ interface WardrobeSlotPickerProps {
   wardrobe: MyWardrobeGarment[];
   onEquip: (slot: ClosetSlot, garment: ClosetGarment) => void;
   onRemove: (slot: ClosetSlot) => void;
+  onUpdateFitInfo: (slot: ClosetSlot, fitInfo: GarmentFitInfo) => void;
 }
+
+const emptyFitInfo = (): GarmentFitInfo => ({ fitType: "regular", hasMeasurements: false });
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<{ base64: string; mimeType: string; dataUrl: string }>((resolve, reject) => {
@@ -29,9 +33,11 @@ export const WardrobeSlotPicker = ({
   wardrobe,
   onEquip,
   onRemove,
+  onUpdateFitInfo,
 }: WardrobeSlotPickerProps) => {
   const fileInputRefs = useRef<Partial<Record<ClosetSlot, HTMLInputElement | null>>>({});
   const [openSlot, setOpenSlot] = useState<ClosetSlot | null>(null);
+  const [fitInfoSlot, setFitInfoSlot] = useState<ClosetSlot | null>(null);
 
   const handleUpload = async (slot: ClosetSlot, file: File | undefined) => {
     if (!file) return;
@@ -114,6 +120,19 @@ export const WardrobeSlotPicker = ({
                 {garment && (
                   <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
+                    className={`h-9 w-9 border-stone-300 ${fitInfoSlot === slot ? "border-brand text-brand" : "text-stone-500"}`}
+                    onClick={() => setFitInfoSlot(fitInfoSlot === slot ? null : slot)}
+                    aria-label={`${closetSlotLabel[slot]} 핏 정보 입력`}
+                    aria-expanded={fitInfoSlot === slot}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                )}
+                {garment && (
+                  <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="h-9 w-9 text-stone-400 hover:text-rose-600"
@@ -125,6 +144,15 @@ export const WardrobeSlotPicker = ({
                 )}
               </div>
             </div>
+            {garment && fitInfoSlot === slot && (
+              <div className="border-t border-stone-100 p-3">
+                <GarmentFitInfoForm
+                  slot={slot}
+                  fitInfo={garment.fitInfo || emptyFitInfo()}
+                  onChange={(fitInfo) => onUpdateFitInfo(slot, fitInfo)}
+                />
+              </div>
+            )}
             {isOpen && (
               <div className="border-t border-stone-100 bg-[#faf8f5] p-3">
                 <p className="text-xs font-bold text-stone-700">

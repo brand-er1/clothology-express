@@ -33,6 +33,12 @@ export const buildOutfitItemsPayload = (outfit: ClosetOutfit) =>
       image_url: garment.designRef?.imageUrl || garment.imageUrl,
       source: garment.source,
       design_id: garment.designRef?.designId || null,
+      base_size: garment.fitInfo?.baseSize || null,
+      fit_type: garment.fitInfo?.fitType || null,
+      measurements: garment.fitInfo?.measurements || null,
+      fabric: garment.fitInfo?.fabric || null,
+      has_measurements: garment.fitInfo?.hasMeasurements ?? false,
+      back_image_url: garment.backImageUrl || null,
     }));
 
 interface SaveOutfitInput {
@@ -41,6 +47,7 @@ interface SaveOutfitInput {
   imageUrl: string;
   imagePath: string | null;
   characterGender: CharacterGender;
+  mannequinSize: string | null;
   isPublic: boolean;
   items: ReturnType<typeof buildOutfitItemsPayload>;
   tags: string[];
@@ -61,6 +68,7 @@ export const saveOutfit = async (input: SaveOutfitInput): Promise<string> => {
     p_items: input.items,
     p_tags: input.tags,
     p_guest_session_id: guestSessionId,
+    p_mannequin_size: input.mannequinSize,
   });
   if (error) throw new Error(error.message || "코디를 저장하지 못했습니다.");
   return data as string;
@@ -146,6 +154,7 @@ interface RawOutfitDetailRow {
   image_url: string;
   author_name: string;
   character_gender: CharacterGender;
+  mannequin_size: string | null;
   is_public: boolean;
   like_count: number;
   liked_by_me: boolean;
@@ -168,6 +177,7 @@ export const getOutfitDetail = async (id: string): Promise<OutfitDetailData> => 
     imageUrl: row.image_url,
     authorName: row.author_name,
     characterGender: row.character_gender,
+    mannequinSize: (row.mannequin_size as OutfitDetailData["mannequinSize"]) || null,
     isPublic: row.is_public,
     likeCount: row.like_count,
     likedByMe: row.liked_by_me,
@@ -187,6 +197,7 @@ interface RawMyOutfitRow {
   like_count: number;
   created_at: string;
   character_gender: CharacterGender;
+  mannequin_size: string | null;
   tags: string[];
 }
 
@@ -203,6 +214,7 @@ export const listMyOutfits = async (): Promise<MyOutfitData[]> => {
     likeCount: row.like_count,
     createdAt: row.created_at,
     characterGender: row.character_gender,
+    mannequinSize: (row.mannequin_size as MyOutfitData["mannequinSize"]) || null,
     tags: row.tags || [],
   }));
 };

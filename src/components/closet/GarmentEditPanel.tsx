@@ -9,6 +9,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { closetSlotLabel } from "@/lib/closet-character-config";
 import { withNewGarmentRevision } from "@/lib/closet-store";
@@ -258,7 +264,7 @@ const GarmentEditBody = ({
   );
 };
 
-/** "수정하기" — inline panel on desktop, Bottom Sheet on mobile. Same underlying edit logic either way. */
+/** "수정하기" — a centered Dialog on desktop, a Bottom Sheet on mobile. Same underlying edit logic either way. */
 export const GarmentEditPanel = ({
   garment,
   open,
@@ -309,29 +315,26 @@ export const GarmentEditPanel = ({
     );
   }
 
-  if (!open) return null;
-
+  // Desktop: a real modal dialog (not an inline panel further down the page) so clicking
+  // "수정하기" always shows something immediately, regardless of scroll position — the same
+  // guarantee the mobile Drawer already gave.
   return (
-    <div className="rounded-[1.5rem] border border-brand/20 bg-white p-5 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-sm font-black text-stone-950">
-          <Sparkles className="h-4 w-4 text-brand" />이 옷 수정하기
-        </p>
-        <button
-          type="button"
-          onClick={() => onOpenChange(false)}
-          aria-label="닫기"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-stone-400 hover:text-stone-700"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <GarmentEditBody
-        garment={garmentToShow}
-        onApply={onApply}
-        onRestoreRevision={onRestoreRevision}
-        onClose={() => onOpenChange(false)}
-      />
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-5 sm:max-w-lg">
+        <DialogHeader className="flex-shrink-0 pb-2 text-left">
+          <DialogTitle className="flex items-center gap-1.5 text-base">
+            <Sparkles className="h-4 w-4 text-brand" />이 옷 수정하기
+          </DialogTitle>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <GarmentEditBody
+            garment={garmentToShow}
+            onApply={onApply}
+            onRestoreRevision={onRestoreRevision}
+            onClose={() => onOpenChange(false)}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };

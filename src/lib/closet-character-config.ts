@@ -55,13 +55,69 @@ export const slotsConflictingWith = (outfit: ClosetOutfit, slot: ClosetSlot): Cl
   return [];
 };
 
-/** Maps a clothType/analysis category id (e.g. "hoodie", "long_pants", "jacket") to a closet slot. */
+/**
+ * Primary Source of Truth for garment category → closet slot. Keyed by the exact clothType id the
+ * user selected at generation time (see clothTypes in customize-constants.tsx) or the categoryKey
+ * from the production quote catalog (see quote_garment_prices) — never re-derived from an AI image
+ * analysis result. Every id a user can actually select must be listed here explicitly: a loose
+ * substring/regex match is what previously misclassified "short_sleeve" (반팔티, a TOP) as BOTTOM
+ * just because its id contains "short", and let "jumper"/"padding" (OUTER) fall through to TOP.
+ */
+export const garmentCategoryMap: Record<string, ClosetSlot> = {
+  // Tops
+  short_sleeve: "top",
+  long_sleeve: "top",
+  tights_short_sleeve: "top",
+  tights_long_sleeve: "top",
+  sweatshirt: "top",
+  hoodie: "top",
+  knit: "top",
+  shirt: "top",
+  vest: "top",
+  // Bottoms
+  pants: "bottom",
+  long_pants: "bottom",
+  short_pants: "bottom",
+  jogger_pants: "bottom",
+  denim_pants: "bottom",
+  leggings: "bottom",
+  tights_bottom: "bottom",
+  // Outer
+  jacket: "outer",
+  jacket_lined: "outer",
+  jumper: "outer",
+  jumper_lined: "outer",
+  padding: "outer",
+  coat: "outer",
+  // Dress
+  dress: "dress",
+  onepiece: "dress",
+  one_piece: "dress",
+  // Skirt
+  skirt: "skirt",
+};
+
+/**
+ * Maps a clothType/analysis category id to a closet slot. Looks up `garmentCategoryMap` first
+ * (the user's selected category always wins); only an id that isn't in that map at all — e.g. a
+ * free-form AI analysis category never offered as a selectable type — falls back to a
+ * whole-word keyword match, so a TOP id like "short_sleeve" can never be caught by a BOTTOM
+ * keyword the way a bare substring test ("short" inside "short_sleeve") did before.
+ */
 export const inferClosetSlotFromCategory = (categoryKey: string): ClosetSlot => {
-  const key = categoryKey.toLowerCase();
-  if (/dress|onepiece|one_piece/.test(key)) return "dress";
-  if (/skirt/.test(key)) return "skirt";
-  if (/jacket|coat|outer/.test(key)) return "outer";
-  if (/pants|legging|bottom|short/.test(key)) return "bottom";
+  const key = categoryKey.trim().toLowerCase();
+  const mapped = garmentCategoryMap[key];
+  if (mapped) return mapped;
+
+  const words = key.split(/[^a-z0-9가-힣]+/).filter(Boolean);
+  const hasWord = (...candidates: string[]) => candidates.some((candidate) => words.includes(candidate));
+
+  if (hasWord("dress", "onepiece", "원피스", "드레스")) return "dress";
+  if (hasWord("skirt", "스커트", "치마")) return "skirt";
+  if (hasWord("jacket", "coat", "outer", "jumper", "padding", "자켓", "재킷", "코트", "점퍼", "패딩", "아우터", "블루종"))
+    return "outer";
+  if (hasWord("pants", "legging", "leggings", "bottom", "shorts", "denim", "jogger", "trousers", "팬츠", "데님", "청바지", "조거", "반바지", "슬랙스", "레깅스"))
+    return "bottom";
   return "top";
 };
 

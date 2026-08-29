@@ -1,5 +1,6 @@
 import { urlToImageRef } from "@/lib/closet-image-ref";
 import { closetSlotLabel } from "@/lib/closet-character-config";
+import type { ActiveGarmentEntry } from "@/lib/closet-multi-estimate";
 import type { CharacterGender, ClosetGarment, ClosetSlot, GarmentFitInfo, MannequinSize } from "@/types/closet";
 import type { DesignRecord } from "@/services/designs";
 import type { ProductionEstimateImageInput } from "@/types/productionEstimate";
@@ -78,6 +79,71 @@ export const resolveGarmentQuoteImage = async (
     "no_source_image",
     "이 의류의 원본 이미지를 찾을 수 없습니다. 옷을 다시 선택하거나 업로드해주세요.",
   );
+};
+
+/** One garment inside a "현재 착용 의류 전체 견적" (whole-outfit) request. Character/mannequin size
+ * are shared across the whole request (see `MultiQuoteHandoff`) so aren't repeated per item. */
+export interface MultiQuoteGarmentItem {
+  garmentId: string;
+  slot: ClosetSlot;
+  garmentLabel: string;
+  source: ClosetGarment["source"];
+  imageUrl: string | null;
+  imageBase64: string | null;
+  imageMimeType: string | null;
+  imagePath: string | null;
+  selectedType: string | null;
+  selectedMaterial: string | null;
+  fitLabel: string | null;
+  designId: string | null;
+  fitInfo: GarmentFitInfo | null;
+  quantity: number;
+}
+
+export interface MultiQuoteHandoff {
+  character: CharacterGender;
+  mannequinSize: MannequinSize;
+  items: MultiQuoteGarmentItem[];
+  /** How many duplicate garments the picker silently collapsed before this handoff was built. */
+  removedDuplicateCount: number;
+}
+
+/**
+ * Resolves the original Garment Reference image for every entry (in parallel, reusing
+ * `resolveGarmentQuoteImage` per garment — no separate image-fetching logic for the multi-item
+ * path) and builds the handoff the whole-outfit quote page consumes.
+ */
+export const resolveMultiGarmentQuoteImages = async (
+  character: CharacterGender,
+  mannequinSize: MannequinSize,
+  entries: ActiveGarmentEntry[],
+  removedDuplicateCount: number,
+): Promise<MultiQuoteHandoff> => {
+  if (entries.length === 0) {
+    throw new QuoteImageResolutionError("no_source_image", "견적을 낼 의류가 없습니다.");
+  }
+  const items = await Promise.all(
+    entries.map(async ({ garment, quantity }): Promise<MultiQuoteGarmentItem> => {
+      const resolved = await resolveGarmentQuoteImage(garment);
+      return {
+        garmentId: garment.id,
+        slot: garment.slot,
+        garmentLabel: garment.label,
+        source: garment.source,
+        imageUrl: resolved.url,
+        imageBase64: resolved.base64,
+        imageMimeType: resolved.mimeType,
+        imagePath: garment.designRef?.imagePath || null,
+        selectedType: garment.designRef?.selectedType || null,
+        selectedMaterial: garment.designRef?.selectedMaterial || null,
+        fitLabel: garment.designRef?.fitLabel || null,
+        designId: garment.designRef?.designId || null,
+        fitInfo: garment.fitInfo || null,
+        quantity,
+      };
+    }),
+  );
+  return { character, mannequinSize, items, removedDuplicateCount };
 };
 
 const fitTypeLabel: Record<string, string> = {
@@ -177,6 +243,42 @@ export const loadPendingQuoteSnapshot = (): PendingQuoteSnapshot | null => {
 export const clearPendingQuoteSnapshot = () => {
   try {
     sessionStorage.removeItem(PENDING_QUOTE_KEY);
+  } catch {
+    // Best-effort only.
+  }
+};
+
+// --- Same refresh-survival pattern as above, for the "현재 착용 의류 전체 견적" (whole-outfit)
+// flow — a separate key so picking one flow never clobbers a pending snapshot of the other. ---
+
+const PENDING_MULTI_QUOTE_KEY = "brander-pending-multi-quote-v1";
+
+export interface PendingMultiQuoteSnapshot {
+  handoff: MultiQuoteHandoff;
+  savedAt: string;
+}
+
+export const savePendingMultiQuoteSnapshot = (snapshot: PendingMultiQuoteSnapshot) => {
+  try {
+    sessionStorage.setItem(PENDING_MULTI_QUOTE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Best-effort only — the just-navigated location.state still covers the current page load.
+  }
+};
+
+export const loadPendingMultiQuoteSnapshot = (): PendingMultiQuoteSnapshot | null => {
+  try {
+    const raw = sessionStorage.getItem(PENDING_MULTI_QUOTE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PendingMultiQuoteSnapshot;
+  } catch {
+    return null;
+  }
+};
+
+export const clearPendingMultiQuoteSnapshot = () => {
+  try {
+    sessionStorage.removeItem(PENDING_MULTI_QUOTE_KEY);
   } catch {
     // Best-effort only.
   }

@@ -23,11 +23,13 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ProductionEstimateCard } from "@/components/customize/ProductionEstimateCard";
+import { MultiGarmentEstimateView } from "@/components/customize/MultiGarmentEstimateView";
 import { toast } from "@/components/ui/use-toast";
 import { createDirectProductionRequest } from "@/services/orderCreation";
 import { createFundingDraft } from "@/services/funding";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { trackSiteEvent } from "@/lib/site-analytics";
+import { urlToImageRef } from "@/lib/closet-image-ref";
 import type {
   ProductionEstimateImageInput,
   ProductionEstimateResult,
@@ -39,8 +41,11 @@ import {
 import { characterConfig, inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import {
   buildQuoteDesignContext,
+  clearPendingMultiQuoteSnapshot,
   clearPendingQuoteSnapshot,
+  loadPendingMultiQuoteSnapshot,
   loadPendingQuoteSnapshot,
+  type MultiQuoteHandoff,
   type QuoteGarmentHandoff,
 } from "@/lib/quote-garment-handoff";
 import { getDesign, getDesignErrorMessage, type DesignRecord } from "@/services/designs";
@@ -77,9 +82,34 @@ const readFileAsBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+/** Resolves a mix of already-base64 and stored-URL image inputs down to base64 (in parallel) —
+ * `save-order`'s reference-image attachment only accepts base64, so a URL-only closet image (the
+ * common case) must be fetched once here. Any entry that fails to resolve is silently dropped. */
+const resolveImageInputsToBase64 = async (
+  inputs: ProductionEstimateImageInput[],
+): Promise<{ base64: string; mimeType: string }[]> => {
+  const resolved = await Promise.all(
+    inputs.map(async (input) => {
+      if (input.base64) return { base64: input.base64, mimeType: input.mimeType || "image/png" };
+      if (input.url) {
+        try {
+          const ref = await urlToImageRef(input.url);
+          return { base64: ref.base64, mimeType: ref.mimeType };
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }),
+  );
+  return resolved.filter((item): item is { base64: string; mimeType: string } => Boolean(item));
+};
+
 interface ClosetHandoffState {
   presetImages?: ProductionEstimateImageInput[];
   fromCloset?: QuoteGarmentHandoff;
+  /** "현재 착용 의류 전체 견적" handoff — mutually exclusive with `presetImages`/`fromCloset`. */
+  fromClosetMulti?: MultiQuoteHandoff;
 }
 
 const DesignQuote = () => {
@@ -88,20 +118,35 @@ const DesignQuote = () => {
   const [searchParams] = useSearchParams();
   const designId = searchParams.get("designId");
   const locationHandoff = (location.state as ClosetHandoffState | null) || null;
+  const hasFreshSingleNav = Boolean(locationHandoff?.presetImages?.length) || Boolean(designId);
+  const hasFreshMultiNav = Boolean(locationHandoff?.fromClosetMulti?.items?.length);
   // location.state (fresh navigation from /closet) always wins. It disappears on a page refresh —
   // for that case (and for guest/upload garments with no designId to reload from) fall back to the
   // short-lived sessionStorage snapshot the closet page saved right before navigating here, so the
   // selected garment/design/fit info a visitor was just looking at never just vanishes.
   const [snapshotHandoff] = useState<ClosetHandoffState | null>(() => {
-    if (locationHandoff?.presetImages?.length) return null;
-    if (designId) return null;
+    if (hasFreshSingleNav || hasFreshMultiNav) return null;
     const snapshot = loadPendingQuoteSnapshot();
     if (!snapshot?.presetImages?.length) return null;
     return { presetImages: snapshot.presetImages, fromCloset: snapshot.handoff };
   });
+  const [multiSnapshotHandoff] = useState<MultiQuoteHandoff | null>(() => {
+    if (hasFreshSingleNav || hasFreshMultiNav) return null;
+    return loadPendingMultiQuoteSnapshot()?.handoff || null;
+  });
   const closetHandoff = locationHandoff?.presetImages?.length ? locationHandoff : snapshotHandoff;
+  const multiHandoff = locationHandoff?.fromClosetMulti || multiSnapshotHandoff;
   const [closetImages] = useState<ProductionEstimateImageInput[] | null>(
     closetHandoff?.presetImages?.length ? closetHandoff.presetImages : null,
+  );
+  const [multiPreviewImages] = useState<ProductionEstimateImageInput[] | null>(() =>
+    multiHandoff?.items?.length
+      ? multiHandoff.items.map((item) => ({
+          url: item.imageUrl || undefined,
+          base64: item.imageBase64 || undefined,
+          mimeType: item.imageMimeType || undefined,
+        }))
+      : null,
   );
   const [design, setDesign] = useState<DesignRecord | null>(null);
   const [isLoadingDesign, setIsLoadingDesign] = useState(Boolean(designId));
@@ -237,10 +282,10 @@ const DesignQuote = () => {
     if (design.backImageUrl) list.push({ url: design.backImageUrl, mimeType: "image/png" });
     return list;
   }, [design]);
-  // closetImages (richer — every worn item, via a one-shot location.state handoff) wins on first
-  // load; designImages (via ?designId=, resolved from Supabase) is what survives a refresh once
-  // that location.state is gone.
-  const effectiveImages = closetImages ?? designImages ?? cardImages;
+  // multiPreviewImages (whole-outfit handoff) and closetImages (single-item handoff, via a one-shot
+  // location.state handoff) win on first load; designImages (via ?designId=, resolved from
+  // Supabase) is what survives a refresh once that location.state is gone.
+  const effectiveImages = multiPreviewImages ?? closetImages ?? designImages ?? cardImages;
 
   // Loads the shared `design` record by ?designId=... so this page (and a refresh of it) never
   // depends on ephemeral location.state — see src/services/designs.ts.
@@ -281,7 +326,7 @@ const DesignQuote = () => {
   }, [designId]);
 
   useEffect(() => {
-    if (closetImages?.length) {
+    if (closetImages?.length || multiPreviewImages?.length) {
       setIsAnalyzing(true);
       setAnalysisStarted(true);
     }
@@ -307,6 +352,7 @@ const DesignQuote = () => {
     setImages([]);
     resetAnalysis();
     clearPendingQuoteSnapshot();
+    clearPendingMultiQuoteSnapshot();
     fileInputRef.current?.click();
   };
 
@@ -319,49 +365,59 @@ const DesignQuote = () => {
       });
       return;
     }
-    const primaryImage = images[0];
-    if (!primaryImage) {
-      toast({
-        title: "이미지가 없습니다",
-        description: "제작 의뢰에 첨부할 이미지를 업로드해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const decorationSummary = estimate.decorations.length
-      ? estimate.decorations
-          .map(
-            (item) =>
-              `${item.locationLabel} ${item.label}`,
-          )
-          .join(", ")
-      : "없음";
-    const accessorySummary = estimate.accessories.length
-      ? estimate.accessories
-          .map((item) => `${item.label} ${item.count}개`)
-          .join(", ")
-      : "없음";
-    const detailDescription = [
-      "[내 디자인 자동견적 제작 의뢰]",
-      `생산 국가: ${productionCountryConfig[productionCountry].label}`,
-      `의류 종류: ${estimate.garment.label}`,
-      `소재: ${estimate.material.composition}`,
-      `후가공: ${decorationSummary}`,
-      `부자재: ${accessorySummary}`,
-      `제작 수량: ${estimate.totals.quantity}장`,
-      `예상 제작비: ${formatWonRange(
-        estimate.totals.totalMin,
-        estimate.totals.totalMax,
-      )} (원단 제외)`,
-      images.length > 1 ? `업로드 이미지: 총 ${images.length}장` : "",
-      requestNote.trim() ? `추가 요청: ${requestNote.trim()}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
 
     try {
       setIsSubmitting(true);
+
+      // Manually uploaded photos already carry base64. A closet handoff (single or whole-outfit)
+      // only carries a stored URL for most garments — resolve those to base64 here so the request
+      // always has real image bytes to attach, instead of silently requiring a manual upload that
+      // this flow's UI never even shows an uploader for.
+      const sourceImages =
+        images.length > 0
+          ? images.map((image) => ({ base64: image.base64, mimeType: image.mimeType }))
+          : await resolveImageInputsToBase64(effectiveImages);
+      const primaryImage = sourceImages[0];
+      if (!primaryImage) {
+        toast({
+          title: "이미지가 없습니다",
+          description: "제작 의뢰에 첨부할 이미지를 불러오지 못했습니다. 다시 시도해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const decorationSummary = estimate.decorations.length
+        ? estimate.decorations
+            .map(
+              (item) =>
+                `${item.locationLabel} ${item.label}`,
+            )
+            .join(", ")
+        : "없음";
+      const accessorySummary = estimate.accessories.length
+        ? estimate.accessories
+            .map((item) => `${item.label} ${item.count}개`)
+            .join(", ")
+        : "없음";
+      const detailDescription = [
+        multiHandoff ? "[가상피팅 전체 코디 자동견적 제작 의뢰]" : "[내 디자인 자동견적 제작 의뢰]",
+        `생산 국가: ${productionCountryConfig[productionCountry].label}`,
+        `의류 종류: ${estimate.garment.label}`,
+        `소재: ${estimate.material.composition}`,
+        `후가공: ${decorationSummary}`,
+        `부자재: ${accessorySummary}`,
+        `제작 수량: ${estimate.totals.quantity}장`,
+        `예상 제작비: ${formatWonRange(
+          estimate.totals.totalMin,
+          estimate.totals.totalMax,
+        )} (원단 제외)`,
+        sourceImages.length > 1 ? `첨부 이미지: 총 ${sourceImages.length}장` : "",
+        requestNote.trim() ? `추가 요청: ${requestNote.trim()}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
       const result = await createDirectProductionRequest({
         clothType: estimate.garment.label,
         material: estimate.material.composition,
@@ -372,7 +428,7 @@ const DesignQuote = () => {
         imagePath: null,
         imageBase64: primaryImage.base64,
         imageMimeType: primaryImage.mimeType,
-        images: images.map((image) => ({ base64: image.base64, mimeType: image.mimeType })),
+        images: sourceImages,
         requestSource: "design_upload",
         requestTitle: `${estimate.garment.label} 내 디자인 견적`,
         requestedQuantity: estimate.totals.quantity,
@@ -380,6 +436,7 @@ const DesignQuote = () => {
       });
       setSubmittedOrderId(String(result.id || "submitted"));
       clearPendingQuoteSnapshot();
+      clearPendingMultiQuoteSnapshot();
       toast({
         title: "제작 의뢰 접수 완료",
         description: "관리자가 이미지와 견적을 확인한 뒤 연락드립니다.",
@@ -387,7 +444,7 @@ const DesignQuote = () => {
       void trackSiteEvent("design_quote_submitted", {
         garment: estimate.garment.label,
         quantity: estimate.totals.quantity,
-        imageCount: images.length,
+        imageCount: sourceImages.length,
       });
     } catch (error) {
       toast({
@@ -514,7 +571,15 @@ const DesignQuote = () => {
           </div>
         </div>
 
-        {closetHandoff?.fromCloset && (
+        {multiHandoff && (
+          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-bold text-brand">
+            <Gamepad2 className="h-4 w-4" />
+            AI 가상 피팅에서 가져온 현재 착용 의류 전체 · {multiHandoff.items.length}개 품목
+            {multiHandoff.removedDuplicateCount > 0 &&
+              ` (중복 ${multiHandoff.removedDuplicateCount}개 제외)`}
+          </div>
+        )}
+        {!multiHandoff && closetHandoff?.fromCloset && (
           <div className="mb-6 flex items-center gap-2 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-bold text-brand">
             <Gamepad2 className="h-4 w-4" />
             AI 가상 피팅에서 가져온 디자인 · {closetHandoff.fromCloset.garmentLabel}
@@ -584,11 +649,11 @@ const DesignQuote = () => {
         )}
 
         <div className="grid items-start gap-6 lg:grid-cols-[0.78fr_1.22fr]">
-          {designImages || closetImages ? (
+          {designImages || closetImages || multiPreviewImages ? (
             <Card className="overflow-hidden rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
               <p className="text-sm font-extrabold text-stone-950">가져온 디자인 이미지</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                {(designImages || closetImages || []).map((image, index) => (
+                {(designImages || closetImages || multiPreviewImages || []).map((image, index) => (
                   <div
                     key={index}
                     className="aspect-square overflow-hidden rounded-xl border border-stone-200 bg-white"
@@ -783,14 +848,18 @@ const DesignQuote = () => {
                     </div>
                     <div>
                       <p className="font-bold text-gray-950">
-                        {closetHandoff?.fromCloset
-                          ? "가상 피팅에 사용한 원본 의류를 분석하고 있습니다."
-                          : `이미지 ${effectiveImages.length}장을 분석하고 있습니다`}
+                        {multiHandoff
+                          ? `착용 중인 의류 ${multiHandoff.items.length}개를 분석하고 있습니다.`
+                          : closetHandoff?.fromCloset
+                            ? "가상 피팅에 사용한 원본 의류를 분석하고 있습니다."
+                            : `이미지 ${effectiveImages.length}장을 분석하고 있습니다`}
                       </p>
                       <p className="mt-1 text-sm text-gray-500">
-                        {closetHandoff?.fromCloset
-                          ? "AI가 생성한 마네킹 착용 이미지가 아닌, 실제 등록한 의류 이미지로만 분석합니다."
-                          : "여러 이미지를 하나의 제품으로 종합해 견적을 계산합니다."}
+                        {multiHandoff
+                          ? "품목마다 독립적으로 분석한 뒤 견적을 합산합니다."
+                          : closetHandoff?.fromCloset
+                            ? "AI가 생성한 마네킹 착용 이미지가 아닌, 실제 등록한 의류 이미지로만 분석합니다."
+                            : "여러 이미지를 하나의 제품으로 종합해 견적을 계산합니다."}
                       </p>
                     </div>
                   </Card>
@@ -805,28 +874,38 @@ const DesignQuote = () => {
                 )}
 
                 <div className={isAnalyzing ? "hidden" : ""}>
-                  <ProductionEstimateCard
-                    key={design?.id || (closetImages ? "closet" : images.map((image) => image.id).join(","))}
-                    selectedType={design?.productType || closetHandoff?.fromCloset?.selectedType || ""}
-                    selectedMaterial={design?.fabric || closetHandoff?.fromCloset?.selectedMaterial || ""}
-                    images={effectiveImages}
-                    designContext={buildQuoteDesignContext(
-                      closetHandoff?.fromCloset
-                        ? {
-                            slot: closetHandoff.fromCloset.slot,
-                            label: closetHandoff.fromCloset.garmentLabel,
-                            fitInfo: closetHandoff.fromCloset.fitInfo,
-                          }
-                        : null,
-                      design,
-                      "사용자가 기존에 보유한 의류 디자인 이미지",
-                    )}
-                    editable
-                    onEstimateChange={setEstimate}
-                    onLoadingChange={setIsAnalyzing}
-                    productionCountry={productionCountry}
-                    onChangeCountry={setProductionCountry}
-                  />
+                  {multiHandoff ? (
+                    <MultiGarmentEstimateView
+                      items={multiHandoff.items}
+                      productionCountry={productionCountry}
+                      onChangeCountry={setProductionCountry}
+                      onEstimateChange={setEstimate}
+                      onLoadingChange={setIsAnalyzing}
+                    />
+                  ) : (
+                    <ProductionEstimateCard
+                      key={design?.id || (closetImages ? "closet" : images.map((image) => image.id).join(","))}
+                      selectedType={design?.productType || closetHandoff?.fromCloset?.selectedType || ""}
+                      selectedMaterial={design?.fabric || closetHandoff?.fromCloset?.selectedMaterial || ""}
+                      images={effectiveImages}
+                      designContext={buildQuoteDesignContext(
+                        closetHandoff?.fromCloset
+                          ? {
+                              slot: closetHandoff.fromCloset.slot,
+                              label: closetHandoff.fromCloset.garmentLabel,
+                              fitInfo: closetHandoff.fromCloset.fitInfo,
+                            }
+                          : null,
+                        design,
+                        "사용자가 기존에 보유한 의류 디자인 이미지",
+                      )}
+                      editable
+                      onEstimateChange={setEstimate}
+                      onLoadingChange={setIsAnalyzing}
+                      productionCountry={productionCountry}
+                      onChangeCountry={setProductionCountry}
+                    />
+                  )}
                 </div>
 
                 {estimate &&
@@ -922,7 +1001,12 @@ const DesignQuote = () => {
                         )}
                       </Button>
 
-                      {closetHandoff?.fromCloset ? (
+                      {multiHandoff ? (
+                        <p className="mt-3 text-center text-xs font-semibold text-stone-400">
+                          여러 품목 세트는 제작 의뢰로 접수해주세요. 펀딩은 품목 하나를 선택해 개별로
+                          시작할 수 있어요.
+                        </p>
+                      ) : closetHandoff?.fromCloset ? (
                         closetHandoff.fromCloset.imageUrl ? (
                           <Button
                             type="button"

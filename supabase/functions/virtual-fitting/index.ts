@@ -32,6 +32,20 @@ const slotDescriptionEn: Record<ClosetSlot, string> = {
   accessory: "accessory or other worn item (bag, hat, or similar)",
 };
 
+// Explicit anatomical placement lock per slot — image-editing models frequently confuse "top" vs
+// "bottom" slot labels when the only cue is the word itself, especially with a cropped or flat-lay
+// garment reference photo. Repeating a hard body-region boundary next to every garment reference
+// (see garmentList / garmentParts below) stops a shirt/hoodie from being rendered onto the legs.
+const slotBodyRegionEn: Record<ClosetSlot, string> = {
+  top: "BODY REGION LOCK: this covers the UPPER BODY ONLY — shoulders, arms, chest and torso, ending at the waist. It must NEVER be drawn on the legs, hips, or lower body.",
+  outer: "BODY REGION LOCK: this covers the UPPER BODY as an outer layer over the top garment — shoulders, arms and torso, ending at hip/thigh length as designed. It must NEVER be drawn on the legs alone or replace the bottom/skirt.",
+  bottom: "BODY REGION LOCK: this covers the LOWER BODY ONLY — waist, hips and legs down to the hem. It must NEVER be drawn on the chest, arms, shoulders, or torso.",
+  skirt: "BODY REGION LOCK: this covers the LOWER BODY ONLY — waist and hips down over the legs. It must NEVER be drawn on the chest, arms, shoulders, or torso.",
+  dress: "BODY REGION LOCK: this covers the FULL BODY as one garment — torso AND legs together. It replaces top, bottom and skirt at once.",
+  shoes: "BODY REGION LOCK: this covers the FEET ONLY.",
+  accessory: "BODY REGION LOCK: worn/carried at its normal location only (e.g. a bag on the hand/shoulder, a hat on the head) — never used as torso or leg clothing.",
+};
+
 // Reviewed, fixed body-shape descriptions per gender+size preset — duplicated here (not trusted from
 // the client) so the AI prompt's identity/body-shape lock can never be altered by a tampered request.
 // Keep in sync with src/lib/mannequin-presets.ts.
@@ -255,7 +269,7 @@ faceMatch: compare the candidate's face in IMAGE C against the exact close-up id
 
 sceneMatch: compare IMAGE C against IMAGE A. Judge body proportions, pose, camera angle/distance, background, and lighting — false if any visibly changed. Garment drape changing is fine; the body preset, stance, framing, backdrop and light direction/color must not change.
 
-garmentApplied: for EVERY garment reference image supplied below, confirm it is actually, visibly worn on the mannequin in IMAGE C, on the correct body region, replacing whatever previously occupied that slot. False if IMAGE C looks like the untouched reference, a garment is missing, or the wrong slot was rendered.
+garmentApplied: for EVERY garment reference image supplied below, confirm it is actually, visibly worn on the mannequin in IMAGE C, on the correct body region for its labeled slot, replacing whatever previously occupied that slot. A top/outer garment must appear on the upper body (shoulders/arms/chest/torso) — NOT on the legs. A bottom/skirt garment must appear on the lower body (waist/hips/legs) — NOT on the chest or torso. False if IMAGE C looks like the untouched reference, a garment is missing, the wrong slot was rendered, or a garment was drawn onto the wrong body region (e.g. a top's design appears on the legs, or a bottom's design appears on the torso).
 
 garmentMatch: judge design fidelity separately from whether it was applied — preserve each garment's exact color, silhouette, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve/leg shape, and material. Natural folds/occlusion from being worn are fine; redesigning the garment is not.
 
@@ -509,7 +523,7 @@ serve(async (req) => {
           fit.fabricThickness ? fabricThicknessGuidance[fit.fabricThickness] : null,
           fit.fabricDrape ? fabricDrapeGuidance[fit.fabricDrape] : null,
         ].filter(Boolean).join("; ");
-        return `Reference Image ${ordinal} (${slotDescriptionEn[garment.slot]}${garment.label ? `, "${garment.label}"` : ""}): garment to render on the mannequin in the ${garment.slot} slot.\n${fitLine}${fabricLine ? ` Fabric: ${fabricLine}.` : ""}`;
+        return `Reference Image ${ordinal} (${slotDescriptionEn[garment.slot]}${garment.label ? `, "${garment.label}"` : ""}): garment to render on the mannequin in the ${garment.slot} slot. ${slotBodyRegionEn[garment.slot]}\n${fitLine}${fabricLine ? ` Fabric: ${fabricLine}.` : ""}`;
       })
       .join("\n\n");
 
@@ -520,7 +534,7 @@ serve(async (req) => {
       : "";
     const replacedSlotsInstruction = garments.length > 0
       ? garments.map((garment) =>
-          `REMOVE THE CURRENT ${garment.slot.toUpperCase()} GARMENT AND REPLACE IT WITH THE PROVIDED ${garment.slot.toUpperCase()} GARMENT REFERENCE. Do not leave the old ${garment.slot} in place, and do not layer the new one on top of it.`)
+          `REMOVE THE CURRENT ${garment.slot.toUpperCase()} GARMENT AND REPLACE IT WITH THE PROVIDED ${garment.slot.toUpperCase()} GARMENT REFERENCE. Do not leave the old ${garment.slot} in place, and do not layer the new one on top of it. ${slotBodyRegionEn[garment.slot]}`)
         .join("\n")
       : "";
 
@@ -529,7 +543,7 @@ EDIT Reference Image 1. This is a constrained image edit for an AI VIRTUAL FITTI
 
 Reference Image 1 is the canonical full-body Mannequin Body Reference for ${gender} size ${mannequinSize.toUpperCase()}. Reference Image 2 is the dedicated close-up Face Identity Reference and the highest-priority identity anchor.
 
-THE 8 RULES OF THIS PIPELINE (apply all of them together — none excuses skipping another):
+THE 9 RULES OF THIS PIPELINE (apply all of them together — none excuses skipping another):
 1. Do not change the face from Reference Image 2 or the mannequin's identity in any way.
 2. Preserve exactly the body shape for the selected size (${bodyDescription}) — do not slim it down, exaggerate it, or drift toward a different size.
 3. Do not change pose, background, camera angle/distance, or lighting.
@@ -538,6 +552,7 @@ THE 8 RULES OF THIS PIPELINE (apply all of them together — none excuses skippi
 6. Keep every other currently worn garment (any slot not part of this request) exactly as it was.
 7. Show only realistic tension/ease/wrinkles/silhouette that would actually result from this garment on this body and fit type — never invent damage, never distort the body to force a look.
 8. Return one full-body image, same aspect ratio as Reference Image 1, with nothing cropped (full body and full garments visible).
+9. BODY REGION LOCK (very common mistake — check this before finishing): a top/outer garment reference must be drawn ONLY on the upper body (shoulders/arms/chest/torso down to the waist); a bottom/skirt garment reference must be drawn ONLY on the lower body (waist/hips/legs). Never draw a top garment's design on the legs, and never draw a bottom garment's design on the torso — each garment reference's own per-image BODY REGION LOCK note (below) states which one it is.
 
 DO NOT REFUSE TO APPLY THE GARMENT. DO NOT RETURN THE MANNEQUIN WITHOUT THE NEW GARMENT. A render that keeps identity perfect but fails to show the new garment is a FAILED result.
 
@@ -568,7 +583,7 @@ OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full b
     const garmentParts: Array<Record<string, unknown>> = [];
     garments.forEach((garment, index) => {
       garmentParts.push(
-        { text: `Reference Image ${index + 3}: EXACT GARMENT IDENTITY for ${slotDescriptionEn[garment.slot]} (front view).` },
+        { text: `Reference Image ${index + 3}: EXACT GARMENT IDENTITY for ${slotDescriptionEn[garment.slot]} (front view). ${slotBodyRegionEn[garment.slot]}` },
         { inlineData: { data: garment.base64, mimeType: garment.mimeType } },
       );
       if (garment.backBase64 && garment.backMimeType) {

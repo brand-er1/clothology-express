@@ -49,6 +49,7 @@ jobs:
           supabase functions deploy dress-character --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy virtual-fitting --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy edit-closet-garment --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy generate-multi-angle --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy screen-trademark-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy kakaopay-ready --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy kakaopay-approve --project-ref "$SUPABASE_PROJECT_ID"

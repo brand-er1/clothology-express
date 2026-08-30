@@ -1,4 +1,5 @@
 import { getMannequinPreset } from "@/lib/mannequin-presets";
+import { MultiAngleViewer } from "@/components/visualization/MultiAngleViewer";
 import type { CharacterGender, MannequinSize } from "@/types/closet";
 
 interface DressingCanvasProps {
@@ -33,6 +34,16 @@ export const DressingCanvas = ({
         alt={preset.label}
         className="absolute inset-0 h-full w-full object-contain p-6"
       />
+      {renderedCharacterImage && (
+        <div className="absolute right-3 top-3 z-10 sm:right-4 sm:top-4">
+          <MultiAngleViewer
+            sourceImageUrl={renderedCharacterImage}
+            mode="fitting"
+            triggerLabel="360° 보기"
+            className="h-9 bg-white/95 px-3 text-xs"
+          />
+        </div>
+      )}
       {renderedCharacterImage && isSimulated && (
         <span className="absolute bottom-3 left-3 right-3 rounded-xl bg-stone-950/80 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-white">
           본 이미지는 선택한 체형과 핏 정보를 기반으로 생성된 AI 시뮬레이션이며, 실제 착용 결과와 차이가 있을 수 있습니다.

@@ -16,16 +16,12 @@ export interface MultiAngleResult {
   isAiGenerated: boolean;
 }
 
-const sessionCache = new Map<string, MultiAngleResult>();
+// Caches the in-flight/resolved promise (not just the settled result) so two viewers requesting the
+// same source image/mode at nearly the same time — e.g. the inline mannequin drag surface and the
+// fullscreen modal button — share a single AI generation call instead of racing two.
+const sessionCache = new Map<string, Promise<MultiAngleResult>>();
 
-export const generateMultiAngle = async (
-  sourceImageUrl: string,
-  mode: MultiAngleMode,
-): Promise<MultiAngleResult> => {
-  const cacheKey = `${mode}:${sourceImageUrl}`;
-  const cached = sessionCache.get(cacheKey);
-  if (cached) return cached;
-
+const requestMultiAngle = async (sourceImageUrl: string, mode: MultiAngleMode): Promise<MultiAngleResult> => {
   const { data, error } = await supabase.functions.invoke("generate-multi-angle", {
     body: {
       sourceImageUrl,
@@ -52,6 +48,19 @@ export const generateMultiAngle = async (
     throw new Error("충분한 각도의 이미지를 생성하지 못했습니다. 다시 시도해주세요.");
   }
 
-  sessionCache.set(cacheKey, result);
   return result;
+};
+
+export const generateMultiAngle = (sourceImageUrl: string, mode: MultiAngleMode): Promise<MultiAngleResult> => {
+  const cacheKey = `${mode}:${sourceImageUrl}`;
+  const cached = sessionCache.get(cacheKey);
+  if (cached) return cached;
+
+  const pending = requestMultiAngle(sourceImageUrl, mode).catch((error) => {
+    // A failed request must not stick around as a poisoned cache entry — let the next ensure() retry.
+    sessionCache.delete(cacheKey);
+    throw error;
+  });
+  sessionCache.set(cacheKey, pending);
+  return pending;
 };

@@ -85,6 +85,10 @@ export default {
           "0%, 100%": { transform: "translateY(0) rotate(-2deg)" },
           "50%": { transform: "translateY(-10px) rotate(2deg)" },
         },
+        swipeHint: {
+          "0%, 100%": { transform: "translateX(-6px)", opacity: "0.55" },
+          "50%": { transform: "translateX(6px)", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -92,6 +96,7 @@ export default {
         fadeIn: "fadeIn 0.5s ease-out",
         slideUp: "slideUp 0.5s ease-out",
         "mascot-bounce": "mascotBounce 0.32s ease-in-out infinite",
+        "swipe-hint": "swipeHint 1.6s ease-in-out infinite",
       },
     },
   },

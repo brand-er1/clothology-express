@@ -23,10 +23,16 @@ interface OrderData {
   imageMimeType?: string | null;
   /** Full set of reference images uploaded for a multi-image design-quote request (up to 10). */
   images?: ReferenceImageInput[] | null;
-  requestSource?: 'ai_design' | 'design_upload' | 'ready_made_group_wear';
+  requestSource?: 'ai_design' | 'design_upload' | 'ready_made_group_wear' | 'virtual_fitting_3d';
   requestTitle?: string | null;
   requestedQuantity?: number | null;
   estimateSnapshot?: Record<string, unknown> | null;
+  /** Gender/size/per-slot garment summary from the 3D virtual-fitting flow (see
+   * src/lib/fitting-preview.ts#serializeFittingStateForHandoff on the client). Opaque here. */
+  fittingState?: Record<string, unknown> | null;
+  /** Hosted URL of the 3D mannequin screenshot or AI 피팅 photoreal render, already uploaded
+   * client-side — this function never uploads it, only stores the URL. */
+  fittingPreviewUrl?: string | null;
   status: 'pending' | 'approved' | 'rejected' | 'draft' | 'deleted';
   /** Contact info for a guest (not logged in) submission — only used/required when
    * requestSource is 'ready_made_group_wear' and no authenticated user was found. */
@@ -412,6 +418,8 @@ Deno.serve(async (req) => {
       front_preview_url: frontPreviewUrl,
       back_preview_url: backPreviewUrl,
       ready_made_design_data: orderData.readyMadeDesignData || null,
+      fitting_state: orderData.fittingState || null,
+      fitting_preview_url: orderData.fittingPreviewUrl || null,
       status: orderData.status
     };
 

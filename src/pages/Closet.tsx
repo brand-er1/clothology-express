@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Download, Loader2, RefreshCw, Ruler, Shirt, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -15,6 +15,14 @@ import { ClosetGarmentStudio } from "@/components/closet/ClosetGarmentStudio";
 import { MyWardrobeList } from "@/components/closet/MyWardrobeList";
 import { GarmentEditPanel } from "@/components/closet/GarmentEditPanel";
 import { QuoteGarmentPicker } from "@/components/closet/QuoteGarmentPicker";
+import { FittingOutfitEstimatePanel } from "@/components/closet/FittingOutfitEstimatePanel";
+import type { Mannequin3DViewerHandle } from "@/components/fitting3d/Mannequin3DViewer";
+
+// Three.js/@react-three-fiber only load when a visitor actually opens the closet (spec §16: never
+// preload the 3D bundle up front) — this keeps every other page's load time unaffected.
+const Mannequin3DViewer = lazy(() =>
+  import("@/components/fitting3d/Mannequin3DViewer").then((module) => ({ default: module.Mannequin3DViewer })),
+);
 import { characterConfig, closetSlotLabel, closetSlotOrder, slotsConflictingWith } from "@/lib/closet-character-config";
 import { defaultMannequinSize, isMannequinSizeForGender, mannequinSizeShortLabel } from "@/lib/mannequin-presets";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
@@ -29,6 +37,7 @@ import { generateImage } from "@/services/imageGeneration";
 import { logClosetActivity } from "@/services/closetActivityLog";
 import {
   addToMyWardrobe,
+  clearOutfit,
   loadMyWardrobe,
   removeFromMyWardrobe,
   setCharacter,
@@ -83,6 +92,10 @@ const Closet = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showQuoteGarmentPicker, setShowQuoteGarmentPicker] = useState(false);
   const [isPreparingQuote, setIsPreparingQuote] = useState(false);
+  // 3D interactive mannequin is the default view (spec §4); "2d" shows the existing AI 피팅
+  // photoreal render/base preset image — same DressingCanvas as before, untouched.
+  const [viewMode, setViewMode] = useState<"3d" | "2d">("3d");
+  const mannequin3DRef = useRef<Mannequin3DViewerHandle>(null);
   const latestDressingRequest = useRef(0);
   const editingGarment = myWardrobe.find((item) => item.id === editingGarmentId) || null;
 
@@ -204,6 +217,18 @@ const Closet = () => {
       return;
     }
     void runDressing(targetOutfit, character, mannequinSize, { changedSlots: [slot] });
+  };
+
+  // "전체 초기화" (spec §6): removes every worn garment but keeps gender/size — mirrors handleRemove's
+  // cancel-in-flight-request pattern, just for every slot at once instead of one.
+  const handleClearOutfit = () => {
+    if (wornSlotCount === 0) return;
+    if (!window.confirm("착용 중인 모든 의류를 벗을까요? 성별·사이즈 설정은 유지됩니다.")) return;
+    latestDressingRequest.current += 1;
+    setIsDressing(false);
+    clearOutfit();
+    setViewMode("3d");
+    setShowBeforeAfter("after");
   };
 
   const handleUpdateFitInfo = (slot: ClosetSlot, fitInfo: GarmentFitInfo) => {
@@ -497,16 +522,74 @@ const Closet = () => {
 
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
               <div>
+                <div className="mb-2 flex items-center justify-center gap-1.5">
+                  <div className="inline-flex rounded-full border border-stone-200 bg-white p-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("3d")}
+                      className={`rounded-full px-3 py-1.5 font-bold transition ${
+                        viewMode === "3d" ? "bg-stone-900 text-white" : "text-stone-500"
+                      }`}
+                    >
+                      3D 마네킹
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("2d")}
+                      disabled={!renderedCharacterImage}
+                      className={`rounded-full px-3 py-1.5 font-bold transition disabled:opacity-40 ${
+                        viewMode === "2d" ? "bg-stone-900 text-white" : "text-stone-500"
+                      }`}
+                    >
+                      AI 피팅 결과
+                    </button>
+                  </div>
+                </div>
+
                 <div className="relative">
-                  <DressingCanvas
-                    character={character}
-                    mannequinSize={mannequinSize}
-                    renderedCharacterImage={displayedImage}
-                    isSimulated={lastRenderIsSimulated}
-                  />
+                  {viewMode === "3d" ? (
+                    <Suspense
+                      fallback={
+                        <div className="flex aspect-[3/4] w-full animate-pulse items-center justify-center rounded-[1.75rem] bg-stone-200 text-xs font-bold text-stone-400">
+                          가상 마네킹을 준비하고 있습니다...
+                        </div>
+                      }
+                    >
+                      <Mannequin3DViewer ref={mannequin3DRef} gender={character} mannequinSize={mannequinSize} outfit={outfit} />
+                    </Suspense>
+                  ) : (
+                    <DressingCanvas
+                      character={character}
+                      mannequinSize={mannequinSize}
+                      renderedCharacterImage={displayedImage}
+                      isSimulated={lastRenderIsSimulated}
+                    />
+                  )}
                   <DressingLoadingOverlay active={isDressing} />
                 </div>
-                {renderedCharacterImage && (
+
+                {viewMode === "3d" && (
+                  <div className="mt-3 flex justify-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 rounded-full border-brand/30 bg-white text-xs font-bold text-brand"
+                      onClick={() => {
+                        setViewMode("2d");
+                        setShowBeforeAfter("after");
+                        void runDressing(outfit, character, mannequinSize, {
+                          changedSlots: wornGarments(outfit).map((garment) => garment.slot),
+                        });
+                      }}
+                      disabled={isDressing || wornSlotCount === 0}
+                    >
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      AI 피팅으로 자세히 보기
+                    </Button>
+                  </div>
+                )}
+
+                {viewMode === "2d" && renderedCharacterImage && (
                   <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                     <div className="inline-flex rounded-full border border-stone-200 bg-white p-1 text-xs">
                       <button
@@ -578,7 +661,17 @@ const Closet = () => {
                       onRestoreRevision={handleRestoreRevision}
                     />
                     <Card className="rounded-[1.5rem] border-stone-200 bg-white p-5 shadow-sm">
-                      <p className="mb-1 text-sm font-black text-stone-950">코디 아이템</p>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <p className="text-sm font-black text-stone-950">코디 아이템</p>
+                        <button
+                          type="button"
+                          onClick={handleClearOutfit}
+                          disabled={wornSlotCount === 0}
+                          className="text-xs font-bold text-stone-400 underline decoration-dotted underline-offset-2 hover:text-stone-600 disabled:opacity-40"
+                        >
+                          전체 초기화
+                        </button>
+                      </div>
                       <p className="mb-3 text-xs leading-5 text-stone-500">
                         옷을 고르고, 톱니바퀴 아이콘으로 기준 사이즈·핏·실측값·원단 정보를 입력한 뒤
                         아래 "AI 피팅 생성"을 눌러주세요.
@@ -710,6 +803,17 @@ const Closet = () => {
                         </Button>
                       </div>
                     </Card>
+
+                    {wornSlotCount > 1 && (
+                      <FittingOutfitEstimatePanel
+                        character={character}
+                        mannequinSize={mannequinSize}
+                        outfit={outfit}
+                        renderedCharacterImage={renderedCharacterImage}
+                        getScreenshot={() => mannequin3DRef.current?.captureScreenshot() ?? null}
+                      />
+                    )}
+
                     <Button
                       type="button"
                       variant="ghost"

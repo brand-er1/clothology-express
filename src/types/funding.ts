@@ -1,4 +1,5 @@
 import type { TrademarkScreening } from "@/types/trademark";
+import type { FittingStateSnapshot } from "@/types/fitting";
 
 export type FundingStatus = "pending" | "approved" | "rejected" | "closed";
 export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
@@ -40,6 +41,11 @@ export type Funding = {
   sample_image_path: string | null;
   sample_note: string | null;
   sample_shared_at: string | null;
+  /** Gender/size/per-slot garment summary when this funding was started from the 3D 가상피팅 flow
+   * ("이 디자인으로 펀딩 시작"). See src/lib/fitting-preview.ts. */
+  fitting_state: FittingStateSnapshot | null;
+  /** 3D mannequin screenshot or AI 피팅 photoreal render URL, shown on the funding detail page. */
+  fitting_preview_url: string | null;
 };
 
 export type FundingPaymentIntent = {
@@ -68,6 +74,9 @@ export type CreateFundingInput = {
   estimateDirectUnitMax?: number | null;
   estimateDevelopmentTotal?: number | null;
   trademarkScreeningId: string;
+  /** Only set when this funding was started from the 3D 가상피팅 "이 디자인으로 펀딩 시작" flow. */
+  fittingState?: FittingStateSnapshot | null;
+  fittingPreviewUrl?: string | null;
 };
 
 export type FundingParticipation = {

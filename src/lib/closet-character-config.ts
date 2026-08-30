@@ -55,13 +55,21 @@ export const slotsConflictingWith = (outfit: ClosetOutfit, slot: ClosetSlot): Cl
   return [];
 };
 
-/** Maps a clothType/analysis category id (e.g. "hoodie", "long_pants", "jacket") to a closet slot. */
+/**
+ * Maps a clothType/analysis category id (e.g. "hoodie", "long_pants", "jacket") to a closet slot.
+ *
+ * The bare `/short/` check below used to match top-only ids like "short_sleeve" and
+ * "tights_short_sleeve" (both `category: "tops"` in customize-constants.tsx) and mis-route them to
+ * "bottom" — "short" only means a bottom when it's paired with "pants"/"shorts", never with
+ * "sleeve". Check for a sleeve-length id first so it can never fall through to the bottom branch.
+ */
 export const inferClosetSlotFromCategory = (categoryKey: string): ClosetSlot => {
   const key = categoryKey.toLowerCase();
   if (/dress|onepiece|one_piece/.test(key)) return "dress";
   if (/skirt/.test(key)) return "skirt";
   if (/jacket|coat|outer/.test(key)) return "outer";
-  if (/pants|legging|bottom|short/.test(key)) return "bottom";
+  if (/sleeve/.test(key)) return "top";
+  if (/pants|legging|bottom|shorts?(?:_|$)/.test(key)) return "bottom";
   return "top";
 };
 

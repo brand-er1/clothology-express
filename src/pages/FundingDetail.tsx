@@ -20,7 +20,8 @@ import {
 } from "@/services/funding";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import type { Funding } from "@/types/funding";
-import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
+import { characterConfig, inferClosetSlotFromCategory } from "@/lib/closet-character-config";
+import { mannequinSizeShortLabel } from "@/lib/mannequin-presets";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -277,6 +278,20 @@ const FundingDetail = () => {
                 Limited pre-order
               </span>
             </div>
+            {funding.fitting_preview_url && (
+              <div className="flex items-center gap-3 border-t border-black/10 bg-[#f3f1ed] px-5 py-4">
+                <img
+                  src={funding.fitting_preview_url}
+                  alt="가상 피팅 착용 모습"
+                  className="h-16 w-16 shrink-0 rounded-lg border border-black/10 object-cover"
+                />
+                <p className="text-xs leading-5 text-stone-600">
+                  BRAND-ER 가상 피팅에서
+                  {funding.fitting_state ? ` ${characterConfig[funding.fitting_state.gender].label} ${mannequinSizeShortLabel[funding.fitting_state.size]}` : ""}
+                  {" "}체형에 착용해본 모습이에요.
+                </p>
+              </div>
+            )}
           </section>
 
           <aside className="lg:sticky lg:top-28" data-mascot-safezone>

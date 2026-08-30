@@ -90,6 +90,8 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       current_orders: 0,
       funding_days: 30,
       status: "pending",
+      fitting_state: input.fittingState ?? null,
+      fitting_preview_url: input.fittingPreviewUrl ?? null,
     })
     .select("*")
     .single();

@@ -22,6 +22,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { ReadyMadeOrderPreview } from "@/components/admin/ReadyMadeOrderPreview";
+import { FittingOutfitOrderPreview } from "@/components/admin/FittingOutfitOrderPreview";
 
 interface OrderReviewDialogProps {
   order: Order | null;
@@ -63,6 +64,9 @@ export const OrderReviewDialog = ({
     order &&
       order.request_source === "ready_made_group_wear" &&
       (order.front_preview_url || order.back_preview_url),
+  );
+  const hasFittingPreview = Boolean(
+    order && order.request_source === "virtual_fitting_3d" && order.fitting_state,
   );
 
   // 주문 정보가 변경되면 댓글 초기화 및 사용자 정보 가져오기
@@ -196,11 +200,18 @@ export const OrderReviewDialog = ({
                   빠른 단체복 제작
                 </Badge>
               )}
+              {order.request_source === "virtual_fitting_3d" && (
+                <Badge variant="outline" className="border-brand/30 bg-brand/5 text-brand">
+                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                  3D 가상피팅 코디
+                </Badge>
+              )}
             </div>
 
             {hasReadyMadePreview && (
               <ReadyMadeOrderPreview order={order} originalImageUrl={imageUrl} />
             )}
+            {hasFittingPreview && <FittingOutfitOrderPreview order={order} />}
 
             {estimate && (
               <div className="grid gap-3 rounded-2xl border border-brand/15 bg-brand/5 p-4 sm:grid-cols-3">
@@ -233,7 +244,7 @@ export const OrderReviewDialog = ({
 
             <div
               className={
-                hasReadyMadePreview
+                hasReadyMadePreview || hasFittingPreview
                   ? "grid grid-cols-1 gap-4"
                   : "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
               }
@@ -284,7 +295,7 @@ export const OrderReviewDialog = ({
                 )}
               </div>
 
-              {!hasReadyMadePreview && (
+              {!hasReadyMadePreview && !hasFittingPreview && (
                 <div>
                   <h3 className="font-semibold mb-2 text-base md:text-lg">
                     고객 디자인 이미지

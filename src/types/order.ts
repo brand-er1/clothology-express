@@ -13,7 +13,7 @@ export type Order = {
   image_path?: string | null;
   /** Full set of reference images uploaded for a multi-image design-quote request (storage paths). */
   reference_image_paths?: string[] | null;
-  request_source?: "ai_design" | "design_upload" | "ready_made_group_wear" | string;
+  request_source?: "ai_design" | "design_upload" | "ready_made_group_wear" | "virtual_fitting_3d" | string;
   request_title?: string | null;
   requested_quantity?: number | null;
   estimate_snapshot?: import("./productionEstimate").ProductionEstimateResult | null;
@@ -31,4 +31,10 @@ export type Order = {
   front_preview_url?: string | null;
   back_preview_url?: string | null;
   ready_made_design_data?: import("./readyMadeOrder").ReadyMadeOrderDesignData | null;
+  /** Gender/size/per-slot garment summary when this order came from the 3D 가상피팅 flow
+   * ("현재 착용 의류 전체 견적받기" → 제작의뢰). See src/lib/fitting-preview.ts. Only set for
+   * request_source "virtual_fitting_3d". */
+  fitting_state?: import("@/types/fitting").FittingStateSnapshot | null;
+  /** 3D mannequin screenshot or AI 피팅 photoreal render URL captured at submission time. */
+  fitting_preview_url?: string | null;
 };

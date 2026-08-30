@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 import { clothTypes, styleOptions, pocketOptions, colorOptions, fitOptions } from "@/lib/customize-constants";
 import { Material, CustomMeasurements, SizeTableItem } from "@/types/customize";
 import type { ProductionEstimateResult } from "@/types/productionEstimate";
+import type { FittingStateSnapshot } from "@/types/fitting";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 
 export interface DirectProductionRequestInput {
@@ -18,10 +19,15 @@ export interface DirectProductionRequestInput {
   imageMimeType?: string | null;
   /** Full set of reference images for a multi-image design-quote request (up to 10). */
   images?: Array<{ base64: string; mimeType: string }> | null;
-  requestSource?: "ai_design" | "design_upload";
+  requestSource?: "ai_design" | "design_upload" | "virtual_fitting_3d";
   requestTitle?: string | null;
   requestedQuantity?: number | null;
   estimateSnapshot?: ProductionEstimateResult | null;
+  /** Which mannequin (gender/size) + slot garments produced this request — see fitting-preview.ts.
+   * Only set by the 3D virtual-fitting "전체 견적받기" → 제작의뢰 flow. */
+  fittingState?: FittingStateSnapshot | null;
+  /** Hosted URL of the 3D mannequin screenshot or AI 피팅 photoreal render at submission time. */
+  fittingPreviewUrl?: string | null;
 }
 
 export const createDirectProductionRequest = async (
@@ -64,6 +70,8 @@ export const createDirectProductionRequest = async (
       requestTitle: input.requestTitle,
       requestedQuantity: input.requestedQuantity,
       estimateSnapshot: input.estimateSnapshot,
+      fittingState: input.fittingState,
+      fittingPreviewUrl: input.fittingPreviewUrl,
       status: "pending",
     },
   });

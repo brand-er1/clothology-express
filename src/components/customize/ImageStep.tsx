@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -6,6 +5,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { MultiAngleViewer } from "@/components/visualization/MultiAngleViewer";
 import { ImageOff, Maximize2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -40,8 +40,7 @@ export const ImageStep = ({
 }: ImageStepProps) => {
   const [imageErrors, setImageErrors] = useState<boolean[]>([]);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-  
-  // Reset error state when image URLs array changes
+
   useEffect(() => {
     if (generatedImageUrls) {
       setImageErrors(new Array(generatedImageUrls.length).fill(false));
@@ -49,7 +48,7 @@ export const ImageStep = ({
       setImageErrors([]);
     }
   }, [generatedImageUrls]);
-  
+
   return (
     <>
     <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
@@ -61,7 +60,7 @@ export const ImageStep = ({
               선택하신 옵션을 바탕으로 AI가 의상 이미지를 생성합니다. 다음 단계에서 디테일하게 디자인을 수정할 수 있습니다.
             </p>
           </div>
-          
+
           {isLoading && !generatedImageUrls ? (
             <div className="flex min-h-[520px] w-full items-center justify-center rounded-2xl bg-gray-100 sm:min-h-[660px]">
               <div className="flex flex-col items-center space-y-2">
@@ -127,6 +126,16 @@ export const ImageStep = ({
                         <p className="text-sm text-gray-500">이미지를 불러올 수 없습니다</p>
                       </div>
                     )}
+                    {!imageErrors[index] && resolvedImageUrl && (
+                      <div className="absolute bottom-3 left-3 z-10 sm:bottom-4 sm:left-4">
+                        <MultiAngleViewer
+                          sourceImageUrl={resolvedImageUrl}
+                          mode="garment"
+                          triggerLabel="360° 다각면"
+                          className="h-9 px-3 text-xs"
+                        />
+                      </div>
+                    )}
                   </div>
                   );
                 })}
@@ -134,7 +143,7 @@ export const ImageStep = ({
               <p className="px-1 text-center text-[13px] leading-5 text-stone-500 sm:hidden">
                 이미지를 누르면 화면 전체로 더 크게 확인할 수 있어요.
               </p>
-              
+
               <Button
                 onClick={onGenerateImage}
                 variant="outline"
@@ -184,7 +193,7 @@ export const ImageStep = ({
               <span className="text-gray-600">소재:</span>
               <span className="text-right font-medium">{selectedMaterial || "-"}</span>
             </div>
-            
+
             <div className="pt-2 border-t">
               <span className="text-[14px] text-gray-600 sm:text-sm">상세 설명:</span>
               <p className="mt-1 whitespace-pre-wrap text-[14px] leading-6 sm:text-sm">{selectedDetail || "-"}</p>

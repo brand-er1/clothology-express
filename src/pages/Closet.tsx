@@ -15,13 +15,17 @@ import { ClosetGarmentStudio } from "@/components/closet/ClosetGarmentStudio";
 import { MyWardrobeList } from "@/components/closet/MyWardrobeList";
 import { GarmentEditPanel } from "@/components/closet/GarmentEditPanel";
 import { QuoteGarmentPicker } from "@/components/closet/QuoteGarmentPicker";
+import { WholeOutfitEstimatePicker } from "@/components/closet/WholeOutfitEstimatePicker";
 import { characterConfig, closetSlotLabel, closetSlotOrder, slotsConflictingWith } from "@/lib/closet-character-config";
 import { defaultMannequinSize, isMannequinSizeForGender, mannequinSizeShortLabel } from "@/lib/mannequin-presets";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
+import { buildActiveGarmentEntries, deduplicateGarmentEntries, type ActiveGarmentEntry } from "@/lib/closet-multi-estimate";
 import {
   QuoteImageResolutionError,
   resolveGarmentQuoteImage,
+  resolveMultiGarmentQuoteImages,
   savePendingQuoteSnapshot,
+  savePendingMultiQuoteSnapshot,
   type QuoteGarmentHandoff,
 } from "@/lib/quote-garment-handoff";
 import { runVirtualFitting, withDefaultFitInfo } from "@/services/virtualFitting";
@@ -83,6 +87,10 @@ const Closet = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showQuoteGarmentPicker, setShowQuoteGarmentPicker] = useState(false);
   const [isPreparingQuote, setIsPreparingQuote] = useState(false);
+  const [showWholeOutfitPicker, setShowWholeOutfitPicker] = useState(false);
+  const [wholeOutfitEntries, setWholeOutfitEntries] = useState<ActiveGarmentEntry[]>([]);
+  const [wholeOutfitRemovedCount, setWholeOutfitRemovedCount] = useState(0);
+  const [isPreparingWholeOutfitQuote, setIsPreparingWholeOutfitQuote] = useState(false);
   const latestDressingRequest = useRef(0);
   const editingGarment = myWardrobe.find((item) => item.id === editingGarmentId) || null;
 
@@ -399,6 +407,52 @@ const Closet = () => {
     void navigateToQuote(designGarments[0]);
   };
 
+  // "현재 착용 의류 전체 견적" — detects every currently worn design garment straight from the live
+  // outfit state (never wardrobe/DB history, so a stale duplicate can't leak in), collapses any
+  // duplicate before the visitor ever sees the preview, and opens the checklist for confirmation.
+  const goToWholeOutfitQuote = () => {
+    const { entries, removedCount } = buildActiveGarmentEntries(outfit);
+    if (entries.length === 0) {
+      toast({
+        title: "견적을 낼 디자인이 없어요",
+        description: "AI로 만들거나 직접 업로드한 옷을 먼저 입혀주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setWholeOutfitEntries(entries);
+    setWholeOutfitRemovedCount(removedCount);
+    setShowWholeOutfitPicker(true);
+  };
+
+  const confirmWholeOutfitQuote = async (selected: ActiveGarmentEntry[]) => {
+    // Defensive final dedupe pass right before resolving images/pricing — the picker's own list
+    // was already deduped, but this guarantees the pricing step never sees a repeated garment even
+    // if something changed while the picker was open.
+    const { deduped, removedCount: extraRemoved } = deduplicateGarmentEntries(selected);
+
+    setIsPreparingWholeOutfitQuote(true);
+    try {
+      const handoff = await resolveMultiGarmentQuoteImages(
+        character,
+        mannequinSize,
+        deduped,
+        wholeOutfitRemovedCount + extraRemoved,
+      );
+      savePendingMultiQuoteSnapshot({ handoff, savedAt: new Date().toISOString() });
+      setShowWholeOutfitPicker(false);
+      navigate("/design-quote", { state: { fromClosetMulti: handoff } });
+    } catch (error) {
+      const description =
+        error instanceof QuoteImageResolutionError
+          ? error.message
+          : "자동견적을 준비하지 못했습니다. 잠시 후 다시 시도해주세요.";
+      toast({ title: "자동견적을 불러오지 못했습니다", description, variant: "destructive" });
+    } finally {
+      setIsPreparingWholeOutfitQuote(false);
+    }
+  };
+
   useEffect(() => {
     setPendingCharacter(character);
   }, [character]);
@@ -674,21 +728,39 @@ const Closet = () => {
                       <p className="mt-1 text-xs text-stone-500">
                         비회원도 견적을 볼 수 있어요. 제작 의뢰·펀딩 등록은 로그인 후 이어서 진행돼요.
                       </p>
-                      <Button
-                        type="button"
-                        className="mt-3 h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
-                        onClick={goToQuote}
-                        disabled={isPreparingQuote}
-                      >
-                        {isPreparingQuote ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            원본 의류 준비 중...
-                          </>
-                        ) : (
-                          "💰 이 옷 자동견적 확인하기"
-                        )}
-                      </Button>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <Button
+                          type="button"
+                          className="h-12 rounded-full bg-brand text-sm font-bold hover:bg-brand-dark sm:text-base"
+                          onClick={goToQuote}
+                          disabled={isPreparingQuote}
+                        >
+                          {isPreparingQuote ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              준비 중...
+                            </>
+                          ) : (
+                            "💰 선택한 의류 견적"
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 rounded-full border-brand/40 bg-white text-sm font-bold text-brand hover:bg-brand/5 sm:text-base"
+                          onClick={goToWholeOutfitQuote}
+                          disabled={isPreparingWholeOutfitQuote}
+                        >
+                          {isPreparingWholeOutfitQuote ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              준비 중...
+                            </>
+                          ) : (
+                            "🧾 현재 착용 의류 전체 견적"
+                          )}
+                        </Button>
+                      </div>
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <Button
                           type="button"
@@ -739,6 +811,14 @@ const Closet = () => {
         garments={wornDesignGarments(outfit)}
         onSelect={(garment) => void navigateToQuote(garment)}
         isPreparing={isPreparingQuote}
+      />
+      <WholeOutfitEstimatePicker
+        open={showWholeOutfitPicker}
+        onOpenChange={setShowWholeOutfitPicker}
+        entries={wholeOutfitEntries}
+        removedDuplicateCount={wholeOutfitRemovedCount}
+        isPreparing={isPreparingWholeOutfitQuote}
+        onConfirm={(selected) => void confirmWholeOutfitQuote(selected)}
       />
     </div>
   );

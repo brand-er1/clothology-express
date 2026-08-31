@@ -15,6 +15,7 @@ import { withNewGarmentRevision } from "@/lib/closet-store";
 import { editGarment } from "@/services/closetGarmentEdit";
 import { saveDesign } from "@/services/designs";
 import { RevisionHistory } from "@/components/closet/RevisionHistory";
+import { MultiAngleViewer } from "@/components/visualization/MultiAngleViewer";
 import type { ClosetGarment } from "@/types/closet";
 
 const suggestionChips = [
@@ -138,14 +139,26 @@ const GarmentEditBody = ({
             <div className="hidden grid-cols-2 gap-3 sm:grid">
               <div>
                 <p className="mb-1 text-center text-[11px] font-bold text-stone-400">수정 전</p>
-                <div className="flex aspect-square items-center justify-center rounded-2xl bg-[#f4f0ea] p-2">
+                <div className="relative flex aspect-square items-center justify-center rounded-2xl bg-[#f4f0ea] p-2">
                   <img src={garment.imageUrl} alt="수정 전" className="h-full w-full object-contain" />
+                  <MultiAngleViewer
+                    sourceImageUrl={garment.imageUrl}
+                    mode="garment"
+                    triggerLabel="360°"
+                    className="absolute bottom-1.5 left-1.5 h-7 gap-1 rounded-full px-2 text-[10px]"
+                  />
                 </div>
               </div>
               <div>
                 <p className="mb-1 text-center text-[11px] font-bold text-brand">수정 후</p>
-                <div className="flex aspect-square items-center justify-center rounded-2xl border-2 border-brand/30 bg-[#f4f0ea] p-2">
+                <div className="relative flex aspect-square items-center justify-center rounded-2xl border-2 border-brand/30 bg-[#f4f0ea] p-2">
                   <img src={pending.imageUrl} alt="수정 후" className="h-full w-full object-contain" />
+                  <MultiAngleViewer
+                    sourceImageUrl={pending.imageUrl}
+                    mode="garment"
+                    triggerLabel="360°"
+                    className="absolute bottom-1.5 left-1.5 h-7 gap-1 rounded-full px-2 text-[10px]"
+                  />
                 </div>
               </div>
             </div>
@@ -170,11 +183,17 @@ const GarmentEditBody = ({
                   수정 후
                 </button>
               </div>
-              <div className="flex aspect-square items-center justify-center rounded-2xl bg-[#f4f0ea] p-2">
+              <div className="relative flex aspect-square items-center justify-center rounded-2xl bg-[#f4f0ea] p-2">
                 <img
                   src={compareView === "before" ? garment.imageUrl : pending.imageUrl}
                   alt={compareView === "before" ? "수정 전" : "수정 후"}
                   className="h-full w-full object-contain"
+                />
+                <MultiAngleViewer
+                  sourceImageUrl={compareView === "before" ? garment.imageUrl : pending.imageUrl}
+                  mode="garment"
+                  triggerLabel="360°"
+                  className="absolute bottom-1.5 left-1.5 h-7 gap-1 rounded-full px-2 text-[10px]"
                 />
               </div>
             </div>
@@ -198,8 +217,14 @@ const GarmentEditBody = ({
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl bg-[#f4f0ea] p-3">
+            <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl bg-[#f4f0ea] p-3">
               <img src={garment.imageUrl} alt={garment.label} className="h-full w-full object-contain" />
+              <MultiAngleViewer
+                sourceImageUrl={garment.imageUrl}
+                mode="garment"
+                triggerLabel="360°"
+                className="absolute bottom-2 left-2 h-7 gap-1 rounded-full px-2 text-[10px]"
+              />
             </div>
             <div className="flex flex-wrap gap-1.5">
               {suggestionChips.map((chip) => (

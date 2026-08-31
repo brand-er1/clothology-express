@@ -2,6 +2,7 @@ import { Bookmark, Check, Loader2, RefreshCw, Sparkles, Trash2, Wand2 } from "lu
 import { closetSlotLabel } from "@/lib/closet-character-config";
 import type { MyWardrobeGarment } from "@/lib/closet-store";
 import { Button } from "@/components/ui/button";
+import { MultiAngleViewer } from "@/components/visualization/MultiAngleViewer";
 import type { ClosetOutfit } from "@/types/closet";
 
 interface MyWardrobeListProps {
@@ -73,6 +74,12 @@ export const MyWardrobeList = ({
                 >
                   <Bookmark className="h-3.5 w-3.5" />
                 </button>
+                <MultiAngleViewer
+                  sourceImageUrl={garment.imageUrl}
+                  mode="garment"
+                  triggerLabel="360°"
+                  className="absolute bottom-1.5 left-1.5 h-7 gap-1 rounded-full px-2 text-[10px]"
+                />
               </div>
               <div className="space-y-2 p-2.5">
                 <div className="min-w-0">

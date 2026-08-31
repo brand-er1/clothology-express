@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { closetSlotLabel } from "@/lib/closet-character-config";
+import { MultiAngleViewer } from "@/components/visualization/MultiAngleViewer";
 import type { ClosetGarment } from "@/types/closet";
 
 interface QuoteGarmentPickerProps {
@@ -24,21 +25,42 @@ export const QuoteGarmentPicker = ({ open, onOpenChange, garments, onSelect, isP
   const body = (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {garments.map((garment) => (
-        <button
+        <div
           key={`${garment.slot}-${garment.id}`}
-          type="button"
-          disabled={isPreparing}
-          onClick={() => onSelect(garment)}
-          className="overflow-hidden rounded-2xl border border-stone-200 bg-white text-left transition hover:border-brand/50 disabled:opacity-50"
+          role="button"
+          tabIndex={isPreparing ? -1 : 0}
+          onClick={() => {
+            if (isPreparing) return;
+            onSelect(garment);
+          }}
+          onKeyDown={(event) => {
+            if (isPreparing) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelect(garment);
+            }
+          }}
+          aria-label={`${garment.label} 선택`}
+          className={`overflow-hidden rounded-2xl border border-stone-200 bg-white text-left transition hover:border-brand/50 ${
+            isPreparing ? "opacity-50" : "cursor-pointer"
+          }`}
         >
-          <div className="flex aspect-square items-center justify-center bg-[#f4f0ea] p-2">
+          <div className="relative flex aspect-square items-center justify-center bg-[#f4f0ea] p-2">
             <img src={garment.imageUrl} alt={garment.label} className="h-full w-full object-contain" />
+            <div className="absolute bottom-1.5 left-1.5" onClick={(event) => event.stopPropagation()}>
+              <MultiAngleViewer
+                sourceImageUrl={garment.imageUrl}
+                mode="garment"
+                triggerLabel="360°"
+                className="h-6 gap-1 rounded-full px-1.5 text-[9px]"
+              />
+            </div>
           </div>
           <div className="p-2.5">
             <p className="text-[11px] font-bold text-brand">{closetSlotLabel[garment.slot]}</p>
             <p className="truncate text-xs font-bold text-stone-950">{garment.label}</p>
           </div>
-        </button>
+        </div>
       ))}
     </div>
   );

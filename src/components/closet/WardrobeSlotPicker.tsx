@@ -3,6 +3,7 @@ import { Check, ChevronDown, ImagePlus, RefreshCw, Settings2, Upload, X } from "
 import { Button } from "@/components/ui/button";
 import { closetSlotLabel, closetSlotOrder } from "@/lib/closet-character-config";
 import { GarmentFitInfoForm } from "@/components/closet/GarmentFitInfoForm";
+import { MultiAngleViewer } from "@/components/visualization/MultiAngleViewer";
 import type { ClosetGarment, ClosetOutfit, ClosetSlot, GarmentFitInfo } from "@/types/closet";
 import type { MyWardrobeGarment } from "@/lib/closet-store";
 import { toast } from "@/components/ui/use-toast";
@@ -165,27 +166,44 @@ export const WardrobeSlotPicker = ({
                     {savedOptions.map((option) => {
                       const isWearing = garment?.id === option.id;
                       return (
-                        <button
+                        <div
                           key={option.id}
-                          type="button"
+                          role="button"
+                          tabIndex={isWearing ? -1 : 0}
                           className={`relative overflow-hidden rounded-xl border bg-white p-1.5 text-left transition ${
                             isWearing
                               ? "border-brand ring-2 ring-brand/15"
-                              : "border-stone-200 hover:border-brand/50"
+                              : "cursor-pointer border-stone-200 hover:border-brand/50"
                           }`}
                           onClick={() => {
+                            if (isWearing) return;
                             onEquip(slot, option);
                             setOpenSlot(null);
                           }}
-                          disabled={isWearing}
+                          onKeyDown={(event) => {
+                            if (isWearing) return;
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              onEquip(slot, option);
+                              setOpenSlot(null);
+                            }
+                          }}
                           aria-label={`${option.label}${isWearing ? ", 착용 중" : ", 이 옷으로 교체"}`}
                         >
-                          <div className="flex aspect-square items-center justify-center rounded-lg bg-[#f4f0ea] p-1">
+                          <div className="relative flex aspect-square items-center justify-center rounded-lg bg-[#f4f0ea] p-1">
                             <img
                               src={option.imageUrl}
                               alt=""
                               className="h-full w-full object-contain"
                             />
+                            <div className="absolute bottom-1 left-1" onClick={(event) => event.stopPropagation()}>
+                              <MultiAngleViewer
+                                sourceImageUrl={option.imageUrl}
+                                mode="garment"
+                                triggerLabel="360°"
+                                className="h-6 gap-1 rounded-full px-1.5 text-[9px]"
+                              />
+                            </div>
                           </div>
                           <p className="mt-1 truncate text-[10px] font-bold text-stone-700">
                             {option.label}
@@ -195,7 +213,7 @@ export const WardrobeSlotPicker = ({
                               <Check className="h-3 w-3" />
                             </span>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>

@@ -100,4 +100,58 @@ describe("closet my wardrobe", () => {
     setMannequinSize("77" as MannequinSize);
     expect(getWardrobeState().mannequinSize).toBe("55");
   });
+
+  // TEST 6: 상의 + 하의 착용 → 상의 벗기기 → Expected: 상의만 제거, 하의 유지
+  it("removing one slot's garment never clears any other slot", async () => {
+    const { getWardrobeState, setGarment } = await import("@/lib/closet-store");
+
+    setGarment("top", garment("hoodie-top"));
+    setGarment("bottom", garment("denim-bottom"));
+
+    setGarment("top", null);
+
+    expect(getWardrobeState().outfit.top).toBeNull();
+    expect(getWardrobeState().outfit.bottom?.id).toBe("denim-bottom");
+  });
+
+  // TEST 7: 상의 + 하의 착용 → 하의 벗기기 → Expected: 하의만 제거, 상의 유지
+  it("removing the bottom slot leaves the top slot untouched", async () => {
+    const { getWardrobeState, setGarment } = await import("@/lib/closet-store");
+
+    setGarment("top", garment("hoodie-top"));
+    setGarment("bottom", garment("denim-bottom"));
+
+    setGarment("bottom", null);
+
+    expect(getWardrobeState().outfit.bottom).toBeNull();
+    expect(getWardrobeState().outfit.top?.id).toBe("hoodie-top");
+  });
+
+  // TEST 8: TOP 의류 수정 → Expected: 수정 완료 후에도 TOP 유지 (id/slot preserved across an edit revision)
+  it("preserves a garment's id and slot/category across an edit revision", async () => {
+    const { withNewGarmentRevision } = await import("@/lib/closet-store");
+
+    const original = garment("top-123");
+    const edited = withNewGarmentRevision(original, {
+      imageUrl: "https://example.com/top-123-edited.png",
+      promptLabel: "색상을 검정으로",
+    });
+
+    expect(edited.id).toBe(original.id);
+    expect(edited.slot).toBe("top");
+    expect(edited.imageUrl).toBe("https://example.com/top-123-edited.png");
+  });
+
+  // TEST 9: 모바일에서 TOP 생성 후 PC에서 접속 → Expected: TOP 상태 그대로 유지
+  it("keeps a garment's slot stable when the persisted state is reloaded (simulating a different device/session)", async () => {
+    const { setGarment } = await import("@/lib/closet-store");
+    setGarment("top", garment("mobile-created-top"));
+
+    vi.resetModules();
+    const { getWardrobeState } = await import("@/lib/closet-store");
+
+    expect(getWardrobeState().outfit.top?.id).toBe("mobile-created-top");
+    expect(getWardrobeState().outfit.top?.slot).toBe("top");
+    expect(getWardrobeState().outfit.bottom).toBeNull();
+  });
 });

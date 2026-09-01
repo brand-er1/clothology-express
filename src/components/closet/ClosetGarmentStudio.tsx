@@ -43,23 +43,8 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
         return;
       }
 
-      // Best-effort — a missing design_id just means this garment can't be traced back to a
-      // `designs` row later (e.g. from the outfit feed); the garment itself still works fine.
-      let designId: string | null = null;
-      try {
-        designId = await saveDesign({
-          frontImageUrl: imageUrl,
-          imagePath: result.imagePath || null,
-          productType: category,
-          fabric: material,
-          prompt: result.optimizedPrompt || result.prompt,
-          detail: prompt.trim(),
-          source: "closet",
-        });
-      } catch (designError) {
-        console.error("Failed to save design record for closet garment:", designError);
-      }
-
+      // Start mannequin fitting immediately after the generated image is available.
+      // Saving the optional designs audit row must never block the interactive try-on handoff.
       const garment: ClosetGarment = {
         id: `ai-${Date.now()}`,
         slot,
@@ -72,21 +57,49 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
           selectedType: category,
           selectedMaterial: material,
           designContext: result.optimizedPrompt || result.prompt,
-          designId,
+          designId: null,
         },
       };
+
       onGarmentCreated(garment);
-      void logClosetActivity({
-        eventType: "garment_created",
-        slot,
-        garmentId: garment.id,
-        label: garment.label,
-        prompt: result.optimizedPrompt || result.prompt,
-        imageUrl: garment.designRef?.imageUrl || garment.imageUrl,
-        imagePath: garment.designRef?.imagePath,
-        metadata: { clothType: category, material },
-      });
       setPrompt("");
+
+      // Best-effort background bookkeeping. A missing design_id only affects later traceability;
+      // the generated garment, wardrobe entry, quote handoff and virtual fitting can proceed now.
+      void saveDesign({
+        frontImageUrl: imageUrl,
+        imagePath: result.imagePath || null,
+        productType: category,
+        fabric: material,
+        prompt: result.optimizedPrompt || result.prompt,
+        detail: garment.label,
+        source: "closet",
+      })
+        .then((designId) => {
+          void logClosetActivity({
+            eventType: "garment_created",
+            slot,
+            garmentId: garment.id,
+            label: garment.label,
+            prompt: result.optimizedPrompt || result.prompt,
+            imageUrl: garment.designRef?.imageUrl || garment.imageUrl,
+            imagePath: garment.designRef?.imagePath,
+            metadata: { clothType: category, material, designId },
+          });
+        })
+        .catch((designError) => {
+          console.error("Failed to save design record for closet garment:", designError);
+          void logClosetActivity({
+            eventType: "garment_created",
+            slot,
+            garmentId: garment.id,
+            label: garment.label,
+            prompt: result.optimizedPrompt || result.prompt,
+            imageUrl: garment.designRef?.imageUrl || garment.imageUrl,
+            imagePath: garment.designRef?.imagePath,
+            metadata: { clothType: category, material, designSaveFailed: true },
+          });
+        });
     } finally {
       setIsGenerating(false);
     }

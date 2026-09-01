@@ -37,6 +37,7 @@ import { TutorialOverlay } from './components/guide/TutorialOverlay';
 import { SiteVisitTracker } from './components/SiteVisitTracker';
 import { VisitDataNotice } from './components/VisitDataNotice';
 import VisitDataPolicy from './pages/VisitDataPolicy';
+import { VisitorAnalyticsDashboard } from './components/admin/VisitorAnalyticsDashboard';
 
 declare global {
   interface Window {
@@ -160,6 +161,19 @@ function App() {
             <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
             <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
             <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
+            <Route
+              path="/admin"
+              element={
+                <AuthGuard>
+                  <div className="bg-[#f4f0ea] px-4 pt-24 sm:px-6">
+                    <div className="mx-auto max-w-[1500px]">
+                      <VisitorAnalyticsDashboard />
+                    </div>
+                  </div>
+                  <Admin />
+                </AuthGuard>
+              }
+            />
             <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -61,7 +61,9 @@ export const inferClosetSlotFromCategory = (categoryKey: string): ClosetSlot => 
   if (/dress|onepiece|one_piece/.test(key)) return "dress";
   if (/skirt/.test(key)) return "skirt";
   if (/jacket|coat|outer/.test(key)) return "outer";
-  if (/pants|legging|bottom|short/.test(key)) return "bottom";
+  // Do not match the generic word "short": ids such as short_sleeve and
+  // tights_short_sleeve are tops. Bottom ids are explicitly pants/leggings/bottom.
+  if (/pants|legging|bottom/.test(key)) return "bottom";
   return "top";
 };
 

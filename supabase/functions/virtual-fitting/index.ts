@@ -1,202 +1,73 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
-
-// AI Virtual Fitting — BRAND-ER's human-shaped mannequin try-on pipeline. This is the successor to
-// dress-character: instead of dressing a cartoon mascot, it composites a user's garment reference(s)
-// onto a fixed gender+body-size mannequin preset, so a visitor can compare how the SAME garment
-// actually fits across every Korean apparel size before committing to production. dress-character is
-// left in place for any caller that still depends on it; all new closet/virtual-fitting UI calls this
-// function instead.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 type ClosetSlot = "top" | "outer" | "bottom" | "skirt" | "dress" | "shoes" | "accessory";
 type Gender = "male" | "female";
-type FitType = "oversize" | "semi_oversize" | "regular" | "slim";
 
 const validSlots = new Set<ClosetSlot>(["top", "outer", "bottom", "skirt", "dress", "shoes", "accessory"]);
-const supportedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
-const validFitTypes = new Set<FitType>(["oversize", "semi_oversize", "regular", "slim"]);
-
-const slotDescriptionEn: Record<ClosetSlot, string> = {
-  top: "top garment (shirt, hoodie, sweatshirt, knit, or similar upper-body clothing)",
-  outer: "outer layer (jacket or coat, worn over the top garment)",
-  bottom: "bottom garment (pants, leggings, or similar lower-body clothing)",
-  skirt: "skirt",
-  dress: "one-piece dress (covers torso and legs in a single garment)",
-  shoes: "footwear",
-  accessory: "accessory or other worn item (bag, hat, or similar)",
-};
-
-// Explicit anatomical placement lock per slot — image-editing models frequently confuse "top" vs
-// "bottom" slot labels when the only cue is the word itself, especially with a cropped or flat-lay
-// garment reference photo. Repeating a hard body-region boundary next to every garment reference
-// (see garmentList / garmentParts below) stops a shirt/hoodie from being rendered onto the legs.
-const slotBodyRegionEn: Record<ClosetSlot, string> = {
-  top: "BODY REGION LOCK: this covers the UPPER BODY ONLY — shoulders, arms, chest and torso, ending at the waist. It must NEVER be drawn on the legs, hips, or lower body.",
-  outer: "BODY REGION LOCK: this covers the UPPER BODY as an outer layer over the top garment — shoulders, arms and torso, ending at hip/thigh length as designed. It must NEVER be drawn on the legs alone or replace the bottom/skirt.",
-  bottom: "BODY REGION LOCK: this covers the LOWER BODY ONLY — waist, hips and legs down to the hem. It must NEVER be drawn on the chest, arms, shoulders, or torso.",
-  skirt: "BODY REGION LOCK: this covers the LOWER BODY ONLY — waist and hips down over the legs. It must NEVER be drawn on the chest, arms, shoulders, or torso.",
-  dress: "BODY REGION LOCK: this covers the FULL BODY as one garment — torso AND legs together. It replaces top, bottom and skirt at once.",
-  shoes: "BODY REGION LOCK: this covers the FEET ONLY.",
-  accessory: "BODY REGION LOCK: worn/carried at its normal location only (e.g. a bag on the hand/shoulder, a hat on the head) — never used as torso or leg clothing.",
-};
-
-// Reviewed, fixed body-shape descriptions per gender+size preset — duplicated here (not trusted from
-// the client) so the AI prompt's identity/body-shape lock can never be altered by a tampered request.
-// Keep in sync with src/lib/mannequin-presets.ts.
-const bodyDescriptionByKey: Record<string, string> = {
-  "female-44": "the slimmest female body preset: narrow shoulders, slim chest/waist/hip, slender arms and legs",
-  "female-55": "a slim-to-standard female body preset: close to the average reference silhouette",
-  "female-66": "a standard-to-fuller female body preset: slightly more volume through chest, waist, hip, arms and legs than the 55 preset",
-  "male-l": "a standard male body preset: average shoulder, chest, waist, arm and leg proportions",
-  "male-xl": "a slightly fuller male body preset: somewhat broader shoulders, chest, waist, arms and legs than the L preset",
-  "male-2xl": "a fuller male body preset: noticeably broader upper and lower body volume than the XL preset, still a natural, realistic body — never exaggerated or unrealistic",
-};
-
+const supportedMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 const femaleSizes = new Set(["44", "55", "66"]);
 const maleSizes = new Set(["l", "xl", "2xl"]);
 
-const fitTypeGuidance: Record<FitType, string> = {
-  oversize: "OVERFIT: generous ease through chest/shoulder/waist, a roomy relaxed drape, sleeves/legs sitting loose around the limb, longer relaxed hem.",
-  semi_oversize: "SEMI-OVERFIT: modest extra ease beyond the body line — relaxed but not baggy, a soft (not tight) drape.",
-  regular: "REGULAR FIT: follows the body's natural line with balanced, even ease — neither tight nor loose.",
-  slim: "SLIM FIT: close-fitting silhouette that follows the body closely, minimal ease, fitted sleeves/legs.",
+const bodyDescriptions: Record<string, string> = {
+  "female-44": "slimmest female preset with narrow shoulders and a slim chest, waist, hips, arms and legs",
+  "female-55": "slim-to-standard female preset close to the average reference silhouette",
+  "female-66": "standard-to-fuller female preset with slightly more body volume than size 55",
+  "male-l": "standard male preset with average shoulder, chest, waist, arm and leg proportions",
+  "male-xl": "slightly fuller male preset with broader shoulders, chest, waist, arms and legs than L",
+  "male-2xl": "fuller natural male preset with more upper and lower body volume than XL",
 };
 
-const fabricStretchGuidance: Record<string, string> = {
-  none: "no stretch — the fabric holds its cut rigidly and shows pulling/strain lines wherever the body pushes against it",
-  low: "low stretch — the fabric flexes only slightly with the body",
-  medium: "medium stretch — the fabric moves naturally with the body without visible strain",
-  high: "high stretch — the fabric hugs and moves with the body smoothly, minimal pulling even where fitted",
-};
-const fabricThicknessGuidance: Record<string, string> = {
-  thin: "thin fabric — soft, light folds, closely follows the body's contour",
-  medium: "medium-weight fabric — moderate structure and fold depth",
-  thick: "thick fabric — visible structure and bulk, fewer/larger folds",
-};
-const fabricDrapeGuidance: Record<string, string> = {
-  stiff: "stiff drape — holds its shape with sharp, angular folds",
-  medium: "medium drape — natural, moderate folds",
-  fluid: "fluid drape — soft, flowing folds that move with the body",
+const slotDescriptions: Record<ClosetSlot, string> = {
+  top: "UPPER BODY ONLY: shoulders, arms, chest and torso; never place it on hips or legs",
+  outer: "UPPER BODY OUTER LAYER ONLY: shoulders, arms and torso; never replace lower-body clothing",
+  bottom: "LOWER BODY ONLY: waist, hips and legs; never place it on chest, shoulders or arms",
+  skirt: "LOWER BODY ONLY: waist and hips down over the legs; never place it on the torso",
+  dress: "FULL BODY DRESS: torso and legs as one garment; replaces top, bottom and skirt",
+  shoes: "FEET ONLY",
+  accessory: "NORMAL ACCESSORY LOCATION ONLY",
 };
 
-const decodeBase64Image = (base64: string) => {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+const stripDataUrl = (value: string) => value.replace(/^data:image\/[^;]+;base64,/, "");
+
+const decodeBase64 = (base64: string) => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 };
 
-const extensionForMimeType = (mimeType: string) => {
+const extensionForMime = (mimeType: string) => {
   if (mimeType === "image/png") return "png";
   if (mimeType === "image/webp") return "webp";
   return "jpg";
 };
 
-const stripDataUrlPrefix = (value: string) => value.replace(/^data:image\/[^;]+;base64,/, "");
-
-interface Measurements {
-  totalLength?: number;
-  shoulderWidth?: number;
-  chestWidth?: number;
-  waistWidth?: number;
-  hemWidth?: number;
-  sleeveLength?: number;
-  bottomWaist?: number;
-  bottomHip?: number;
-  bottomRise?: number;
-  bottomThigh?: number;
-  bottomHem?: number;
-  bottomLength?: number;
-}
-
-interface FitInfo {
-  baseSize?: string;
-  fitType?: FitType;
-  measurements?: Measurements;
-  fabricStretch?: string;
-  fabricThickness?: string;
-  fabricDrape?: string;
-  hasMeasurements: boolean;
-}
-
+interface ImageRef { base64: string; mimeType: string }
 interface GarmentInput {
   slot: ClosetSlot;
   label?: string;
-  base64: string;
-  mimeType: string;
-  backBase64?: string;
-  backMimeType?: string;
-  fitInfo: FitInfo;
+  image: ImageRef;
+  backImage?: ImageRef;
+  fitInfo?: Record<string, unknown>;
 }
 
-interface GeneratedImage {
-  base64: string;
-  mimeType: string;
-  textResponse: string;
-}
-
-interface PreservationEvaluation {
-  score: number;
-  faceMatch: boolean;
-  garmentMatch: boolean;
-  garmentApplied: boolean;
-  sceneMatch: boolean;
-  violations: string[];
-}
-
-const PRESERVATION_SCORE_THRESHOLD = 0.9;
-
-const isPreservationApproved = (evaluation: PreservationEvaluation | null) =>
-  Boolean(
-    evaluation &&
-      evaluation.score >= PRESERVATION_SCORE_THRESHOLD &&
-      evaluation.faceMatch &&
-      evaluation.garmentMatch &&
-      evaluation.garmentApplied &&
-      evaluation.sceneMatch,
-  );
-
-const measurementsSentence = (slot: ClosetSlot, m: Measurements): string => {
-  const parts: string[] = [];
-  const push = (label: string, value: number | undefined, unit = "cm") => {
-    if (typeof value === "number" && Number.isFinite(value)) parts.push(`${label} ${value}${unit}`);
-  };
-  push("total length", m.totalLength);
-  push("shoulder width", m.shoulderWidth);
-  push("chest width", m.chestWidth);
-  push("waist width", m.waistWidth);
-  push("hem width", m.hemWidth);
-  push("sleeve length", m.sleeveLength);
-  push("waist", m.bottomWaist);
-  push("hip", m.bottomHip);
-  push("rise", m.bottomRise);
-  push("thigh width", m.bottomThigh);
-  push("leg opening/hem", m.bottomHem);
-  push("length", m.bottomLength);
-  if (parts.length === 0) return "";
-  return `Real measurements for this ${slotDescriptionEn[slot]} (highest priority — reflect these exactly over any general fit-type assumption): ${parts.join(", ")}.`;
-};
-
-// "gemini-3-pro-image-preview" was retired by Google; generate-optimized-image already moved to
-// this fallback list (see its modelCandidates) — this pipeline must use the same working models
-// instead of the retired preview name, or every virtual-fitting request fails outright.
-const imageModelCandidates = ["gemini-3.1-flash-image", "gemini-3-pro-image", "gemini-2.5-flash-image"];
-
-const generateDressedImage = async (
-  geminiApiKey: string,
+const generateFastFitting = async (
+  apiKey: string,
   parts: Array<Record<string, unknown>>,
-): Promise<GeneratedImage | null> => {
-  for (const model of imageModelCandidates) {
+): Promise<{ base64: string; mimeType: string; textResponse: string } | null> => {
+  // Flash first + 1K output are intentional: virtual fitting is an interactive preview,
+  // so latency matters more than producing a 2K master image on every wardrobe change.
+  const models = ["gemini-3.1-flash-image", "gemini-2.5-flash-image", "gemini-3-pro-image"];
+  for (const model of models) {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -207,176 +78,62 @@ const generateDressedImage = async (
             responseModalities: ["IMAGE", "TEXT"],
             imageConfig: {
               aspectRatio: "3:4",
-              imageSize: model === "gemini-2.5-flash-image" ? undefined : "2K",
+              imageSize: model === "gemini-2.5-flash-image" ? undefined : "1K",
             },
           },
         }),
       },
     );
-
     if (!response.ok) {
-      const bodyText = await response.text();
-      console.error("virtual-fitting Gemini error", model, response.status, bodyText);
-      const retryWithFallback = response.status === 404 || response.status >= 500;
-      if (!retryWithFallback) return null;
-      continue;
+      const body = await response.text();
+      console.warn("virtual-fitting model failed", model, response.status, body);
+      if (response.status === 404 || response.status >= 500) continue;
+      return null;
     }
-
     const data = await response.json();
     const responseParts = data?.candidates?.[0]?.content?.parts || [];
     let base64 = "";
     let mimeType = "image/png";
     let textResponse = "";
     for (const part of responseParts) {
-      if (part.inlineData?.data && !base64) {
+      if (!base64 && part.inlineData?.data) {
         base64 = part.inlineData.data;
         mimeType = part.inlineData.mimeType || "image/png";
       }
       if (part.text) textResponse += part.text;
     }
-
     if (base64) return { base64, mimeType, textResponse };
-    console.error("virtual-fitting Gemini returned no image", model);
   }
-
   return null;
 };
 
-const evaluatePreservation = async (
-  geminiApiKey: string,
-  mannequinAnchor: { base64: string; mimeType: string },
-  faceAnchor: { base64: string; mimeType: string },
-  candidate: { base64: string; mimeType: string },
-  garments: GarmentInput[],
-): Promise<PreservationEvaluation | null> => {
-  try {
-    const garmentReferenceParts: Array<Record<string, unknown>> = [];
-    garments.forEach((garment, index) => {
-      garmentReferenceParts.push(
-        { text: `GARMENT REFERENCE ${index + 1} — ${slotDescriptionEn[garment.slot]}` },
-        { inlineData: { data: garment.base64, mimeType: garment.mimeType } },
-      );
-    });
-    const requestBody = JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `Compare IMAGE A (the canonical full-body BRAND-ER mannequin), IMAGE B (the close-up Face Identity Reference), and IMAGE C (the candidate wearing a different, deliberately requested set of garments). This is a clothing swap on a fixed-identity mannequin — the garments and how they drape are SUPPOSED to differ; only specific things below count as violations.
-
-faceMatch: compare the candidate's face in IMAGE C against the exact close-up identity in IMAGE B. Judge face shape, features, eyes, expression, hairstyle, and skin tone. False only for a genuinely different face/identity, not minor rendering noise.
-
-sceneMatch: compare IMAGE C against IMAGE A. Judge body proportions, pose, camera angle/distance, background, and lighting — false if any visibly changed. Garment drape changing is fine; the body preset, stance, framing, backdrop and light direction/color must not change.
-
-garmentApplied: for EVERY garment reference image supplied below, confirm it is actually, visibly worn on the mannequin in IMAGE C, on the correct body region for its labeled slot, replacing whatever previously occupied that slot. A top/outer garment must appear on the upper body (shoulders/arms/chest/torso) — NOT on the legs. A bottom/skirt garment must appear on the lower body (waist/hips/legs) — NOT on the chest or torso. False if IMAGE C looks like the untouched reference, a garment is missing, the wrong slot was rendered, or a garment was drawn onto the wrong body region (e.g. a top's design appears on the legs, or a bottom's design appears on the torso).
-
-garmentMatch: judge design fidelity separately from whether it was applied — preserve each garment's exact color, silhouette, logo, graphic, print, pattern, seams, pockets, zipper, buttons, hood, collar, sleeve/leg shape, and material. Natural folds/occlusion from being worn are fine; redesigning the garment is not.
-
-Return JSON only: {"score":0.0,"faceMatch":false,"garmentMatch":false,"garmentApplied":false,"sceneMatch":false,"violations":["short concrete difference"]}. Score 1.0 when identity, pose/camera/background/lighting, and every supplied garment (applied + faithfully rendered) are all preserved.`,
-            },
-            { text: "IMAGE A — CANONICAL FULL-BODY MANNEQUIN / BODY AND SCENE REFERENCE" },
-            { inlineData: { data: mannequinAnchor.base64, mimeType: mannequinAnchor.mimeType } },
-            { text: "IMAGE B — CLOSE-UP FACE IDENTITY REFERENCE" },
-            { inlineData: { data: faceAnchor.base64, mimeType: faceAnchor.mimeType } },
-            ...garmentReferenceParts,
-            { text: "IMAGE C — FINAL VIRTUAL FITTING RESULT TO CHECK" },
-            { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: "application/json",
-      },
-    });
-
-    const models = ["gemini-3-flash-preview", "gemini-3-pro-preview"];
-    for (const model of models) {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: requestBody,
-        },
-      );
-
-      if (!response.ok) {
-        console.warn("virtual-fitting preservation model failed", model, response.status, await response.text());
-        continue;
-      }
-      const data = await response.json();
-      const responseText = (data?.candidates?.[0]?.content?.parts || [])
-        .map((part: { text?: string }) => part.text || "")
-        .join("")
-        .trim()
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/, "")
-        .replace(/\s*```$/, "");
-      if (!responseText) continue;
-
-      try {
-        const parsed = JSON.parse(responseText);
-        const score = Number(parsed?.score);
-        if (!Number.isFinite(score)) continue;
-        return {
-          score: Math.min(1, Math.max(0, score)),
-          faceMatch: parsed?.faceMatch === true,
-          garmentMatch: parsed?.garmentMatch === true,
-          garmentApplied: parsed?.garmentApplied === true,
-          sceneMatch: parsed?.sceneMatch === true,
-          violations: Array.isArray(parsed?.violations)
-            ? parsed.violations.map((item: unknown) => String(item)).slice(0, 6)
-            : [],
-        };
-      } catch (parseError) {
-        console.warn("virtual-fitting preservation JSON parse failed", model, parseError);
-        continue;
-      }
-    }
-    return null;
-  } catch (error) {
-    console.warn("virtual-fitting preservation evaluation failed", error);
-    return null;
-  }
-};
-
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  let requestId: string | null = null;
+  const fail = async (message: string, status = 400) => {
+    if (requestId) {
+      await supabase.from("virtual_fitting_requests").delete().eq("request_id", requestId);
+    }
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  };
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) return fail("GEMINI_API_KEY not configured", 500);
 
-    if (!geminiApiKey) {
-      return new Response(
-        JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
-      );
-    }
+    const body = await req.json();
+    requestId = typeof body?.requestId === "string" && body.requestId.trim()
+      ? body.requestId.trim().slice(0, 128)
+      : null;
 
-    const requestData = await req.json();
-    const {
-      requestId: rawRequestId,
-      gender: rawGender,
-      mannequinSize: rawMannequinSize,
-      mannequinImage,
-      identityImage,
-      garments: rawGarments,
-      changedSlots: rawChangedSlots,
-      userId,
-    } = requestData || {};
-
-    const requestId = typeof rawRequestId === "string" && rawRequestId.trim() ? rawRequestId.trim().slice(0, 128) : null;
-
-    // --- Idempotency: claim the request id before doing any generation work. A second call with the
-    // same request id (double-click, retry-after-timeout) either returns the cached result or a
-    // "already processing" response — it never runs the expensive pipeline twice. ---
     if (requestId) {
       const { data: existing } = await supabase
         .from("virtual_fitting_requests")
@@ -384,323 +141,127 @@ serve(async (req) => {
         .eq("request_id", requestId)
         .maybeSingle();
       if (existing?.status === "done" && existing.result) {
-        return new Response(
-          JSON.stringify({ ...existing.result, duplicate: true }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return new Response(JSON.stringify({ ...existing.result, duplicate: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (existing?.status === "processing") {
-        return new Response(
-          JSON.stringify({ error: "이미 같은 요청을 처리하고 있어요. 잠시 후 다시 시도해주세요.", processing: true }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 409 },
-        );
+        return new Response(JSON.stringify({ processing: true, error: "이미 처리 중인 요청입니다." }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const { error: claimError } = await supabase
         .from("virtual_fitting_requests")
         .insert({ request_id: requestId, status: "processing" });
       if (claimError) {
-        // Unique-violation race: someone else claimed it a moment ago — treat as "already processing".
-        return new Response(
-          JSON.stringify({ error: "이미 같은 요청을 처리하고 있어요. 잠시 후 다시 시도해주세요.", processing: true }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 409 },
-        );
+        return new Response(JSON.stringify({ processing: true, error: "이미 처리 중인 요청입니다." }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
-    const failRequest = async (body: Record<string, unknown>, status: number) => {
-      if (requestId) {
-        await supabase.from("virtual_fitting_requests").delete().eq("request_id", requestId);
-      }
-      return new Response(JSON.stringify(body), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status,
-      });
-    };
-
-    const gender: Gender = rawGender === "female" ? "female" : "male";
-    const mannequinSize = String(rawMannequinSize || "").toLowerCase();
+    const gender: Gender = body?.gender === "female" ? "female" : "male";
+    const mannequinSize = String(body?.mannequinSize || "").toLowerCase();
     const validSize = gender === "female" ? femaleSizes.has(mannequinSize) : maleSizes.has(mannequinSize);
-    if (!validSize) {
-      return failRequest({ error: "유효하지 않은 마네킹 사이즈입니다." }, 400);
-    }
-    const presetKey = `${gender}-${mannequinSize}`;
-    const bodyDescription = bodyDescriptionByKey[presetKey];
+    if (!validSize) return fail("유효하지 않은 마네킹 사이즈입니다.");
 
-    const mannequinBase64 = stripDataUrlPrefix(String(mannequinImage?.base64 || identityImage?.base64 || ""));
-    const mannequinMimeType = String(mannequinImage?.mimeType || identityImage?.mimeType || "");
-    const identityBase64 = stripDataUrlPrefix(String(identityImage?.base64 || ""));
-    const identityMimeType = String(identityImage?.mimeType || "");
-    if (!mannequinBase64 || !supportedImageMimeTypes.has(mannequinMimeType)) {
-      return failRequest({ error: "전신 마네킹 기준 이미지가 필요합니다." }, 400);
+    const mannequinImage: ImageRef = {
+      base64: stripDataUrl(String(body?.mannequinImage?.base64 || "")),
+      mimeType: String(body?.mannequinImage?.mimeType || ""),
+    };
+    const identityImage: ImageRef = {
+      base64: stripDataUrl(String(body?.identityImage?.base64 || "")),
+      mimeType: String(body?.identityImage?.mimeType || ""),
+    };
+    if (!mannequinImage.base64 || !supportedMimeTypes.has(mannequinImage.mimeType)) {
+      return fail("전신 마네킹 기준 이미지가 필요합니다.");
     }
-    if (!identityBase64 || !supportedImageMimeTypes.has(identityMimeType)) {
-      return failRequest({ error: "얼굴 Identity 기준 이미지가 필요합니다." }, 400);
+    if (!identityImage.base64 || !supportedMimeTypes.has(identityImage.mimeType)) {
+      return fail("얼굴 기준 이미지가 필요합니다.");
     }
 
-    const garments: GarmentInput[] = Array.isArray(rawGarments)
-      ? rawGarments
-        .filter((item: unknown) => item && typeof item === "object")
-        .map((item: Record<string, unknown>) => {
-          const image = item.image as Record<string, unknown> | undefined;
-          const backImage = item.backImage as Record<string, unknown> | undefined;
-          const rawFit = (item.fitInfo as Record<string, unknown>) || {};
-          const rawMeasurements = (rawFit.measurements as Record<string, unknown>) || {};
-          const num = (value: unknown) => {
-            const n = Number(value);
-            return Number.isFinite(n) ? n : undefined;
+    const garments: GarmentInput[] = Array.isArray(body?.garments)
+      ? body.garments.flatMap((raw: Record<string, any>) => {
+          const slot = validSlots.has(raw?.slot as ClosetSlot) ? raw.slot as ClosetSlot : "top";
+          const image = {
+            base64: stripDataUrl(String(raw?.image?.base64 || "")),
+            mimeType: String(raw?.image?.mimeType || ""),
           };
-          const measurements: Measurements = {
-            totalLength: num(rawMeasurements.totalLength),
-            shoulderWidth: num(rawMeasurements.shoulderWidth),
-            chestWidth: num(rawMeasurements.chestWidth),
-            waistWidth: num(rawMeasurements.waistWidth),
-            hemWidth: num(rawMeasurements.hemWidth),
-            sleeveLength: num(rawMeasurements.sleeveLength),
-            bottomWaist: num(rawMeasurements.bottomWaist),
-            bottomHip: num(rawMeasurements.bottomHip),
-            bottomRise: num(rawMeasurements.bottomRise),
-            bottomThigh: num(rawMeasurements.bottomThigh),
-            bottomHem: num(rawMeasurements.bottomHem),
-            bottomLength: num(rawMeasurements.bottomLength),
-          };
-          const hasMeasurements = Object.values(measurements).some((value) => typeof value === "number");
-          return {
-            slot: validSlots.has(item.slot as ClosetSlot) ? (item.slot as ClosetSlot) : "top",
-            label: typeof item.label === "string" ? item.label.slice(0, 120) : undefined,
-            base64: stripDataUrlPrefix(String(image?.base64 || "")),
-            mimeType: String(image?.mimeType || ""),
-            backBase64: backImage?.base64 ? stripDataUrlPrefix(String(backImage.base64)) : undefined,
-            backMimeType: backImage?.mimeType ? String(backImage.mimeType) : undefined,
-            fitInfo: {
-              baseSize: typeof rawFit.baseSize === "string" ? rawFit.baseSize.slice(0, 40) : undefined,
-              fitType: validFitTypes.has(rawFit.fitType as FitType) ? (rawFit.fitType as FitType) : "regular",
-              measurements,
-              fabricStretch: typeof rawFit.fabricStretch === "string" ? rawFit.fabricStretch : undefined,
-              fabricThickness: typeof rawFit.fabricThickness === "string" ? rawFit.fabricThickness : undefined,
-              fabricDrape: typeof rawFit.fabricDrape === "string" ? rawFit.fabricDrape : undefined,
-              hasMeasurements,
-            },
-          };
+          if (!image.base64 || !supportedMimeTypes.has(image.mimeType)) return [];
+          const backImage = raw?.backImage?.base64 && supportedMimeTypes.has(String(raw.backImage.mimeType || ""))
+            ? { base64: stripDataUrl(String(raw.backImage.base64)), mimeType: String(raw.backImage.mimeType) }
+            : undefined;
+          return [{ slot, label: typeof raw?.label === "string" ? raw.label.slice(0, 120) : undefined, image, backImage, fitInfo: raw?.fitInfo || {} }];
         })
-        .filter((item) => item.base64 && supportedImageMimeTypes.has(item.mimeType))
       : [];
 
-    const explicitlyChangedSlots: ClosetSlot[] = Array.isArray(rawChangedSlots)
-      ? rawChangedSlots.filter((slot: unknown): slot is ClosetSlot => validSlots.has(slot as ClosetSlot))
+    const changedSlots: ClosetSlot[] = Array.isArray(body?.changedSlots)
+      ? body.changedSlots.filter((slot: unknown): slot is ClosetSlot => validSlots.has(slot as ClosetSlot))
       : [];
-    const slotsInThisRequest = Array.from(new Set([
-      ...explicitlyChangedSlots,
-      ...garments.map((garment) => garment.slot),
-    ]));
+    if (!garments.length && !changedSlots.length) return fail("변경할 의류가 필요합니다.");
+    if (garments.length > 6) return fail("한 번에 입힐 수 있는 의류는 최대 6개입니다.");
 
-    if (garments.length === 0 && slotsInThisRequest.length === 0) {
-      return failRequest({ error: "변경할 의류 슬롯이나 의류 이미지가 필요합니다." }, 400);
-    }
-    if (garments.length > 6) {
-      return failRequest({ error: "한 번에 입힐 수 있는 의류는 최대 6개입니다." }, 400);
-    }
-    if (new Set(garments.map((garment) => garment.slot)).size !== garments.length) {
-      return failRequest({ error: "같은 슬롯에는 하나의 의류만 선택할 수 있습니다." }, 400);
-    }
+    const bodyDescription = bodyDescriptions[`${gender}-${mannequinSize}`];
+    const garmentText = garments.map((garment, index) => {
+      const fitType = String(garment.fitInfo?.fitType || "regular");
+      const measurements = garment.fitInfo?.measurements && typeof garment.fitInfo.measurements === "object"
+        ? JSON.stringify(garment.fitInfo.measurements)
+        : "none";
+      return `Garment ${index + 1}: slot=${garment.slot}, label=${garment.label || "garment"}, fit=${fitType}, measurements=${measurements}. ${slotDescriptions[garment.slot]}.`;
+    }).join("\n");
 
-    const totalBytes = mannequinBase64.length + identityBase64.length + garments.reduce((sum, g) => sum + g.base64.length + (g.backBase64?.length || 0), 0);
-    if (totalBytes > 40 * 1024 * 1024) {
-      return failRequest({ error: "이미지 용량이 너무 큽니다." }, 400);
-    }
+    const prompt = `AI VIRTUAL FITTING IMAGE EDIT. Start from Reference Image 1 and keep the mannequin identity and scene fixed.\n\nHARD LOCKS:\n- Exact face, hair, skin tone and identity from Reference Image 2.\n- Exact ${bodyDescription} body shape, height, pose, camera angle, framing, background and lighting from Reference Image 1.\n- Apply every supplied garment to its declared anatomical slot. TOP/OUTER must never appear on legs. BOTTOM/SKIRT must never appear on torso.\n- Preserve garment color, silhouette, logo, print, pattern, seams, pockets, zippers, buttons, collar, hood and material.\n- Do not invent garments in empty slots. OUTER may layer over TOP. DRESS replaces TOP/BOTTOM/SKIRT.\n- Show realistic drape/tension for the selected mannequin size without scaling or distorting the body.\n- Return exactly one clean 3:4 full-body image with head, hands and feet visible; no caption, watermark, split view or extra person.\n\nChanged slots: ${changedSlots.join(", ") || garments.map(g => g.slot).join(", ")}\n${garmentText}`;
 
-    const isSimulated = garments.length === 0 || !garments.some((g) => g.fitInfo.hasMeasurements);
-
-    const garmentList = garments
-      .map((garment, index) => {
-        const ordinal = index + 3;
-        const fit = garment.fitInfo;
-        const measurementLine = fit.measurements ? measurementsSentence(garment.slot, fit.measurements) : "";
-        const fitLine = fit.hasMeasurements
-          ? measurementLine
-          : `Fit type: ${fitTypeGuidance[fit.fitType || "regular"]}${fit.baseSize ? ` Base size label: "${fit.baseSize}".` : ""}`;
-        const fabricLine = [
-          fit.fabricStretch ? fabricStretchGuidance[fit.fabricStretch] : null,
-          fit.fabricThickness ? fabricThicknessGuidance[fit.fabricThickness] : null,
-          fit.fabricDrape ? fabricDrapeGuidance[fit.fabricDrape] : null,
-        ].filter(Boolean).join("; ");
-        return `Reference Image ${ordinal} (${slotDescriptionEn[garment.slot]}${garment.label ? `, "${garment.label}"` : ""}): garment to render on the mannequin in the ${garment.slot} slot. ${slotBodyRegionEn[garment.slot]}\n${fitLine}${fabricLine ? ` Fabric: ${fabricLine}.` : ""}`;
-      })
-      .join("\n\n");
-
-    const slotsSentence = slotsInThisRequest.map((slot) => slotDescriptionEn[slot]).join(", ");
-    const clearedSlots = slotsInThisRequest.filter((slot) => !garments.some((garment) => garment.slot === slot));
-    const clearedSlotsInstruction = clearedSlots.length > 0
-      ? `Leave these empty slots bare exactly as they appear on the base mannequin (${clearedSlots.map((slot) => slotDescriptionEn[slot]).join(", ")}). Do not retain or invent an item in them.`
-      : "";
-    const replacedSlotsInstruction = garments.length > 0
-      ? garments.map((garment) =>
-          `REMOVE THE CURRENT ${garment.slot.toUpperCase()} GARMENT AND REPLACE IT WITH THE PROVIDED ${garment.slot.toUpperCase()} GARMENT REFERENCE. Do not leave the old ${garment.slot} in place, and do not layer the new one on top of it. ${slotBodyRegionEn[garment.slot]}`)
-        .join("\n")
-      : "";
-
-    const prompt = `
-EDIT Reference Image 1. This is a constrained image edit for an AI VIRTUAL FITTING tool: dress the fixed BRAND-ER mannequin in the supplied garment reference(s), on ${bodyDescription}, while keeping identity, pose, camera, background and lighting identical.
-
-Reference Image 1 is the canonical full-body Mannequin Body Reference for ${gender} size ${mannequinSize.toUpperCase()}. Reference Image 2 is the dedicated close-up Face Identity Reference and the highest-priority identity anchor.
-
-THE 9 RULES OF THIS PIPELINE (apply all of them together — none excuses skipping another):
-1. Do not change the face from Reference Image 2 or the mannequin's identity in any way.
-2. Preserve exactly the body shape for the selected size (${bodyDescription}) — do not slim it down, exaggerate it, or drift toward a different size.
-3. Do not change pose, background, camera angle/distance, or lighting.
-4. Do not redesign any garment — color, material, logo, graphic, print, pattern, seams, pockets, zipper, buttons, collar, sleeves, hood, hem, and overall construction must stay exactly as supplied.
-5. Modify ONLY the slot(s) listed as changed in this request: ${slotsSentence || "(none)"}.
-6. Keep every other currently worn garment (any slot not part of this request) exactly as it was.
-7. Show only realistic tension/ease/wrinkles/silhouette that would actually result from this garment on this body and fit type — never invent damage, never distort the body to force a look.
-8. Return one full-body image, same aspect ratio as Reference Image 1, with nothing cropped (full body and full garments visible).
-9. BODY REGION LOCK (very common mistake — check this before finishing): a top/outer garment reference must be drawn ONLY on the upper body (shoulders/arms/chest/torso down to the waist); a bottom/skirt garment reference must be drawn ONLY on the lower body (waist/hips/legs). Never draw a top garment's design on the legs, and never draw a bottom garment's design on the torso — each garment reference's own per-image BODY REGION LOCK note (below) states which one it is.
-
-DO NOT REFUSE TO APPLY THE GARMENT. DO NOT RETURN THE MANNEQUIN WITHOUT THE NEW GARMENT. A render that keeps identity perfect but fails to show the new garment is a FAILED result.
-
-IDENTITY + BODY-SIZE LOCK — HIGHEST PRIORITY:
-- Preserve exactly from Reference Image 2: face shape, features, expression, hairstyle, skin tone and overall impression.
-- Preserve the body proportions of this exact size preset: ${bodyDescription}. Never enlarge/shrink height or head size — only the body volume already present in Reference Image 1 matters, and it must not drift toward a slimmer or fuller preset than the one shown.
-- Preserve pose (standing, arms and legs in the same position), camera framing/distance/angle, background, and lighting exactly.
-
-GARMENT FIT RENDERING — how the fit-type/measurement info below must show up visually:
-- Looser fit types (oversize/semi-oversize) or a smaller/slimmer body relative to the garment's physical size → more visible ease, drape, and looseness around chest/waist/hip/sleeve/leg, a fuller silhouette, less pulling.
-- Tighter fit types (slim/regular) or a larger/fuller body relative to the garment's physical size → the garment reads closer to the body, with natural tension lines where it meets a fuller area, less spare fabric.
-- The garment's own absolute cut/measurements never change — only how it drapes, pulls, or hangs on THIS specific mannequin body changes. Never simply scale the garment image up or down.
-
-WARDROBE COMPOSITION LOCK:
-- Build the complete outfit only from the garment references supplied in this request: ${slotsSentence}.
-- References in the same slot are replacements, never stacked. OUTER may layer naturally over TOP; DRESS replaces TOP+BOTTOM+SKIRT entirely; no other implicit layering.
-- Never carry clothing forward from a previous generated result and never invent clothing for an empty slot.
-
-${garmentList || "No garment reference is supplied."}
-${replacedSlotsInstruction}
-${clearedSlotsInstruction}
-
-TASK: Starting from the canonical body/scene in Reference Image 1 and exact face identity in Reference Image 2, make the mannequin naturally wear every supplied garment reference at once, with fit/drape/tension appropriate to this body size and the garment's stated fit type or real measurements. Garment realism comes from adapting to THIS body, never from changing identity, pose, scene, or the garment's own design.
-
-OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full body visible (no cropping at head/hands/feet), no before/after split, no caption, no watermark, no extra person or prop. Returning Reference Image 1 unchanged, or with the garment missing/only partially applied, is not acceptable.
-`.trim();
-
-    const garmentParts: Array<Record<string, unknown>> = [];
+    const parts: Array<Record<string, unknown>> = [
+      { text: prompt },
+      { text: "Reference Image 1 — canonical full-body mannequin/body/pose/scene." },
+      { inlineData: { data: mannequinImage.base64, mimeType: mannequinImage.mimeType } },
+      { text: "Reference Image 2 — canonical face identity reference." },
+      { inlineData: { data: identityImage.base64, mimeType: identityImage.mimeType } },
+    ];
     garments.forEach((garment, index) => {
-      garmentParts.push(
-        { text: `Reference Image ${index + 3}: EXACT GARMENT IDENTITY for ${slotDescriptionEn[garment.slot]} (front view). ${slotBodyRegionEn[garment.slot]}` },
-        { inlineData: { data: garment.base64, mimeType: garment.mimeType } },
+      parts.push(
+        { text: `Garment reference ${index + 1}: ${garment.slot}. ${slotDescriptions[garment.slot]}` },
+        { inlineData: { data: garment.image.base64, mimeType: garment.image.mimeType } },
       );
-      if (garment.backBase64 && garment.backMimeType) {
-        garmentParts.push(
-          { text: `Back view of the same ${slotDescriptionEn[garment.slot]} — keep logo/pocket/graphic placement on the correct side, not mirrored.` },
-          { inlineData: { data: garment.backBase64, mimeType: garment.backMimeType } },
+      if (garment.backImage) {
+        parts.push(
+          { text: `Back view of the same ${garment.slot} garment.` },
+          { inlineData: { data: garment.backImage.base64, mimeType: garment.backImage.mimeType } },
         );
       }
     });
+    parts.push({ text: "FINAL CHECK: correct body region for every garment; exact face/body/pose/scene; garment design preserved." });
 
-    const generationParts: Array<Record<string, unknown>> = [
-      { text: prompt },
-      { text: "Reference Image 1: CANONICAL FULL-BODY MANNEQUIN. Always the sole source of body size, pose, scene and lighting." },
-      { inlineData: { data: mannequinBase64, mimeType: mannequinMimeType } },
-      { text: "Reference Image 2: CLOSE-UP FACE IDENTITY REFERENCE. Always the sole source of face, hair, skin tone and identity." },
-      { inlineData: { data: identityBase64, mimeType: identityMimeType } },
-      ...garmentParts,
-      { text: "FINAL LOCK: exact face identity from Reference Image 2, exact body-size/pose/scene from Reference Image 1, and exact garment design from every garment reference, ACTUALLY WORN with realistic fit for this body. Do not solve identity preservation by skipping the clothing change." },
-    ];
+    const generated = await generateFastFitting(geminiApiKey, parts);
+    if (!generated) return fail("이미지를 생성하지 못했습니다. 다시 시도해주세요.", 502);
 
-    const firstImage = await generateDressedImage(geminiApiKey, generationParts);
-    if (!firstImage) {
-      return failRequest({ error: "이미지를 생성하지 못했습니다. 다시 시도해주세요." }, 502);
-    }
-
-    const mannequinAnchor = { base64: mannequinBase64, mimeType: mannequinMimeType };
-    const faceAnchor = { base64: identityBase64, mimeType: identityMimeType };
-
-    interface Attempt {
-      image: GeneratedImage;
-      evaluation: PreservationEvaluation | null;
-    }
-
-    const attempts: Attempt[] = [
-      { image: firstImage, evaluation: await evaluatePreservation(geminiApiKey, mannequinAnchor, faceAnchor, firstImage, garments) },
-    ];
-    let identityRetryApplied = false;
-
-    const maxRetries = 3;
-    const escalationNote = [
-      "CORRECTION PASS 1: Discard the rejected draft and rebuild from the canonical full-body mannequin, close-up Face Identity Reference and all original garment references.",
-      "CORRECTION PASS 2 (stronger): The previous attempt still did not preserve face/body-size/scene AND actually show every garment worn. Re-anchor the face on Reference Image 2 and body/scene on Reference Image 1 while rendering every garment in its correct slot.",
-      "CORRECTION PASS 3 (final, strongest): This is the last automatic attempt. Keep face identity identical to Reference Image 2, body-size/pose/scene identical to Reference Image 1, and visibly wear every supplied garment reference.",
-    ];
-    for (
-      let attempt = 0;
-      attempt < maxRetries && !isPreservationApproved(attempts[attempts.length - 1].evaluation);
-      attempt++
-    ) {
-      identityRetryApplied = true;
-      const previous = attempts[attempts.length - 1];
-      console.warn("virtual-fitting preservation retry", attempt + 1, previous.evaluation);
-      const retryParts: Array<Record<string, unknown>> = [
-        {
-          text: `${prompt}\n\n${escalationNote[Math.min(attempt, escalationNote.length - 1)]} Detected differences: ${previous.evaluation?.violations.join("; ") || "the strict preservation check was unavailable or found a difference"}.`,
-        },
-        { text: "Reference Image 1: CANONICAL FULL-BODY MANNEQUIN. This exact body-size/pose/scene must survive unchanged." },
-        { inlineData: { data: mannequinBase64, mimeType: mannequinMimeType } },
-        { text: "Reference Image 2: CLOSE-UP FACE IDENTITY REFERENCE. This exact face, hair, skin tone and identity must survive unchanged." },
-        { inlineData: { data: identityBase64, mimeType: identityMimeType } },
-        { text: "PREVIOUS DRAFT: use only as an example of what to fix." },
-        { inlineData: { data: previous.image.base64, mimeType: previous.image.mimeType } },
-        ...garmentParts,
-        { text: "FINAL CHECK: exact face identity from Reference Image 2, exact body-size/pose/scene from Reference Image 1, and every garment reference actually worn with realistic fit." },
-      ];
-      const retryImage = await generateDressedImage(geminiApiKey, retryParts);
-      if (!retryImage) continue;
-      const retryEvaluation = await evaluatePreservation(geminiApiKey, mannequinAnchor, faceAnchor, retryImage, garments);
-      attempts.push({ image: retryImage, evaluation: retryEvaluation });
-    }
-
-    const approvedAttempt = attempts.find((attempt) => isPreservationApproved(attempt.evaluation));
-    const bestAttempt = approvedAttempt ?? attempts.reduce((best, current) => {
-      const bestScore = best.evaluation?.score ?? -1;
-      const currentScore = current.evaluation?.score ?? -1;
-      return currentScore > bestScore ? current : best;
-    }, attempts[0]);
-
-    const chosenImage = bestAttempt.image;
-    const preservationEvaluation = bestAttempt.evaluation;
-
-    const generatedImageBase64 = chosenImage.base64;
-    const mimeType = chosenImage.mimeType;
-    const responseText = chosenImage.textResponse;
-
-    const bytes = decodeBase64Image(generatedImageBase64);
-    const extension = extensionForMimeType(mimeType);
-    const fileName = `${userId || "anon"}/virtual-fitting/${Date.now()}_${crypto.randomUUID()}.${extension}`;
-
+    const bytes = decodeBase64(generated.base64);
+    const extension = extensionForMime(generated.mimeType);
+    const fileName = `${body?.userId || "anon"}/virtual-fitting/${Date.now()}_${crypto.randomUUID()}.${extension}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('generated_images')
-      .upload(fileName, bytes, { contentType: mimeType, upsert: false });
+      .from("generated_images")
+      .upload(fileName, bytes, { contentType: generated.mimeType, upsert: false });
+    if (uploadError) throw uploadError;
 
-    if (uploadError) {
-      console.error("Error uploading virtual fitting image:", uploadError);
-      if (requestId) await supabase.from("virtual_fitting_requests").delete().eq("request_id", requestId);
-      throw uploadError;
-    }
-
-    const { data: publicUrlData } = await supabase.storage
-      .from('generated_images')
-      .getPublicUrl(uploadData?.path || fileName);
-
+    const { data: publicUrlData } = supabase.storage.from("generated_images").getPublicUrl(uploadData?.path || fileName);
     const responseBody = {
       success: true,
-      textResponse: responseText,
-      renderedImageUrl: publicUrlData?.publicUrl,
+      renderedImageUrl: publicUrlData.publicUrl,
       renderedImagePath: uploadData?.path || fileName,
-      hasImage: Boolean(publicUrlData?.publicUrl),
+      textResponse: generated.textResponse || null,
+      hasImage: Boolean(publicUrlData.publicUrl),
       gender,
       mannequinSize,
-      isSimulated,
+      isSimulated: !garments.some((g) => Boolean(g.fitInfo?.hasMeasurements)),
       requestId,
-      faceScore: preservationEvaluation?.score ?? null,
-      preservationApproved: isPreservationApproved(preservationEvaluation),
-      garmentApplied: preservationEvaluation?.garmentApplied ?? null,
-      identityRetryApplied,
+      faceScore: null,
+      preservationApproved: null,
+      garmentApplied: null,
+      identityRetryApplied: false,
+      performanceMode: "fast-1k-single-pass",
     };
 
     if (requestId) {
@@ -710,15 +271,17 @@ OUTPUT: Return exactly ONE edited full-body image, same 3:4 aspect ratio, full b
         .eq("request_id", requestId);
     }
 
-    return new Response(
-      JSON.stringify(responseBody),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify(responseBody), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
-    console.error("Unexpected error in virtual-fitting:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
-    );
+    console.error("virtual-fitting fast pipeline error", error);
+    if (requestId) {
+      await supabase.from("virtual_fitting_requests").delete().eq("request_id", requestId);
+    }
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

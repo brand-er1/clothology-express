@@ -24,8 +24,8 @@ export const Footer = () => (
             브이15C(덕풍동, 현대지식산업센터 한강미사)
             <br />
             고객센터{" "}
-            <a className="underline-offset-4 hover:text-white hover:underline" href="tel:+821059161331">
-              010-5916-1331
+            <a className="underline-offset-4 hover:text-white hover:underline" href="tel:+827047083015">
+              070-4708-3015
             </a>
             {" "}· 개인정보책임자{" "}
             <a

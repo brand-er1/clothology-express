@@ -6,6 +6,7 @@ import { SelectedWorkTile } from "@/components/portfolio/SelectedWorkTile";
 import { PortfolioProjectDetail } from "@/components/portfolio/PortfolioProjectDetail";
 import { Reveal } from "@/components/portfolio/ScrollReveal";
 import { HeroCarousel, type HeroSlide } from "@/components/portfolio/HeroCarousel";
+import { FabricSourcingSection } from "@/components/portfolio/FabricSourcingSection";
 import { useParallax } from "@/hooks/useParallax";
 import { fetchVisiblePortfolioProjects } from "@/services/portfolioProjects";
 import { PORTFOLIO_CATEGORY_LABEL_KO, type PortfolioProject } from "@/types/portfolio";
@@ -213,6 +214,8 @@ const Portfolio = () => {
             </div>
           </div>
         </section>
+
+        <FabricSourcingSection />
 
         {/* 7. HOW WE MAKE */}
         <section className="border-b border-black/10 bg-[#f1f0ed]">

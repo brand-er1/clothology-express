@@ -1,3 +1,5 @@
+import hanjiLeatherImage from "../../한지 레더.png";
+
 /**
  * Copy/data for the redesigned portfolio ("Selected Works") page — kept as plain data, separate
  * from layout, so any of these numbers or labels can be updated without touching component code.
@@ -94,7 +96,7 @@ export const SPECIAL_MATERIAL_CARDS: SpecialMaterialCard[] = [
   {
     nameKo: "비건 한지 레더",
     nameEn: "VEGAN HANJI LEATHER",
-    image: fabricImage("hanji-leather.webp"),
+    image: hanjiLeatherImage,
     imageAlt: "비건 한지 레더 — 앞면 레더 질감과 뒷면 한지 섬유 질감",
     description: [
       "동물성 천연가죽을 사용하지 않는 비건 레더와 한지의 특성을 결합한 차별화 소재입니다.",

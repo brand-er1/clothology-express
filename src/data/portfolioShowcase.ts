@@ -50,3 +50,28 @@ export const PORTFOLIO_PROCESS_STEPS: PortfolioProcessStep[] = [
 /** Default service tags shown for a project that hasn't had its own `services` set yet by an
  * admin (all 12 seeded launch projects) — a generic, defensible default rather than a blank line. */
 export const PORTFOLIO_DEFAULT_SERVICES = ["디자인", "샘플", "생산"];
+
+/** "SPECIAL FABRIC SOURCING" — the specialty/hard-to-find fabric sourcing spotlight on the
+ * portfolio page. Kept as data, separate from the section layout, same convention as the
+ * capability/process copy above. */
+export const FABRIC_SOURCING_KIDS_FLOW = ["WHY SAFETY MATTERS", "SAFE FABRIC SOURCING", "PRODUCTION"];
+
+export const FABRIC_SOURCING_KIDS_POINTS = [
+  "아동복용 원단 서칭 및 수급",
+  "제품 용도와 연령에 맞는 소재 제안",
+  "촉감·두께·컬러·혼용률 등을 고려한 원단 서칭",
+  "필요 시 관련 시험·인증 절차를 고려한 제작 진행",
+  "원단 수급 → 샘플 → 본생산까지 연결",
+];
+
+export const FABRIC_SOURCING_HANJI_POINTS = [
+  "한지 레더 소재 수급",
+  "자켓 및 의류 제작",
+  "가방 및 패션 소품 제작",
+  "소재 특성을 활용한 브랜드 제품 개발",
+  "샘플 제작 및 본생산 연계",
+];
+
+export const FABRIC_SOURCING_CUSTOM_FLOW_EN = ["REFERENCE", "FABRIC SOURCING", "SAMPLE", "PRODUCTION"];
+
+export const FABRIC_SOURCING_CUSTOM_FLOW_KO = ["레퍼런스 전달", "원단 서칭", "소재 제안", "샘플 제작", "본생산"];

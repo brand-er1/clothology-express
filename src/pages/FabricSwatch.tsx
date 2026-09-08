@@ -8,11 +8,11 @@ import {
   Loader2,
   PackageCheck,
   Palette,
-  Sparkles,
   UploadCloud,
   X,
 } from "lucide-react";
 import { Header } from "@/components/Header";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -209,7 +209,7 @@ const FabricSwatch = () => {
             <div className="absolute -right-20 -top-32 h-80 w-80 rounded-full bg-brand/45 blur-3xl" />
             <div className="relative max-w-3xl">
               <div className="flex items-center gap-2 text-sm font-semibold text-white/65">
-                <Sparkles className="h-4 w-4" />
+                <BrandMark className="h-4 w-4" variant="white" />
                 FABRIC CURATION
               </div>
               <h1 className="mt-5 text-4xl font-black tracking-[-0.045em] md:text-6xl">

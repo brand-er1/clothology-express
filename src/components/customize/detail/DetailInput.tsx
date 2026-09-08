@@ -7,8 +7,8 @@ import {
   LoaderCircle,
   RefreshCw,
   TrendingUp,
-  WandSparkles,
 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { useEffect, useMemo, useState } from "react";
 import {
   FASHION_TREND_REFRESH_MS,
@@ -211,7 +211,7 @@ export const DetailInput = ({
       <div className="space-y-5 p-4 sm:p-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-brand">
-            <WandSparkles className="h-4 w-4" aria-hidden="true" />
+            <BrandMark className="h-4 w-4" />
             <p className="text-sm font-bold">디자인 프롬프트</p>
           </div>
           <p className="text-[15px] leading-6 text-stone-600 sm:text-sm">

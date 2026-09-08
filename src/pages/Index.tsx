@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BrandMascot } from "@/components/BrandMascot";
+import { BrandMark } from "@/components/BrandMark";
 import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
@@ -405,7 +406,7 @@ const Index = () => {
           <div className="mx-auto grid max-w-[1440px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_auto] lg:items-end lg:px-12 xl:px-16">
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#d7a6b2] sm:text-xs">
-                <Sparkles className="h-4 w-4" /> BRAND-ER STUDIO
+                <BrandMark className="h-4 w-4" variant="white" /> BRAND-ER STUDIO
               </div>
               <div className="mt-5 flex items-end gap-3 sm:gap-4">
                 <BrandMascot size={64} className="hidden shrink-0 pb-1 sm:block" />

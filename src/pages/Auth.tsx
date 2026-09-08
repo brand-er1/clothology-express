@@ -8,8 +8,9 @@ import { SignUpForm } from "@/components/auth/SignUpForm";
 import { useAuthForm } from "@/hooks/useAuthForm";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
 import { Separator } from "@/components/ui/separator";
-import { ArrowUpRight, Check, Sparkles } from "lucide-react";
+import { ArrowUpRight, Check } from "lucide-react";
 import { getAppPath } from "@/utils/appUrl";
+import { BrandMark } from "@/components/BrandMark";
 
 const Auth = () => {
   const {
@@ -60,7 +61,7 @@ const Auth = () => {
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand/40 blur-3xl" />
           <div className="relative">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-white/55">
-              <Sparkles className="h-4 w-4 text-[#e4b5b0]" /> Brand launch workspace
+              <BrandMark className="h-4 w-4" variant="white" /> Brand launch workspace
             </p>
             <h1 className="mt-7 max-w-lg text-5xl font-semibold leading-[1.06] tracking-[-0.05em]">
               아이디어를 브랜드로,

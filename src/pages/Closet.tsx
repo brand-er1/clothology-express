@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Download, Loader2, RefreshCw, Ruler, Shirt, Sparkles } from "lucide-react";
+import { Download, Loader2, RefreshCw, Ruler, Shirt } from "lucide-react";
 import { Header } from "@/components/Header";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
@@ -455,7 +456,7 @@ const Closet = () => {
         {view === "transition" && (
           <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
-              <Sparkles className="h-7 w-7" />
+              <BrandMark className="h-7 w-7" />
             </span>
             <h2 className="mt-5 text-2xl font-black text-stone-950">선택 완료!</h2>
             <p className="mt-2 text-stone-500">이제 옷을 골라 피팅해볼까요?</p>
@@ -607,7 +608,7 @@ const Closet = () => {
                       disabled={wornSlotCount === 0}
                       onClick={() => setView("look-complete")}
                     >
-                      <Sparkles className="mr-2 h-4 w-4" />
+                      <BrandMark className="mr-2 h-4 w-4" variant="white" />
                       ✨ FITTING COMPLETE
                     </Button>
                   </>

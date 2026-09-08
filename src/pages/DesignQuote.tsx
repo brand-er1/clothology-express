@@ -12,11 +12,11 @@ import {
   Plus,
   RotateCcw,
   Send,
-  Sparkles,
   Upload,
   X,
 } from "lucide-react";
 import { Header } from "@/components/Header";
+import { BrandMark } from "@/components/BrandMark";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -492,7 +492,7 @@ const DesignQuote = () => {
               className="h-12 rounded-full border-stone-300 bg-white px-6"
             >
               <Link to="/customize">
-                <Sparkles className="mr-2 h-4 w-4" />
+                <BrandMark className="mr-2 h-4 w-4" />
                 AI 디자인 생성하기
               </Link>
             </Button>
@@ -986,7 +986,7 @@ const DesignQuote = () => {
             ) : (
               <Card className="flex min-h-[430px] flex-col items-center justify-center rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-8 text-center shadow-sm">
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 text-stone-400">
-                  <Sparkles className="h-6 w-6" />
+                  <BrandMark className="h-6 w-6" />
                 </span>
                 <h2 className="mt-5 text-xl font-extrabold text-stone-950">
                   분석 결과와 자동 견적서

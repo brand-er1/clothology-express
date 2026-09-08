@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -108,7 +109,7 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
   return (
     <div className="space-y-3 rounded-[1.5rem] border border-brand/20 bg-brand/5 p-5">
       <p className="flex items-center gap-2 text-sm font-black text-stone-950">
-        <Sparkles className="h-4 w-4 text-brand" />✨ 새 옷 만들기
+        <BrandMark className="h-4 w-4" />✨ 새 옷 만들기
       </p>
       <p className="text-xs leading-5 text-stone-500">
         같은 부위에 이미 입은 옷이 있으면 새로 만든 옷으로 바로 교체됩니다.

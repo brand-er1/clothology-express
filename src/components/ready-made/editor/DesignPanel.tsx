@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { ImagePlus, Loader2, Sparkles, Upload } from "lucide-react";
+import { ImagePlus, Loader2, Upload } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TrademarkScreeningCard } from "@/components/ready-made/TrademarkScreeningCard";
@@ -41,7 +42,7 @@ export const DesignPanel = ({ form }: DesignPanelProps) => {
             mode === "ai" ? "bg-brand text-white" : "bg-stone-100 text-stone-500 hover:bg-stone-200"
           }`}
         >
-          <Sparkles className="h-3.5 w-3.5" />
+          <BrandMark className="h-3.5 w-3.5" variant={mode === "ai" ? "white" : "default"} />
           AI로 생성
         </button>
       </div>
@@ -118,7 +119,7 @@ export const DesignPanel = ({ form }: DesignPanelProps) => {
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-4 w-4" />
+                <BrandMark className="mr-2 h-4 w-4" variant="white" />
                 AI 디자인 생성
               </>
             )}

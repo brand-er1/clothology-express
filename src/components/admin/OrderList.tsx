@@ -6,10 +6,10 @@ import {
   ImageOff,
   PackageCheck,
   Search,
-  Sparkles,
   XCircle,
   Zap,
 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -208,7 +208,7 @@ export const OrderList = ({ orders, onReviewOrder }: OrderListProps) => {
                         </Badge>
                         {isDesignUpload && (
                           <Badge className="bg-brand/10 text-brand hover:bg-brand/10">
-                            <Sparkles className="mr-1 h-3 w-3" />
+                            <BrandMark className="mr-1 h-3 w-3" />
                             내 디자인 견적
                           </Badge>
                         )}

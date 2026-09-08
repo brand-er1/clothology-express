@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { fetchApprovedFundings, fetchMyFundings } from "@/services/funding";
 import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
-import { ArrowRight, ArrowUpRight, Loader2, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 
 const statusLabel: Record<FundingStatus, string> = {
   pending: "승인 대기",
@@ -46,7 +47,7 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
   if (!fundings.length) {
     return (
       <div className="border-y border-black/10 py-24 text-center">
-        <Sparkles className="mx-auto mb-5 h-8 w-8 text-brand/60" />
+        <BrandMark className="mx-auto mb-5 h-8 w-8" />
         <h3 className="font-serif text-2xl font-medium text-[#211b1c]">새로운 컬렉션을 준비하고 있습니다.</h3>
         <p className="mt-3 text-sm text-stone-500">곧 공개될 BRAND-ER의 다음 드롭을 기다려주세요.</p>
         <Button asChild variant="outline" className="mt-7 rounded-none border-stone-400 bg-transparent px-6">

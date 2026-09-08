@@ -31,12 +31,12 @@ import {
   Loader2,
   LockKeyhole,
   Plus,
-  Sparkles,
   Shirt,
   TrendingUp,
   Users,
   X,
 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 
 const formatWon = (amount: number) =>
   `${Math.round(amount).toLocaleString("ko-KR")}원`;
@@ -366,7 +366,7 @@ const FundingEditor = () => {
           <Card className="rounded-3xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
-                <Sparkles className="h-5 w-5 text-brand" /> 펀딩 정보
+                <BrandMark className="h-5 w-5" /> 펀딩 정보
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">

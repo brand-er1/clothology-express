@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Wand2, X } from "lucide-react";
+import { Loader2, Wand2, X } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -284,7 +285,7 @@ export const GarmentEditPanel = ({
           <DrawerHeader className="flex-shrink-0 pb-2 text-left">
             <div className="flex items-center justify-between">
               <DrawerTitle className="flex items-center gap-1.5 text-base">
-                <Sparkles className="h-4 w-4 text-brand" />이 옷 수정하기
+                <BrandMark className="h-4 w-4" />이 옷 수정하기
               </DrawerTitle>
               <button
                 type="button"
@@ -315,7 +316,7 @@ export const GarmentEditPanel = ({
     <div className="rounded-[1.5rem] border border-brand/20 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-sm font-black text-stone-950">
-          <Sparkles className="h-4 w-4 text-brand" />이 옷 수정하기
+          <BrandMark className="h-4 w-4" />이 옷 수정하기
         </p>
         <button
           type="button"

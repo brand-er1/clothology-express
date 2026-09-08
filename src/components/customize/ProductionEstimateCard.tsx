@@ -13,9 +13,9 @@ import {
   RefreshCw,
   Scissors,
   Shirt,
-  Sparkles,
   Trash2,
 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -531,7 +531,7 @@ export const ProductionEstimateCard = ({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="border-white/20 bg-white/15 text-white hover:bg-white/15">
-                <Sparkles className="mr-1 h-3.5 w-3.5" />
+                <BrandMark className="mr-1 h-3.5 w-3.5" variant="white" />
                 AI 이미지 분석
               </Badge>
               {estimate.imageCount != null && estimate.imageCount > 1 && (
@@ -1133,7 +1133,7 @@ export const ProductionEstimateCard = ({
 
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Sparkles className="h-4 w-4" /> AI 분석 소재
+            <BrandMark className="h-4 w-4" /> AI 분석 소재
           </p>
           <p className="mt-2 font-extrabold text-gray-950">
             {estimate.material.composition}

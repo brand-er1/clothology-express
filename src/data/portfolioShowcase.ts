@@ -68,55 +68,62 @@ export const FABRIC_SOURCING_CUSTOM_FLOW_EN = ["REFERENCE", "FABRIC SOURCING", "
 
 export const FABRIC_SOURCING_CUSTOM_FLOW_KO = ["레퍼런스 전달", "원단 서칭", "소재 제안", "샘플 제작", "본생산"];
 
-export interface SpecialMaterial {
+export interface SpecialMaterialCard {
   nameKo: string;
   nameEn: string;
-  description: string;
   image: string;
   imageAlt: string;
-  /** Only the hanji-leather card ships a front/back comparison photo. */
-  showFrontBackLabels?: boolean;
+  /** Rendered as separate paragraph lines. */
+  description: string[];
   features: string[];
-  recommendedItems: string[];
-  disclaimer: string;
+  note: string;
+  /** "highlight" — a positive sourcing/availability line. "disclaimer" — a cautionary line
+   * (kept visually distinct so it never reads as a certification claim about the photo itself). */
+  noteVariant: "highlight" | "disclaimer";
 }
 
-/** "SPECIAL MATERIALS" — the two-card vegan-leather / hanji-leather spotlight on the portfolio
- * page. Kept as data, separate from the section layout, same convention as the rest of this file. */
-export const SPECIAL_MATERIALS: SpecialMaterial[] = [
+/** "SPECIAL MATERIALS & CERTIFIED FABRICS" — the two-card spotlight on the portfolio page:
+ * vegan hanji leather and KC-safety-aware kidswear fabric sourcing. Kept as data, separate from
+ * the section layout, same convention as the rest of this file. */
+export const SPECIAL_MATERIAL_CARDS: SpecialMaterialCard[] = [
   {
-    nameKo: "비건 가죽",
-    nameEn: "VEGAN LEATHER",
-    description: "동물성 천연가죽을 사용하지 않고 제작되는 대체 가죽 소재.",
-    image: "/fabrics/faux-leather.webp",
-    imageAlt: "비건 가죽 표면 질감",
-    features: [
-      "동물성 가죽을 사용하지 않는 소재 선택 가능",
-      "균일한 색상과 표면 표현에 유리",
-      "다양한 컬러, 광택, 엠보싱 및 질감 구현 가능",
-      "소재에 따라 천연가죽 대비 관리가 간편",
-      "브랜드 콘셉트에 맞는 다양한 소재 선택 가능",
+    nameKo: "비건 한지 레더",
+    nameEn: "VEGAN HANJI LEATHER",
+    image: "/fabrics/hanji-leather.webp",
+    imageAlt: "비건 한지 레더 — 앞면 레더 질감과 뒷면 한지 섬유 질감",
+    description: [
+      "동물성 천연가죽을 사용하지 않는 비건 레더와 한지의 특성을 결합한 차별화 소재입니다.",
+      "앞면에서는 레더 특유의 고급스러운 질감과 컬러를 표현하고,",
+      "뒷면에서는 한지 특유의 섬유 조직과 자연스러운 질감을 확인할 수 있습니다.",
     ],
-    recommendedItems: ["재킷", "가방", "신발", "패션 소품"],
-    disclaimer:
-      "※ 비건 가죽은 소재 구성에 따라 친환경성이 달라질 수 있어, '친환경 가죽'이 아닌 동물성 가죽을 사용하지 않는 대체 가죽 소재로 안내드립니다.",
+    features: [
+      "동물성 천연가죽을 대체할 수 있는 소재",
+      "레더의 고급스러운 표면감",
+      "한지 특유의 독특한 섬유 조직",
+      "일반 합성가죽과 차별화되는 소재 스토리",
+      "다양한 컬러 및 질감 선택 가능",
+      "재킷, 가방, 파우치 및 패션 소품 제작 가능",
+    ],
+    note: "비건 한지 레더 소재 수급 및 제작 가능",
+    noteVariant: "highlight",
   },
   {
-    nameKo: "한지 가죽",
-    nameEn: "HANJI LEATHER",
-    description: "한국 전통 소재인 한지를 현대적인 가죽 소재와 결합하거나 가죽과 유사한 질감으로 구현한 특수 소재.",
-    image: "/fabrics/hanji-leather.webp",
-    imageAlt: "한지 가죽 — 앞면 레더 질감과 뒷면 한지 섬유 질감 비교",
-    showFrontBackLabels: true,
-    features: [
-      "앞면에서는 레더 특유의 고급스러운 표면감 표현 가능",
-      "뒷면에서는 한지 특유의 섬유 조직과 질감을 확인할 수 있는 소재 수급 가능",
-      "일반적인 레더와 차별화되는 독특한 소재감",
-      "경량화된 패션 제품 제작에 활용 가능",
-      "한국적인 소재 스토리텔링과 브랜드 차별화에 적합",
+    nameKo: "KC 인증 아동복 원단",
+    nameEn: "KC CERTIFIED FABRIC",
+    image: "/fabrics/kc-safety-swatch.png",
+    imageAlt: "KC 인증 아동복 원단 — 아동복용 원단 컬러 스와치 보드",
+    description: [
+      "아동복 제작 시 제품의 안전성과 관련된 KC 안전기준 및 적용 요건을 고려한 원단 수급을 지원합니다.",
+      "다양한 컬러와 사양의 아동복용 원단을 확인하고 제품에 적합한 소재를 선택할 수 있습니다.",
     ],
-    recommendedItems: ["재킷", "가방", "파우치", "패션 소품"],
-    disclaimer:
-      "※ 한지 가죽은 소재의 코팅 및 가공 방식에 따라 특성이 달라질 수 있어, '100% 친환경' 소재로 안내드리지는 않습니다.",
+    features: [
+      "아동복 제작용 원단 수급 가능",
+      "KC 관련 안전기준을 고려한 소재 선택 지원",
+      "다양한 컬러 선택 가능",
+      "키즈웨어 및 아동복 제작 대응",
+      "샘플 제작부터 본생산까지 연계 가능",
+    ],
+    note: "※ KC 관련 인증·시험 여부는 실제 사용 원단 및 완제품 사양에 따라 개별 확인",
+    noteVariant: "disclaimer",
   },
 ];

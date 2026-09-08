@@ -64,14 +64,59 @@ export const FABRIC_SOURCING_KIDS_POINTS = [
   "원단 수급 → 샘플 → 본생산까지 연결",
 ];
 
-export const FABRIC_SOURCING_HANJI_POINTS = [
-  "한지 레더 소재 수급",
-  "자켓 및 의류 제작",
-  "가방 및 패션 소품 제작",
-  "소재 특성을 활용한 브랜드 제품 개발",
-  "샘플 제작 및 본생산 연계",
-];
-
 export const FABRIC_SOURCING_CUSTOM_FLOW_EN = ["REFERENCE", "FABRIC SOURCING", "SAMPLE", "PRODUCTION"];
 
 export const FABRIC_SOURCING_CUSTOM_FLOW_KO = ["레퍼런스 전달", "원단 서칭", "소재 제안", "샘플 제작", "본생산"];
+
+export interface SpecialMaterial {
+  nameKo: string;
+  nameEn: string;
+  description: string;
+  image: string;
+  imageAlt: string;
+  /** Only the hanji-leather card ships a front/back comparison photo. */
+  showFrontBackLabels?: boolean;
+  features: string[];
+  recommendedItems: string[];
+  disclaimer: string;
+}
+
+/** "SPECIAL MATERIALS" — the two-card vegan-leather / hanji-leather spotlight on the portfolio
+ * page. Kept as data, separate from the section layout, same convention as the rest of this file. */
+export const SPECIAL_MATERIALS: SpecialMaterial[] = [
+  {
+    nameKo: "비건 가죽",
+    nameEn: "VEGAN LEATHER",
+    description: "동물성 천연가죽을 사용하지 않고 제작되는 대체 가죽 소재.",
+    image: "/fabrics/faux-leather.webp",
+    imageAlt: "비건 가죽 표면 질감",
+    features: [
+      "동물성 가죽을 사용하지 않는 소재 선택 가능",
+      "균일한 색상과 표면 표현에 유리",
+      "다양한 컬러, 광택, 엠보싱 및 질감 구현 가능",
+      "소재에 따라 천연가죽 대비 관리가 간편",
+      "브랜드 콘셉트에 맞는 다양한 소재 선택 가능",
+    ],
+    recommendedItems: ["재킷", "가방", "신발", "패션 소품"],
+    disclaimer:
+      "※ 비건 가죽은 소재 구성에 따라 친환경성이 달라질 수 있어, '친환경 가죽'이 아닌 동물성 가죽을 사용하지 않는 대체 가죽 소재로 안내드립니다.",
+  },
+  {
+    nameKo: "한지 가죽",
+    nameEn: "HANJI LEATHER",
+    description: "한국 전통 소재인 한지를 현대적인 가죽 소재와 결합하거나 가죽과 유사한 질감으로 구현한 특수 소재.",
+    image: "/fabrics/hanji-leather.webp",
+    imageAlt: "한지 가죽 — 앞면 레더 질감과 뒷면 한지 섬유 질감 비교",
+    showFrontBackLabels: true,
+    features: [
+      "앞면에서는 레더 특유의 고급스러운 표면감 표현 가능",
+      "뒷면에서는 한지 특유의 섬유 조직과 질감을 확인할 수 있는 소재 수급 가능",
+      "일반적인 레더와 차별화되는 독특한 소재감",
+      "경량화된 패션 제품 제작에 활용 가능",
+      "한국적인 소재 스토리텔링과 브랜드 차별화에 적합",
+    ],
+    recommendedItems: ["재킷", "가방", "파우치", "패션 소품"],
+    disclaimer:
+      "※ 한지 가죽은 소재의 코팅 및 가공 방식에 따라 특성이 달라질 수 있어, '100% 친환경' 소재로 안내드리지는 않습니다.",
+  },
+];

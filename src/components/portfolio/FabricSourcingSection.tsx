@@ -6,8 +6,8 @@ import {
   FABRIC_SOURCING_CUSTOM_FLOW_KO,
   FABRIC_SOURCING_KIDS_FLOW,
   FABRIC_SOURCING_KIDS_POINTS,
-  SPECIAL_MATERIALS,
-  type SpecialMaterial,
+  SPECIAL_MATERIAL_CARDS,
+  type SpecialMaterialCard,
 } from "@/data/portfolioShowcase";
 
 const FlowBar = ({ steps }: { steps: string[] }) => (
@@ -40,49 +40,35 @@ const PullQuote = ({ children }: { children: string }) => (
   </p>
 );
 
-const MaterialCard = ({ material, index }: { material: SpecialMaterial; index: number }) => (
+/** Image is rendered at its natural aspect ratio (no aspect-box, no object-fit: cover) so the
+ * full swatch — including a color-swatch board's edge text — is always visible, uncropped. */
+const MaterialCard = ({ material, index }: { material: SpecialMaterialCard; index: number }) => (
   <Reveal delayMs={index * 120} className="flex flex-col bg-white">
-    <div className="relative aspect-[4/5] overflow-hidden bg-[#dcd0bb] sm:aspect-[5/4] lg:aspect-[4/5]">
-      <img
-        src={material.image}
-        alt={material.imageAlt}
-        loading="lazy"
-        decoding="async"
-        className="h-full w-full object-cover"
-      />
-      {material.showFrontBackLabels && (
-        <>
-          <span className="absolute left-4 top-4 bg-black/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white sm:left-6 sm:top-6">
-            Front · Leather
-          </span>
-          <span className="absolute bottom-4 right-4 bg-white/85 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#4a3c22] sm:bottom-6 sm:right-6">
-            Back · Hanji
-          </span>
-        </>
-      )}
-    </div>
+    <img src={material.image} alt={material.imageAlt} loading="lazy" decoding="async" className="w-full" />
 
     <div className="flex flex-1 flex-col p-6 sm:p-8">
       <span className="text-[10px] font-bold tracking-[0.2em] text-brand">{material.nameEn}</span>
-      <h3 className="mt-2 font-serif text-2xl font-normal tracking-[-0.02em] sm:text-[1.8rem]">
+      <h4 className="mt-2 font-serif text-2xl font-normal tracking-[-0.02em] sm:text-[1.8rem]">
         {material.nameKo}
-      </h3>
-      <p className="mt-3 text-sm leading-7 text-stone-600">{material.description}</p>
+      </h4>
+      <p className="mt-3 text-sm leading-7 text-stone-600 sm:text-base sm:leading-8">
+        {material.description.map((line, i) => (
+          <span key={line}>
+            {line}
+            {i < material.description.length - 1 && <br />}
+          </span>
+        ))}
+      </p>
 
       <PointList points={material.features} />
 
-      <div className="mt-6">
-        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-stone-400">추천 제작 품목</span>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {material.recommendedItems.map((item) => (
-            <span key={item} className="border border-black/15 px-3 py-1 text-xs text-stone-600">
-              {item}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <p className="mt-5 text-xs leading-6 text-stone-400">{material.disclaimer}</p>
+      {material.noteVariant === "highlight" ? (
+        <p className="mt-6 w-fit border border-brand/30 bg-brand/5 px-4 py-2 text-xs font-bold text-brand">
+          {material.note}
+        </p>
+      ) : (
+        <p className="mt-6 text-xs leading-6 text-stone-400">{material.note}</p>
+      )}
 
       <Link
         to={`/design-quote?ref=${encodeURIComponent(material.nameKo)}`}
@@ -116,7 +102,7 @@ export const FabricSourcingSection = () => {
           </Reveal>
           <Reveal delayMs={220}>
             <p className="mt-7 max-w-2xl text-base leading-8 text-stone-600 sm:text-lg">
-              일반적인 원단부터 아동복용 안전기준 대응 소재, 비건 가죽·한지 가죽과 같은 특수 소재까지.{" "}
+              일반적인 원단부터 아동복용 안전기준 대응 소재, 비건 한지 레더와 같은 특수 소재까지.{" "}
               <br className="hidden sm:block" />
               제품의 목적과 디자인에 맞는 원단을 찾아 샘플 제작과 본생산까지 연결합니다.
             </p>
@@ -179,13 +165,13 @@ export const FabricSourcingSection = () => {
         </div>
       </section>
 
-      {/* 02. SPECIAL MATERIALS — 비건 가죽 / 한지 가죽 */}
+      {/* 02. SPECIAL MATERIALS & CERTIFIED FABRICS — 비건 한지 레더 / KC 인증 아동복 원단 */}
       <section id="special-materials" className="border-b border-black/10 bg-[#efe7db]">
         <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
           <Reveal>
             <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">
               <span className="h-px w-8 bg-brand" />
-              Special Materials · 특수 소재 수급 및 제작
+              Special Materials &amp; Certified Fabrics
             </p>
           </Reveal>
           <Reveal delayMs={100}>
@@ -197,30 +183,16 @@ export const FabricSourcingSection = () => {
           </Reveal>
           <Reveal delayMs={180}>
             <p className="mt-6 max-w-2xl text-sm leading-7 text-stone-600 sm:text-base sm:leading-8">
-              BRAND-ER는 비건 가죽, 한지 가죽 등 특수 소재 수급부터 샘플 제작, 본생산까지 지원합니다.
+              BRAND-ER는 비건 한지 레더, KC 인증 아동복 원단과 같은 특수·인증 소재 수급부터 샘플 제작, 본생산까지
+              지원합니다.
             </p>
           </Reveal>
 
           <div className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-            {SPECIAL_MATERIALS.map((material, index) => (
+            {SPECIAL_MATERIAL_CARDS.map((material, index) => (
               <MaterialCard key={material.nameEn} material={material} index={index} />
             ))}
           </div>
-
-          <Reveal delayMs={240} className="mt-16 border-t border-black/10 pt-12 text-center sm:mt-20 sm:pt-16">
-            <h4 className="mx-auto max-w-xl font-serif text-2xl font-normal leading-snug tracking-[-0.02em] sm:text-3xl">
-              특별한 소재로 제작하고 싶으신가요?
-            </h4>
-            <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-stone-600 sm:text-base">
-              소재 수급부터 샘플 제작, 생산까지 BRAND-ER에서 상담받아보세요.
-            </p>
-            <Link
-              to="/design-quote"
-              className="mt-7 inline-flex h-12 items-center justify-center bg-brand px-7 text-sm font-bold text-white transition hover:bg-brand-dark sm:h-14"
-            >
-              특수 소재 제작 문의하기 <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Reveal>
         </div>
       </section>
 

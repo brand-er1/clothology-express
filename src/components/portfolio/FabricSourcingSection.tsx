@@ -127,7 +127,7 @@ export const FabricSourcingSection = () => {
             {/* Visual first in DOM so mobile shows the swatch board before the long body copy. */}
             <RevealImage className="relative aspect-[4/5] overflow-hidden bg-[#f6f4ef] sm:aspect-[6/5]">
               <img
-                src="/fabrics/kc-safety-swatch.png"
+                src={`${import.meta.env.BASE_URL}fabrics/kc-safety-swatch.png`}
                 alt="KC 안전기준 대응 아동복 원단 컬러 스와치 보드"
                 loading="lazy"
                 decoding="async"

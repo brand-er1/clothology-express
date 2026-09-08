@@ -82,6 +82,11 @@ export interface SpecialMaterialCard {
   noteVariant: "highlight" | "disclaimer";
 }
 
+/** Prefixed with Vite's BASE_URL so asset paths resolve correctly under the GitHub Pages
+ * project-site subpath (e.g. /clothology-express/), matching the convention in
+ * fabric-recommendations.ts — a bare "/fabrics/..." path 404s once deployed there. */
+const fabricImage = (fileName: string) => `${import.meta.env.BASE_URL}fabrics/${fileName}`;
+
 /** "SPECIAL MATERIALS & CERTIFIED FABRICS" — the two-card spotlight on the portfolio page:
  * vegan hanji leather and KC-safety-aware kidswear fabric sourcing. Kept as data, separate from
  * the section layout, same convention as the rest of this file. */
@@ -89,7 +94,7 @@ export const SPECIAL_MATERIAL_CARDS: SpecialMaterialCard[] = [
   {
     nameKo: "비건 한지 레더",
     nameEn: "VEGAN HANJI LEATHER",
-    image: "/fabrics/hanji-leather.webp",
+    image: fabricImage("hanji-leather.webp"),
     imageAlt: "비건 한지 레더 — 앞면 레더 질감과 뒷면 한지 섬유 질감",
     description: [
       "동물성 천연가죽을 사용하지 않는 비건 레더와 한지의 특성을 결합한 차별화 소재입니다.",
@@ -110,7 +115,7 @@ export const SPECIAL_MATERIAL_CARDS: SpecialMaterialCard[] = [
   {
     nameKo: "KC 인증 아동복 원단",
     nameEn: "KC CERTIFIED FABRIC",
-    image: "/fabrics/kc-safety-swatch.png",
+    image: fabricImage("kc-safety-swatch.png"),
     imageAlt: "KC 인증 아동복 원단 — 아동복용 원단 컬러 스와치 보드",
     description: [
       "아동복 제작 시 제품의 안전성과 관련된 KC 안전기준 및 적용 요건을 고려한 원단 수급을 지원합니다.",

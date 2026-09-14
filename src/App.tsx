@@ -21,7 +21,6 @@ import DesignQuote from './pages/DesignQuote';
 import Closet from './pages/Closet';
 import Portfolio from './pages/Portfolio';
 import QuickGroupWear from './pages/QuickGroupWear';
-import Magazine from './pages/Magazine';
 import { supabase } from './lib/supabase';
 import { claimGuestSession } from './services/designs';
 import { toast } from '@/components/ui/use-toast';
@@ -47,71 +46,43 @@ import CommunityProfile from './pages/community/CommunityProfile';
 import CommunityNotifications from './pages/community/CommunityNotifications';
 
 declare global {
-  interface Window {
-    Kakao?: {
-      init: (key: string) => void;
-      isInitialized: () => boolean;
-    };
-  }
+  interface Window { Kakao?: { init: (key: string) => void; isInitialized: () => boolean; }; }
 }
 
 function App() {
   const [isInIframeContext, setIsInIframeContext] = useState(false);
   const isMobile = useIsMobile();
-
   useDisableImageCapture();
 
   useEffect(() => {
     const inIframe = isInIframe();
     setIsInIframeContext(inIframe);
     console.log("App mounted in iframe:", inIframe, "Mobile:", isMobile);
-
     if (inIframe) document.body.classList.add('in-iframe');
-
     const script = document.createElement('script');
     script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
     script.async = true;
     script.onload = () => {
       const kakaoApiKey = '65949909b86a9401ca9559ea3c184659';
-      if (kakaoApiKey && window.Kakao && !window.Kakao.isInitialized()) {
-        window.Kakao.init(kakaoApiKey);
-      }
+      if (kakaoApiKey && window.Kakao && !window.Kakao.isInitialized()) window.Kakao.init(kakaoApiKey);
     };
     document.body.appendChild(script);
-
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('isMobile') === 'true') document.body.classList.add('force-mobile');
-
     const handleParentMessage = async (event: MessageEvent) => {
       if (!inIframe) return;
       try {
         const message = event.data;
         if (message && message.type === 'SESSION_DATA' && message.data) {
-          const { error } = await supabase.auth.setSession({
-            access_token: message.data.access_token,
-            refresh_token: message.data.refresh_token
-          });
+          const { error } = await supabase.auth.setSession({ access_token: message.data.access_token, refresh_token: message.data.refresh_token });
           if (!error) window.location.href = getAppUrl();
         } else if (message && message.type === 'PARENT_WINDOW_SIZE') {
           document.body.classList.toggle('parent-is-mobile', Boolean(message.isMobile));
         }
-      } catch (error) {
-        console.error("Error processing message in iframe:", error);
-      }
+      } catch (error) { console.error("Error processing message in iframe:", error); }
     };
-
     window.addEventListener('message', handleParentMessage);
-
-    if (inIframe) {
-      window.parent.postMessage({
-        type: 'IFRAME_READY',
-        isMobile,
-        userAgent: navigator.userAgent,
-        windowWidth: window.innerWidth,
-        windowHeight: window.innerHeight
-      }, '*');
-    }
-
+    if (inIframe) window.parent.postMessage({ type: 'IFRAME_READY', isMobile, userAgent: navigator.userAgent, windowWidth: window.innerWidth, windowHeight: window.innerHeight }, '*');
     return () => {
       if (document.body.contains(script)) document.body.removeChild(script);
       window.removeEventListener('message', handleParentMessage);
@@ -122,12 +93,7 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event !== 'SIGNED_IN') return;
       void claimGuestSession().then((result) => {
-        if (result && result.designs > 0) {
-          toast({
-            title: '기존 작업물을 계정으로 옮겼어요',
-            description: `디자인 ${result.designs}개를 이어서 확인할 수 있어요.`,
-          });
-        }
+        if (result && result.designs > 0) toast({ title: '기존 작업물을 계정으로 옮겼어요', description: `디자인 ${result.designs}개를 이어서 확인할 수 있어요.` });
       });
     });
     return () => subscription.unsubscribe();
@@ -136,11 +102,8 @@ function App() {
   return (
     <div className={`${isMobile ? 'mobile-view' : 'desktop-view'} ${BOTTOM_NAV_SPACER_CLASSNAME}`}>
       <BrowserRouter basename={routerBasename}>
-        <MascotProvider>
-        <TutorialProvider>
-          <SiteVisitTracker />
-          <VisitDataNotice />
-          <WelcomeNotification />
+        <MascotProvider><TutorialProvider>
+          <SiteVisitTracker /><VisitDataNotice /><WelcomeNotification />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/index.html" element={<Index />} />
@@ -156,7 +119,7 @@ function App() {
             <Route path="/my-outfits" element={<Navigate to="/closet" replace />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
-            <Route path="/magazine" element={<Magazine />} />
+            <Route path="/magazine" element={<Navigate to="/community" replace />} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
             <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />
@@ -171,28 +134,12 @@ function App() {
             <Route path="/community/profile/:userId" element={<CommunityProfile />} />
             <Route path="/community/:postId" element={<CommunityPostDetail />} />
             <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
-            <Route
-              path="/admin"
-              element={
-                <AuthGuard>
-                  <div className="bg-[#f4f0ea] px-4 pt-24 sm:px-6">
-                    <div className="mx-auto max-w-[1500px]">
-                      <VisitorAnalyticsDashboard />
-                    </div>
-                  </div>
-                  <Admin />
-                </AuthGuard>
-              }
-            />
+            <Route path="/admin" element={<AuthGuard><div className="bg-[#f4f0ea] px-4 pt-24 sm:px-6"><div className="mx-auto max-w-[1500px]"><VisitorAnalyticsDashboard /></div></div><Admin /></AuthGuard>} />
             <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <Footer />
-          <BrandGuide />
-          <TutorialOverlay />
-          <BottomNav />
-        </TutorialProvider>
-        </MascotProvider>
+          <Footer /><BrandGuide /><TutorialOverlay /><BottomNav />
+        </TutorialProvider></MascotProvider>
       </BrowserRouter>
       <Toaster />
     </div>

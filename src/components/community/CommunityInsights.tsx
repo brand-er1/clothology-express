@@ -37,6 +37,15 @@ const pressArticles: PressArticle[] = [
     date: "2025.02.06",
     href: "https://www.thevaluenews.co.kr/news/view.php?idx=188400",
   },
+  {
+    title: "브랜더(BRAND-ER), AI 기반 의류 디자인·자동견적·상표분석으로 패션 창업 혁신",
+    summary:
+      "디자인 생성부터 제작 견적과 상표 분석까지 한곳에서 제공하는 BRAND-ER의 서비스를 소개하며, AI 자동견적 시스템의 특허 출원을 준비 중인 소식을 전합니다.",
+    image: "https://cdn.newsfinder.co.kr/news/thumbnail/202608/221368_226384_5731_v150.jpg",
+    source: "뉴스파인더",
+    date: "2026.08.02",
+    href: "http://www.newsfinder.co.kr/news/articleView.html?idxno=221368",
+  },
 ];
 
 const CommunityInsights = () => {
@@ -52,7 +61,7 @@ const CommunityInsights = () => {
         <p className="hidden text-xs font-medium text-stone-500 sm:block">기사 카드를 누르면 원문으로 이동합니다.</p>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-3 md:gap-7">
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 md:gap-7">
         {pressArticles.map((article, index) => (
           <a
             key={article.href}

@@ -28,6 +28,15 @@ const pressArticles: PressArticle[] = [
     date: "2026.06.30",
     href: "https://www.gokorea.kr/news/articleView.html?idxno=870763",
   },
+  {
+    title: "디큐베이터, ‘DeXplore 글로벌 청년 창업 아이디어 경진대회’ 성료…우수팀 사업화 지원",
+    summary:
+      "대학생 창업팀 11개 팀이 참여한 글로벌 청년 창업 아이디어 경진대회의 수상 결과와 후속 사업화 지원 계획을 다룬 기사로, BRAND-ER가 수상팀으로 소개됐습니다.",
+    image: "https://www.thevaluenews.co.kr/data/cheditor4/2502/bbed3bf147bcaac8670b45d4acc6ad4716634ce2.png",
+    source: "더밸류뉴스",
+    date: "2025.02.06",
+    href: "https://www.thevaluenews.co.kr/news/view.php?idx=188400",
+  },
 ];
 
 const CommunityInsights = () => {
@@ -43,7 +52,7 @@ const CommunityInsights = () => {
         <p className="hidden text-xs font-medium text-stone-500 sm:block">기사 카드를 누르면 원문으로 이동합니다.</p>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2 md:gap-7">
+      <div className="grid gap-8 md:grid-cols-3 md:gap-7">
         {pressArticles.map((article, index) => (
           <a
             key={article.href}

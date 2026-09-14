@@ -107,11 +107,12 @@ export const Header = () => {
           />
         </Link>
 
-        {/* PC: SHOP · MAKE(메가메뉴) · COMMUNITY · PORTFOLIO 만 노출해 정보구조를 단순화한다. */}
+        {/* 핵심 탐색 메뉴만 노출하고 제작 세부 기능은 MAKE 안에 묶는다. */}
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink to="/fundings" className={topPillClassName}>SHOP</NavLink>
           <MakeMegaMenu items={makeItems} />
           <NavLink to="/community" className={topPillClassName}>COMMUNITY</NavLink>
+          <NavLink to="/magazine" className={topPillClassName}>MAGAZINE</NavLink>
           <NavLink to="/portfolio" className={topPillClassName}>PORTFOLIO</NavLink>
         </nav>
 
@@ -188,7 +189,6 @@ export const Header = () => {
           </Button>
         </div>
 
-        {/* 모바일: 로고 + ☰ 만 노출, 세부 메뉴는 전부 슬라이드인 시트 안에서 탐색한다. */}
         <div className="ml-auto md:hidden">
           <Button
             variant="ghost"

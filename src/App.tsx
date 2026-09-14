@@ -21,6 +21,7 @@ import DesignQuote from './pages/DesignQuote';
 import Closet from './pages/Closet';
 import Portfolio from './pages/Portfolio';
 import QuickGroupWear from './pages/QuickGroupWear';
+import Magazine from './pages/Magazine';
 import { supabase } from './lib/supabase';
 import { claimGuestSession } from './services/designs';
 import { toast } from '@/components/ui/use-toast';
@@ -117,8 +118,6 @@ function App() {
     };
   }, [isMobile]);
 
-  // Moves any design/outfit made anonymously (guest_session_id) onto the account the moment the
-  // visitor signs in, so logging in never wipes out work made while browsing without an account.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event !== 'SIGNED_IN') return;
@@ -152,12 +151,12 @@ function App() {
             <Route path="/design-quote" element={<DesignQuote />} />
             <Route path="/estimate" element={<DesignQuote />} />
             <Route path="/closet" element={<Closet />} />
-            {/* 코디 피드/내 코디(커뮤니티 기능)는 제거되었다 — 기존 링크/북마크는 AI 가상 피팅으로 보낸다. */}
             <Route path="/outfits" element={<Navigate to="/closet" replace />} />
             <Route path="/outfits/:id" element={<Navigate to="/closet" replace />} />
             <Route path="/my-outfits" element={<Navigate to="/closet" replace />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
+            <Route path="/magazine" element={<Magazine />} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
             <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />

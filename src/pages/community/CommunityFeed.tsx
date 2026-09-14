@@ -4,6 +4,7 @@ import { Heart, MessageCircle, Flame, Loader2, Plus, Search, X, Bell } from "luc
 import { Header } from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { formatCommunityTime } from "@/lib/communityTime";
 import { fetchCommunityPosts, getCommunityErrorMessage } from "@/services/community";
 import { toast } from "@/components/ui/use-toast";
 import type { CommunityFeedFilter, CommunityPostSummary } from "@/types/community";
@@ -51,7 +52,9 @@ const PostCard = ({ post }: { post: CommunityPostSummary }) => (
     </div>
     <div className="mt-2 px-0.5">
       <h3 className="truncate text-sm font-bold text-stone-900">{post.title}</h3>
-      <p className="truncate text-xs text-stone-500">@{post.brandName || post.authorName}</p>
+      <p className="truncate text-xs font-semibold text-stone-500">@{post.brandName || post.authorName}</p>
+      {post.description && <p className="mt-0.5 line-clamp-1 text-xs text-stone-400">{post.description}</p>}
+      <p className="mt-0.5 text-[11px] text-stone-400">{formatCommunityTime(post.createdAt)}</p>
     </div>
   </Link>
 );

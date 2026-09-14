@@ -7,6 +7,7 @@ import {
   FlaskConical,
   GalleryHorizontalEnd,
   Image,
+  MessagesSquare,
   PackageCheck,
   Settings,
   Shirt,
@@ -36,6 +37,8 @@ import type { AdminClosetActivity } from "@/types/closetActivity";
 import { PortfolioProjectList } from "@/components/admin/PortfolioProjectList";
 import { fetchAllPortfolioProjectsForAdmin } from "@/services/portfolioProjects";
 import type { PortfolioProject } from "@/types/portfolio";
+import { CommunityAdminPanel } from "@/components/admin/CommunityAdminPanel";
+import { fetchAdminCommunityStats } from "@/services/community";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
@@ -48,6 +51,7 @@ const sectionMeta = {
   portfolio: { label: "포트폴리오", description: "Selected Works에 노출되는 프로젝트를 관리합니다.", icon: GalleryHorizontalEnd },
   swatches: { label: "원단 스와치", description: "원단 추천 신청과 진행 상태를 관리합니다.", icon: FlaskConical },
   fundings: { label: "펀딩 관리", description: "펀딩 승인 요청과 진행 상태를 확인합니다.", icon: WalletCards },
+  community: { label: "커뮤니티 관리", description: "게시물·댓글·신고와 구매의향/펀딩 전환 현황을 관리합니다.", icon: MessagesSquare },
   settings: { label: "AI 설정", description: "이미지 생성용 시스템 프롬프트를 관리합니다.", icon: Settings },
 } as const;
 
@@ -74,6 +78,7 @@ const Admin = () => {
   const [isLoadingClosetActivities, setIsLoadingClosetActivities] = useState(true);
   const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>([]);
   const [isLoadingPortfolioProjects, setIsLoadingPortfolioProjects] = useState(true);
+  const [communityPendingReports, setCommunityPendingReports] = useState(0);
 
   const section = useMemo<AdminSection>(() => {
     const value = location.pathname.split("/").filter(Boolean)[1] as AdminSection | undefined;
@@ -96,7 +101,17 @@ const Admin = () => {
     void loadGeneratedImages();
     void loadClosetActivities();
     void loadPortfolioProjects();
+    void loadCommunitySummary();
   }, [isAdmin]);
+
+  const loadCommunitySummary = async () => {
+    try {
+      const stats = await fetchAdminCommunityStats();
+      setCommunityPendingReports(stats.pendingReports);
+    } catch (error) {
+      console.error("Error loading community summary:", error);
+    }
+  };
 
   const loadOrders = async () => {
     try {
@@ -255,6 +270,7 @@ const Admin = () => {
     portfolio: portfolioProjects.length,
     swatches: fabricSwatchRequests.filter((request) => request.status === "pending").length,
     fundings: fundings.filter((funding) => funding.status === "pending").length,
+    community: communityPendingReports || null,
     settings: null,
   };
 
@@ -265,6 +281,7 @@ const Admin = () => {
     { section: "orders" as const, label: "신규 제작 의뢰", value: counts.orders?.toLocaleString() || "0", icon: PackageCheck },
     { section: "swatches" as const, label: "신규 스와치 신청", value: counts.swatches?.toLocaleString() || "0", icon: FlaskConical },
     { section: "fundings" as const, label: "펀딩 승인 대기", value: counts.fundings?.toLocaleString() || "0", icon: WalletCards },
+    { section: "community" as const, label: "커뮤니티 미처리 신고", value: (counts.community || 0).toLocaleString(), icon: MessagesSquare },
   ];
 
   const currentMeta = sectionMeta[section];
@@ -324,6 +341,7 @@ const Admin = () => {
             )}
             {section === "swatches" && <FabricSwatchList requests={fabricSwatchRequests} isSaving={isSaving} onUpdate={handleUpdateFabricSwatch} />}
             {section === "fundings" && <FundingList fundings={fundings} onReview={(funding) => { setSelectedFunding(funding); setIsFundingReviewOpen(true); }} />}
+            {section === "community" && <CommunityAdminPanel />}
             {section === "settings" && <SystemPromptEditor systemPrompt={systemPrompt} isLoading={isLoading} onSave={handleSaveSystemPrompt} />}
           </section>
         </div>

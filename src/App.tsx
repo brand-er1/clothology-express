@@ -38,6 +38,12 @@ import { SiteVisitTracker } from './components/SiteVisitTracker';
 import { VisitDataNotice } from './components/VisitDataNotice';
 import VisitDataPolicy from './pages/VisitDataPolicy';
 import { VisitorAnalyticsDashboard } from './components/admin/VisitorAnalyticsDashboard';
+import { BottomNav, BOTTOM_NAV_SPACER_CLASSNAME } from './components/BottomNav';
+import CommunityFeed from './pages/community/CommunityFeed';
+import CommunityCreatePost from './pages/community/CommunityCreatePost';
+import CommunityPostDetail from './pages/community/CommunityPostDetail';
+import CommunityProfile from './pages/community/CommunityProfile';
+import CommunityNotifications from './pages/community/CommunityNotifications';
 
 declare global {
   interface Window {
@@ -129,7 +135,7 @@ function App() {
   }, []);
 
   return (
-    <div className={isMobile ? 'mobile-view' : 'desktop-view'}>
+    <div className={`${isMobile ? 'mobile-view' : 'desktop-view'} ${BOTTOM_NAV_SPACER_CLASSNAME}`}>
       <BrowserRouter basename={routerBasename}>
         <MascotProvider>
         <TutorialProvider>
@@ -160,6 +166,11 @@ function App() {
             <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
             <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
             <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
+            <Route path="/community" element={<CommunityFeed />} />
+            <Route path="/community/new" element={<AuthGuard><CommunityCreatePost /></AuthGuard>} />
+            <Route path="/community/notifications" element={<AuthGuard><CommunityNotifications /></AuthGuard>} />
+            <Route path="/community/profile/:userId" element={<CommunityProfile />} />
+            <Route path="/community/:postId" element={<CommunityPostDetail />} />
             <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
             <Route
               path="/admin"
@@ -180,6 +191,7 @@ function App() {
           <Footer />
           <BrandGuide />
           <TutorialOverlay />
+          <BottomNav />
         </TutorialProvider>
         </MascotProvider>
       </BrowserRouter>

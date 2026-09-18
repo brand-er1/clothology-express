@@ -160,7 +160,7 @@ const CommunityCreatePost = () => {
         pollQuestion: enablePoll ? pollQuestion.trim() : null,
         pollOptions: enablePoll && validPollOptions.length >= 2 ? validPollOptions : null,
       });
-      toast({ title: "커뮤니티에 공유했습니다!" });
+      toast({ title: "매거진에 공유했습니다!" });
       navigate(`/community/${postId}`);
     } catch (error) {
       toast({ title: "게시물을 등록하지 못했습니다", description: getCommunityErrorMessage(error), variant: "destructive" });
@@ -174,7 +174,7 @@ const CommunityCreatePost = () => {
       <Header />
       <main className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pt-24">
         <h1 className="text-2xl font-black tracking-[-0.03em] text-stone-950">새 디자인 공유하기</h1>
-        <p className="mt-1 text-sm text-stone-500">CREATE한 디자인을 커뮤니티에 SHARE하고 반응을 VALIDATE해보세요.</p>
+        <p className="mt-1 text-sm text-stone-500">CREATE한 디자인을 매거진에 SHARE하고 반응을 VALIDATE해보세요.</p>
 
         <section className="mt-6 space-y-3">
           <Label className="text-sm font-bold text-stone-800">디자인 이미지</Label>
@@ -341,7 +341,7 @@ const CommunityCreatePost = () => {
           className="mt-8 h-13 w-full rounded-full bg-brand py-3.5 text-base font-bold hover:bg-brand-dark"
         >
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          커뮤니티에 공유하기
+          매거진에 공유하기
         </Button>
       </main>
 

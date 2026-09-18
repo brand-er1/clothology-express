@@ -103,7 +103,7 @@ const CommunityNotifications = () => {
         )}
 
         <div className="mt-6 text-center">
-          <Link to="/community" className="text-sm font-semibold text-stone-500 hover:text-brand">커뮤니티로 돌아가기</Link>
+          <Link to="/community" className="text-sm font-semibold text-stone-500 hover:text-brand">매거진으로 돌아가기</Link>
         </div>
       </main>
     </div>

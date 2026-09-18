@@ -25,7 +25,7 @@ const SheetNavLink = ({ item, onNavigate }: { item: NavLinkItem; onNavigate: () 
   </NavLink>
 );
 
-/** 모바일: SHOP/COMMUNITY/PORTFOLIO는 바로 이동, MAKE/MY만 아코디언으로 펼쳐진다. */
+/** 모바일: SHOP/MAGAZINE/PORTFOLIO는 바로 이동, MAKE/MY만 아코디언으로 펼쳐진다. */
 const AccordionSection = ({
   value,
   title,
@@ -121,7 +121,7 @@ export const FullMenuSheet = ({
               <AccordionSection value="make" title="MAKE" items={makeItems} onNavigate={close} />
             </Accordion>
             <div className="space-y-0.5">
-              <SheetNavLink item={{ to: "/community", label: "COMMUNITY" }} onNavigate={close} />
+              <SheetNavLink item={{ to: "/community", label: "MAGAZINE" }} onNavigate={close} />
               <SheetNavLink item={{ to: "/portfolio", label: "PORTFOLIO" }} onNavigate={close} />
             </div>
             {isAuthenticated ? (

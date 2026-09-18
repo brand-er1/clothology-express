@@ -71,7 +71,7 @@ export const getShopItems = (): NavLinkItem[] => [
 ];
 
 export const getDiscoverItems = (): NavLinkItem[] => [
-  { to: "/community", label: "커뮤니티" },
+  { to: "/community", label: "매거진" },
   { to: "/portfolio", label: "제작 포트폴리오" },
 ];
 

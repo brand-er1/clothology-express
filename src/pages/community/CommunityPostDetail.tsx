@@ -313,7 +313,7 @@ const CommunityPostDetail = () => {
         <Header />
         <div className="flex h-96 flex-col items-center justify-center gap-3 text-stone-500">
           <p>게시물을 찾을 수 없습니다.</p>
-          <Button asChild variant="outline" className="rounded-full"><Link to="/community">커뮤니티로 돌아가기</Link></Button>
+          <Button asChild variant="outline" className="rounded-full"><Link to="/community">매거진으로 돌아가기</Link></Button>
         </div>
       </div>
     );

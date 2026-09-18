@@ -39,6 +39,7 @@ import { VisitDataNotice } from './components/VisitDataNotice';
 import VisitDataPolicy from './pages/VisitDataPolicy';
 import { VisitorAnalyticsDashboard } from './components/admin/VisitorAnalyticsDashboard';
 import { BottomNav, BOTTOM_NAV_SPACER_CLASSNAME } from './components/BottomNav';
+import { KakaoCommunityWidget } from './components/KakaoCommunityWidget';
 import CommunityFeed from './pages/community/CommunityFeed';
 import CommunityCreatePost from './pages/community/CommunityCreatePost';
 import CommunityPostDetail from './pages/community/CommunityPostDetail';
@@ -138,7 +139,7 @@ function App() {
             <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <Footer /><BrandGuide /><TutorialOverlay /><BottomNav />
+          <Footer /><BrandGuide /><TutorialOverlay /><BottomNav /><KakaoCommunityWidget />
         </TutorialProvider></MascotProvider>
       </BrowserRouter>
       <Toaster />

@@ -6,13 +6,13 @@ import { supabase } from "@/lib/supabase";
 import { fetchUnreadCommunityNotificationCount } from "@/services/community";
 
 /**
- * 모바일 전용 5탭 하단 내비게이션 — 홈/만들기/커뮤니티/펀딩/MY.
+ * 모바일 전용 5탭 하단 내비게이션 — 홈/만들기/매거진/펀딩/MY.
  * 기존 Header의 상단 메뉴는 그대로 유지하고, 모바일에서 핵심 흐름 이동만 보강한다.
  */
 const navItems = [
   { to: "/", label: "홈", icon: Home, end: true },
   { to: "/customize", label: "만들기", icon: Sparkles, end: false },
-  { to: "/community", label: "커뮤니티", icon: Users, end: false },
+  { to: "/community", label: "매거진", icon: Users, end: false },
   { to: "/fundings", label: "펀딩", icon: WalletCards, end: false },
   { to: "/profile", label: "MY", icon: CircleUserRound, end: false },
 ] as const;
@@ -64,7 +64,7 @@ export const BottomNav = () => {
             <>
               <span className="relative">
                 <Icon className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.4 : 2} />
-                {label === "커뮤니티" && unreadCount > 0 && (
+                {label === "매거진" && unreadCount > 0 && (
                   <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold text-white">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>

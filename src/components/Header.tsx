@@ -69,7 +69,7 @@ export const Header = () => {
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink to="/fundings" className={topPillClassName}>SHOP</NavLink>
           <MakeMegaMenu items={makeItems} />
-          <NavLink to="/community" className={topPillClassName}>COMMUNITY</NavLink>
+          <NavLink to="/community" className={topPillClassName}>MAGAZINE</NavLink>
           <NavLink to="/portfolio" className={topPillClassName}>PORTFOLIO</NavLink>
         </nav>
         <div className="ml-auto hidden items-center gap-2 md:flex" data-tutorial="header-account">

@@ -355,7 +355,7 @@ const Index = () => {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(27,21,22,0.04)_0%,rgba(27,21,22,0.02)_52%,rgba(27,21,22,0.4)_100%)] sm:bg-[linear-gradient(90deg,rgba(244,241,234,0.96)_0%,rgba(244,241,234,0.84)_33%,rgba(244,241,234,0.12)_60%,rgba(25,19,20,0.06)_100%)]" />
 
           <div className="relative mx-auto flex min-h-[680px] max-w-[1440px] items-end px-5 pb-11 pt-16 sm:min-h-[760px] sm:items-center sm:px-8 sm:pb-16 lg:min-h-[calc(100vh-72px)] lg:px-12 xl:px-16">
-            <div className="w-full max-w-[640px] rounded-sm bg-[#f4f1ea]/92 p-6 shadow-[0_24px_80px_rgba(44,33,29,0.10)] backdrop-blur-md sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
+            <div className="w-full max-w-[640px] rounded-sm bg-[#f4f1ea]/96 p-6 shadow-[0_24px_80px_rgba(44,33,29,0.14)] backdrop-blur-md sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
               <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">
                 <span className="h-px w-8 bg-brand" />
                 BRAND-ER · CLOTHING STUDIO
@@ -370,13 +370,13 @@ const Index = () => {
               <div className="mt-7 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:items-center">
                 <Link
                   to="/customize"
-                  className="inline-flex h-[52px] items-center justify-center bg-brand px-7 text-sm font-bold text-white transition hover:bg-brand-dark sm:h-14"
+                  className="inline-flex h-[52px] w-full items-center justify-center bg-brand px-7 text-sm font-bold text-white transition hover:bg-brand-dark sm:h-14 sm:w-auto"
                 >
                   내 옷 제작하기 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
                 <Link
                   to="/fundings"
-                  className="inline-flex h-[52px] items-center justify-center border border-[#312829]/25 bg-white/25 px-7 text-sm font-semibold text-[#312829] backdrop-blur transition hover:bg-white/55 sm:h-14"
+                  className="inline-flex h-[52px] w-full items-center justify-center border border-[#312829]/25 bg-white/40 px-7 text-sm font-semibold text-[#312829] backdrop-blur transition hover:bg-white/55 sm:h-14 sm:w-auto sm:bg-white/25"
                 >
                   펀딩 둘러보기
                 </Link>
@@ -396,10 +396,10 @@ const Index = () => {
             </h2>
           </div>
 
-          <div className="mt-10 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-14">
+          <div className="mt-10 snap-x snap-mandatory overflow-x-auto scroll-pl-5 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-14 sm:scroll-pl-8 lg:scroll-pl-12 xl:scroll-pl-16">
             <div className="flex w-max gap-5 px-5 sm:gap-6 sm:px-8 lg:px-12 xl:px-16">
               {processSteps.map((step, index) => (
-                <div key={step.no} className="flex shrink-0 items-center gap-5 sm:gap-6">
+                <div key={step.no} className="flex shrink-0 snap-start items-center gap-5 sm:gap-6">
                   <article className="w-[220px] sm:w-[240px]">
                     <div className="relative aspect-square overflow-hidden bg-[#e9e5dd]">
                       <ProcessVisualTile visual={step.visual} />
@@ -490,7 +490,7 @@ const Index = () => {
               <p className="mt-3 text-sm text-stone-500">곧 공개될 BRAND-ER의 다음 아이디어를 기다려주세요.</p>
               <Link
                 to="/customize"
-                className="mt-7 inline-flex h-12 items-center justify-center border border-stone-400 px-6 text-sm font-bold transition hover:bg-[#211b1c] hover:text-white"
+                className="mt-7 inline-flex h-12 w-full max-w-xs items-center justify-center border border-stone-400 px-6 text-sm font-bold transition hover:bg-[#211b1c] hover:text-white sm:w-auto"
               >
                 내 디자인 펀딩 열기
               </Link>
@@ -511,7 +511,7 @@ const Index = () => {
                           className="h-full w-full object-contain p-3 transition duration-700 ease-out group-hover:scale-[1.045] sm:p-5"
                         />
                         <WatermarkOverlay />
-                        <span className="absolute left-3 top-3 bg-[#f4f1ea]/90 px-2.5 py-1.5 text-[8px] font-bold uppercase tracking-[0.15em] text-[#2a2324] backdrop-blur sm:left-4 sm:top-4 sm:text-[10px]">
+                        <span className="absolute left-3 top-3 bg-[#f4f1ea]/90 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-[#2a2324] backdrop-blur sm:left-4 sm:top-4 sm:text-[10px]">
                           {getRemainingLabel(funding)}
                         </span>
                         <div className="absolute inset-x-0 bottom-0 h-[3px] bg-black/10">
@@ -519,14 +519,14 @@ const Index = () => {
                         </div>
                       </div>
                       <div className="pt-4">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand sm:text-[11px]">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand sm:text-[11px]">
                           BRAND-ER · {funding.cloth_type}
                         </p>
                         <h3 className="mt-1.5 truncate text-sm font-semibold text-[#211b1c] sm:text-base">
                           {funding.product_name}
                         </h3>
                         <p className="mt-3 text-sm font-bold sm:text-base">{formatPrice(funding.price)}</p>
-                        <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-3 text-[9px] text-stone-500 sm:text-[11px]">
+                        <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-3 text-[10px] text-stone-500 sm:text-[11px]">
                           <span>
                             {funding.current_orders}/{funding.moq}장 참여
                           </span>
@@ -558,10 +558,10 @@ const Index = () => {
               펀딩 성공이 끝이 아닙니다.<br />그때부터 진짜 옷이 만들어집니다.
             </h2>
 
-            <div className="mt-10 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-14">
+            <div className="mt-10 snap-x snap-mandatory overflow-x-auto scroll-pl-4 pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-14 sm:overflow-visible sm:scroll-pl-0">
               <div className="flex w-max gap-4 sm:grid sm:w-auto sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
                 {afterFundingSteps.map((step) => (
-                  <article key={step.step} className="w-[260px] shrink-0 sm:w-auto">
+                  <article key={step.step} className="w-[260px] shrink-0 snap-start sm:w-auto">
                     <div className="relative aspect-[3/4] overflow-hidden bg-[#332a2c]">
                       <img src={step.image} alt={step.title} className="h-full w-full object-cover opacity-90" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#150f10]/80 via-transparent to-transparent" />
@@ -694,7 +694,7 @@ const Index = () => {
             </p>
             <Link
               to="/customize"
-              className="mt-9 inline-flex h-14 items-center justify-center bg-brand px-9 text-base font-bold text-white transition hover:bg-brand-dark"
+              className="mt-9 inline-flex h-14 w-full max-w-xs items-center justify-center bg-brand px-9 text-base font-bold text-white transition hover:bg-brand-dark sm:w-auto"
               data-tutorial="home-start-cta"
             >
               내 옷 제작하기 <ArrowRight className="ml-2 h-4 w-4" />

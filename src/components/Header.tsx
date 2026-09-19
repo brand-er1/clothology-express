@@ -101,7 +101,7 @@ export const Header = () => {
         className="flex h-[100dvh] w-[min(88vw,340px)] flex-col overflow-hidden border-l-gray-200 bg-[#f9fafb] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]"
       >
         <div className="shrink-0 border-b border-stone-200 pb-4 pt-2">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">BRAND-ER</p>
+          <p className="font-logo text-xs text-brand">BRAND-ER</p>
           {isAuthenticated ? (
             <>
               <p className="mt-3 text-xl font-bold text-stone-950">{displayName}</p>

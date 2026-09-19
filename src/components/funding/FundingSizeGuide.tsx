@@ -62,7 +62,7 @@ export const FundingSizeGuide = ({
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
             SIZE GUIDE
           </p>
-          <h2 className="mt-1 text-xl font-black text-gray-950">{title}</h2>
+          <h2 className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-gray-950">{title}</h2>
         </div>
         <p className="text-xs leading-5 text-gray-500">
           {[gender, category].filter(Boolean).join(" · ")} 평균 기준 · 단면

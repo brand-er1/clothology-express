@@ -160,7 +160,7 @@ const Index = () => {
                 <span className="h-px w-8 bg-brand" />
                 BRAND-ER · EARLY FALL 2026
               </div>
-              <h1 className="mt-5 font-serif text-[clamp(3.25rem,7.4vw,7.4rem)] font-normal leading-[0.84] tracking-[-0.065em] text-[#251d1e]">
+              <h1 className="mt-5 font-logo text-[clamp(3.25rem,7.4vw,7.4rem)] leading-[0.92] text-[#251d1e]">
                 WEAR THE<br />UNSEEN.
               </h1>
               <p className="mt-6 max-w-md text-base font-medium leading-7 text-stone-700 sm:mt-8 sm:text-lg sm:leading-8">
@@ -191,7 +191,7 @@ const Index = () => {
 
           <div className="absolute bottom-0 right-0 hidden border-l border-t border-white/30 bg-[#251d1e]/75 px-7 py-5 text-white backdrop-blur-lg lg:block">
             <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/55">Editorial no. 01</p>
-            <p className="mt-1 font-serif text-xl">Form, texture and quiet confidence.</p>
+            <p className="mt-1 text-xl font-semibold">Form, texture and quiet confidence.</p>
           </div>
         </section>
 
@@ -213,7 +213,7 @@ const Index = () => {
           <div className="flex items-end justify-between gap-6 border-b border-black/10 pb-6">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">New drop</p>
-              <h2 className="mt-3 font-serif text-4xl font-normal tracking-[-0.04em] sm:text-6xl">지금, 새로 나온 옷</h2>
+              <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-6xl">지금, 새로 나온 옷</h2>
             </div>
             <Link to="/fundings" className="hidden items-center text-sm font-semibold text-stone-600 transition hover:text-brand sm:inline-flex">
               전체 컬렉션 <ArrowRight className="ml-2 h-4 w-4" />
@@ -273,7 +273,7 @@ const Index = () => {
           <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
             <div className="max-w-2xl">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">Shop by category</p>
-              <h2 className="mt-3 font-serif text-4xl font-normal tracking-[-0.04em] sm:text-6xl">무드에 맞는 실루엣</h2>
+              <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-6xl">무드에 맞는 실루엣</h2>
               <p className="mt-5 text-sm leading-7 text-stone-600 sm:text-base">과장된 로고보다 좋은 소재와 균형 잡힌 형태에 집중한 컬렉션입니다.</p>
             </div>
 
@@ -290,7 +290,7 @@ const Index = () => {
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#20191a]/75 to-transparent px-4 pb-4 pt-16 text-white sm:px-6 sm:pb-6">
                       <div className="flex items-end justify-between gap-2">
                         <div>
-                          <p className="font-serif text-2xl leading-none sm:text-3xl">{category.name}</p>
+                          <p className="text-2xl font-bold leading-none sm:text-3xl">{category.name}</p>
                           <p className="mt-2 hidden text-xs text-white/65 sm:block">{category.note}</p>
                         </div>
                         <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -308,7 +308,7 @@ const Index = () => {
             <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">Production portfolio</p>
-                <h2 className="mt-3 font-serif text-4xl font-normal tracking-[-0.04em] sm:text-6xl">
+                <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-6xl">
                   아이디어에서<br />실제 제품까지
                 </h2>
                 <p className="mt-5 max-w-md text-sm leading-7 text-stone-600 sm:text-base">
@@ -353,7 +353,7 @@ const Index = () => {
           <div className="mx-auto grid min-h-[650px] max-w-[1440px] lg:grid-cols-[0.82fr_1.18fr]">
             <div className="flex flex-col justify-center px-6 py-16 sm:px-10 lg:px-12 xl:px-16">
               <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-[#e6b7c2] sm:text-xs">The burgundy edit</p>
-              <h2 className="mt-5 font-serif text-[clamp(3.5rem,7vw,7rem)] font-normal leading-[0.86] tracking-[-0.06em]">
+              <h2 className="mt-5 text-[clamp(3.5rem,7vw,7rem)] font-extrabold leading-[0.92] tracking-[-0.03em]">
                 DEEPER<br />THAN RED.
               </h2>
               <p className="mt-7 max-w-md text-sm leading-7 text-white/65 sm:text-base">
@@ -382,7 +382,7 @@ const Index = () => {
             <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">Why brand-er</p>
-                <h2 className="mt-4 max-w-lg font-serif text-4xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-6xl">
+                <h2 className="mt-4 max-w-lg text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
                   좋은 옷만<br />남기는 방식.
                 </h2>
               </div>
@@ -391,7 +391,7 @@ const Index = () => {
                   <article key={item.number} className="grid gap-4 border-b border-black/15 py-7 sm:grid-cols-[76px_1fr] sm:py-9">
                     <span className="text-[10px] font-bold tracking-[0.18em] text-brand">{item.number}</span>
                     <div>
-                      <h3 className="font-serif text-2xl font-normal tracking-[-0.025em] sm:text-3xl">{item.title}</h3>
+                      <h3 className="text-2xl font-bold tracking-[-0.025em] sm:text-3xl">{item.title}</h3>
                       <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600 sm:text-base">{item.description}</p>
                     </div>
                   </article>
@@ -409,7 +409,7 @@ const Index = () => {
               </div>
               <div className="mt-5 flex items-end gap-3 sm:gap-4">
                 <BrandMascot size={64} className="hidden shrink-0 pb-1 sm:block" />
-                <h2 className="max-w-4xl font-serif text-4xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-6xl">
+                <h2 className="max-w-4xl text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
                   찾던 옷이 없다면,<br />당신의 컬렉션을 시작하세요.
                 </h2>
               </div>

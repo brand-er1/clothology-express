@@ -277,7 +277,7 @@ const Admin = () => {
           <aside className="h-fit rounded-3xl border border-stone-200 bg-stone-950 p-3 text-white shadow-xl lg:sticky lg:top-24">
             <div className="px-3 pb-4 pt-3">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Brand-er operations</p>
-              <h1 className="mt-2 text-xl font-black">관리자 센터</h1>
+              <h1 className="mt-2 text-xl font-extrabold tracking-[-0.03em]">관리자 센터</h1>
             </div>
             <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1">
               {(Object.keys(sectionMeta) as AdminSection[]).map((key) => {
@@ -297,7 +297,7 @@ const Admin = () => {
           <section className="min-w-0">
             <div className="mb-6 rounded-3xl border border-stone-200 bg-white px-5 py-6 shadow-sm sm:px-7">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Admin workspace</p>
-              <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-stone-950">{currentMeta.label}</h2>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-stone-950">{currentMeta.label}</h2>
               <p className="mt-2 text-sm text-stone-500">{currentMeta.description}</p>
             </div>
 

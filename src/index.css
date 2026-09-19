@@ -106,10 +106,19 @@
     @apply bg-background text-foreground;
     font-family: Pretendard, "SUIT Variable", SUIT, "Noto Sans KR", "Apple SD Gothic Neo", Inter, system-ui, sans-serif;
     font-feature-settings: "ss01" on, "ss02" on;
-    letter-spacing: -0.012em;
+    font-weight: 500;
+    letter-spacing: -0.014em;
+    line-height: 1.65;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-weight: inherit;
   }
 
   h1,
@@ -121,6 +130,20 @@
     text-wrap: balance;
   }
 
+  h1,
+  h2 {
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.14;
+  }
+
+  h3,
+  h4 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
   p,
   li,
   label,
@@ -128,6 +151,13 @@
   a {
     word-break: keep-all;
     overflow-wrap: break-word;
+  }
+
+  /* Manrope ExtraBold, reserved for the wordmark and the English hero display line. */
+  .font-logo {
+    font-family: Manrope, Pretendard, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.03em;
   }
 
   ::selection {

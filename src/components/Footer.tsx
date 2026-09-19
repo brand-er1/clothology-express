@@ -15,7 +15,7 @@ export const Footer = () => (
         <div>
           <div className="flex items-center gap-2.5">
             <BrandMascot size={28} className="shrink-0" />
-            <p className="text-sm font-bold tracking-[0.18em] text-white">BRAND-ER</p>
+            <p className="font-logo text-sm text-white">BRAND-ER</p>
           </div>
           <p className="mt-4 text-sm leading-7">
             상호명 브랜더(BRAND-ER) · 대표자 김하성 · 사업자등록번호 704-04-03387

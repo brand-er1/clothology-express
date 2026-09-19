@@ -173,7 +173,7 @@ const Customize = () => {
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand sm:text-xs sm:tracking-[0.2em]">
                 Brand-er design studio
               </p>
-              <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-[-0.045em] text-stone-950 sm:mt-3 md:text-5xl">
+              <h1 className="mt-2 text-[2rem] font-extrabold leading-tight tracking-[-0.03em] text-stone-950 sm:mt-3 md:text-5xl">
                 나만의 첫 컬렉션
               </h1>
             </div>
@@ -203,7 +203,7 @@ const Customize = () => {
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand sm:text-xs sm:tracking-[0.16em]">
                 Step {String(currentStep).padStart(2, "0")}
               </p>
-              <h2 className="mt-2 text-[1.55rem] font-bold leading-tight tracking-[-0.035em] text-stone-950 md:text-3xl">
+              <h2 className="mt-2 text-[1.55rem] font-extrabold leading-tight tracking-[-0.03em] text-stone-950 md:text-3xl">
                 {stepContent[currentStep - 1]?.[0]}
               </h2>
               <p className="mt-2 text-[15px] leading-6 text-stone-500 sm:text-sm">

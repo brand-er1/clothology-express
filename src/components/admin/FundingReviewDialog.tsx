@@ -105,7 +105,7 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                   <Badge variant="secondary">MOQ {funding.moq}장</Badge>
                   <Badge variant="outline">{funding.funding_days}일</Badge>
                 </div>
-                <h2 className="text-2xl font-bold">{funding.product_name}</h2>
+                <h2 className="text-2xl font-extrabold tracking-[-0.03em]">{funding.product_name}</h2>
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-600">{funding.description || "소개 문구 없음"}</p>
                 <dl className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-gray-50 p-4 text-sm">
                   <div><dt className="text-gray-400">종류</dt><dd className="mt-1 font-medium">{funding.cloth_type}</dd></div>

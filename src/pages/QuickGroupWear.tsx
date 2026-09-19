@@ -87,7 +87,7 @@ const QuickGroupWear = () => {
       <main className="mx-auto max-w-[1440px] pb-10 pt-20 lg:pb-8 lg:pt-24">
         <div className="px-4 pb-4 sm:px-6 lg:px-8">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Brand-er design editor</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-[-0.045em] text-stone-950 sm:text-3xl">
+          <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-3xl">
             단체복 직접 디자인하기
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">

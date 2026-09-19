@@ -476,7 +476,7 @@ const DesignQuote = () => {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
               Brand-er AI estimate
             </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.045em] text-stone-950 sm:text-5xl">
+            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-5xl">
               디자인 견적
             </h1>
             <p className="mt-4 max-w-2xl text-[15px] leading-7 text-stone-500">
@@ -838,7 +838,7 @@ const DesignQuote = () => {
                           <CheckCircle2 className="h-5 w-5" />
                         </span>
                         <div>
-                          <h2 className="text-xl font-black text-emerald-950">
+                          <h2 className="text-xl font-extrabold tracking-[-0.03em] text-emerald-950">
                             제작 의뢰가 접수되었습니다
                           </h2>
                           <p className="mt-2 text-sm leading-6 text-emerald-800">
@@ -869,7 +869,7 @@ const DesignQuote = () => {
                           <ClipboardCheck className="h-5 w-5" />
                         </span>
                         <div>
-                          <h2 className="text-xl font-black text-stone-950">
+                          <h2 className="text-xl font-extrabold tracking-[-0.03em] text-stone-950">
                             이 견적으로 제작 의뢰하기
                           </h2>
                           <p className="mt-1 text-sm leading-6 text-stone-500">
@@ -988,7 +988,7 @@ const DesignQuote = () => {
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 text-stone-400">
                   <Sparkles className="h-6 w-6" />
                 </span>
-                <h2 className="mt-5 text-xl font-extrabold text-stone-950">
+                <h2 className="mt-5 text-xl font-extrabold tracking-[-0.03em] text-stone-950">
                   분석 결과와 자동 견적서
                 </h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-stone-500">

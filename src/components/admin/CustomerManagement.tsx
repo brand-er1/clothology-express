@@ -383,7 +383,7 @@ export const CustomerManagement = () => {
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
               Customer intelligence
             </p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-stone-950">
+            <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950">
               고객 관리
             </h2>
             <p className="mt-1 text-sm text-stone-500">

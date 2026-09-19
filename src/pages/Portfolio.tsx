@@ -83,7 +83,7 @@ const Portfolio = () => {
               </p>
             </Reveal>
             <Reveal delayMs={100}>
-              <h1 className="mt-6 max-w-4xl font-serif text-[clamp(2.6rem,7vw,6rem)] font-normal leading-[0.98] tracking-[-0.05em]">
+              <h1 className="mt-6 max-w-4xl text-[clamp(2.6rem,7vw,6rem)] font-extrabold leading-[1.0] tracking-[-0.03em]">
                 당신의 아이디어가
                 <br />
                 실제 옷이 되는 과정.
@@ -116,7 +116,7 @@ const Portfolio = () => {
             <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 sm:gap-y-14 lg:grid-cols-4">
               {PORTFOLIO_STATS.map((stat, index) => (
                 <Reveal key={stat.label} delayMs={index * 80} className="border-t border-black/15 pt-5">
-                  <p className="font-serif text-[clamp(1.6rem,3.4vw,2.6rem)] font-normal leading-[1.05] tracking-[-0.03em]">
+                  <p className="text-[clamp(1.6rem,3.4vw,2.6rem)] font-extrabold leading-[1.05] tracking-[-0.03em]">
                     {stat.value}
                   </p>
                   <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.02em] text-stone-500 sm:text-[11px]">
@@ -136,7 +136,7 @@ const Portfolio = () => {
                 <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">
                   프로젝트
                 </p>
-                <h2 className="mt-3 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.04em] sm:text-6xl">
+                <h2 className="mt-3 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
                   대표 프로젝트
                 </h2>
                 <p className="mt-4 text-sm font-semibold text-stone-400">
@@ -195,7 +195,7 @@ const Portfolio = () => {
               <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#d7a6b2] sm:text-xs">
                 우리의 제작 역량
               </p>
-              <h2 className="mt-3 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.04em] sm:text-6xl">
+              <h2 className="mt-3 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
                 컨셉에서 생산까지.
               </h2>
             </Reveal>
@@ -208,7 +208,7 @@ const Portfolio = () => {
                   className="border-t border-white/15 pt-6"
                 >
                   <span className="text-[10px] font-bold tracking-[0.2em] text-white/40">{capability.number}</span>
-                  <h3 className="mt-3 font-serif text-2xl font-normal tracking-[-0.02em]">{capability.title}</h3>
+                  <h3 className="mt-3 text-2xl font-bold tracking-[-0.02em]">{capability.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/60">{capability.description}</p>
                 </Reveal>
               ))}
@@ -223,7 +223,7 @@ const Portfolio = () => {
           <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
             <Reveal>
               <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">제작 과정</p>
-              <h2 className="mt-3 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.04em] sm:text-6xl">
+              <h2 className="mt-3 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
                 이렇게 만듭니다.
               </h2>
             </Reveal>
@@ -233,7 +233,7 @@ const Portfolio = () => {
                 <div key={step.number} className="flex shrink-0 items-stretch lg:flex-1">
                   <Reveal delayMs={index * 70} className="flex min-w-[9.5rem] flex-1 flex-col gap-3 py-2 lg:min-w-0 lg:px-2">
                     <span className="text-[10px] font-bold tracking-[0.2em] text-brand">{step.number}</span>
-                    <span className="font-serif text-xl font-normal tracking-[-0.02em] sm:text-2xl">{step.title}</span>
+                    <span className="text-xl font-bold tracking-[-0.02em] sm:text-2xl">{step.title}</span>
                   </Reveal>
                   {index < PORTFOLIO_PROCESS_STEPS.length - 1 && (
                     <div className="flex w-8 shrink-0 items-center justify-center text-stone-300 lg:w-10">→</div>
@@ -248,7 +248,7 @@ const Portfolio = () => {
         <section className="bg-[#711a2a] text-white">
           <div className="mx-auto max-w-[1440px] px-5 py-20 text-center sm:px-8 sm:py-32 lg:px-12 xl:px-16">
             <Reveal>
-              <h2 className="mx-auto max-w-3xl font-serif text-[clamp(2.4rem,6vw,5rem)] font-normal leading-[1.02] tracking-[-0.05em]">
+              <h2 className="mx-auto max-w-3xl text-[clamp(2.4rem,6vw,5rem)] font-extrabold leading-[1.02] tracking-[-0.03em]">
                 아이디어가 있으신가요?
                 <br />
                 함께 현실로 만들어요.

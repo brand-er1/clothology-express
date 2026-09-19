@@ -75,7 +75,7 @@ export const ProductionCountryPicker = ({
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand sm:text-xs sm:tracking-[0.2em]">
             Production country
           </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-stone-950 sm:text-3xl">
+          <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-3xl">
             어디에서 생산하시겠어요?
           </h2>
           <p className="mt-2 text-[15px] leading-6 text-stone-500 sm:text-sm">

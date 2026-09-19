@@ -162,7 +162,7 @@ const MyFundings = () => {
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-brand">MY FUNDING</p>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">내 펀딩</h1>
+            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] md:text-5xl">내 펀딩</h1>
             <p className="mt-3 text-gray-500">내가 만든 펀딩과 참여한 펀딩을 한곳에서 확인하세요.</p>
           </div>
           <Button asChild className="rounded-full bg-brand hover:bg-brand-dark"><Link to="/fundings">새 펀딩 둘러보기 <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
@@ -304,7 +304,7 @@ const SummaryCard = ({ icon: Icon, label, value }: { icon: typeof Users; label: 
 );
 
 const EmptyState = ({ title, description, action, to }: { title: string; description: string; action: string; to: string }) => (
-  <div className="mt-6 rounded-[2rem] border bg-white px-6 py-20 text-center"><PackageOpen className="mx-auto h-12 w-12 text-brand/30" /><h2 className="mt-5 text-xl font-bold">{title}</h2><p className="mt-2 text-sm text-gray-500">{description}</p><Button asChild className="mt-6 rounded-full bg-brand hover:bg-brand-dark"><Link to={to}>{action}</Link></Button></div>
+  <div className="mt-6 rounded-[2rem] border bg-white px-6 py-20 text-center"><PackageOpen className="mx-auto h-12 w-12 text-brand/30" /><h2 className="mt-5 text-xl font-extrabold tracking-[-0.03em]">{title}</h2><p className="mt-2 text-sm text-gray-500">{description}</p><Button asChild className="mt-6 rounded-full bg-brand hover:bg-brand-dark"><Link to={to}>{action}</Link></Button></div>
 );
 
 const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFundingParticipation; cancelling: boolean; onCancel: () => void }) => {

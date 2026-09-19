@@ -413,7 +413,7 @@ const Closet = () => {
         {view === "select-gender" && (
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">AI Virtual Fitting</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.045em] text-stone-950 sm:text-5xl">
+            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-5xl">
               누구에게 입혀볼까요?
             </h1>
             <p className="mt-4 max-w-xl text-[15px] leading-7 text-stone-500">
@@ -430,7 +430,7 @@ const Closet = () => {
         {view === "select-size" && (
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Step 2</p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-stone-950 sm:text-4xl">
+            <h1 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-4xl">
               체형 사이즈를 선택해주세요
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-stone-500">
@@ -458,7 +458,7 @@ const Closet = () => {
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
               <BrandMark className="h-7 w-7" />
             </span>
-            <h2 className="mt-5 text-2xl font-black text-stone-950">선택 완료!</h2>
+            <h2 className="mt-5 text-2xl font-extrabold tracking-[-0.03em] text-stone-950">선택 완료!</h2>
             <p className="mt-2 text-stone-500">이제 옷을 골라 피팅해볼까요?</p>
           </div>
         )}
@@ -470,7 +470,7 @@ const Closet = () => {
             >
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">AI Virtual Fitting</p>
-                <h1 className="mt-1 text-xl font-semibold tracking-[-0.04em] text-stone-950 sm:mt-2 sm:text-3xl">
+                <h1 className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-stone-950 sm:mt-2 sm:text-3xl">
                   {view === "look-complete" ? "MY BRAND-ER FITTING" : "마네킹을 코디해보세요"}
                 </h1>
               </div>

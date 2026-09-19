@@ -35,7 +35,7 @@ const PointList = ({ points }: { points: string[] }) => (
 );
 
 const PullQuote = ({ children }: { children: string }) => (
-  <p className="mt-8 border-l-2 border-brand pl-5 font-serif text-xl italic leading-snug tracking-[-0.02em] text-[#211b1c] sm:text-2xl">
+  <p className="mt-8 border-l-2 border-brand pl-5 text-xl font-semibold italic leading-snug tracking-[-0.02em] text-[#211b1c] sm:text-2xl">
     {children}
   </p>
 );
@@ -48,7 +48,7 @@ const MaterialCard = ({ material, index }: { material: SpecialMaterialCard; inde
 
     <div className="flex flex-1 flex-col p-6 sm:p-8">
       <span className="text-[10px] font-bold tracking-[0.2em] text-brand">{material.nameEn}</span>
-      <h4 className="mt-2 font-serif text-2xl font-normal tracking-[-0.02em] sm:text-[1.8rem]">
+      <h4 className="mt-2 text-2xl font-bold tracking-[-0.02em] sm:text-[1.8rem]">
         {material.nameKo}
       </h4>
       <p className="mt-3 text-sm leading-7 text-stone-600 sm:text-base sm:leading-8">
@@ -94,7 +94,7 @@ export const FabricSourcingSection = () => {
             </p>
           </Reveal>
           <Reveal delayMs={100}>
-            <h2 className="mt-6 max-w-3xl font-serif text-[clamp(2.2rem,5.5vw,4.5rem)] font-normal leading-[1.05] tracking-[-0.04em]">
+            <h2 className="mt-6 max-w-3xl text-[clamp(2.2rem,5.5vw,4.5rem)] font-extrabold leading-[1.05] tracking-[-0.03em]">
               특별한 원단까지,
               <br />
               BRAND-ER가 찾아드립니다.
@@ -115,7 +115,7 @@ export const FabricSourcingSection = () => {
         <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
           <Reveal>
             <span className="text-[10px] font-bold tracking-[0.2em] text-brand">01</span>
-            <h3 className="mt-3 max-w-2xl font-serif text-3xl font-normal leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
+            <h3 className="mt-3 max-w-2xl text-3xl font-bold leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
               아이들이 입는 옷, 왜 원단부터 중요할까요?
             </h3>
           </Reveal>
@@ -175,7 +175,7 @@ export const FabricSourcingSection = () => {
             </p>
           </Reveal>
           <Reveal delayMs={100}>
-            <h3 className="mt-6 max-w-2xl font-serif text-3xl font-normal leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
+            <h3 className="mt-6 max-w-2xl text-3xl font-bold leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
               일반적인 원단을 넘어,
               <br />
               브랜드의 차별화를 만드는 소재까지.
@@ -201,7 +201,7 @@ export const FabricSourcingSection = () => {
         <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
           <Reveal>
             <span className="text-[10px] font-bold tracking-[0.2em] text-brand">03</span>
-            <h3 className="mt-3 max-w-2xl font-serif text-3xl font-normal leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
+            <h3 className="mt-3 max-w-2xl text-3xl font-bold leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
               원하는 원단이 없다면, BRAND-ER가 찾아드립니다.
             </h3>
           </Reveal>
@@ -227,7 +227,7 @@ export const FabricSourcingSection = () => {
                   <span className="text-[10px] font-bold tracking-[0.2em] text-brand">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <span className="font-serif text-lg font-normal tracking-[-0.02em] sm:text-xl">{step}</span>
+                  <span className="text-lg font-bold tracking-[-0.02em] sm:text-xl">{step}</span>
                 </Reveal>
                 {index < FABRIC_SOURCING_CUSTOM_FLOW_KO.length - 1 && (
                   <div className="flex w-6 shrink-0 items-center justify-center text-stone-300 lg:w-8">→</div>
@@ -242,7 +242,7 @@ export const FabricSourcingSection = () => {
       <section className="border-b border-black/10 bg-[#211b1c] text-white">
         <div className="mx-auto max-w-[1440px] px-5 py-16 text-center sm:px-8 sm:py-24 lg:px-12 xl:px-16">
           <Reveal>
-            <h2 className="mx-auto max-w-2xl font-serif text-[clamp(1.9rem,4.4vw,3.2rem)] font-normal leading-[1.1] tracking-[-0.04em]">
+            <h2 className="mx-auto max-w-2xl text-[clamp(1.9rem,4.4vw,3.2rem)] font-extrabold leading-[1.1] tracking-[-0.03em]">
               찾고 있는 특별한 원단이 있으신가요?
             </h2>
           </Reveal>

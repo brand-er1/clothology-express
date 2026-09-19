@@ -63,7 +63,7 @@ const Auth = () => {
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-white/55">
               <BrandMark className="h-4 w-4" variant="white" /> Brand launch workspace
             </p>
-            <h1 className="mt-7 max-w-lg text-5xl font-semibold leading-[1.06] tracking-[-0.05em]">
+            <h1 className="mt-7 max-w-lg text-5xl font-extrabold leading-[1.06] tracking-[-0.03em]">
               아이디어를 브랜드로,
               <br />첫 제품을 현실로.
             </h1>

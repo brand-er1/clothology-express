@@ -136,7 +136,7 @@ export const SizeStep = ({
                 <Ruler className="h-4 w-4" />
                 등록 방식 선택 전 마지막 확인
               </p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">
+              <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] md:text-3xl">
                 생산 사이즈와 수량을 확인하세요
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/75">

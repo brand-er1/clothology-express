@@ -13,7 +13,7 @@ const OrderConfirmation = () => {
       <main className="container mx-auto px-4 pt-24 pb-12">
         <Card className="max-w-3xl mx-auto p-8 shadow-lg">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">주문이 완료되었습니다</h1>
+            <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-gray-900 mb-4">주문이 완료되었습니다</h1>
             <div className="w-24 h-1 bg-brand mx-auto mb-6" />
             
             <div className="text-lg text-gray-700 space-y-4 mb-8">
@@ -23,7 +23,7 @@ const OrderConfirmation = () => {
             </div>
             
             <div className="border border-gray-200 rounded-lg p-6 bg-gray-50 mb-8">
-              <h2 className="text-xl font-semibold mb-4">다음 절차</h2>
+              <h2 className="text-xl font-extrabold tracking-[-0.03em] mb-4">다음 절차</h2>
               <ol className="text-left space-y-3">
                 <li className="flex gap-3">
                   <div className="bg-brand text-white rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0">1</div>

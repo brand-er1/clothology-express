@@ -162,7 +162,7 @@ const FabricSwatch = () => {
             <p className="mt-7 text-xs font-bold uppercase tracking-[0.22em] text-brand">
               Request received
             </p>
-            <h1 className="mt-3 text-3xl font-black tracking-[-0.04em] text-stone-950 md:text-4xl">
+            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] text-stone-950 md:text-4xl">
               원단 스와치 신청이 완료되었습니다
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-stone-600 md:text-base">
@@ -212,7 +212,7 @@ const FabricSwatch = () => {
                 <BrandMark className="h-4 w-4" variant="white" />
                 FABRIC CURATION
               </div>
-              <h1 className="mt-5 text-4xl font-black tracking-[-0.045em] md:text-6xl">
+              <h1 className="mt-5 text-4xl font-extrabold tracking-[-0.03em] md:text-6xl">
                 원단 스와치 신청
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-white/65 md:text-lg">
@@ -258,7 +258,7 @@ const FabricSwatch = () => {
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
                       01 · Touch
                     </p>
-                    <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-stone-950">
+                    <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950">
                       원하는 원단 느낌 <span className="text-brand">*</span>
                     </h2>
                     <p className="mt-2 text-sm text-stone-500">
@@ -308,7 +308,7 @@ const FabricSwatch = () => {
                 </p>
                 <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
                   <div>
-                    <h2 className="text-2xl font-black tracking-[-0.03em] text-stone-950">
+                    <h2 className="text-2xl font-extrabold tracking-[-0.03em] text-stone-950">
                       원하는 색상 <span className="text-brand">*</span>
                     </h2>
                     <p className="mt-2 text-sm text-stone-500">
@@ -410,7 +410,7 @@ const FabricSwatch = () => {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
                   03 · Reference
                 </p>
-                <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-stone-950">
+                <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950">
                   참고 이미지 업로드 <span className="text-stone-400">(선택)</span>
                 </h2>
                 <p className="mt-2 text-sm text-stone-500">

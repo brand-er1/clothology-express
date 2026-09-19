@@ -48,7 +48,7 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
     return (
       <div className="border-y border-black/10 py-24 text-center">
         <BrandMark className="mx-auto mb-5 h-8 w-8" />
-        <h3 className="font-serif text-2xl font-medium text-[#211b1c]">새로운 컬렉션을 준비하고 있습니다.</h3>
+        <h3 className="text-2xl font-bold text-[#211b1c]">새로운 컬렉션을 준비하고 있습니다.</h3>
         <p className="mt-3 text-sm text-stone-500">곧 공개될 BRAND-ER의 다음 드롭을 기다려주세요.</p>
         <Button asChild variant="outline" className="mt-7 rounded-none border-stone-400 bg-transparent px-6">
           <Link to="/customize">내 디자인 출시하기</Link>
@@ -172,7 +172,7 @@ const Fundings = () => {
           <div className="mx-auto grid min-h-[560px] max-w-[1440px] lg:grid-cols-[0.9fr_1.1fr]">
             <div className="flex flex-col justify-center px-5 py-16 sm:px-8 lg:px-12 lg:py-24 xl:px-16">
               <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand">Brand-er limited collection</p>
-              <h1 className="mt-6 font-serif text-[clamp(3.25rem,7vw,7.2rem)] font-normal leading-[0.88] tracking-[-0.055em] text-[#241d1e]">
+              <h1 className="mt-6 font-logo text-[clamp(3.25rem,7vw,7.2rem)] leading-[0.92] text-[#241d1e]">
                 WEAR<br />THE NEXT.
               </h1>
               <p className="mt-7 max-w-lg text-base leading-7 text-stone-600 sm:text-lg">
@@ -213,7 +213,7 @@ const Fundings = () => {
                 </Link>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="font-serif text-[32vw] leading-none text-[#c8c2bb] lg:text-[18rem]">B</span>
+                  <span className="font-extrabold text-[32vw] leading-none text-[#c8c2bb] lg:text-[18rem]">B</span>
                 </div>
               )}
             </div>
@@ -224,7 +224,7 @@ const Fundings = () => {
           <div className="flex flex-col gap-7 border-b border-black/10 pb-7 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand">Latest collection</p>
-              <h2 className="mt-3 font-serif text-4xl font-normal tracking-[-0.035em] sm:text-5xl">
+              <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-5xl">
                 지금 만날 수 있는 컬렉션
               </h2>
             </div>
@@ -274,7 +274,7 @@ const Fundings = () => {
           <div className="grid overflow-hidden bg-[#211819] text-white lg:grid-cols-[1fr_auto]">
             <div className="px-6 py-10 sm:px-10 sm:py-14">
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/50">Made only when chosen</p>
-              <h2 className="mt-4 max-w-2xl font-serif text-3xl font-normal leading-tight sm:text-5xl">
+              <h2 className="mt-4 max-w-2xl text-3xl font-extrabold leading-tight sm:text-5xl">
                 선택받은 옷만 만들고,<br />오래 입을 옷만 남깁니다.
               </h2>
               <p className="mt-5 max-w-xl text-sm leading-7 text-white/60 sm:text-base">

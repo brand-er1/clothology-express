@@ -305,7 +305,7 @@ const FundingEditor = () => {
               </Badge>
               <span className="text-sm text-gray-500">MOQ 최소 {minimumOrderQuantity}장 적용</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">펀딩 페이지 자동 작성</h1>
+            <h1 className="text-3xl font-extrabold tracking-[-0.03em] md:text-4xl">펀딩 페이지 자동 작성</h1>
             <p className="mt-2 text-gray-500">생성한 이미지와 옵션을 가져왔습니다. 소개 문구와 가격만 확인해주세요.</p>
           </div>
           <div className="flex flex-wrap gap-2">

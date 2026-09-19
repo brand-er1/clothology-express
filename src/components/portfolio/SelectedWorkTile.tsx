@@ -42,7 +42,7 @@ export const SelectedWorkTile = ({ project, index, size, onSelect, revealDelayMs
               {PORTFOLIO_CATEGORY_LABEL_KO[project.category] || project.category}
               {project.country ? ` · ${project.country}` : ""}
             </p>
-            <p className="mt-1.5 font-serif text-xl font-normal tracking-[-0.02em] text-white">{project.nameKo}</p>
+            <p className="mt-1.5 text-xl font-bold tracking-[-0.02em] text-white">{project.nameKo}</p>
             <p className="mt-1.5 text-xs font-semibold text-white/75">{services.join(" · ")}</p>
           </div>
         </div>
@@ -53,7 +53,7 @@ export const SelectedWorkTile = ({ project, index, size, onSelect, revealDelayMs
           <p className="text-[10px] font-bold uppercase tracking-[0.04em] text-brand">
             {orderLabel} · {PORTFOLIO_CATEGORY_LABEL_KO[project.category] || project.category}
           </p>
-          <h3 className={`mt-1.5 truncate font-serif font-normal tracking-[-0.02em] text-[#211b1c] ${
+          <h3 className={`mt-1.5 truncate font-bold tracking-[-0.02em] text-[#211b1c] ${
             size === "large" ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl"
           }`}>
             {project.nameKo}

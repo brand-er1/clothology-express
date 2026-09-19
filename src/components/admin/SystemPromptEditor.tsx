@@ -36,7 +36,7 @@ export const SystemPromptEditor = ({
 
   return (
     <Card className="p-6 mb-8">
-      <h2 className="text-xl font-semibold mb-4">이미지 생성 시스템 프롬프트</h2>
+      <h2 className="text-xl font-extrabold tracking-[-0.03em] mb-4">이미지 생성 시스템 프롬프트</h2>
       <div className="space-y-4">
         {isLoading ? (
           <div className="h-[300px] flex items-center justify-center">

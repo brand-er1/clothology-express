@@ -281,7 +281,7 @@ const FundingDetail = () => {
 
           <aside className="lg:sticky lg:top-28" data-mascot-safezone>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">BRAND-ER / {funding.cloth_type}</p>
-            <h1 className="mt-4 font-serif text-4xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-5xl xl:text-6xl">
+            <h1 className="mt-4 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl xl:text-6xl">
               {funding.product_name}
             </h1>
             <p className="mt-5 text-sm leading-7 text-stone-600">{customerDescription}</p>
@@ -449,7 +449,7 @@ const FundingDetail = () => {
             )}
             <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Sample archive</p>
-              <h2 className="mt-4 font-serif text-3xl font-normal sm:text-4xl">실제 제작 샘플</h2>
+              <h2 className="mt-4 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">실제 제작 샘플</h2>
               <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-stone-600">
                 {funding.sample_note || "판매자가 실제 제작된 샘플 이미지를 공유했습니다."}
               </p>
@@ -463,7 +463,7 @@ const FundingDetail = () => {
         <section className="mt-20 grid gap-8 border-t border-black/10 pt-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Product story</p>
-            <h2 className="mt-4 font-serif text-4xl font-normal tracking-[-0.035em] sm:text-5xl">옷에 담긴 이야기</h2>
+            <h2 className="mt-4 text-4xl font-extrabold tracking-[-0.03em] sm:text-5xl">옷에 담긴 이야기</h2>
           </div>
           <div>
             <p className="whitespace-pre-wrap text-base leading-8 text-stone-600 sm:text-lg sm:leading-9">{customerDescription}</p>
@@ -489,7 +489,7 @@ const FundingDetail = () => {
 
         <section className="mt-20 border-t border-black/10 pt-10">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">How it is made</p>
-          <h2 className="mt-4 font-serif text-4xl font-normal tracking-[-0.035em]">선택이 옷이 되는 과정</h2>
+          <h2 className="mt-4 text-4xl font-extrabold tracking-[-0.03em]">선택이 옷이 되는 과정</h2>
           <div className="mt-9 grid gap-px overflow-hidden bg-black/10 md:grid-cols-3">
             {[
               ["01", "선주문", `최소 ${funding.moq}장의 주문이 모이면 제작을 확정합니다.`],

@@ -54,7 +54,7 @@ const CommunityInsights = () => {
       <div className="mb-8 flex items-end justify-between gap-5 border-b border-stone-300 pb-4">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand">MEDIA COVERAGE</p>
-          <h2 className="mt-2 font-serif text-2xl font-bold tracking-[-0.04em] text-stone-950 sm:text-3xl">
+          <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-3xl">
             BRAND-ER NEWS
           </h2>
         </div>
@@ -85,7 +85,7 @@ const CommunityInsights = () => {
                 <span className="text-stone-300">|</span>
                 <span>{article.date}</span>
               </div>
-              <h3 className="mt-3 font-serif text-2xl font-bold leading-[1.32] tracking-[-0.035em] text-stone-950 group-hover:text-brand sm:text-[1.7rem]">
+              <h3 className="mt-3 text-2xl font-bold leading-[1.32] tracking-[-0.035em] text-stone-950 group-hover:text-brand sm:text-[1.7rem]">
                 {article.title}
               </h3>
               <p className="mt-3 text-sm leading-6 text-stone-600">{article.summary}</p>

@@ -63,7 +63,7 @@ const DetailBody = ({ project }: { project: PortfolioProject }) => {
 
         <div className="px-5 py-6 sm:px-8">
           <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand">프로젝트</p>
-          <h2 className="mt-2 font-serif text-3xl font-normal tracking-[-0.03em] text-[#211b1c] sm:text-4xl">
+          <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-[#211b1c] sm:text-4xl">
             {project.nameKo}
           </h2>
           <p className="mt-1 text-sm text-stone-500">{project.nameEn}</p>

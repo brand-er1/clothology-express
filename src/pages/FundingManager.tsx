@@ -162,7 +162,7 @@ const FundingManager = () => {
               <Badge variant="secondary">개설자 전용</Badge>
               <span className="text-sm text-gray-500">참여자 정보는 개설자와 관리자만 볼 수 있습니다.</span>
             </div>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">{funding.product_name}</h1>
+            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] md:text-4xl">{funding.product_name}</h1>
             <p className="mt-2 text-gray-500">펀딩 참여자 관리</p>
           </div>
           <Button asChild variant="outline" className="rounded-full bg-white">

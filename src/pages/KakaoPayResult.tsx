@@ -101,7 +101,7 @@ const KakaoPayResult = () => {
       <main className="container mx-auto flex min-h-screen max-w-2xl items-center px-4 py-24">
         <div className="w-full rounded-[2rem] border bg-white px-6 py-14 text-center shadow-sm md:px-12">
           <div className="flex justify-center">{content.icon}</div>
-          <h1 className="mt-6 text-3xl font-bold">{content.title}</h1>
+          <h1 className="mt-6 text-3xl font-extrabold tracking-[-0.03em]">{content.title}</h1>
           <p className="mx-auto mt-4 max-w-md leading-7 text-gray-500">{message}</p>
 
           {state === "auth-required" ? (

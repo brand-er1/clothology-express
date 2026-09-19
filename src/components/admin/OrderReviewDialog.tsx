@@ -15,10 +15,10 @@ import {
   Calculator,
   ImageOff,
   PackageCheck,
-  Sparkles,
   UserRound,
   Zap,
 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { ReadyMadeOrderPreview } from "@/components/admin/ReadyMadeOrderPreview";
@@ -186,7 +186,7 @@ export const OrderReviewDialog = ({
               </Badge>
               {order.request_source === "design_upload" && (
                 <Badge variant="outline" className="border-brand/30 bg-brand/5 text-brand">
-                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+                  <BrandMark className="mr-1 h-3.5 w-3.5" />
                   내 디자인 자동견적
                 </Badge>
               )}

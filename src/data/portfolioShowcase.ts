@@ -1,3 +1,5 @@
+import hanjiLeatherImage from "../../한지 레더.png";
+
 /**
  * Copy/data for the redesigned portfolio ("Selected Works") page — kept as plain data, separate
  * from layout, so any of these numbers or labels can be updated without touching component code.
@@ -50,3 +52,85 @@ export const PORTFOLIO_PROCESS_STEPS: PortfolioProcessStep[] = [
 /** Default service tags shown for a project that hasn't had its own `services` set yet by an
  * admin (all 12 seeded launch projects) — a generic, defensible default rather than a blank line. */
 export const PORTFOLIO_DEFAULT_SERVICES = ["디자인", "샘플", "생산"];
+
+/** "SPECIAL FABRIC SOURCING" — the specialty/hard-to-find fabric sourcing spotlight on the
+ * portfolio page. Kept as data, separate from the section layout, same convention as the
+ * capability/process copy above. */
+export const FABRIC_SOURCING_KIDS_FLOW = ["WHY SAFETY MATTERS", "SAFE FABRIC SOURCING", "PRODUCTION"];
+
+export const FABRIC_SOURCING_KIDS_POINTS = [
+  "아동복용 원단 서칭 및 수급",
+  "제품 용도와 연령에 맞는 소재 제안",
+  "촉감·두께·컬러·혼용률 등을 고려한 원단 서칭",
+  "필요 시 관련 시험·인증 절차를 고려한 제작 진행",
+  "원단 수급 → 샘플 → 본생산까지 연결",
+];
+
+export const FABRIC_SOURCING_CUSTOM_FLOW_EN = ["REFERENCE", "FABRIC SOURCING", "SAMPLE", "PRODUCTION"];
+
+export const FABRIC_SOURCING_CUSTOM_FLOW_KO = ["레퍼런스 전달", "원단 서칭", "소재 제안", "샘플 제작", "본생산"];
+
+export interface SpecialMaterialCard {
+  nameKo: string;
+  nameEn: string;
+  image: string;
+  imageAlt: string;
+  /** Rendered as separate paragraph lines. */
+  description: string[];
+  features: string[];
+  note: string;
+  /** "highlight" — a positive sourcing/availability line. "disclaimer" — a cautionary line
+   * (kept visually distinct so it never reads as a certification claim about the photo itself). */
+  noteVariant: "highlight" | "disclaimer";
+}
+
+/** Prefixed with Vite's BASE_URL so asset paths resolve correctly under the GitHub Pages
+ * project-site subpath (e.g. /clothology-express/), matching the convention in
+ * fabric-recommendations.ts — a bare "/fabrics/..." path 404s once deployed there. */
+const fabricImage = (fileName: string) => `${import.meta.env.BASE_URL}fabrics/${fileName}`;
+
+/** "SPECIAL MATERIALS & CERTIFIED FABRICS" — the two-card spotlight on the portfolio page:
+ * vegan hanji leather and KC-safety-aware kidswear fabric sourcing. Kept as data, separate from
+ * the section layout, same convention as the rest of this file. */
+export const SPECIAL_MATERIAL_CARDS: SpecialMaterialCard[] = [
+  {
+    nameKo: "비건 한지 레더",
+    nameEn: "VEGAN HANJI LEATHER",
+    image: hanjiLeatherImage,
+    imageAlt: "비건 한지 레더 — 앞면 레더 질감과 뒷면 한지 섬유 질감",
+    description: [
+      "동물성 천연가죽을 사용하지 않는 비건 레더와 한지의 특성을 결합한 차별화 소재입니다.",
+      "앞면에서는 레더 특유의 고급스러운 질감과 컬러를 표현하고,",
+      "뒷면에서는 한지 특유의 섬유 조직과 자연스러운 질감을 확인할 수 있습니다.",
+    ],
+    features: [
+      "동물성 천연가죽을 대체할 수 있는 소재",
+      "레더의 고급스러운 표면감",
+      "한지 특유의 독특한 섬유 조직",
+      "일반 합성가죽과 차별화되는 소재 스토리",
+      "다양한 컬러 및 질감 선택 가능",
+      "재킷, 가방, 파우치 및 패션 소품 제작 가능",
+    ],
+    note: "비건 한지 레더 소재 수급 및 제작 가능",
+    noteVariant: "highlight",
+  },
+  {
+    nameKo: "KC 인증 아동복 원단",
+    nameEn: "KC CERTIFIED FABRIC",
+    image: fabricImage("kc-safety-swatch.png"),
+    imageAlt: "KC 인증 아동복 원단 — 아동복용 원단 컬러 스와치 보드",
+    description: [
+      "아동복 제작 시 제품의 안전성과 관련된 KC 안전기준 및 적용 요건을 고려한 원단 수급을 지원합니다.",
+      "다양한 컬러와 사양의 아동복용 원단을 확인하고 제품에 적합한 소재를 선택할 수 있습니다.",
+    ],
+    features: [
+      "아동복 제작용 원단 수급 가능",
+      "KC 관련 안전기준을 고려한 소재 선택 지원",
+      "다양한 컬러 선택 가능",
+      "키즈웨어 및 아동복 제작 대응",
+      "샘플 제작부터 본생산까지 연계 가능",
+    ],
+    note: "※ KC 관련 인증·시험 여부는 실제 사용 원단 및 완제품 사양에 따라 개별 확인",
+    noteVariant: "disclaimer",
+  },
+];

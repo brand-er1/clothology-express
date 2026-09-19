@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Header } from "@/components/Header";
+import { BrandMark } from "@/components/BrandMark";
 import { SelectedWorkTile } from "@/components/portfolio/SelectedWorkTile";
 import { PortfolioProjectDetail } from "@/components/portfolio/PortfolioProjectDetail";
 import { Reveal } from "@/components/portfolio/ScrollReveal";
 import { HeroCarousel, type HeroSlide } from "@/components/portfolio/HeroCarousel";
+import { FabricSourcingSection } from "@/components/portfolio/FabricSourcingSection";
 import { useParallax } from "@/hooks/useParallax";
 import { fetchVisiblePortfolioProjects } from "@/services/portfolioProjects";
 import { PORTFOLIO_CATEGORY_LABEL_KO, type PortfolioProject } from "@/types/portfolio";
@@ -214,6 +216,8 @@ const Portfolio = () => {
           </div>
         </section>
 
+        <FabricSourcingSection />
+
         {/* 7. HOW WE MAKE */}
         <section className="border-b border-black/10 bg-[#f1f0ed]">
           <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
@@ -269,7 +273,7 @@ const Portfolio = () => {
                   to="/customize"
                   className="inline-flex h-12 items-center justify-center border border-white/50 px-7 text-sm font-bold text-white transition hover:bg-white/10 sm:h-14"
                 >
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <BrandMark className="mr-2 h-4 w-4" variant="white" />
                   AI로 디자인 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>

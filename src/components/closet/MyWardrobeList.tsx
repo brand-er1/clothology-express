@@ -1,4 +1,5 @@
-import { Bookmark, Check, Loader2, RefreshCw, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Bookmark, Check, Loader2, RefreshCw, Trash2, Wand2 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { closetSlotLabel } from "@/lib/closet-character-config";
 import type { MyWardrobeGarment } from "@/lib/closet-store";
 import { Button } from "@/components/ui/button";
@@ -126,7 +127,7 @@ export const MyWardrobeList = ({
                     {isBusy ? (
                       <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
                     ) : (
-                      <Sparkles className="h-3 w-3 shrink-0" />
+                      <BrandMark className="h-3 w-3" />
                     )}
                     다시 생성
                   </Button>

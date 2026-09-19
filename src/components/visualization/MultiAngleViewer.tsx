@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Rotate3D, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Rotate3D } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
@@ -135,7 +136,7 @@ export const MultiAngleViewer = ({
                 </>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                  <Sparkles className="mx-auto h-7 w-7 text-brand" />
+                  <BrandMark className="mx-auto h-7 w-7" />
                   <p className="mt-3 font-bold text-stone-900">다각면 이미지를 준비하지 못했어요</p>
                   <Button type="button" className="mt-4 rounded-full" onClick={() => ensure()}>
                     다시 생성하기

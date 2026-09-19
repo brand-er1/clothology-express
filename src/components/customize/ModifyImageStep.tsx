@@ -16,10 +16,10 @@ import {
   Send,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
   Upload,
   X,
 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { createExactArtworkComposite } from "@/lib/artwork-composite";
 import {
   artworkLocationLabels,
@@ -1018,7 +1018,7 @@ export const ModifyImageStep = ({
                       !artworkPlacementPrompt.trim()
                     }
                   >
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    <BrandMark className="mr-1.5 h-3.5 w-3.5" />
                     위치 미리보기
                   </Button>
                 </div>
@@ -1056,7 +1056,7 @@ export const ModifyImageStep = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-2 h-4 w-4" />
+                    <BrandMark className="mr-2 h-4 w-4" variant="white" />
                     프롬프트대로 옷에 적용하고 공임 분석
                   </>
                 )}

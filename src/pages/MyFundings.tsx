@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
 import {
@@ -53,6 +53,8 @@ const fundingStatusLabel: Record<Funding["status"], string> = {
 type ParticipationFilter = "all" | "paid" | "planned";
 
 const MyFundings = () => {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "joined" ? "joined" : "created";
   const [createdFundings, setCreatedFundings] = useState<Funding[]>([]);
   const [paidItems, setPaidItems] = useState<MyFundingParticipation[]>([]);
   const [plannedItems, setPlannedItems] = useState<MyFundingPaymentIntent[]>([]);
@@ -166,7 +168,7 @@ const MyFundings = () => {
           <Button asChild className="rounded-full bg-brand hover:bg-brand-dark"><Link to="/fundings">새 펀딩 둘러보기 <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
         </div>
 
-        <Tabs defaultValue="created" className="mt-8">
+        <Tabs defaultValue={initialTab} className="mt-8">
           <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl bg-white p-1.5 shadow-sm md:w-[520px]">
             <TabsTrigger
               value="created"

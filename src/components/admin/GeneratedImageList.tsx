@@ -5,9 +5,9 @@ import {
   ImageIcon,
   Search,
   ShoppingBag,
-  Sparkles,
   Users,
 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,7 +111,7 @@ export const GeneratedImageList = ({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
-                <Sparkles className="h-5 w-5 text-brand md:h-6 md:w-6" />
+                <BrandMark className="h-5 w-5 md:h-6 md:w-6" />
                 AI 생성 이미지 관리
               </CardTitle>
               <p className="mt-2 text-sm leading-6 text-stone-500">

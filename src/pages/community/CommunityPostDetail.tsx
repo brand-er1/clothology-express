@@ -414,7 +414,7 @@ const CommunityPostDetail = () => {
             </p>
           )}
 
-          <h1 className="mt-3 text-lg font-black text-stone-950">{post.title}</h1>
+          <h1 className="mt-3 text-lg font-extrabold tracking-[-0.03em] text-stone-950">{post.title}</h1>
           {post.description && <p className="mt-1.5 whitespace-pre-line text-sm leading-6 text-stone-700">{post.description}</p>}
           {post.hashtags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">

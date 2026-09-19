@@ -143,7 +143,7 @@ export default function Magazine() {
         <section className="border-b border-black/10 bg-[#24191b] px-5 py-16 text-white sm:px-8 sm:py-24">
           <div className="mx-auto max-w-[1320px]">
             <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d8a8b2]">BRAND-ER MAGAZINE</p>
-            <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-[0.95] tracking-[-0.05em] sm:text-7xl">옷을 만들기 전에<br />알아야 할 것들.</h1>
+            <h1 className="mt-4 max-w-4xl text-5xl font-extrabold leading-[0.95] tracking-[-0.03em] sm:text-7xl">옷을 만들기 전에<br />알아야 할 것들.</h1>
             <p className="mt-7 max-w-2xl text-sm leading-7 text-white/70 sm:text-base">의류 제작, 원단, 견적, 브랜드 창업과 패션 제조 산업을 BRAND-ER의 시선으로 정리합니다. 외부 자료를 참고한 콘텐츠는 원문 출처를 함께 표시합니다.</p>
           </div>
         </section>
@@ -168,9 +168,9 @@ export default function Magazine() {
               <article key={article.id} className="group flex min-h-[330px] flex-col border border-black/10 bg-white p-6 transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(40,25,28,0.08)] sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7b2638]">{article.category}</span>
-                  <span className="font-serif text-2xl text-stone-300">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="text-2xl text-stone-300">{String(index + 1).padStart(2, "0")}</span>
                 </div>
-                <h2 className="mt-6 font-serif text-2xl leading-tight tracking-[-0.03em] sm:text-3xl">{article.title}</h2>
+                <h2 className="mt-6 text-2xl font-bold leading-tight tracking-[-0.03em] sm:text-3xl">{article.title}</h2>
                 <p className="mt-4 text-sm leading-6 text-stone-600">{article.summary}</p>
                 <div className="mt-auto pt-8">
                   <p className="mb-4 text-[11px] font-semibold text-stone-400">{article.tag}</p>
@@ -185,7 +185,7 @@ export default function Magazine() {
           <div className="mx-auto max-w-[1320px] sm:flex sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#7b2638]">FROM CONTENT TO PRODUCTION</p>
-              <h2 className="mt-2 font-serif text-3xl tracking-[-0.04em]">알아봤다면, 이제 직접 만들어보세요.</h2>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.03em]">알아봤다면, 이제 직접 만들어보세요.</h2>
             </div>
             <a href="./customize" className="mt-6 inline-flex items-center bg-[#7b2638] px-6 py-4 text-sm font-bold text-white sm:mt-0">AI로 옷 디자인하기 <ArrowRight className="ml-2 h-4 w-4" /></a>
           </div>
@@ -199,7 +199,7 @@ export default function Magazine() {
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7b2638]">{openArticle.category}</span>
               <button onClick={() => setOpenArticle(null)} className="rounded-full border border-black/10 px-3 py-1 text-xs font-bold text-stone-500">닫기</button>
             </div>
-            <h2 className="mt-5 font-serif text-4xl leading-tight tracking-[-0.04em]">{openArticle.title}</h2>
+            <h2 className="mt-5 text-4xl font-extrabold leading-tight tracking-[-0.03em]">{openArticle.title}</h2>
             <p className="mt-7 whitespace-pre-line text-[15px] leading-8 text-stone-700">{openArticle.body}</p>
             {openArticle.source && openArticle.sourceUrl && (
               <div className="mt-8 border-t border-black/10 pt-6">

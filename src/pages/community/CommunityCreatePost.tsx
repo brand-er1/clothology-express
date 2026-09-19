@@ -173,7 +173,7 @@ const CommunityCreatePost = () => {
     <div className="min-h-screen bg-[#f7f6f4]">
       <Header />
       <main className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pt-24">
-        <h1 className="text-2xl font-black tracking-[-0.03em] text-stone-950">새 디자인 공유하기</h1>
+        <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-stone-950">새 디자인 공유하기</h1>
         <p className="mt-1 text-sm text-stone-500">CREATE한 디자인을 매거진에 SHARE하고 반응을 VALIDATE해보세요.</p>
 
         <section className="mt-6 space-y-3">

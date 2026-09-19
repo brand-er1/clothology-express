@@ -65,7 +65,7 @@ const CommunityNotifications = () => {
       <Header />
       <main className="mx-auto max-w-xl px-4 pb-16 pt-20 sm:pt-24">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-black text-stone-950">알림</h1>
+          <h1 className="text-xl font-extrabold tracking-[-0.03em] text-stone-950">알림</h1>
           {notifications.some((item) => !item.isRead) && (
             <Button variant="ghost" size="sm" className="text-xs font-bold text-brand" onClick={handleMarkAllRead}>
               모두 읽음 처리

@@ -8,7 +8,7 @@ const CommunityFeed = () => {
       <main className="mx-auto max-w-[1100px] px-4 pb-24 pt-20 sm:px-6 sm:pt-24">
         <section className="pb-8 pt-8 text-center sm:pb-12 sm:pt-12">
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand">BRAND-ER PRESS</p>
-          <h1 className="mt-4 font-serif text-4xl font-bold tracking-[-0.045em] text-stone-950 sm:text-6xl">
+          <h1 className="mt-4 text-4xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-6xl">
             언론이 주목한 BRAND-ER
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-stone-600 sm:text-base">

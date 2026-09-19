@@ -57,20 +57,20 @@ export const KakaoCommunityWidget = () => {
           bottom-6/right-6 desktop in BrandGuide) so the two floating elements never overlap. */}
       <div className="pointer-events-none fixed right-4 z-50 flex flex-col items-end gap-3 bottom-[calc(176px+env(safe-area-inset-bottom))] sm:bottom-28 sm:right-6">
         {isBubbleVisible && (
-          <div className="pointer-events-auto relative max-w-[220px] animate-fadeIn rounded-2xl border border-stone-200 bg-white p-4 pr-8 shadow-lg sm:max-w-[240px]">
+          <div className="pointer-events-auto relative max-w-[180px] animate-fadeIn rounded-2xl border border-stone-200 bg-white p-3 pr-7 shadow-lg sm:max-w-[240px] sm:p-4 sm:pr-8">
             <button
               type="button"
               onClick={dismissBubble}
               aria-label="말풍선 닫기"
-              className="absolute right-2 top-2 rounded-full p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+              className="absolute right-1.5 top-1.5 rounded-full p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 sm:right-2 sm:top-2"
             >
               <X className="h-3.5 w-3.5" />
             </button>
             <button type="button" onClick={openIntro} className="block text-left">
-              <p className="text-[13px] font-bold leading-5 text-stone-800">
+              <p className="text-[12px] font-bold leading-5 text-stone-800 sm:text-[13px]">
                 내 브랜드를 만들고 싶으신가요?
               </p>
-              <p className="mt-1 text-[12px] leading-5 text-stone-500">
+              <p className="mt-1 hidden text-[12px] leading-5 text-stone-500 sm:block">
                 예비 브랜드 창업자들과 함께 이야기해보세요.
               </p>
             </button>
@@ -81,12 +81,13 @@ export const KakaoCommunityWidget = () => {
         <button
           type="button"
           onClick={openIntro}
-          className="pointer-events-auto flex items-center gap-2.5 rounded-full border border-brand/15 bg-brand py-2.5 pl-2.5 pr-4 text-white shadow-[0_8px_24px_rgba(116,27,43,0.35)] transition hover:bg-brand-dark hover:shadow-[0_10px_28px_rgba(116,27,43,0.45)] active:scale-[0.97] sm:py-3 sm:pl-3 sm:pr-5"
+          aria-label="의류 브랜드 커뮤니티"
+          className="pointer-events-auto flex items-center gap-2.5 rounded-full border border-brand/15 bg-brand p-2.5 text-white shadow-[0_8px_24px_rgba(116,27,43,0.35)] transition hover:bg-brand-dark hover:shadow-[0_10px_28px_rgba(116,27,43,0.45)] active:scale-[0.97] sm:py-3 sm:pl-3 sm:pr-5"
         >
-          <KakaoChip className="h-8 w-8 sm:h-9 sm:w-9" />
-          <span className="flex flex-col items-start leading-tight">
-            <span className="text-[13px] font-bold sm:text-sm">의류 브랜드 커뮤니티</span>
-            <span className="hidden text-[11px] font-medium text-white/80 sm:block">
+          <KakaoChip className="h-7 w-7 sm:h-9 sm:w-9" />
+          <span className="hidden flex-col items-start leading-tight sm:flex">
+            <span className="text-sm font-bold">의류 브랜드 커뮤니티</span>
+            <span className="text-[11px] font-medium text-white/80">
               브랜드를 만들고 싶다면 참여해보세요
             </span>
           </span>

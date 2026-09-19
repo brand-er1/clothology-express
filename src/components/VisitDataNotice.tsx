@@ -21,25 +21,20 @@ export const VisitDataNotice = () => {
   return (
     <aside
       data-mascot-safezone
-      className="fixed inset-x-3 bottom-3 z-[70] mx-auto max-w-3xl rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-2xl backdrop-blur sm:bottom-5 sm:flex sm:items-center sm:gap-4 sm:px-5"
+      className="fixed inset-x-3 bottom-3 z-[70] mx-auto flex max-w-md items-center gap-2 rounded-full border border-stone-200 bg-white/95 py-1.5 pl-3.5 pr-1.5 shadow-lg backdrop-blur sm:bottom-5"
     >
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-stone-900">방문정보 수집 안내</p>
-        <p className="mt-1 text-xs leading-5 text-stone-500">
-          서비스 개선과 고객 문의 연결을 위해 방문 페이지·유입경로·기기·서비스 이용기록을 수집합니다. IP주소는 별도로 저장하지 않습니다.
-        </p>
-      </div>
-      <div className="mt-3 flex items-center gap-2 sm:mt-0">
-        <Link to="/visit-data-policy" className="rounded-full px-3 py-2 text-xs font-bold text-brand hover:bg-brand/5">
-          자세히 보기
+      <p className="min-w-0 flex-1 truncate text-[11px] leading-4 text-stone-500">
+        <span className="font-bold text-stone-900">방문정보 수집 안내</span>{" "}
+        <Link to="/visit-data-policy" className="underline decoration-stone-300 underline-offset-2 hover:text-brand">
+          자세히
         </Link>
-        <button type="button" onClick={close} className="rounded-full bg-stone-950 px-4 py-2 text-xs font-bold text-white hover:bg-brand">
-          확인
-        </button>
-        <button type="button" onClick={close} className="rounded-full p-2 text-stone-400 hover:bg-stone-100" aria-label="안내 닫기">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+      </p>
+      <button type="button" onClick={close} className="shrink-0 rounded-full bg-stone-950 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-brand">
+        확인
+      </button>
+      <button type="button" onClick={close} className="shrink-0 rounded-full p-1 text-stone-400 hover:bg-stone-100" aria-label="안내 닫기">
+        <X className="h-3.5 w-3.5" />
+      </button>
     </aside>
   );
 };

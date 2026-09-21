@@ -9,6 +9,12 @@ import type {
   FundingPaymentIntent,
   MyFundingPaymentIntent,
   FundingStatus,
+  ShippingDetails,
+  ProductionStage,
+  ShippingStatus,
+  SellerFundingDashboardRow,
+  SellerDashboardTotals,
+  AdminFundingOverview,
 } from "@/types/funding";
 import { getAppUrl } from "@/utils/appUrl";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
@@ -386,6 +392,95 @@ export const fetchFundingPaymentIntents = async (fundingId: string): Promise<Fun
   const { data, error } = await supabase.rpc("get_funding_payment_intents", { p_funding_id: fundingId });
   if (error) throwFundingError(error, "결제 예정자 목록을 불러오지 못했습니다.");
   return (data || []) as FundingPaymentIntent[];
+};
+
+export const createMockFundingOrder = async (
+  fundingId: string,
+  color: string,
+  size: string,
+  quantity: number,
+  shipping: ShippingDetails
+): Promise<{ participationId: string; orderNumber: string; totalAmount: number }> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("create_mock_funding_order", {
+    p_funding_id: fundingId,
+    p_color: color,
+    p_size: size,
+    p_quantity: quantity,
+    p_orderer_name: shipping.ordererName,
+    p_orderer_phone: shipping.ordererPhone,
+    p_orderer_email: shipping.ordererEmail,
+    p_recipient_name: shipping.recipientName,
+    p_recipient_phone: shipping.recipientPhone,
+    p_postal_code: shipping.postalCode,
+    p_address: shipping.address,
+    p_address_detail: shipping.addressDetail,
+    p_delivery_message: shipping.deliveryMessage,
+    p_agree_privacy: shipping.agreePrivacy,
+  });
+
+  if (error) throwFundingError(error, "모의결제 참여를 처리하지 못했습니다.");
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("모의결제 참여 내역을 만들지 못했습니다.");
+  return {
+    participationId: row.participation_id as string,
+    orderNumber: row.partner_order_id as string,
+    totalAmount: row.total_amount as number,
+  };
+};
+
+export const updateFundingOrderFulfillment = async (
+  participationId: string,
+  updates: {
+    productionStage?: ProductionStage;
+    shippingStatus?: ShippingStatus;
+    trackingNumber?: string;
+  }
+): Promise<void> => {
+  await requireUser();
+  const { error } = await supabase.rpc("update_funding_order_fulfillment", {
+    p_participation_id: participationId,
+    p_production_stage: updates.productionStage ?? null,
+    p_shipping_status: updates.shippingStatus ?? null,
+    p_tracking_number: updates.trackingNumber ?? null,
+  });
+  if (error) throwFundingError(error, "주문 진행 상태를 변경하지 못했습니다.");
+};
+
+export const fetchSellerFundingDashboard = async (): Promise<SellerFundingDashboardRow[]> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_seller_funding_dashboard");
+  if (error) throwFundingError(error, "판매자 대시보드를 불러오지 못했습니다.");
+  return (data || []) as SellerFundingDashboardRow[];
+};
+
+export const fetchSellerDashboardTotals = async (): Promise<SellerDashboardTotals> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_seller_dashboard_totals");
+  if (error) throwFundingError(error, "판매자 대시보드 요약을 불러오지 못했습니다.");
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row || {
+    total_expected_revenue: 0,
+    total_participants: 0,
+    total_quantity: 0,
+    avg_funding_rate: 0,
+  }) as SellerDashboardTotals;
+};
+
+export const fetchAdminFundingOverview = async (): Promise<AdminFundingOverview> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("get_admin_funding_overview");
+  if (error) throwFundingError(error, "관리자 펀딩 현황을 불러오지 못했습니다.");
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row || {
+    total_fundings: 0,
+    active_fundings: 0,
+    total_participants: 0,
+    total_quantity: 0,
+    total_mock_amount: 0,
+    total_real_amount: 0,
+    avg_funding_rate: 0,
+  }) as AdminFundingOverview;
 };
 
 export const uploadAndShareFundingSample = async (

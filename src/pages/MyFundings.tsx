@@ -18,14 +18,25 @@ import {
   fetchMyFundingPaymentIntents,
   fetchMyFundingParticipations,
   fetchMyFundings,
+  fetchSellerFundingDashboard,
+  fetchSellerDashboardTotals,
 } from "@/services/funding";
 import type {
   Funding, FundingPaymentStatus, MyFundingParticipation, MyFundingPaymentIntent,
+  SellerFundingDashboardRow, SellerDashboardTotals,
 } from "@/types/funding";
+import { PRODUCTION_STAGE_LABEL } from "@/types/funding";
 import {
   ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, RotateCcw, Settings2,
-  ShoppingBag, SquarePen, Trash2, Users, WalletCards,
+  ShoppingBag, SquarePen, Trash2, TrendingUp, Truck, Users, WalletCards,
 } from "lucide-react";
+
+const EMPTY_SELLER_TOTALS: SellerDashboardTotals = {
+  total_expected_revenue: 0,
+  total_participants: 0,
+  total_quantity: 0,
+  avg_funding_rate: 0,
+};
 
 const paymentLabel: Record<FundingPaymentStatus, string> = {
   unpaid: "참여 접수",
@@ -56,6 +67,8 @@ const MyFundings = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "joined" ? "joined" : "created";
   const [createdFundings, setCreatedFundings] = useState<Funding[]>([]);
+  const [sellerDashboard, setSellerDashboard] = useState<Map<string, SellerFundingDashboardRow>>(new Map());
+  const [sellerTotals, setSellerTotals] = useState<SellerDashboardTotals>(EMPTY_SELLER_TOTALS);
   const [paidItems, setPaidItems] = useState<MyFundingParticipation[]>([]);
   const [plannedItems, setPlannedItems] = useState<MyFundingPaymentIntent[]>([]);
   const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>("all");
@@ -67,14 +80,18 @@ const MyFundings = () => {
 
   const load = useCallback(async () => {
     try {
-      const [created, participated, planned] = await Promise.all([
+      const [created, participated, planned, dashboardRows, totals] = await Promise.all([
         fetchMyFundings(),
         fetchMyFundingParticipations(),
         fetchMyFundingPaymentIntents(),
+        fetchSellerFundingDashboard(),
+        fetchSellerDashboardTotals(),
       ]);
       setCreatedFundings(created);
       setPaidItems(participated);
       setPlannedItems(planned);
+      setSellerDashboard(new Map(dashboardRows.map((row) => [row.funding_id, row])));
+      setSellerTotals(totals);
     } catch (error) {
       console.error(error);
       toast({ title: "내 펀딩 내역을 불러오지 못했습니다", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
@@ -112,9 +129,14 @@ const MyFundings = () => {
       setPaidItems((current) => current.map((item) => item.id === selectedItem.id
         ? { ...item, status: "cancelled", payment_status: "cancelled", payment_cancelled_at: new Date().toISOString() }
         : item));
+      const isMock = selectedItem.payment_type === "MOCK";
       toast({
-        title: result.refunded ? "펀딩 취소와 환불이 완료되었습니다" : "펀딩 참여를 취소했습니다",
-        description: result.refunded ? "카카오페이 결제 금액이 전액 취소되었습니다." : "취소된 수량은 펀딩 달성 수량에서 제외됩니다.",
+        title: result.refunded ? "펀딩 취소가 완료되었습니다" : "펀딩 참여를 취소했습니다",
+        description: result.refunded
+          ? isMock
+            ? "모의결제 참여가 취소되었습니다. 실제 환불은 발생하지 않습니다."
+            : "카카오페이 결제 금액이 전액 취소되었습니다."
+          : "취소된 수량은 펀딩 달성 수량에서 제외됩니다.",
       });
     } catch (error) {
       toast({ title: "펀딩을 취소하지 못했습니다", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
@@ -187,12 +209,21 @@ const MyFundings = () => {
           </TabsList>
 
           <TabsContent value="created" className="mt-7">
+            {createdFundings.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <SummaryCard icon={WalletCards} label="총 예상매출" value={`${sellerTotals.total_expected_revenue.toLocaleString("ko-KR")}원`} />
+                <SummaryCard icon={Users} label="총 참여자 수" value={`${sellerTotals.total_participants.toLocaleString("ko-KR")}명`} />
+                <SummaryCard icon={ShoppingBag} label="총 판매수량" value={`${sellerTotals.total_quantity.toLocaleString("ko-KR")}장`} />
+                <SummaryCard icon={TrendingUp} label="평균 펀딩 달성률" value={`${sellerTotals.avg_funding_rate}%`} />
+              </div>
+            )}
             {createdFundings.length === 0 ? (
               <EmptyState title="아직 만든 펀딩이 없습니다" description="나만의 디자인으로 첫 펀딩을 만들어보세요." action="컬렉션 시작하기" to="/customize" />
             ) : (
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
                 {createdFundings.map((funding) => {
                   const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
+                  const dashboardRow = sellerDashboard.get(funding.id);
                   return (
                     <article key={funding.id} className="overflow-hidden rounded-[1.75rem] border bg-white">
                       <Link to={`/fundings/${funding.id}`} className="block aspect-[16/10] bg-stone-100 p-6">
@@ -203,6 +234,13 @@ const MyFundings = () => {
                         <Link to={`/fundings/${funding.id}`} className="mt-3 block text-xl font-bold hover:text-brand">{funding.product_name}</Link>
                         <div className="mt-5 flex items-end justify-between"><strong className="text-2xl text-brand">{progress}%</strong><span className="text-sm text-gray-500">{funding.current_orders} / {funding.moq}장</span></div>
                         <Progress value={progress} className="mt-2 h-2.5" />
+                        {dashboardRow && (
+                          <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-stone-50 p-3 text-center text-xs">
+                            <div><p className="font-bold text-stone-900">{dashboardRow.participant_count}명</p><p className="mt-0.5 text-stone-400">참여자</p></div>
+                            <div><p className="font-bold text-stone-900">{dashboardRow.expected_revenue.toLocaleString("ko-KR")}원</p><p className="mt-0.5 text-stone-400">예상매출</p></div>
+                            <div><p className="font-bold text-stone-900">{dashboardRow.end_date ? new Date(dashboardRow.end_date).toLocaleDateString("ko-KR") : "미정"}</p><p className="mt-0.5 text-stone-400">종료일</p></div>
+                          </div>
+                        )}
                         <div className="mt-5 grid grid-cols-2 gap-2">
                           <Button asChild variant="outline" className="rounded-full"><Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-2 h-4 w-4" />정보 수정</Link></Button>
                           <Button asChild className="rounded-full bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />참여자 관리</Link></Button>
@@ -256,7 +294,7 @@ const MyFundings = () => {
 
       <AlertDialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
         <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>펀딩 참여를 취소할까요?</AlertDialogTitle>
-          <AlertDialogDescription>{selectedItem?.payment_status === "paid" ? `${selectedItem.total_amount.toLocaleString("ko-KR")}원이 카카오페이로 전액 취소됩니다.` : "진행 중인 참여 내역이 취소됩니다."}</AlertDialogDescription>
+          <AlertDialogDescription>{selectedItem?.payment_status === "paid" ? (selectedItem.payment_type === "MOCK" ? `${selectedItem.total_amount.toLocaleString("ko-KR")}원 상당의 모의결제 참여가 취소됩니다. (실제 환불 없음)` : `${selectedItem.total_amount.toLocaleString("ko-KR")}원이 카카오페이로 전액 취소됩니다.`) : "진행 중인 참여 내역이 취소됩니다."}</AlertDialogDescription>
         </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>계속 참여하기</AlertDialogCancel><AlertDialogAction onClick={cancelParticipation} className="bg-red-600 hover:bg-red-700">{selectedItem?.payment_status === "paid" ? "취소 및 환불" : "참여 취소"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 
@@ -310,13 +348,31 @@ const EmptyState = ({ title, description, action, to }: { title: string; descrip
 const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFundingParticipation; cancelling: boolean; onCancel: () => void }) => {
   const isCancelled = item.status === "cancelled" || ["cancelled", "failed"].includes(item.payment_status);
   const canCancel = item.status !== "fulfilled" && !isCancelled && item.payment_status !== "failed";
+  const fundingRate = item.funding_moq > 0 ? Math.round((item.funding_current_orders / item.funding_moq) * 100) : 0;
   return (
     <article className={`overflow-hidden rounded-[1.75rem] border bg-white ${isCancelled ? "opacity-65" : ""}`}><div className="grid md:grid-cols-[160px_1fr_auto]">
       <Link to={`/fundings/${item.funding_id}`} className="aspect-square bg-stone-100 p-5"><img src={item.image_url} alt={item.product_name} className="h-full w-full object-contain" /></Link>
-      <div className="p-6"><div className="flex flex-wrap gap-2"><Badge className={paymentBadgeClass[item.payment_status]}>{paymentLabel[item.payment_status]}</Badge>{item.status === "fulfilled" && <Badge variant="secondary">제작 처리 완료</Badge>}</div>
+      <div className="p-6"><div className="flex flex-wrap gap-2">
+          <Badge className={paymentBadgeClass[item.payment_status]}>{paymentLabel[item.payment_status]}</Badge>
+          <Badge variant={item.payment_type === "MOCK" ? "secondary" : "default"}>{item.payment_type === "MOCK" ? "모의결제" : "실제결제"}</Badge>
+          {item.status === "fulfilled" && <Badge variant="secondary">제작 처리 완료</Badge>}
+        </div>
         <Link to={`/fundings/${item.funding_id}`} className="mt-3 block text-xl font-bold hover:text-brand">{item.product_name}</Link>
+        <p className="mt-1 font-mono text-xs text-gray-400">주문번호 {item.order_number || item.id.slice(0, 8)}</p>
         <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500"><span>{item.selected_color} · {item.selected_size}</span><span>{item.quantity}장</span><strong className="text-gray-900">{item.total_amount.toLocaleString("ko-KR")}원</strong></div>
-        <p className="mt-4 flex items-center text-xs text-gray-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 결제 참여</p>
+        {!isCancelled && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="outline" className="gap-1"><Truck className="h-3 w-3" />{PRODUCTION_STAGE_LABEL[item.production_stage]}</Badge>
+            <span className="text-gray-400">펀딩 진행률 {fundingRate}%</span>
+          </div>
+        )}
+        {(item.shipping_address || item.address) && (
+          <p className="mt-3 text-xs leading-5 text-gray-400">
+            배송지 [{item.postal_code || "-"}] {item.shipping_address || item.address} {item.shipping_address_detail || ""}
+            {item.tracking_number && <span className="ml-2 font-semibold text-gray-600">송장 {item.tracking_number}</span>}
+          </p>
+        )}
+        <p className="mt-4 flex items-center text-xs text-gray-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 참여</p>
       </div>
       <div className="flex items-center border-t px-6 py-5 md:border-l md:border-t-0">{canCancel ? <Button variant="outline" className="rounded-full border-red-200 text-red-700 hover:bg-red-50" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-gray-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}</div>
     </div></article>

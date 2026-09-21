@@ -3,7 +3,59 @@ import type { TrademarkScreening } from "@/types/trademark";
 export type FundingStatus = "pending" | "approved" | "rejected" | "closed";
 export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
 export type FundingPaymentStatus = "unpaid" | "ready" | "paid" | "cancelled" | "failed";
+export type FundingPaymentProvider = "none" | "kakaopay" | "mock";
+export type FundingPaymentType = "MOCK" | "REAL";
 export type FundingMeasurements = Record<string, unknown>;
+
+export type ProductionStage =
+  | "funding"
+  | "fabric_sourcing"
+  | "sampling"
+  | "production"
+  | "inspection_packing"
+  | "shipping_ready"
+  | "delivered";
+
+export const PRODUCTION_STAGE_ORDER: ProductionStage[] = [
+  "funding",
+  "fabric_sourcing",
+  "sampling",
+  "production",
+  "inspection_packing",
+  "shipping_ready",
+  "delivered",
+];
+
+export const PRODUCTION_STAGE_LABEL: Record<ProductionStage, string> = {
+  funding: "펀딩중",
+  fabric_sourcing: "원단 컨택",
+  sampling: "샘플 제작",
+  production: "본생산",
+  inspection_packing: "검수·포장",
+  shipping_ready: "배송 준비",
+  delivered: "배송 완료",
+};
+
+export type ShippingStatus = "preparing" | "shipped" | "delivered";
+
+export const SHIPPING_STATUS_LABEL: Record<ShippingStatus, string> = {
+  preparing: "배송 준비중",
+  shipped: "배송중",
+  delivered: "배송 완료",
+};
+
+export type ShippingDetails = {
+  ordererName: string;
+  ordererPhone: string;
+  ordererEmail: string;
+  recipientName: string;
+  recipientPhone: string;
+  postalCode: string;
+  address: string;
+  addressDetail: string;
+  deliveryMessage: string;
+  agreePrivacy: boolean;
+};
 
 export type Funding = {
   id: string;
@@ -72,6 +124,7 @@ export type CreateFundingInput = {
 
 export type FundingParticipation = {
   id: string;
+  order_number: string | null;
   participant_id: string;
   participant_name: string;
   phone_number: string | null;
@@ -82,11 +135,24 @@ export type FundingParticipation = {
   unit_price: number;
   total_amount: number;
   status: FundingParticipationStatus;
-  payment_provider: "none" | "kakaopay";
+  payment_provider: FundingPaymentProvider;
+  payment_type: FundingPaymentType;
   payment_status: FundingPaymentStatus;
   payment_approved_at: string | null;
   payment_cancelled_at: string | null;
   created_at: string;
+  orderer_name: string | null;
+  orderer_phone: string | null;
+  orderer_email: string | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  postal_code: string | null;
+  shipping_address: string | null;
+  shipping_address_detail: string | null;
+  delivery_message: string | null;
+  production_stage: ProductionStage;
+  shipping_status: ShippingStatus;
+  tracking_number: string | null;
 };
 
 export type MyFundingParticipation = FundingParticipation & {
@@ -96,6 +162,42 @@ export type MyFundingParticipation = FundingParticipation & {
   funding_status: FundingStatus;
   creator_id: string;
   payment_method_type: string | null;
+  funding_moq: number;
+  funding_current_orders: number;
+};
+
+export type SellerFundingDashboardRow = {
+  funding_id: string;
+  product_name: string;
+  image_url: string;
+  price: number | null;
+  moq: number;
+  current_orders: number;
+  participant_count: number;
+  funding_rate: number;
+  expected_revenue: number;
+  mock_revenue: number;
+  real_revenue: number;
+  start_date: string | null;
+  end_date: string | null;
+  status: FundingStatus;
+};
+
+export type SellerDashboardTotals = {
+  total_expected_revenue: number;
+  total_participants: number;
+  total_quantity: number;
+  avg_funding_rate: number;
+};
+
+export type AdminFundingOverview = {
+  total_fundings: number;
+  active_fundings: number;
+  total_participants: number;
+  total_quantity: number;
+  total_mock_amount: number;
+  total_real_amount: number;
+  avg_funding_rate: number;
 };
 
 export type MyFundingPaymentIntent = {

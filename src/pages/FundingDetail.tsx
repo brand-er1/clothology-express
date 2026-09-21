@@ -10,16 +10,16 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
+import { FundingCheckoutDialog } from "@/components/funding/FundingCheckoutDialog";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import {
   fetchFunding,
   getFundingErrorMessage,
   registerFundingPaymentIntent,
-  startKakaoPayFunding,
 } from "@/services/funding";
 import { trackSiteEvent } from "@/lib/site-analytics";
-import type { Funding } from "@/types/funding";
+import type { Funding, ShippingDetails } from "@/types/funding";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import {
   ArrowLeft,
@@ -60,9 +60,9 @@ const FundingDetail = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [paymentError, setPaymentError] = useState("");
   const [intentSubmitting, setIntentSubmitting] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [shippingPrefill, setShippingPrefill] = useState<Partial<ShippingDetails>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -71,8 +71,25 @@ const FundingDetail = () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const fundingData = await fetchFunding(id);
-        setCurrentUserId(sessionData.session?.user.id || null);
+        const user = sessionData.session?.user || null;
+        setCurrentUserId(user?.id || null);
         setFunding(fundingData);
+
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, username, phone_number, address")
+            .eq("id", user.id)
+            .single();
+          setShippingPrefill({
+            ordererName: profile?.full_name || profile?.username || "",
+            ordererPhone: profile?.phone_number || "",
+            ordererEmail: user.email || "",
+            recipientName: profile?.full_name || profile?.username || "",
+            recipientPhone: profile?.phone_number || "",
+            address: profile?.address || "",
+          });
+        }
 
         const colors = fundingData.color_options?.length
           ? fundingData.color_options
@@ -108,7 +125,7 @@ const FundingDetail = () => {
     return funding.size_options?.length ? funding.size_options : [funding.size || "FREE"];
   }, [funding]);
 
-  const handleParticipate = async () => {
+  const handleParticipate = () => {
     if (!funding || !id) return;
 
     if (!currentUserId) {
@@ -122,42 +139,8 @@ const FundingDetail = () => {
       return;
     }
 
-    setPaymentError("");
-    setSubmitting(true);
-    try {
-      const payment = await startKakaoPayFunding(id, selectedColor, selectedSize, quantity);
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const redirectUrl = isMobile
-        ? payment.next_redirect_app_url || payment.next_redirect_mobile_url || payment.next_redirect_pc_url
-        : payment.next_redirect_pc_url || payment.next_redirect_mobile_url || payment.next_redirect_app_url;
-
-      if (!redirectUrl) throw new Error("카카오페이 결제창을 열 수 없습니다.");
-
-      void trackSiteEvent("funding_checkout_started", { funding_id: id, quantity });
-
-      if (window.top && window.top !== window.self) {
-        window.top.location.href = redirectUrl;
-      } else {
-        window.location.assign(redirectUrl);
-      }
-    } catch (error) {
-      console.error(error);
-      const message = getFundingErrorMessage(error);
-
-      if (message.includes("전화번호") || message.includes("배송지") || message.includes("마이페이지")) {
-        toast({
-          title: "연락처와 배송지를 먼저 입력해주세요",
-          description: "저장하면 이 상품 페이지로 돌아와 결제를 진행할 수 있습니다.",
-        });
-        navigate(`/profile?returnTo=${encodeURIComponent(`/fundings/${id}`)}`);
-        return;
-      }
-
-      setPaymentError(message);
-      toast({ title: "주문을 시작하지 못했습니다", description: message, variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
+    void trackSiteEvent("funding_checkout_started", { funding_id: id, quantity });
+    setCheckoutOpen(true);
   };
 
   const handlePaymentIntent = async () => {
@@ -232,16 +215,23 @@ const FundingDetail = () => {
     </Button>
   ) : (
     <Button
-      disabled={isPreview || !funding.price || submitting}
+      disabled={isPreview || !funding.price}
       onClick={handleParticipate}
       className="h-14 w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark"
       data-tutorial="funding-detail-participate"
     >
-      {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-      {!submitting && !isPreview && <WalletCards className="mr-2 h-5 w-5" />}
-      {isPreview ? "판매 승인 대기 중" : submitting ? "결제창 여는 중" : "이 상품 선주문하기"}
+      {!isPreview && <WalletCards className="mr-2 h-5 w-5" />}
+      {isPreview ? "판매 승인 대기 중" : "펀딩 참여하기"}
     </Button>
   );
+
+  const fundingRateActual = funding.moq > 0 ? Math.round((funding.current_orders / funding.moq) * 100) : 0;
+  const expectedRevenue = (funding.price || 0) * funding.current_orders;
+  const endDate = funding.reviewed_at
+    ? new Date(new Date(funding.reviewed_at).getTime() + funding.funding_days * 24 * 60 * 60 * 1000)
+    : null;
+  const daysLeft = endDate ? Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null;
+  const dDayLabel = daysLeft === null ? "기간 미정" : daysLeft > 0 ? `D-${daysLeft}` : daysLeft === 0 ? "D-DAY" : "펀딩 종료";
 
   return (
     <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
@@ -301,6 +291,24 @@ const FundingDetail = () => {
               </div>
               <div className="mt-4 h-1 overflow-hidden bg-black/10">
                 <div className="h-full bg-brand transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
+                  <p className="text-lg font-extrabold text-brand">{fundingRateActual}%</p>
+                  <p className="mt-0.5 text-[10px] text-stone-500">달성</p>
+                </div>
+                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
+                  <p className="text-lg font-extrabold">{funding.current_orders} / {funding.moq}장</p>
+                  <p className="mt-0.5 text-[10px] text-stone-500">참여 수량</p>
+                </div>
+                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
+                  <p className="text-lg font-extrabold">{expectedRevenue.toLocaleString("ko-KR")}원</p>
+                  <p className="mt-0.5 text-[10px] text-stone-500">예상매출</p>
+                </div>
+                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
+                  <p className="text-lg font-extrabold">{dDayLabel}</p>
+                  <p className="mt-0.5 text-[10px] text-stone-500">펀딩 종료</p>
+                </div>
               </div>
             </div>
 
@@ -406,12 +414,6 @@ const FundingDetail = () => {
                 </AlertDialogContent>
               </AlertDialog>
 
-              {paymentError && (
-                <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
-                  <p className="font-bold">테스트 결제를 시작하지 못했습니다</p>
-                  <p className="mt-1 break-words">{paymentError}</p>
-                </div>
-              )}
               <p className="text-center text-[11px] font-medium text-amber-700">현재 모의결제 모드이며 실제 금액은 청구되지 않습니다.</p>
               <p className="flex items-center justify-center text-[11px] text-stone-400">
                 <ShieldCheck className="mr-1 h-3.5 w-3.5" /> 결제 완료 수량만 반영되며 주문 내역에서 취소·환불할 수 있습니다.
@@ -516,6 +518,16 @@ const FundingDetail = () => {
           <div className="flex-1">{purchaseButton}</div>
         </div>
       </div>
+
+      <FundingCheckoutDialog
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        funding={funding}
+        color={selectedColor}
+        size={selectedSize}
+        quantity={quantity}
+        prefill={shippingPrefill}
+      />
     </div>
   );
 };

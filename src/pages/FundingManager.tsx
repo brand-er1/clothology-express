@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +20,17 @@ import {
   fetchFundingPaymentIntents,
   uploadAndShareFundingSample,
   updateFundingParticipationStatus,
+  updateFundingOrderFulfillment,
 } from "@/services/funding";
-import type { Funding, FundingParticipation, FundingParticipationStatus, FundingPaymentIntent } from "@/types/funding";
-import { ArrowLeft, Clock3, ImagePlus, Loader2, PackageCheck, ShoppingBag, Users, WalletCards } from "lucide-react";
+import type {
+  Funding, FundingParticipation, FundingParticipationStatus, FundingPaymentIntent,
+  ProductionStage, ShippingStatus,
+} from "@/types/funding";
+import { PRODUCTION_STAGE_LABEL, PRODUCTION_STAGE_ORDER, SHIPPING_STATUS_LABEL } from "@/types/funding";
+import {
+  ArrowLeft, Clock3, Download, ImagePlus, Loader2, PackageCheck, Search, ShoppingBag,
+  Truck, Users, WalletCards,
+} from "lucide-react";
 
 const statusLabel: Record<FundingParticipationStatus, string> = {
   pledged: "참여 접수",
@@ -26,6 +38,10 @@ const statusLabel: Record<FundingParticipationStatus, string> = {
   cancelled: "취소",
   fulfilled: "처리 완료",
 };
+
+const PAGE_SIZE = 10;
+
+const escapeCsv = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 
 const FundingManager = () => {
   const { id } = useParams();
@@ -38,6 +54,13 @@ const FundingManager = () => {
   const [sampleFile, setSampleFile] = useState<File | null>(null);
   const [sampleNote, setSampleNote] = useState("");
   const [sharingSample, setSharingSample] = useState(false);
+  const [updatingFulfillmentId, setUpdatingFulfillmentId] = useState<string | null>(null);
+  const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sizeFilter, setSizeFilter] = useState("all");
+  const [orderStatusFilter, setOrderStatusFilter] = useState<"all" | FundingParticipationStatus>("all");
+  const [shippingStatusFilter, setShippingStatusFilter] = useState<"all" | ShippingStatus>("all");
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -87,6 +110,92 @@ const FundingManager = () => {
     });
     return Array.from(summary.entries()).sort((a, b) => b[1] - a[1]);
   }, [activeParticipants]);
+
+  const sizeOptions = useMemo(
+    () => Array.from(new Set(participants.map((item) => item.selected_size))).sort(),
+    [participants]
+  );
+
+  const filteredParticipants = useMemo(() => {
+    const keyword = searchTerm.trim().toLocaleLowerCase("ko-KR");
+    return participants.filter((item) => {
+      const matchesKeyword =
+        !keyword ||
+        [item.participant_name, item.order_number, item.orderer_name, item.recipient_name]
+          .some((value) => value?.toLocaleLowerCase("ko-KR").includes(keyword));
+      const matchesSize = sizeFilter === "all" || item.selected_size === sizeFilter;
+      const matchesOrderStatus = orderStatusFilter === "all" || item.status === orderStatusFilter;
+      const matchesShippingStatus = shippingStatusFilter === "all" || item.shipping_status === shippingStatusFilter;
+      return matchesKeyword && matchesSize && matchesOrderStatus && matchesShippingStatus;
+    });
+  }, [participants, searchTerm, sizeFilter, orderStatusFilter, shippingStatusFilter]);
+
+  useEffect(() => { setPage(1); }, [searchTerm, sizeFilter, orderStatusFilter, shippingStatusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredParticipants.length / PAGE_SIZE));
+  const pagedParticipants = filteredParticipants.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const changeFulfillment = async (
+    item: FundingParticipation,
+    updates: { productionStage?: ProductionStage; shippingStatus?: ShippingStatus; trackingNumber?: string }
+  ) => {
+    setUpdatingFulfillmentId(item.id);
+    try {
+      await updateFundingOrderFulfillment(item.id, updates);
+      setParticipants((current) =>
+        current.map((participant) =>
+          participant.id === item.id
+            ? {
+                ...participant,
+                production_stage: updates.productionStage ?? participant.production_stage,
+                shipping_status: updates.shippingStatus ?? participant.shipping_status,
+                tracking_number: updates.trackingNumber ?? participant.tracking_number,
+                status: updates.productionStage === "delivered" ? "fulfilled" : participant.status,
+              }
+            : participant
+        )
+      );
+      toast({ title: "주문 진행 상태를 저장했습니다" });
+    } catch (error) {
+      toast({
+        title: "주문 진행 상태를 변경하지 못했습니다",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingFulfillmentId(null);
+    }
+  };
+
+  const downloadOrdersCsv = () => {
+    const headers = [
+      "주문번호", "주문자", "연락처", "상품", "컬러", "사이즈", "수량", "금액",
+      "수령인", "수령인 연락처", "우편번호", "주소", "상세주소", "배송메모",
+    ];
+    const rows = filteredParticipants.map((item) => [
+      item.order_number,
+      item.orderer_name || item.participant_name,
+      item.orderer_phone || item.phone_number,
+      funding?.product_name,
+      item.selected_color,
+      item.selected_size,
+      item.quantity,
+      item.total_amount,
+      item.recipient_name,
+      item.recipient_phone,
+      item.postal_code,
+      item.shipping_address || item.address,
+      item.shipping_address_detail,
+      item.delivery_message,
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${funding?.product_name || "펀딩"}_주문목록_${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   const changeStatus = async (participationId: string, status: FundingParticipationStatus) => {
     setUpdatingId(participationId);
@@ -239,57 +348,197 @@ const FundingManager = () => {
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_0.32fr]">
           <Card className="overflow-hidden rounded-2xl">
-            <CardHeader><CardTitle>참여자 목록</CardTitle></CardHeader>
+            <CardHeader className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <CardTitle>참여자·배송 관리</CardTitle>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="rounded-full" disabled={filteredParticipants.length === 0}>
+                      <Download className="mr-1.5 h-4 w-4" /> 주문 CSV 다운로드
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>개인정보가 포함된 파일입니다</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        다운로드하는 CSV에는 주문자·수령인 이름, 연락처, 배송 주소 등 개인정보가 포함됩니다.
+                        생산·배송 업무 목적 외에는 사용하지 말고, 안전하게 보관·폐기해주세요.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>취소</AlertDialogCancel>
+                      <AlertDialogAction onClick={downloadOrdersCsv} className="bg-brand hover:bg-brand-dark">
+                        동의하고 다운로드
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="이름 또는 주문번호 검색"
+                    className="h-10 pl-9"
+                  />
+                </div>
+                <Select value={sizeFilter} onValueChange={setSizeFilter}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="사이즈" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체 사이즈</SelectItem>
+                    {sizeOptions.map((size) => <SelectItem key={size} value={size}>{size}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={orderStatusFilter} onValueChange={(value) => setOrderStatusFilter(value as typeof orderStatusFilter)}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="주문상태" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체 주문상태</SelectItem>
+                    {(Object.keys(statusLabel) as FundingParticipationStatus[]).map((status) => (
+                      <SelectItem key={status} value={status}>{statusLabel[status]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={shippingStatusFilter} onValueChange={(value) => setShippingStatusFilter(value as typeof shippingStatusFilter)}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="배송상태" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체 배송상태</SelectItem>
+                    {(Object.keys(SHIPPING_STATUS_LABEL) as ShippingStatus[]).map((status) => (
+                      <SelectItem key={status} value={status}>{SHIPPING_STATUS_LABEL[status]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
             <CardContent>
               {participants.length === 0 ? (
                 <div className="py-20 text-center text-sm text-gray-500">
                   <PackageCheck className="mx-auto mb-4 h-10 w-10 text-brand/40" />
                   아직 펀딩 참여자가 없습니다.
                 </div>
+              ) : filteredParticipants.length === 0 ? (
+                <div className="py-20 text-center text-sm text-gray-500">검색·필터 조건에 맞는 주문이 없습니다.</div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>참여자</TableHead>
-                        <TableHead>연락처</TableHead>
-                        <TableHead className="min-w-64">배송지</TableHead>
-                        <TableHead>선택 옵션</TableHead>
-                        <TableHead>수량</TableHead>
-                        <TableHead>금액</TableHead>
-                        <TableHead>참여일</TableHead>
-                        <TableHead className="min-w-36">상태</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {participants.map((item) => (
-                        <TableRow key={item.id} className={item.status === "cancelled" ? "opacity-50" : ""}>
-                          <TableCell className="font-medium">{item.participant_name}</TableCell>
-                          <TableCell>{item.phone_number || "-"}</TableCell>
-                          <TableCell className="whitespace-normal leading-6">{item.address || "-"}</TableCell>
-                          <TableCell>{item.selected_color} · {item.selected_size}</TableCell>
-                          <TableCell>{item.quantity}장</TableCell>
-                          <TableCell>{item.total_amount.toLocaleString("ko-KR")}원</TableCell>
-                          <TableCell>{new Date(item.created_at).toLocaleDateString("ko-KR")}</TableCell>
-                          <TableCell>
-                            <Select
-                              value={item.status}
-                              disabled={updatingId === item.id || ["ready", "cancelled", "failed"].includes(item.payment_status)}
-                              onValueChange={(value) => changeStatus(item.id, value as FundingParticipationStatus)}>
-                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pledged">참여 접수</SelectItem>
-                                <SelectItem value="confirmed">참여 확정</SelectItem>
-                                <SelectItem value="fulfilled">처리 완료</SelectItem>
-                                <SelectItem value="cancelled">취소</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
+                <>
+                  <div className="overflow-x-auto rounded-xl border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>주문번호</TableHead>
+                          <TableHead>주문자</TableHead>
+                          <TableHead>연락처</TableHead>
+                          <TableHead className="min-w-56">배송지</TableHead>
+                          <TableHead>옵션</TableHead>
+                          <TableHead>수량</TableHead>
+                          <TableHead>금액</TableHead>
+                          <TableHead>결제유형</TableHead>
+                          <TableHead>참여일</TableHead>
+                          <TableHead className="min-w-36">주문상태</TableHead>
+                          <TableHead className="min-w-40">제작 진행</TableHead>
+                          <TableHead className="min-w-56">배송</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {pagedParticipants.map((item) => (
+                          <TableRow key={item.id} className={item.status === "cancelled" ? "opacity-50" : ""}>
+                            <TableCell className="font-mono text-xs">{item.order_number || "-"}</TableCell>
+                            <TableCell className="font-medium">
+                              {item.orderer_name || item.participant_name}
+                              <p className="text-xs text-gray-400">수령인 {item.recipient_name || "-"}</p>
+                            </TableCell>
+                            <TableCell>
+                              {item.orderer_phone || item.phone_number || "-"}
+                              <p className="text-xs text-gray-400">{item.orderer_email || ""}</p>
+                            </TableCell>
+                            <TableCell className="whitespace-normal leading-6">
+                              [{item.postal_code || "-"}] {item.shipping_address || item.address || "-"} {item.shipping_address_detail || ""}
+                              {item.delivery_message && <p className="mt-1 text-xs text-gray-400">메모: {item.delivery_message}</p>}
+                            </TableCell>
+                            <TableCell>{item.selected_color} · {item.selected_size}</TableCell>
+                            <TableCell>{item.quantity}장</TableCell>
+                            <TableCell>{item.total_amount.toLocaleString("ko-KR")}원</TableCell>
+                            <TableCell>
+                              <Badge variant={item.payment_type === "MOCK" ? "secondary" : "default"}>
+                                {item.payment_type === "MOCK" ? "모의결제" : "실제결제"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{new Date(item.created_at).toLocaleDateString("ko-KR")}</TableCell>
+                            <TableCell>
+                              <Select
+                                value={item.status}
+                                disabled={updatingId === item.id || ["ready", "cancelled", "failed"].includes(item.payment_status)}
+                                onValueChange={(value) => changeStatus(item.id, value as FundingParticipationStatus)}>
+                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pledged">참여 접수</SelectItem>
+                                  <SelectItem value="confirmed">참여 확정</SelectItem>
+                                  <SelectItem value="fulfilled">처리 완료</SelectItem>
+                                  <SelectItem value="cancelled">취소</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={item.production_stage}
+                                disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
+                                onValueChange={(value) => changeFulfillment(item, { productionStage: value as ProductionStage })}
+                              >
+                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {PRODUCTION_STAGE_ORDER.map((stage) => (
+                                    <SelectItem key={stage} value={stage}>{PRODUCTION_STAGE_LABEL[stage]}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1.5">
+                                <Badge variant="outline" className="gap-1"><Truck className="h-3 w-3" />{SHIPPING_STATUS_LABEL[item.shipping_status]}</Badge>
+                                <Input
+                                  value={trackingDrafts[item.id] ?? item.tracking_number ?? ""}
+                                  onChange={(event) => setTrackingDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
+                                  placeholder="송장번호 입력"
+                                  className="h-8 text-xs"
+                                  disabled={item.status === "cancelled"}
+                                />
+                                <div className="flex gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 flex-1 text-xs"
+                                    disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
+                                    onClick={() => changeFulfillment(item, {
+                                      shippingStatus: "shipped",
+                                      trackingNumber: trackingDrafts[item.id] ?? item.tracking_number ?? undefined,
+                                    })}
+                                  >
+                                    발송 처리
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-7 flex-1 bg-brand text-xs hover:bg-brand-dark"
+                                    disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
+                                    onClick={() => changeFulfillment(item, { shippingStatus: "delivered", productionStage: "delivered" })}
+                                  >
+                                    배송완료
+                                  </Button>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>이전</Button>
+                      <span className="text-sm text-gray-500">{page} / {totalPages}</span>
+                      <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)}>다음</Button>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

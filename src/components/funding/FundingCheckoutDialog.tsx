@@ -100,15 +100,31 @@ export const FundingCheckoutDialog = ({
     }
   };
 
-  const canGoToPayment =
-    shipping.ordererName.trim() &&
-    shipping.ordererPhone.trim() &&
-    shipping.ordererEmail.trim() &&
-    shipping.recipientName.trim() &&
-    shipping.recipientPhone.trim() &&
-    shipping.postalCode.trim() &&
-    shipping.address.trim() &&
-    shipping.agreePrivacy;
+  const getMissingFields = () => {
+    const missing: string[] = [];
+    if (!shipping.ordererName.trim()) missing.push("주문자 이름");
+    if (!shipping.ordererPhone.trim()) missing.push("주문자 연락처");
+    if (!shipping.ordererEmail.trim()) missing.push("주문자 이메일");
+    if (!shipping.recipientName.trim()) missing.push("수령인 이름");
+    if (!shipping.recipientPhone.trim()) missing.push("수령인 연락처");
+    if (!shipping.postalCode.trim()) missing.push("우편번호");
+    if (!shipping.address.trim()) missing.push("배송 주소");
+    if (!shipping.agreePrivacy) missing.push("개인정보 수집·이용 동의");
+    return missing;
+  };
+
+  const handleNextToPayment = () => {
+    const missing = getMissingFields();
+    if (missing.length > 0) {
+      toast({
+        title: "입력 내용을 확인해주세요",
+        description: `다음 항목이 필요합니다: ${missing.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setStep("payment");
+  };
 
   const handleSubmitPayment = async () => {
     setSubmitting(true);
@@ -161,16 +177,16 @@ export const FundingCheckoutDialog = ({
                 <p className="text-sm font-bold text-stone-800">주문자 정보</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="orderer-name">이름</Label>
+                    <Label htmlFor="orderer-name">이름 *</Label>
                     <Input id="orderer-name" value={shipping.ordererName} onChange={updateField("ordererName")} placeholder="홍길동" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="orderer-phone">연락처</Label>
+                    <Label htmlFor="orderer-phone">연락처 *</Label>
                     <Input id="orderer-phone" value={shipping.ordererPhone} onChange={updateField("ordererPhone")} placeholder="010-0000-0000" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="orderer-email">이메일</Label>
+                  <Label htmlFor="orderer-email">이메일 *</Label>
                   <Input id="orderer-email" type="email" value={shipping.ordererEmail} onChange={updateField("ordererEmail")} placeholder="example@email.com" />
                 </div>
               </section>
@@ -185,7 +201,7 @@ export const FundingCheckoutDialog = ({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="recipient-name">수령인 이름</Label>
+                    <Label htmlFor="recipient-name">수령인 이름 *</Label>
                     <Input
                       id="recipient-name"
                       value={shipping.recipientName}
@@ -195,7 +211,7 @@ export const FundingCheckoutDialog = ({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="recipient-phone">수령인 연락처</Label>
+                    <Label htmlFor="recipient-phone">수령인 연락처 *</Label>
                     <Input
                       id="recipient-phone"
                       value={shipping.recipientPhone}
@@ -207,11 +223,11 @@ export const FundingCheckoutDialog = ({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
                   <div className="space-y-1.5">
-                    <Label htmlFor="postal-code">우편번호</Label>
+                    <Label htmlFor="postal-code">우편번호 *</Label>
                     <Input id="postal-code" value={shipping.postalCode} onChange={updateField("postalCode")} placeholder="12345" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="address">배송 주소</Label>
+                    <Label htmlFor="address">배송 주소 *</Label>
                     <Input id="address" value={shipping.address} onChange={updateField("address")} placeholder="도로명 주소" />
                   </div>
                 </div>
@@ -245,8 +261,7 @@ export const FundingCheckoutDialog = ({
             <DialogFooter>
               <Button
                 type="button"
-                disabled={!canGoToPayment}
-                onClick={() => setStep("payment")}
+                onClick={handleNextToPayment}
                 className="h-12 w-full rounded-none bg-brand text-base font-bold hover:bg-brand-dark"
               >
                 다음: 모의결제

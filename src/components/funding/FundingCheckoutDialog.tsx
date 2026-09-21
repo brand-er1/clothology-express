@@ -72,7 +72,7 @@ export const FundingCheckoutDialog = ({
 
   const unitPrice = funding.price || 0;
   const productAmount = unitPrice * quantity;
-  const shippingFee = 0;
+  const shippingFee: number = 0;
   const totalAmount = productAmount + shippingFee;
 
   const updateField = (field: keyof ShippingDetails) => (

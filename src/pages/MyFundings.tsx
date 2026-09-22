@@ -63,6 +63,44 @@ const fundingStatusLabel: Record<Funding["status"], string> = {
 
 type ParticipationFilter = "all" | "paid" | "planned";
 
+const FUNDING_SUCCESS_SEEN_KEY = "brander_funding_success_seen";
+
+const isFundingSuccessful = (item: MyFundingParticipation) =>
+  item.payment_status === "paid" &&
+  item.status !== "cancelled" &&
+  item.funding_moq > 0 &&
+  item.funding_current_orders >= item.funding_moq;
+
+const notifyNewlySucceededFundings = (items: MyFundingParticipation[]) => {
+  const succeededIds = Array.from(new Set(items.filter(isFundingSuccessful).map((item) => item.funding_id)));
+  if (succeededIds.length === 0) return;
+
+  let seen: string[] = [];
+  try {
+    seen = JSON.parse(localStorage.getItem(FUNDING_SUCCESS_SEEN_KEY) || "[]");
+  } catch {
+    seen = [];
+  }
+
+  const newlySucceeded = succeededIds.filter((fundingId) => !seen.includes(fundingId));
+  if (newlySucceeded.length === 0) return;
+
+  newlySucceeded.forEach((fundingId) => {
+    const item = items.find((entry) => entry.funding_id === fundingId);
+    if (!item) return;
+    toast({
+      title: "🎉 펀딩이 성공했습니다!",
+      description: `참여하신 "${item.product_name}" 펀딩이 목표 수량을 달성해 제작이 확정되었습니다.`,
+    });
+  });
+
+  try {
+    localStorage.setItem(FUNDING_SUCCESS_SEEN_KEY, JSON.stringify([...seen, ...newlySucceeded]));
+  } catch {
+    // localStorage unavailable — the toast still shows this time, may repeat next visit.
+  }
+};
+
 const MyFundings = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "joined" ? "joined" : "created";
@@ -89,6 +127,7 @@ const MyFundings = () => {
       ]);
       setCreatedFundings(created);
       setPaidItems(participated);
+      notifyNewlySucceededFundings(participated);
       setPlannedItems(planned);
       setSellerDashboard(new Map(dashboardRows.map((row) => [row.funding_id, row])));
       setSellerTotals(totals);
@@ -349,6 +388,7 @@ const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFunding
   const isCancelled = item.status === "cancelled" || ["cancelled", "failed"].includes(item.payment_status);
   const canCancel = item.status !== "fulfilled" && !isCancelled && item.payment_status !== "failed";
   const fundingRate = item.funding_moq > 0 ? Math.round((item.funding_current_orders / item.funding_moq) * 100) : 0;
+  const isSuccessful = isFundingSuccessful(item);
   return (
     <article className={`overflow-hidden rounded-[1.75rem] border bg-white ${isCancelled ? "opacity-65" : ""}`}><div className="grid md:grid-cols-[160px_1fr_auto]">
       <Link to={`/fundings/${item.funding_id}`} className="aspect-square bg-stone-100 p-5"><img src={item.image_url} alt={item.product_name} className="h-full w-full object-contain" /></Link>
@@ -356,10 +396,16 @@ const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFunding
           <Badge className={paymentBadgeClass[item.payment_status]}>{paymentLabel[item.payment_status]}</Badge>
           <Badge variant={item.payment_type === "MOCK" ? "secondary" : "default"}>{item.payment_type === "MOCK" ? "모의결제" : "실제결제"}</Badge>
           {item.status === "fulfilled" && <Badge variant="secondary">제작 처리 완료</Badge>}
+          {isSuccessful && <Badge className="bg-emerald-600 hover:bg-emerald-600">🎉 펀딩 성공</Badge>}
         </div>
         <Link to={`/fundings/${item.funding_id}`} className="mt-3 block text-xl font-bold hover:text-brand">{item.product_name}</Link>
         <p className="mt-1 font-mono text-xs text-gray-400">주문번호 {item.order_number || item.id.slice(0, 8)}</p>
         <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500"><span>{item.selected_color} · {item.selected_size}</span><span>{item.quantity}장</span><strong className="text-gray-900">{item.total_amount.toLocaleString("ko-KR")}원</strong></div>
+        {isSuccessful && (
+          <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+            목표 수량을 달성해 펀딩이 성공했습니다! 곧 제작이 시작됩니다.
+          </p>
+        )}
         {!isCancelled && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <Badge variant="outline" className="gap-1"><Truck className="h-3 w-3" />{PRODUCTION_STAGE_LABEL[item.production_stage]}</Badge>

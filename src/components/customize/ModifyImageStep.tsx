@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Calculator,
+  Copy,
   ImageOff,
   ImagePlus,
   Loader2,
@@ -79,6 +80,20 @@ type ArtworkGesture =
       startClientX: number;
       startWidthPercent: number;
     };
+
+// A logo the user already placed and set aside so another one can be added.
+// All staged logos are composited together with the one being edited.
+interface StagedArtwork {
+  id: string;
+  sourceFile: File;
+  artwork: ArtworkReference;
+  preview: string;
+  contentType: ArtworkContentType;
+  screening: TrademarkScreeningResult;
+  placement: ArtworkPlacement;
+  placementPrompt: string;
+  placementSource: "prompt" | "drag";
+}
 
 const formatArtworkPrice = (analysis: UploadedArtworkAnalysis) => {
   if (
@@ -180,6 +195,7 @@ export const ModifyImageStep = ({
   const [isApplyingArtwork, setIsApplyingArtwork] = useState(false);
   const [trademarkScreening, setTrademarkScreening] =
     useState<TrademarkScreeningResult | null>(null);
+  const [stagedArtworks, setStagedArtworks] = useState<StagedArtwork[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const artworkCanvasRef = useRef<HTMLDivElement>(null);
   const activeGestureRef = useRef<ArtworkGesture | null>(null);
@@ -328,18 +344,18 @@ export const ModifyImageStep = ({
     return resolved;
   };
 
-  const handleApplyArtwork = async () => {
-    if (!uploadedArtwork || !selectedImageUrl) {
-      fileInputRef.current?.click();
-      return;
-    }
+  // Validates the logo currently being edited and snapshots it (with its
+  // latest placement) so it can be staged or composited. Returns null and
+  // explains why via toast when it can't be used yet.
+  const buildCurrentLayer = (): StagedArtwork | null => {
+    if (!uploadedArtwork || !artworkPreview || !sourceArtworkFile) return null;
     if (!trademarkScreening) {
       toast({
         title: "상표 검수 필요",
         description: "이미지를 다시 선택해 상표 검수를 완료해주세요.",
         variant: "destructive",
       });
-      return;
+      return null;
     }
     if (trademarkScreening.decision === "blocked") {
       toast({
@@ -348,51 +364,169 @@ export const ModifyImageStep = ({
           "타사 상표 사용 위험이 높아 이 이미지는 의류에 적용할 수 없습니다.",
         variant: "destructive",
       });
-      return;
+      return null;
     }
     let placement = resolvedPlacement;
-    let appliedWithDrag = placementSource === "drag";
+    let source = placementSource;
     if (artworkPlacementPrompt.trim() !== lastResolvedPrompt) {
       const resolved = handleResolvePlacement();
-      if (!resolved) return;
+      if (!resolved) return null;
       placement = resolved.placement;
-      appliedWithDrag = false;
+      source = "prompt";
     }
-    const locationLabel = artworkLocationLabels[placement.location];
+    return {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      sourceFile: sourceArtworkFile,
+      artwork: uploadedArtwork,
+      preview: artworkPreview,
+      contentType: artworkContentType,
+      screening: trademarkScreening,
+      placement,
+      placementPrompt: artworkPlacementPrompt.trim(),
+      placementSource: source,
+    };
+  };
+
+  const resetPlacementPrompt = (prompt: string) => {
+    const resolved = resolveArtworkPlacementPrompt(
+      prompt,
+      DEFAULT_ARTWORK_WIDTH,
+    );
+    setArtworkPlacementPrompt(prompt);
+    setResolvedPlacement(resolved.placement);
+    setPlacementSummary(resolved.summary);
+    setLastResolvedPrompt(prompt);
+    setPlacementSource("prompt");
+  };
+
+  // Suggest a different spot for the next logo so it doesn't land on top of
+  // the ones already placed.
+  const resetToUnusedPlacement = (staged: StagedArtwork[]) => {
+    const usedPrompts = new Set(staged.map((item) => item.placementPrompt));
+    resetPlacementPrompt(
+      placementExamples.find((example) => !usedPrompts.has(example)) ??
+        placementExamples[staged.length % placementExamples.length],
+    );
+  };
+
+  // Fixes the current logo in place. With `duplicate`, the same image stays
+  // in the editor so it can be placed again somewhere else; otherwise the
+  // editor is cleared for a new file.
+  const handleStageArtwork = ({ duplicate = false } = {}) => {
+    const layer = buildCurrentLayer();
+    if (!layer) return;
+    const nextStaged = [...stagedArtworks, layer];
+    setStagedArtworks(nextStaged);
+    resetToUnusedPlacement(nextStaged);
+    if (duplicate) return;
+    clearArtwork();
+    fileInputRef.current?.click();
+  };
+
+  // Moves a placed logo back into the editor. With `duplicate`, the original
+  // stays placed and a copy of the same image is opened for a new position.
+  const handleEditStagedArtwork = (id: string, { duplicate = false } = {}) => {
+    const target = stagedArtworks.find((item) => item.id === id);
+    if (!target) return;
+    let remaining = duplicate
+      ? stagedArtworks
+      : stagedArtworks.filter((item) => item.id !== id);
+    if (uploadedArtwork) {
+      const current = buildCurrentLayer();
+      if (!current) return;
+      remaining = [...remaining, current];
+    }
+    setStagedArtworks(remaining);
+    setSourceArtworkFile(target.sourceFile);
+    setUploadedArtwork(target.artwork);
+    setArtworkPreview(target.preview);
+    setArtworkContentType(target.contentType);
+    setTrademarkScreening(target.screening);
+    if (duplicate) {
+      resetToUnusedPlacement(remaining);
+      return;
+    }
+    setArtworkPlacementPrompt(target.placementPrompt);
+    setLastResolvedPrompt(target.placementPrompt);
+    setResolvedPlacement(target.placement);
+    setPlacementSummary(summarizeArtworkPlacement(target.placement));
+    setPlacementSource(target.placementSource);
+  };
+
+  const handleRemoveStagedArtwork = (id: string) => {
+    setStagedArtworks((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const describeArtworkLayer = (layer: StagedArtwork) =>
+    `${
+      selectedType === "knit"
+        ? "이미지를 프린팅·직자수 없이 봉제 패치(와펜) 방식으로"
+        : layer.contentType === "logo"
+          ? "로고의 겉 배경을 제거하고"
+          : "사진의 배경을 그대로 유지해"
+    } 옷의 ${artworkLocationLabels[layer.placement.location]}, 화면 기준 가로 ${Math.round(
+      layer.placement.xPercent,
+    )}%·세로 ${Math.round(
+      layer.placement.yPercent,
+    )}% 지점에 이미지 폭의 약 ${formatArtworkPercent(
+      layer.placement.widthPercent,
+    )}% 크기로`;
+
+  const describeLayerRequest = (layer: StagedArtwork) =>
+    `"${layer.placementPrompt}"${
+      layer.placementSource === "drag" ? " 후 드래그로 미세 조정한 위치" : ""
+    }`;
+
+  const handleApplyArtwork = async () => {
+    if (!selectedImageUrl || (!uploadedArtwork && stagedArtworks.length === 0)) {
+      fileInputRef.current?.click();
+      return;
+    }
+    const layers = [...stagedArtworks];
+    if (uploadedArtwork) {
+      const current = buildCurrentLayer();
+      if (!current) return;
+      layers.push(current);
+    }
 
     try {
       setIsApplyingArtwork(true);
       const compositedImage = await createExactArtworkComposite({
         baseImageUrl: selectedImageUrl,
-        artwork: uploadedArtwork,
-        placement,
+        layers,
       });
 
-      const applied = await onModifyImage(
-        `사용자 요청 "${artworkPlacementPrompt.trim()}"${
-          appliedWithDrag ? " 후 드래그로 미세 조정한 위치" : ""
-        }에 따라 업로드한 ${
-          selectedType === "knit"
-            ? "이미지를 프린팅·직자수 없이 봉제 패치(와펜) 방식으로"
-            : artworkContentType === "logo"
-              ? "로고의 겉 배경을 제거하고"
-              : "사진의 배경을 그대로 유지해"
-        } 옷의 ${locationLabel}, 화면 기준 가로 ${Math.round(
-          placement.xPercent,
-        )}%·세로 ${Math.round(
-          placement.yPercent,
-        )}% 지점에 이미지 폭의 약 ${formatArtworkPercent(
-          placement.widthPercent,
-        )}% 크기로 정확히 적용했습니다.`,
-        {
-          referenceImage: uploadedArtwork,
-          placement,
-          compositedImage,
-        },
-      );
+      const prompt =
+        layers.length === 1
+          ? `사용자 요청 ${describeLayerRequest(layers[0])}에 따라 업로드한 ${describeArtworkLayer(
+              layers[0],
+            )} 정확히 적용했습니다.`
+          : `업로드한 이미지 ${layers.length}개를 각각 지정한 위치에 정확히 적용했습니다.\n${layers
+              .map(
+                (layer, index) =>
+                  `${index + 1}. 사용자 요청 ${describeLayerRequest(
+                    layer,
+                  )}에 따라 ${describeArtworkLayer(layer)} 적용`,
+              )
+              .join("\n")}`;
+
+      // The edge function classifies one reference image for the estimate;
+      // the logo edited last is the one the user is most likely focused on.
+      const primaryLayer = layers[layers.length - 1];
+      const applied = await onModifyImage(prompt, {
+        referenceImage: primaryLayer.artwork,
+        placement: primaryLayer.placement,
+        compositedImage,
+      });
       if (applied) {
-        onArtworkScreeningApplied(trademarkScreening.id);
+        // A logo that needs manual trademark review must stay visible to the
+        // admin, so prefer it over ones that passed automatically.
+        const screeningToTrack =
+          layers.find((layer) => layer.screening.decision === "review") ??
+          primaryLayer;
+        onArtworkScreeningApplied(screeningToTrack.screening.id);
         clearArtwork();
+        setStagedArtworks([]);
       }
     } catch (error) {
       toast({
@@ -616,7 +750,7 @@ export const ModifyImageStep = ({
           <div className="flex flex-col items-center space-y-4">
             <div
               className={`relative w-full max-w-3xl select-none overflow-hidden rounded-[1.35rem] border bg-gray-50 shadow-[0_18px_55px_rgba(36,26,24,0.08)] sm:rounded-xl ${
-                artworkPreview
+                artworkPreview || stagedArtworks.length > 0
                   ? "border-brand/40 shadow-inner"
                   : "border-gray-200"
               }`}
@@ -656,6 +790,28 @@ export const ModifyImageStep = ({
                     </p>
                   </div>
                 )}
+                {stagedArtworks.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-md outline-1 outline-dashed outline-brand/50 hover:outline-2 hover:outline-brand"
+                    style={{
+                      left: `${item.placement.xPercent}%`,
+                      top: `${item.placement.yPercent}%`,
+                      width: `${item.placement.widthPercent}%`,
+                    }}
+                    onClick={() => handleEditStagedArtwork(item.id)}
+                    disabled={isLoading || isApplyingArtwork}
+                    aria-label={`배치한 이미지 ${index + 1} 다시 편집`}
+                  >
+                    <img
+                      src={item.preview}
+                      alt=""
+                      className="pointer-events-none block h-auto w-full object-contain"
+                      draggable={false}
+                    />
+                  </button>
+                ))}
                 {artworkPreview && (
                   <>
                     <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-bold text-white shadow">
@@ -706,7 +862,7 @@ export const ModifyImageStep = ({
                     </div>
                   </>
                 )}
-                {!artworkPreview && !isLoading && (
+                {!artworkPreview && stagedArtworks.length === 0 && !isLoading && (
                   <div className="pointer-events-none absolute inset-x-2 bottom-2 rounded-lg bg-white/92 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-gray-600 shadow-sm sm:inset-x-3 sm:bottom-3 sm:text-xs">
                     이미지 선택 또는 파일 드롭 후 프롬프트·드래그를 모두 사용할
                     수 있습니다.
@@ -733,6 +889,8 @@ export const ModifyImageStep = ({
                   <p className="mt-1 text-xs leading-5 text-gray-600">
                     로고는 겉 배경을 자동으로 지우고, 사진은 배경을 유지합니다.
                     위치와 크기는 프롬프트로 지정한 뒤 드래그로 미세 조절할 수
+                    있습니다. 로고를 여러 개 넣으려면 하나씩 위치를 고정한 뒤
+                    다음 로고를 추가하세요. 같은 이미지도 여러 번 넣을 수
                     있습니다.
                   </p>
                   {selectedType === "knit" && (
@@ -798,6 +956,78 @@ export const ModifyImageStep = ({
                 onChange={handleArtworkFile}
               />
 
+              {stagedArtworks.length > 0 && (
+                <div className="mt-4 rounded-xl border border-brand/20 bg-white p-3">
+                  <p className="text-xs font-bold text-gray-700">
+                    배치 완료한 이미지 {stagedArtworks.length}개
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-4 text-gray-500">
+                    적용 버튼을 누르면 모든 이미지가 한 번에 옷에 들어갑니다.
+                    미리보기나 편집 버튼으로 다시 조절할 수 있습니다.
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {stagedArtworks.map((item, index) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center gap-2 rounded-lg bg-gray-50 p-2"
+                      >
+                        <img
+                          src={item.preview}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded border border-gray-200 bg-white object-contain"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-gray-800">
+                            {index + 1}. {item.artwork.fileName}
+                          </p>
+                          <p className="truncate text-[11px] text-gray-500">
+                            {summarizeArtworkPlacement(item.placement)}
+                          </p>
+                        </div>
+                        {item.screening.decision === "review" && (
+                          <ShieldAlert
+                            className="h-4 w-4 shrink-0 text-amber-600"
+                            aria-label="상표 검토 필요"
+                          />
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditStagedArtwork(item.id)}
+                          disabled={isLoading || isApplyingArtwork}
+                        >
+                          편집
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            handleEditStagedArtwork(item.id, { duplicate: true })
+                          }
+                          disabled={isLoading || isApplyingArtwork}
+                          aria-label={`배치한 이미지 ${index + 1} 복제`}
+                          title="같은 이미지 하나 더 배치"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveStagedArtwork(item.id)}
+                          disabled={isLoading || isApplyingArtwork}
+                          aria-label={`배치한 이미지 ${index + 1} 제거`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {artworkPreview ? (
                 <div className="mt-4 rounded-xl border border-brand/20 bg-white p-3">
                   <div className="flex items-center justify-between gap-3">
@@ -849,6 +1079,42 @@ export const ModifyImageStep = ({
                     미리보기의 이미지를 직접 끌어 위치를 조절하고, 오른쪽 아래
                     핸들로 크기를 바꿀 수도 있습니다.
                   </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-brand/30 text-brand hover:bg-brand/5"
+                      onClick={() => handleStageArtwork()}
+                      disabled={
+                        isLoading ||
+                        isPreparingArtwork ||
+                        isApplyingArtwork ||
+                        !trademarkScreening ||
+                        trademarkScreening.decision === "blocked"
+                      }
+                    >
+                      <ImagePlus className="mr-1.5 h-4 w-4" />
+                      고정하고 다른 로고 추가
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-brand/30 text-brand hover:bg-brand/5"
+                      onClick={() => handleStageArtwork({ duplicate: true })}
+                      disabled={
+                        isLoading ||
+                        isPreparingArtwork ||
+                        isApplyingArtwork ||
+                        !trademarkScreening ||
+                        trademarkScreening.decision === "blocked"
+                      }
+                    >
+                      <Copy className="mr-1.5 h-4 w-4" />
+                      고정하고 같은 이미지 하나 더
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -861,7 +1127,9 @@ export const ModifyImageStep = ({
                   <span className="mt-2 text-sm font-bold text-gray-900">
                     {isPreparingArtwork
                       ? "이미지 준비 중..."
-                      : "이미지를 선택해주세요"}
+                      : stagedArtworks.length > 0
+                        ? "다른 이미지 추가하기"
+                        : "이미지를 선택해주세요"}
                   </span>
                   <span className="mt-1 text-xs text-gray-500">
                     2. JPG, PNG, WEBP · 최대 10MB
@@ -1038,8 +1306,10 @@ export const ModifyImageStep = ({
                   isLoading ||
                   isPreparingArtwork ||
                   isApplyingArtwork ||
-                  !trademarkScreening ||
-                  trademarkScreening.decision === "blocked"
+                  (uploadedArtwork
+                    ? !trademarkScreening ||
+                      trademarkScreening.decision === "blocked"
+                    : stagedArtworks.length === 0)
                 }
               >
                 {isLoading || isApplyingArtwork || isPreparingArtwork ? (
@@ -1057,7 +1327,11 @@ export const ModifyImageStep = ({
                 ) : (
                   <>
                     <BrandMark className="mr-2 h-4 w-4" variant="white" />
-                    프롬프트대로 옷에 적용하고 공임 분석
+                    {stagedArtworks.length + (uploadedArtwork ? 1 : 0) > 1
+                      ? `이미지 ${
+                          stagedArtworks.length + (uploadedArtwork ? 1 : 0)
+                        }개 한 번에 적용하고 공임 분석`
+                      : "프롬프트대로 옷에 적용하고 공임 분석"}
                   </>
                 )}
               </Button>

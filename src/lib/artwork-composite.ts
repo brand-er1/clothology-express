@@ -69,33 +69,42 @@ export const calculateArtworkRect = (
   };
 };
 
-export const createExactArtworkComposite = async ({
-  baseImageUrl,
-  artwork,
-  placement,
-}: {
-  baseImageUrl: string;
+export interface ArtworkCompositeLayer {
   artwork: ArtworkReference;
   placement: ArtworkPlacement;
+}
+
+// Layers are drawn in order, so later layers sit on top of earlier ones.
+export const createExactArtworkComposite = async ({
+  baseImageUrl,
+  layers,
+}: {
+  baseImageUrl: string;
+  layers: ArtworkCompositeLayer[];
 }): Promise<CompositedImageReference> => {
+  if (layers.length === 0) {
+    throw new Error("합성할 이미지가 없습니다.");
+  }
   const baseResponse = await fetch(baseImageUrl);
   if (!baseResponse.ok) {
     throw new Error("의류 원본 이미지를 불러올 수 없습니다.");
   }
 
   const baseObjectUrl = URL.createObjectURL(await baseResponse.blob());
-  const artworkDataUrl = `data:${artwork.mimeType};base64,${artwork.base64}`;
 
   try {
-    const [baseImage, artworkImage] = await Promise.all([
+    const [baseImage, ...artworkImages] = await Promise.all([
       loadImage(baseObjectUrl),
-      loadImage(artworkDataUrl),
+      ...layers.map(({ artwork }) =>
+        loadImage(`data:${artwork.mimeType};base64,${artwork.base64}`),
+      ),
     ]);
     if (
       !baseImage.naturalWidth ||
       !baseImage.naturalHeight ||
-      !artworkImage.naturalWidth ||
-      !artworkImage.naturalHeight
+      artworkImages.some(
+        (image) => !image.naturalWidth || !image.naturalHeight,
+      )
     ) {
       throw new Error("이미지 크기 정보를 확인할 수 없습니다.");
     }
@@ -124,20 +133,23 @@ export const createExactArtworkComposite = async ({
     context.imageSmoothingQuality = "high";
     context.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
 
-    const artworkRect = calculateArtworkRect(
-      canvas.width,
-      canvas.height,
-      artworkImage.naturalWidth,
-      artworkImage.naturalHeight,
-      placement,
-    );
-    context.drawImage(
-      artworkImage,
-      artworkRect.x,
-      artworkRect.y,
-      artworkRect.width,
-      artworkRect.height,
-    );
+    layers.forEach(({ placement }, index) => {
+      const artworkImage = artworkImages[index];
+      const artworkRect = calculateArtworkRect(
+        canvas.width,
+        canvas.height,
+        artworkImage.naturalWidth,
+        artworkImage.naturalHeight,
+        placement,
+      );
+      context.drawImage(
+        artworkImage,
+        artworkRect.x,
+        artworkRect.y,
+        artworkRect.width,
+        artworkRect.height,
+      );
+    });
 
     const blob = await canvasToBlob(canvas);
     return {

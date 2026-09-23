@@ -42,12 +42,19 @@ export interface ArtworkPlacement {
   widthPercent: number;
 }
 
+/** One uploaded image placed at one spot. The same artwork may appear in several layers. */
+export interface ArtworkLayer {
+  artwork: ArtworkReference;
+  placement: ArtworkPlacement;
+}
+
 export interface ImageModificationEntry {
   prompt: string;
   response: string;
   imageUrl?: string | null;
   imagePath?: string | null;
-  artworkAnalysis?: UploadedArtworkAnalysis | null;
+  /** Every uploaded artwork on the garment at this point, one entry per placed logo. */
+  artworkAnalyses?: UploadedArtworkAnalysis[];
 }
 
 export interface CustomMeasurements {

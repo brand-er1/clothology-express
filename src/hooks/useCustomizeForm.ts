@@ -8,7 +8,7 @@ import { createDirectProductionRequest } from "@/services/orderCreation";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
 import { getDesignErrorMessage, saveDesign } from "@/services/designs";
 import type {
-  ArtworkPlacement,
+  ArtworkLayer,
   ArtworkReference,
   CompositedImageReference,
   ImageModificationEntry,
@@ -37,10 +37,25 @@ import {
 } from "@/lib/production-country";
 
 interface ModifyImageOptions {
-  referenceImage?: ArtworkReference;
-  placement?: ArtworkPlacement;
+  artworkLayers?: ArtworkLayer[];
   compositedImage?: CompositedImageReference;
 }
+
+// Sends each distinct uploaded image once and lets layers point at it, so the
+// same logo placed several times doesn't multiply the request size.
+const buildArtworkPayload = (layers: ArtworkLayer[]) => {
+  const images: ArtworkReference[] = [];
+  const imageIndexByBase64 = new Map<string, number>();
+  const placedLayers = layers.map(({ artwork, placement }) => {
+    let imageIndex = imageIndexByBase64.get(artwork.base64);
+    if (imageIndex === undefined) {
+      imageIndex = images.push(artwork) - 1;
+      imageIndexByBase64.set(artwork.base64, imageIndex);
+    }
+    return { imageIndex, location: placement.location };
+  });
+  return { images, layers: placedLayers };
+};
 
 export const useCustomizeForm = () => {
   const navigate = useNavigate();
@@ -86,8 +101,10 @@ export const useCustomizeForm = () => {
   const [modificationHistory, setModificationHistory] = useState<ImageModificationEntry[]>([]);
   const [activeHistory, setActiveHistory] = useState<ImageModificationEntry[]>([]);
   const [currentModifiedImageUrl, setCurrentModifiedImageUrl] = useState<string | null>(null);
-  const [currentArtworkAnalysis, setCurrentArtworkAnalysis] =
-    useState<UploadedArtworkAnalysis | null>(null);
+  // Every uploaded artwork currently on the garment, one entry per placed logo,
+  // so the estimate charges each print separately.
+  const [currentArtworkAnalyses, setCurrentArtworkAnalyses] =
+    useState<UploadedArtworkAnalysis[]>([]);
   const [currentArtworkScreeningId, setCurrentArtworkScreeningId] =
     useState<string | null>(null);
   const [lastFinalScreeningId, setLastFinalScreeningId] =
@@ -202,7 +219,7 @@ export const useCustomizeForm = () => {
       setCurrentModifiedImageUrl(null);
       setModificationHistory([]);
       setActiveHistory([]);
-      setCurrentArtworkAnalysis(null);
+      setCurrentArtworkAnalyses([]);
       setCurrentArtworkScreeningId(null);
       setLastFinalScreeningId(null);
       setCurrentProductionEstimate(null);
@@ -322,6 +339,10 @@ export const useCustomizeForm = () => {
       const selectedMaterialObj = materials.find(material => material.id === selectedMaterial);
       const selectedMaterialName = selectedMaterialObj?.name || selectedMaterial;
       
+      const artworkLayers = options.artworkLayers ?? [];
+      const artworkPayload = buildArtworkPayload(artworkLayers);
+      const primaryPlacement = artworkLayers[0]?.placement;
+
       // Call the edge function
       const { data: modificationData, error: modificationError } = await supabase.functions.invoke(
         'modify-generated-image',
@@ -332,15 +353,19 @@ export const useCustomizeForm = () => {
             userId: user?.id,
             clothType: selectedType,
             originalPrompt: `${selectedMaterialName} ${selectedType}, ${selectedDetail}`,
-            referenceImage: options.referenceImage,
+            // Legacy single-artwork field, for an edge function deployed
+            // before multi-logo support.
+            referenceImage: artworkPayload.images[0],
+            artworkImages: artworkPayload.images,
+            artworkLayers: artworkPayload.layers,
             compositedImage: options.compositedImage,
-            artworkLocation: options.placement?.location,
-            artworkSize: options.placement?.size,
-            artworkPosition: options.placement
+            artworkLocation: primaryPlacement?.location,
+            artworkSize: primaryPlacement?.size,
+            artworkPosition: primaryPlacement
               ? {
-                  xPercent: options.placement.xPercent,
-                  yPercent: options.placement.yPercent,
-                  widthPercent: options.placement.widthPercent,
+                  xPercent: primaryPlacement.xPercent,
+                  yPercent: primaryPlacement.yPercent,
+                  widthPercent: primaryPlacement.widthPercent,
                 }
               : undefined,
           }
@@ -362,10 +387,17 @@ export const useCustomizeForm = () => {
       const newImageUrl = modificationData?.modifiedImageUrl || currentModifiedImageUrl;
       const newImagePath = modificationData?.modifiedImagePath || imagePath;
       const textResponse = modificationData?.textResponse || "이미지가 수정되었습니다.";
-      const artworkAnalysis =
-        (modificationData?.artworkAnalysis as
-          | UploadedArtworkAnalysis
-          | undefined) || currentArtworkAnalysis;
+      const appliedAnalyses = Array.isArray(modificationData?.artworkAnalyses)
+        ? (modificationData.artworkAnalyses as UploadedArtworkAnalysis[])
+        : modificationData?.artworkAnalysis
+          ? [modificationData.artworkAnalysis as UploadedArtworkAnalysis]
+          : [];
+      // Logos applied in earlier rounds are already baked into the image, so
+      // newly applied ones are added on top rather than replacing them.
+      const artworkAnalyses =
+        appliedAnalyses.length > 0
+          ? [...currentArtworkAnalyses, ...appliedAnalyses]
+          : currentArtworkAnalyses;
 
       if (newImageUrl) {
         setCurrentModifiedImageUrl(newImageUrl);
@@ -374,14 +406,14 @@ export const useCustomizeForm = () => {
       if (newImagePath) {
         setImagePath(newImagePath);
       }
-      setCurrentArtworkAnalysis(artworkAnalysis);
+      setCurrentArtworkAnalyses(artworkAnalyses);
       
       const newEntry: ImageModificationEntry = {
         prompt,
         response: textResponse,
         imageUrl: newImageUrl || null,
         imagePath: newImagePath || null,
-        artworkAnalysis,
+        artworkAnalyses,
       };
 
       setModificationHistory(prev => [...prev, newEntry]);
@@ -401,7 +433,7 @@ export const useCustomizeForm = () => {
           : "수정된 결과가 아래 챗창에 반영되었습니다.",
       });
       void trackSiteEvent("design_modified", {
-        has_artwork: Boolean(options.referenceImage),
+        has_artwork: artworkLayers.length > 0,
       });
 
       // Keep updating the SAME design row across every edit — the whole point of design_id is
@@ -442,7 +474,7 @@ export const useCustomizeForm = () => {
     }
     setModificationHistory([]);
     setActiveHistory([]);
-    setCurrentArtworkAnalysis(null);
+    setCurrentArtworkAnalyses([]);
     setCurrentArtworkScreeningId(null);
     setCurrentProductionEstimate(null);
     toast({
@@ -455,8 +487,8 @@ export const useCustomizeForm = () => {
     if (!imageUrl) return;
     if (typeof index === "number" && index >= 0) {
       setActiveHistory(modificationHistory.slice(0, index + 1));
-      setCurrentArtworkAnalysis(
-        modificationHistory[index]?.artworkAnalysis || null,
+      setCurrentArtworkAnalyses(
+        modificationHistory[index]?.artworkAnalyses ?? [],
       );
     }
     setCurrentModifiedImageUrl(imageUrl);
@@ -601,7 +633,7 @@ export const useCustomizeForm = () => {
             designContext: [generatedPrompt, selectedDetail]
               .filter(Boolean)
               .join("\n"),
-            uploadedArtwork: currentArtworkAnalysis,
+            uploadedArtworks: currentArtworkAnalyses,
             quantity: directQuantity,
           });
           productionEstimate = calculateEstimateByCountry(
@@ -770,7 +802,7 @@ export const useCustomizeForm = () => {
             designContext: [generatedPrompt, selectedDetail]
               .filter(Boolean)
               .join("\n"),
-            uploadedArtwork: currentArtworkAnalysis,
+            uploadedArtworks: currentArtworkAnalyses,
             quantity: directQuantity,
           });
           productionEstimate = calculateEstimateByCountry(
@@ -1009,7 +1041,7 @@ export const useCustomizeForm = () => {
     imageModifying,
     modificationHistory,
     currentModifiedImageUrl,
-    currentArtworkAnalysis,
+    currentArtworkAnalyses,
     setCurrentArtworkScreeningId,
     currentProductionEstimate,
     setCurrentProductionEstimate,

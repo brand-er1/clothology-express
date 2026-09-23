@@ -58,6 +58,9 @@ import {
 } from "@/lib/production-country";
 import { ProductionCountryPicker } from "./ProductionCountryPicker";
 
+// Stable default so the analysis callbacks don't see a new array every render.
+const NO_UPLOADED_ARTWORKS: UploadedArtworkAnalysis[] = [];
+
 interface ProductionEstimateCardProps {
   selectedType: string;
   selectedMaterial: string;
@@ -67,7 +70,7 @@ interface ProductionEstimateCardProps {
   imageBase64?: string;
   imageMimeType?: string;
   designContext?: string;
-  uploadedArtwork?: UploadedArtworkAnalysis | null;
+  uploadedArtworks?: UploadedArtworkAnalysis[];
   editable?: boolean;
   quantity?: number;
   onQuantityChange?: (quantity: number) => void;
@@ -171,7 +174,7 @@ export const ProductionEstimateCard = ({
   imageBase64 = "",
   imageMimeType = "",
   designContext = "",
-  uploadedArtwork = null,
+  uploadedArtworks = NO_UPLOADED_ARTWORKS,
   editable = false,
   quantity,
   onQuantityChange,
@@ -299,7 +302,7 @@ export const ProductionEstimateCard = ({
         selectedType,
         selectedMaterial,
         designContext,
-        uploadedArtwork,
+        uploadedArtworks,
         manualAnalysis,
         quantity: 20,
       });
@@ -324,7 +327,7 @@ export const ProductionEstimateCard = ({
     manualAnalysis,
     selectedMaterial,
     selectedType,
-    uploadedArtwork,
+    uploadedArtworks,
   ]);
 
   const resolveAmbiguousDecoration = useCallback(
@@ -352,7 +355,7 @@ export const ProductionEstimateCard = ({
           selectedType,
           selectedMaterial,
           designContext,
-          uploadedArtwork,
+          uploadedArtworks,
           rawItemsOverride: snapshot,
           quantity: 20,
         });
@@ -377,7 +380,7 @@ export const ProductionEstimateCard = ({
       imageUrl,
       selectedMaterial,
       selectedType,
-      uploadedArtwork,
+      uploadedArtworks,
     ],
   );
 

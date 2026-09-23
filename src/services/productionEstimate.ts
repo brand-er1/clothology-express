@@ -16,7 +16,8 @@ interface AnalyzeProductionEstimateParams {
   selectedType: string;
   selectedMaterial: string;
   designContext?: string;
-  uploadedArtwork?: UploadedArtworkAnalysis | null;
+  /** Every uploaded artwork on the garment; each one is priced as its own decoration. */
+  uploadedArtworks?: UploadedArtworkAnalysis[];
   manualAnalysis?: ManualProductionAnalysis | null;
   /**
    * A previously-returned `rawAnalysisSnapshot`, possibly edited to resolve one ambiguous
@@ -40,7 +41,7 @@ export const analyzeProductionEstimate = async ({
   selectedType,
   selectedMaterial,
   designContext = "",
-  uploadedArtwork = null,
+  uploadedArtworks = [],
   manualAnalysis = null,
   rawItemsOverride = null,
   quantity = 20,
@@ -61,7 +62,7 @@ export const analyzeProductionEstimate = async ({
     selectedType,
     selectedMaterial,
     designContext,
-    uploadedArtwork,
+    uploadedArtworks,
     manualAnalysis,
     rawItemsOverride,
     quantity,
@@ -78,7 +79,7 @@ export const analyzeProductionEstimate = async ({
           selectedType,
           selectedMaterial,
           designContext,
-          uploadedArtwork,
+          uploadedArtworks,
           manualAnalysis,
           rawItemsOverride,
           quantity,

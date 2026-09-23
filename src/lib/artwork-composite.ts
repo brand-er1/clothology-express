@@ -1,6 +1,6 @@
 import type {
+  ArtworkLayer,
   ArtworkPlacement,
-  ArtworkReference,
   CompositedImageReference,
 } from "@/types/customize";
 
@@ -69,18 +69,13 @@ export const calculateArtworkRect = (
   };
 };
 
-export interface ArtworkCompositeLayer {
-  artwork: ArtworkReference;
-  placement: ArtworkPlacement;
-}
-
 // Layers are drawn in order, so later layers sit on top of earlier ones.
 export const createExactArtworkComposite = async ({
   baseImageUrl,
   layers,
 }: {
   baseImageUrl: string;
-  layers: ArtworkCompositeLayer[];
+  layers: ArtworkLayer[];
 }): Promise<CompositedImageReference> => {
   if (layers.length === 0) {
     throw new Error("합성할 이미지가 없습니다.");

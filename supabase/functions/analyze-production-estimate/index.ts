@@ -452,6 +452,21 @@ const normalizeRawItemsOverride = (value: unknown): RawAnalysis[] | null => {
   return items.length > 0 ? items.slice(0, 10) : null;
 };
 
+/**
+ * Accepts the multi-logo `uploadedArtworks` array and falls back to the legacy single
+ * `uploadedArtwork` object. Every entry becomes its own priced decoration, so the same logo
+ * placed twice is charged twice.
+ */
+const normalizeUploadedArtworks = (
+  values: unknown,
+  legacyValue: unknown,
+): UploadedArtworkHint[] => {
+  const entries = Array.isArray(values) ? values.slice(0, 10) : [legacyValue];
+  return entries
+    .map(normalizeUploadedArtwork)
+    .filter((hint): hint is UploadedArtworkHint => hint !== null);
+};
+
 const normalizeUploadedArtwork = (
   value: unknown,
 ): UploadedArtworkHint | null => {
@@ -656,7 +671,7 @@ const resolveItem = (
   rawAnalysis: RawAnalysis,
   selectedType: string,
   selectedMaterial: string,
-  uploadedArtworkHint: UploadedArtworkHint | null,
+  uploadedArtworkHints: UploadedArtworkHint[],
   ctx: PricingContext,
   imageCount: number,
 ) => {
@@ -735,20 +750,27 @@ const resolveItem = (
       artworkType: null,
     });
   }
-  if (uploadedArtworkHint) {
+  if (uploadedArtworkHints.length > 0) {
+    // The uploaded artworks replace whatever printing the image analysis saw at the same
+    // locations, so a logo is never priced twice (once detected, once uploaded).
+    const uploadedLocations = new Set(
+      uploadedArtworkHints.map((hint) => hint.location),
+    );
     normalizedDecorations = normalizedDecorations.filter(
       (decoration) =>
-        decoration.location !== uploadedArtworkHint.location ||
+        !uploadedLocations.has(decoration.location) ||
         !printableDecorationKinds.has(decoration.kind),
     );
-    normalizedDecorations.push({
-      kind: isKnit ? "patch" : uploadedArtworkHint.recommendedKind,
-      location: uploadedArtworkHint.location,
-      size: "unknown",
-      confidence: uploadedArtworkHint.confidence,
-      source: "uploaded_artwork",
-      artworkType: uploadedArtworkHint.artworkType,
-    });
+    for (const hint of uploadedArtworkHints) {
+      normalizedDecorations.push({
+        kind: isKnit ? "patch" : hint.recommendedKind,
+        location: hint.location,
+        size: "unknown",
+        confidence: hint.confidence,
+        source: "uploaded_artwork",
+        artworkType: hint.artworkType,
+      });
+    }
   }
   if (isKnit) {
     normalizedDecorations = normalizedDecorations.map((decoration) =>
@@ -1047,7 +1069,7 @@ const buildEstimate = (
   selectedType: string,
   selectedMaterial: string,
   requestedQuantity: number,
-  uploadedArtworkHint: UploadedArtworkHint | null,
+  uploadedArtworkHints: UploadedArtworkHint[],
   garmentRows: GarmentPriceRow[],
   decorationRows: DecorationPriceRow[],
   materialRows: MaterialSurchargeRow[],
@@ -1075,7 +1097,7 @@ const buildEstimate = (
       rawItem,
       index === 0 ? selectedType : "",
       index === 0 ? selectedMaterial : "",
-      index === 0 ? uploadedArtworkHint : null,
+      index === 0 ? uploadedArtworkHints : [],
       pricingContext,
       imageCount,
     )
@@ -1266,6 +1288,7 @@ serve(async (req) => {
       selectedMaterial = "",
       designContext = "",
       uploadedArtwork,
+      uploadedArtworks,
       manualAnalysis,
       rawItemsOverride,
       quantity: requestedQuantity = 20,
@@ -1323,7 +1346,10 @@ serve(async (req) => {
       throw new Error("자동 견적 서비스 환경변수가 설정되지 않았습니다.");
     }
 
-    const uploadedArtworkHint = normalizeUploadedArtwork(uploadedArtwork);
+    const uploadedArtworkHints = normalizeUploadedArtworks(
+      uploadedArtworks,
+      uploadedArtwork,
+    );
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const [
       garmentResult,
@@ -1607,9 +1633,11 @@ Rules:
 - List visible construction features such as 캥거루 포켓, 포켓, 안감, 후드,
   절개, 패널링 in features. Do not duplicate priced accessories there.
 - Inspect every garment visible anywhere across all images, front and back alike.
-${uploadedArtworkHint
-      ? `- A separately verified customer-uploaded ${uploadedArtworkHint.artworkType} artwork was applied at ${uploadedArtworkHint.location} on the first / primary item. Treat it as ${/니트|knit/i.test(String(selectedType)) ? "patch" : uploadedArtworkHint.recommendedKind} on that item even if the composite image makes the technique visually ambiguous.`
-      : ""}
+${uploadedArtworkHints
+      .map((hint) =>
+        `- A separately verified customer-uploaded ${hint.artworkType} artwork was applied at ${hint.location} on the first / primary item. Treat it as ${/니트|knit/i.test(String(selectedType)) ? "patch" : hint.recommendedKind} on that item even if the composite image makes the technique visually ambiguous.`
+      )
+      .join("\n")}
 
 Selected type hint (primary item only): ${selectedType}
 Selected material hint (primary item only): ${selectedMaterial}
@@ -1697,7 +1725,7 @@ ${String(designContext).slice(0, 3000)}
       selectedType,
       selectedMaterial,
       requestedQuantity,
-      uploadedArtworkHint,
+      uploadedArtworkHints,
       garmentRows,
       decorationRows,
       materialRows,

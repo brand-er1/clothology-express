@@ -75,7 +75,7 @@ const Customize = () => {
     imageModifying,
     modificationHistory,
     currentModifiedImageUrl,
-    currentArtworkAnalysis,
+    currentArtworkAnalyses,
     setCurrentArtworkScreeningId,
     setCurrentProductionEstimate,
     handleModifyImage,
@@ -283,7 +283,7 @@ const Customize = () => {
                 selectedFit={selectedFit}
                 designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
                 modificationHistory={modificationHistory}
-                currentArtworkAnalysis={currentArtworkAnalysis}
+                currentArtworkAnalyses={currentArtworkAnalyses}
                 quantity={directQuantity}
                 onQuantityChange={setDirectQuantity}
                 onEstimateChange={setCurrentProductionEstimate}

@@ -66,6 +66,8 @@ const parseJsonResponse = (text: string) => {
   return JSON.parse(normalized);
 };
 
+const MAX_ARTWORK_LAYERS = 10;
+
 const supportedImageMimeTypes = new Set([
   "image/png",
   "image/jpeg",
@@ -111,6 +113,12 @@ serve(async (req) => {
     console.log("Received modify-generated-image request", {
       hasImageUrl: Boolean(requestData?.imageUrl),
       hasReferenceImage: Boolean(requestData?.referenceImage?.base64),
+      artworkImageCount: Array.isArray(requestData?.artworkImages)
+        ? requestData.artworkImages.length
+        : 0,
+      artworkLayerCount: Array.isArray(requestData?.artworkLayers)
+        ? requestData.artworkLayers.length
+        : 0,
       hasCompositedImage: Boolean(requestData?.compositedImage?.base64),
       clothType: requestData?.clothType,
       artworkLocation: requestData?.artworkLocation,
@@ -126,6 +134,8 @@ serve(async (req) => {
       clothType,
       originalPrompt,
       referenceImage,
+      artworkImages,
+      artworkLayers,
       compositedImage,
       artworkLocation,
       artworkPosition,
@@ -140,19 +150,68 @@ serve(async (req) => {
       );
     }
 
-    const referenceBase64 = String(referenceImage?.base64 || "")
-      .replace(/^data:image\/[^;]+;base64,/, "");
-    const referenceMimeType = String(referenceImage?.mimeType || "");
-    const hasReferenceImage = Boolean(referenceBase64);
+    // Several logos can be applied in one request: `artworkImages` holds each
+    // distinct uploaded image once, and `artworkLayers` places them (the same
+    // image may appear in several layers). Older clients send a single
+    // `referenceImage` + `artworkLocation`, which maps to one layer.
+    const rawArtworkImages: Array<{ base64?: unknown; mimeType?: unknown }> =
+      Array.isArray(artworkImages) && artworkImages.length > 0
+        ? artworkImages
+        : referenceImage?.base64
+          ? [referenceImage]
+          : [];
+    const uploadedImages = rawArtworkImages.map((image) => ({
+      base64: String(image?.base64 || "")
+        .replace(/^data:image\/[^;]+;base64,/, ""),
+      mimeType: String(image?.mimeType || ""),
+    }));
+    const rawArtworkLayers: Array<{ imageIndex?: unknown; location?: unknown }> =
+      Array.isArray(artworkImages) && artworkImages.length > 0 &&
+        Array.isArray(artworkLayers)
+        ? artworkLayers
+        : uploadedImages.length > 0
+          ? [{ imageIndex: 0, location: artworkLocation }]
+          : [];
+    if (uploadedImages.length > MAX_ARTWORK_LAYERS || rawArtworkLayers.length > MAX_ARTWORK_LAYERS) {
+      return new Response(
+        JSON.stringify({ error: `이미지는 한 번에 최대 ${MAX_ARTWORK_LAYERS}개까지 적용할 수 있습니다.` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
     if (
-      hasReferenceImage &&
-      !supportedImageMimeTypes.has(referenceMimeType)
+      uploadedImages.some(
+        (image) => !image.base64 || !supportedImageMimeTypes.has(image.mimeType),
+      )
     ) {
       return new Response(
         JSON.stringify({ error: "지원하지 않는 업로드 이미지 형식입니다." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
       );
     }
+    const resolvedArtworkLayers = rawArtworkLayers.map((layer) => ({
+      imageIndex: Number(layer?.imageIndex),
+      location: validArtworkLocations.has(layer?.location as ArtworkLocation)
+        ? layer.location as ArtworkLocation
+        : "front" as ArtworkLocation,
+    }));
+    if (
+      resolvedArtworkLayers.some(
+        (layer) =>
+          !Number.isInteger(layer.imageIndex) ||
+          layer.imageIndex < 0 ||
+          layer.imageIndex >= uploadedImages.length,
+      )
+    ) {
+      return new Response(
+        JSON.stringify({ error: "업로드 이미지 배치 정보가 올바르지 않습니다." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+
+    // The generative (non-composite) path only takes one artwork reference.
+    const referenceBase64 = uploadedImages[0]?.base64 || "";
+    const referenceMimeType = uploadedImages[0]?.mimeType || "";
+    const hasReferenceImage = Boolean(referenceBase64);
 
     const compositedBase64 = String(compositedImage?.base64 || "")
       .replace(/^data:image\/[^;]+;base64,/, "");
@@ -173,7 +232,7 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
       );
     }
-    if (referenceBase64.length > 8 * 1024 * 1024) {
+    if (uploadedImages.some((image) => image.base64.length > 8 * 1024 * 1024)) {
       return new Response(
         JSON.stringify({ error: "업로드 이미지는 6MB 이하로 압축해주세요." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
@@ -199,9 +258,8 @@ serve(async (req) => {
       base64Image = btoa(binary);
     }
 
-    const safeArtworkLocation = validArtworkLocations.has(artworkLocation)
-      ? artworkLocation as ArtworkLocation
-      : "front";
+    const safeArtworkLocation =
+      resolvedArtworkLayers[0]?.location ?? "front";
     const rawXPercent = Number(artworkPosition?.xPercent);
     const rawYPercent = Number(artworkPosition?.yPercent);
     const rawWidthPercent = Number(artworkPosition?.widthPercent);
@@ -214,9 +272,9 @@ serve(async (req) => {
     const widthPercent = Number.isFinite(rawWidthPercent)
       ? Math.min(60, Math.max(0.1, rawWidthPercent))
       : 25;
-    let artworkAnalysis: Record<string, unknown> | null = null;
+    const artworkAnalyses: Array<Record<string, unknown>> = [];
 
-    if (hasReferenceImage) {
+    if (uploadedImages.length > 0) {
       const classificationPrompt = `
 You are a Korean apparel printing specialist. Analyze only the uploaded
 artwork image and return JSON only:
@@ -242,112 +300,133 @@ ${isKnit
   ? "- The garment is knitwear. Always return patch, never printing or direct embroidery."
   : ""}
 `.trim();
-      const classificationBody = JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: classificationPrompt },
-              {
-                inlineData: {
-                  data: referenceBase64,
-                  mimeType: referenceMimeType,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.1,
-        },
-      });
       const classificationModels = [
         "gemini-3-flash-preview",
         "gemini-3-pro-preview",
       ];
-      let rawClassification: Record<string, unknown> | null = null;
-
-      for (const model of classificationModels) {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: classificationBody,
+      const classifyArtwork = async (image: { base64: string; mimeType: string }) => {
+        const classificationBody = JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: classificationPrompt },
+                {
+                  inlineData: {
+                    data: image.base64,
+                    mimeType: image.mimeType,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1,
           },
-        );
-        if (!response.ok) continue;
+        });
 
-        const responseData = await response.json();
-        const responseText = (responseData?.candidates?.[0]?.content?.parts || [])
-          .map((part: { text?: string }) => part.text || "")
-          .join("")
-          .trim();
-        if (!responseText) continue;
+        for (const model of classificationModels) {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: classificationBody,
+            },
+          );
+          if (!response.ok) continue;
 
-        try {
-          rawClassification = parseJsonResponse(responseText);
-          break;
-        } catch (error) {
-          console.warn("Artwork classification JSON parse failed", error);
+          const responseData = await response.json();
+          const responseText = (responseData?.candidates?.[0]?.content?.parts || [])
+            .map((part: { text?: string }) => part.text || "")
+            .join("")
+            .trim();
+          if (!responseText) continue;
+
+          try {
+            return parseJsonResponse(responseText) as Record<string, unknown>;
+          } catch (error) {
+            console.warn("Artwork classification JSON parse failed", error);
+          }
         }
-      }
+        return null;
+      };
 
-      const rawArtworkType = String(rawClassification?.artworkType || "");
-      const rawRecommendedKind = String(
-        rawClassification?.recommendedKind || "",
-      );
-      const resolvedArtworkType = validArtworkTypes.has(
-          rawArtworkType as ArtworkType,
-        )
-        ? rawArtworkType as ArtworkType
-        : "illustration";
-      const resolvedRecommendedKind = isKnit
-        ? "patch"
-        : validUploadDecorationKinds.has(
-          rawRecommendedKind as UploadDecorationKind,
-        )
-        ? rawRecommendedKind as UploadDecorationKind
-        : "dtf";
-      const confidenceValue = Number(rawClassification?.confidence);
-      const confidence = Number.isFinite(confidenceValue)
-        ? Math.min(1, Math.max(0, confidenceValue))
-        : 0.5;
-      const reason = isKnit
-        ? "니트 조직 보호를 위해 프린팅·직자수 대신 패치(와펜) 부착 방식으로 계산했습니다."
-        : String(rawClassification?.reason || "").trim() ||
-          "세부 색상과 그라데이션을 안전하게 구현할 수 있는 인쇄 방식으로 계산했습니다.";
-
-      const { data: priceRows, error: priceError } = await supabase
-        .from("quote_decoration_prices")
-        .select(
-          "price_label, analysis_kinds, unit_min, unit_max, is_starting_from, pricing_note",
-        )
-        .eq("active", true);
+      // Each distinct image is classified once, even when it is placed in
+      // several spots.
+      const [rawClassifications, { data: priceRows, error: priceError }] =
+        await Promise.all([
+          Promise.all(uploadedImages.map(classifyArtwork)),
+          supabase
+            .from("quote_decoration_prices")
+            .select(
+              "price_label, analysis_kinds, unit_min, unit_max, is_starting_from, pricing_note",
+            )
+            .eq("active", true),
+        ]);
       if (priceError) {
         console.warn("Artwork price lookup failed", priceError);
       }
-      const matchedPrice = (priceRows || []).find(
-        (row: { analysis_kinds?: string[] }) =>
-          row.analysis_kinds?.includes(resolvedRecommendedKind),
-      );
 
-      artworkAnalysis = {
-        artworkType: resolvedArtworkType,
-        artworkTypeLabel: artworkTypeLabels[resolvedArtworkType],
-        recommendedKind: resolvedRecommendedKind,
-        location: safeArtworkLocation,
-        locationLabel: artworkLocationLabels[safeArtworkLocation],
-        confidence,
-        reason,
-        priceLabel: matchedPrice?.price_label || null,
-        unitMin: matchedPrice?.unit_min ?? null,
-        unitMax: matchedPrice?.unit_max ?? null,
-        isStartingFrom: Boolean(matchedPrice?.is_starting_from),
-        pricingNote: matchedPrice?.pricing_note || null,
-      };
+      for (const layer of resolvedArtworkLayers) {
+        const rawClassification = rawClassifications[layer.imageIndex];
+        const rawArtworkType = String(rawClassification?.artworkType || "");
+        const rawRecommendedKind = String(
+          rawClassification?.recommendedKind || "",
+        );
+        const resolvedArtworkType = validArtworkTypes.has(
+            rawArtworkType as ArtworkType,
+          )
+          ? rawArtworkType as ArtworkType
+          : "illustration";
+        const resolvedRecommendedKind = isKnit
+          ? "patch"
+          : validUploadDecorationKinds.has(
+            rawRecommendedKind as UploadDecorationKind,
+          )
+          ? rawRecommendedKind as UploadDecorationKind
+          : "dtf";
+        const confidenceValue = Number(rawClassification?.confidence);
+        const confidence = Number.isFinite(confidenceValue)
+          ? Math.min(1, Math.max(0, confidenceValue))
+          : 0.5;
+        const reason = isKnit
+          ? "니트 조직 보호를 위해 프린팅·직자수 대신 패치(와펜) 부착 방식으로 계산했습니다."
+          : String(rawClassification?.reason || "").trim() ||
+            "세부 색상과 그라데이션을 안전하게 구현할 수 있는 인쇄 방식으로 계산했습니다.";
+        const matchedPrice = (priceRows || []).find(
+          (row: { analysis_kinds?: string[] }) =>
+            row.analysis_kinds?.includes(resolvedRecommendedKind),
+        );
+
+        artworkAnalyses.push({
+          artworkType: resolvedArtworkType,
+          artworkTypeLabel: artworkTypeLabels[resolvedArtworkType],
+          recommendedKind: resolvedRecommendedKind,
+          location: layer.location,
+          locationLabel: artworkLocationLabels[layer.location],
+          confidence,
+          reason,
+          priceLabel: matchedPrice?.price_label || null,
+          unitMin: matchedPrice?.unit_min ?? null,
+          unitMax: matchedPrice?.unit_max ?? null,
+          isStartingFrom: Boolean(matchedPrice?.is_starting_from),
+          pricingNote: matchedPrice?.pricing_note || null,
+        });
+      }
     }
+    // Kept for older clients that only read a single analysis.
+    const artworkAnalysis = artworkAnalyses[0] ?? null;
+    const describeArtworkAnalyses = (verb: string) =>
+      artworkAnalyses.length > 1
+        ? `업로드 이미지 ${artworkAnalyses.length}개를 ${verb} ${artworkAnalyses
+            .map(
+              (analysis) =>
+                `${analysis.locationLabel} ${analysis.priceLabel || "추천 후가공"}`,
+            )
+            .join(", ")} 공임을 각각 자동견적에 반영합니다.`
+        : null;
 
     if (hasCompositedImage) {
       if (!hasReferenceImage) {
@@ -376,9 +455,9 @@ ${isKnit
         .from("generated_images")
         .getPublicUrl(uploadData?.path || fileName);
       const modifiedImageUrl = publicUrlData?.publicUrl;
-      const textResponse = artworkAnalysis
+      const textResponse = describeArtworkAnalyses("미리보기에서 지정한 위치와 크기 그대로 적용했습니다.") ?? (artworkAnalysis
         ? `${artworkAnalysis.artworkTypeLabel} 이미지를 미리보기에서 지정한 ${artworkAnalysis.locationLabel} 위치와 크기 그대로 적용했습니다. ${artworkAnalysis.priceLabel || "추천 후가공"} 장당 공임을 자동견적에 반영합니다.`
-        : "미리보기에서 지정한 위치와 크기 그대로 이미지를 적용했습니다.";
+        : "미리보기에서 지정한 위치와 크기 그대로 이미지를 적용했습니다.");
 
       return new Response(
         JSON.stringify({
@@ -389,6 +468,7 @@ ${isKnit
           hasImage: Boolean(modifiedImageUrl),
           placementMode: "exact",
           artworkAnalysis,
+          artworkAnalyses,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -531,9 +611,9 @@ ${isKnit
       .getPublicUrl(uploadData?.path || fileName);
     
     const generatedImageUrl = publicUrlData?.publicUrl;
-    const resolvedTextResponse = artworkAnalysis
+    const resolvedTextResponse = describeArtworkAnalyses("분석해 적용했습니다.") ?? (artworkAnalysis
       ? `${artworkAnalysis.artworkTypeLabel} 이미지로 분석해 ${artworkAnalysis.locationLabel}에 적용했습니다. ${artworkAnalysis.priceLabel || "추천 후가공"} 장당 공임을 자동견적에 반영합니다.`
-      : responseText;
+      : responseText);
     
     return new Response(
       JSON.stringify({ 
@@ -543,6 +623,7 @@ ${isKnit
         modifiedImagePath: uploadData?.path || fileName,
         hasImage: !!generatedImageUrl,
         artworkAnalysis,
+        artworkAnalyses,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

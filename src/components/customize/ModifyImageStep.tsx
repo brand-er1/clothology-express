@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { ProductionEstimateCard } from "./ProductionEstimateCard";
 import type {
+  ArtworkLayer,
   ArtworkPlacement,
   ArtworkReference,
   CompositedImageReference,
@@ -119,7 +120,7 @@ interface ModifyImageStepProps {
   selectedFit?: string;
   designContext?: string;
   modificationHistory: ImageModificationEntry[];
-  currentArtworkAnalysis: UploadedArtworkAnalysis | null;
+  currentArtworkAnalyses: UploadedArtworkAnalysis[];
   quantity: number;
   onQuantityChange: (quantity: number) => void;
   onEstimateChange: (estimate: ProductionEstimateResult | null) => void;
@@ -127,8 +128,7 @@ interface ModifyImageStepProps {
   onModifyImage: (
     prompt: string,
     options?: {
-      referenceImage?: ArtworkReference;
-      placement?: ArtworkPlacement;
+      artworkLayers?: ArtworkLayer[];
       compositedImage?: CompositedImageReference;
     },
   ) => Promise<boolean>;
@@ -149,7 +149,7 @@ export const ModifyImageStep = ({
   selectedFit,
   designContext,
   modificationHistory,
-  currentArtworkAnalysis,
+  currentArtworkAnalyses,
   quantity,
   onQuantityChange,
   onEstimateChange,
@@ -510,12 +510,13 @@ export const ModifyImageStep = ({
               )
               .join("\n")}`;
 
-      // The edge function classifies one reference image for the estimate;
-      // the logo edited last is the one the user is most likely focused on.
-      const primaryLayer = layers[layers.length - 1];
+      // Every layer is sent so each logo gets its own print analysis and
+      // is charged separately in the estimate.
       const applied = await onModifyImage(prompt, {
-        referenceImage: primaryLayer.artwork,
-        placement: primaryLayer.placement,
+        artworkLayers: layers.map(({ artwork, placement }) => ({
+          artwork,
+          placement,
+        })),
         compositedImage,
       });
       if (applied) {
@@ -523,7 +524,7 @@ export const ModifyImageStep = ({
         // admin, so prefer it over ones that passed automatically.
         const screeningToTrack =
           layers.find((layer) => layer.screening.decision === "review") ??
-          primaryLayer;
+          layers[layers.length - 1];
         onArtworkScreeningApplied(screeningToTrack.screening.id);
         clearArtwork();
         setStagedArtworks([]);
@@ -1336,23 +1337,33 @@ export const ModifyImageStep = ({
                 )}
               </Button>
 
-              {currentArtworkAnalysis && (
+              {currentArtworkAnalyses.length > 0 && (
                 <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
                   <p className="text-xs font-bold text-emerald-700">
                     AI 업로드 이미지 분석 완료
+                    {currentArtworkAnalyses.length > 1 &&
+                      ` · ${currentArtworkAnalyses.length}개 각각 공임 반영`}
                   </p>
-                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-extrabold text-gray-950">
-                      {currentArtworkAnalysis.artworkTypeLabel} ·{" "}
-                      {currentArtworkAnalysis.priceLabel || "인쇄 방식 상담"}
-                    </p>
-                    <p className="text-sm font-black text-brand">
-                      장당 {formatArtworkPrice(currentArtworkAnalysis)}
-                    </p>
-                  </div>
-                  <p className="mt-1 text-xs leading-5 text-gray-600">
-                    {currentArtworkAnalysis.reason}
-                  </p>
+                  <ul className="divide-y divide-emerald-200/70">
+                    {currentArtworkAnalyses.map((analysis, index) => (
+                      <li key={index} className="py-2 first:pt-1 last:pb-0">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="font-extrabold text-gray-950">
+                            {currentArtworkAnalyses.length > 1 &&
+                              `${analysis.locationLabel} · `}
+                            {analysis.artworkTypeLabel} ·{" "}
+                            {analysis.priceLabel || "인쇄 방식 상담"}
+                          </p>
+                          <p className="text-sm font-black text-brand">
+                            장당 {formatArtworkPrice(analysis)}
+                          </p>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-gray-600">
+                          {analysis.reason}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
@@ -1363,7 +1374,7 @@ export const ModifyImageStep = ({
                 selectedMaterial={selectedMaterial}
                 imageUrl={selectedImageUrl}
                 designContext={designContext}
-                uploadedArtwork={currentArtworkAnalysis}
+                uploadedArtworks={currentArtworkAnalyses}
                 quantity={quantity}
                 onQuantityChange={onQuantityChange}
                 onEstimateChange={onEstimateChange}

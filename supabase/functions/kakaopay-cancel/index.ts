@@ -27,9 +27,19 @@ Deno.serve(async (req) => {
       .from("funding_participations")
       .select("id, participant_id, funding_id, status, payment_provider, payment_status, payment_tid, total_amount")
       .eq("id", body.participationId)
-      .eq("participant_id", user.id)
       .single();
     if (error || !participation) throw new Error("취소할 펀딩 참여 내역을 찾을 수 없습니다.");
+
+    const isOwner = participation.participant_id === user.id;
+    let isAdmin = false;
+    if (!isOwner) {
+      const { data: adminResult, error: adminError } = await serviceClient.rpc("is_admin", {
+        user_id: user.id,
+      });
+      if (adminError) throw adminError;
+      isAdmin = adminResult === true;
+      if (!isAdmin) throw new Error("취소할 펀딩 참여 내역을 찾을 수 없습니다.");
+    }
 
     if (participation.status === "fulfilled") {
       throw new Error("이미 제작 처리가 완료된 참여 건은 취소할 수 없습니다.");
@@ -39,8 +49,9 @@ Deno.serve(async (req) => {
     }
 
     let kakaoPayload: Record<string, unknown> = {
-      reason: body.reason || "사용자 펀딩 참여 취소",
+      reason: body.reason || (isAdmin ? "관리자 강제 환불" : "사용자 펀딩 참여 취소"),
       cancelled_without_payment: participation.payment_status !== "paid",
+      ...(isAdmin ? { forced_by_admin: user.id } : {}),
     };
 
     if (participation.payment_provider === "kakaopay" && participation.payment_status === "paid") {
@@ -52,6 +63,7 @@ Deno.serve(async (req) => {
         cancel_tax_free_amount: 0,
       });
       kakaoPayload = {
+        ...kakaoPayload,
         aid: cancellation.aid,
         tid: cancellation.tid,
         status: cancellation.status,

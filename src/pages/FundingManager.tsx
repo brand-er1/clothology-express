@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/use-toast";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   fetchFunding,
   fetchFundingParticipants,
@@ -21,6 +22,7 @@ import {
   uploadAndShareFundingSample,
   updateFundingParticipationStatus,
   updateFundingOrderFulfillment,
+  cancelFundingParticipation,
 } from "@/services/funding";
 import type {
   Funding, FundingParticipation, FundingParticipationStatus, FundingPaymentIntent,
@@ -28,7 +30,7 @@ import type {
 } from "@/types/funding";
 import { PRODUCTION_STAGE_LABEL, PRODUCTION_STAGE_ORDER, SHIPPING_STATUS_LABEL } from "@/types/funding";
 import {
-  ArrowLeft, Clock3, Download, ImagePlus, Loader2, PackageCheck, Search, ShoppingBag,
+  ArrowLeft, Clock3, Download, ImagePlus, Loader2, PackageCheck, Search, ShieldAlert, ShoppingBag,
   Truck, Users, WalletCards,
 } from "lucide-react";
 
@@ -46,11 +48,14 @@ const escapeCsv = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""'
 const FundingManager = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAdmin } = useAdmin();
   const [funding, setFunding] = useState<Funding | null>(null);
   const [participants, setParticipants] = useState<FundingParticipation[]>([]);
   const [paymentIntents, setPaymentIntents] = useState<FundingPaymentIntent[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [forceCancelTarget, setForceCancelTarget] = useState<FundingParticipation | null>(null);
+  const [forceCancelling, setForceCancelling] = useState(false);
   const [sampleFile, setSampleFile] = useState<File | null>(null);
   const [sampleNote, setSampleNote] = useState("");
   const [sharingSample, setSharingSample] = useState(false);
@@ -219,6 +224,37 @@ const FundingManager = () => {
       toast({ title: "상태를 변경하지 못했습니다", variant: "destructive" });
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const forceCancelParticipation = async () => {
+    if (!forceCancelTarget) return;
+    setForceCancelling(true);
+    try {
+      const result = await cancelFundingParticipation(forceCancelTarget.id, "관리자 강제 환불");
+      setParticipants((current) =>
+        current.map((item) => item.id === forceCancelTarget.id
+          ? { ...item, status: "cancelled", payment_status: "cancelled" }
+          : item)
+      );
+      if (funding && forceCancelTarget.status !== "cancelled") {
+        setFunding({ ...funding, current_orders: Math.max(0, funding.current_orders - forceCancelTarget.quantity) });
+      }
+      toast({
+        title: "관리자 권한으로 강제 환불했습니다",
+        description: result.refunded
+          ? "카카오페이 결제 금액이 전액 취소되었습니다."
+          : "결제 예정 건이 취소되었습니다.",
+      });
+    } catch (error) {
+      toast({
+        title: "강제 환불에 실패했습니다",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setForceCancelling(false);
+      setForceCancelTarget(null);
     }
   };
 
@@ -477,6 +513,18 @@ const FundingManager = () => {
                                   <SelectItem value="cancelled">취소</SelectItem>
                                 </SelectContent>
                               </Select>
+                              {isAdmin && item.payment_status !== "cancelled" && item.status !== "fulfilled" && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-1.5 h-7 w-full border-red-200 text-xs text-red-700 hover:bg-red-50 hover:text-red-800"
+                                  disabled={forceCancelling && forceCancelTarget?.id === item.id}
+                                  onClick={() => setForceCancelTarget(item)}
+                                >
+                                  <ShieldAlert className="mr-1 h-3 w-3" />강제 환불
+                                </Button>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Select
@@ -590,6 +638,36 @@ const FundingManager = () => {
           </CardContent>
         </Card>
       </main>
+
+      <AlertDialog
+        open={!!forceCancelTarget}
+        onOpenChange={(open) => { if (!open && !forceCancelling) setForceCancelTarget(null); }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>관리자 권한으로 강제 환불할까요?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block font-medium text-gray-800">
+                {forceCancelTarget?.orderer_name || forceCancelTarget?.participant_name} · {forceCancelTarget?.total_amount.toLocaleString("ko-KR")}원
+              </span>
+              <span className="block">
+                참여자의 동의 확인 없이 결제가 즉시 취소·환불됩니다 (카카오페이 실결제 건은 실제 환불이 진행됩니다). 복구할 수 없으니 신중히 진행해주세요.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={forceCancelling}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={forceCancelling}
+              onClick={(event) => { event.preventDefault(); void forceCancelParticipation(); }}
+            >
+              {forceCancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+              강제 환불 진행
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

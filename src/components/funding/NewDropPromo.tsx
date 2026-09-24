@@ -1,65 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Flame } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
 // NEW DROP 01 런칭 이벤트 종료 시각 (KST 10월 10일 자정 직전)
 export const NEW_DROP_EVENT_END = new Date("2026-10-10T23:59:59+09:00");
 
-// NEW DROP 01 은 FENRAX 가 만든 반팔 티셔츠 드롭이라, FENRAX 상품에만 HOT/불꽃 강조를 붙인다.
+// NEW DROP 01 은 FENRAX 반팔 티셔츠 드롭이다. 가장 최근에 펀딩이 열린(승인된) 상품 하나에만 HOT/불꽃 강조를 붙인다.
 export const NEW_DROP_BRAND = "FENRAX";
-const NEW_DROP_BRAND_PATTERN = /fenrax/i;
 
 type NewDropCandidate = {
   id: string;
-  creator_id: string;
-  product_name: string;
-  description?: string | null;
+  status?: string;
+  created_at: string;
+  reviewed_at?: string | null;
 };
 
-// 펀딩 목록에서 FENRAX 가 만든 상품 id 를 찾는다 (제작자 브랜드명 또는 상품명/설명에 FENRAX 포함).
-export const useNewDropIds = (fundings: NewDropCandidate[]) => {
-  const [brandByCreator, setBrandByCreator] = useState<Record<string, string | null>>({});
-  const creatorIds = useMemo(
-    () => [...new Set(fundings.map((funding) => funding.creator_id).filter(Boolean))].sort(),
-    [fundings],
-  );
-  const creatorKey = creatorIds.join(",");
+const getOpenedAt = (funding: NewDropCandidate) => new Date(funding.reviewed_at ?? funding.created_at).getTime();
 
-  useEffect(() => {
-    if (!creatorIds.length) return;
-    let active = true;
-
-    Promise.all(
-      creatorIds.map(async (userId) => {
-        const { data, error } = await supabase.rpc("get_community_profile", { p_user_id: userId });
-        if (error) return [userId, null] as const;
-        const row = (data as { brand_name: string | null }[] | null)?.[0];
-        return [userId, row?.brand_name ?? null] as const;
-      }),
-    ).then((entries) => {
-      if (active) setBrandByCreator(Object.fromEntries(entries));
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [creatorKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return useMemo(
-    () =>
-      new Set(
-        fundings
-          .filter(
-            (funding) =>
-              NEW_DROP_BRAND_PATTERN.test(brandByCreator[funding.creator_id] ?? "") ||
-              NEW_DROP_BRAND_PATTERN.test(`${funding.product_name} ${funding.description ?? ""}`),
-          )
-          .map((funding) => funding.id),
-      ),
-    [brandByCreator, fundings],
-  );
-};
+export const useNewDropIds = (fundings: NewDropCandidate[]) =>
+  useMemo(() => {
+    const latest = fundings
+      .filter((funding) => !funding.status || funding.status === "approved")
+      .reduce<NewDropCandidate | null>(
+        (newest, funding) => (!newest || getOpenedAt(funding) > getOpenedAt(newest) ? funding : newest),
+        null,
+      );
+    return new Set(latest ? [latest.id] : []);
+  }, [fundings]);
 
 type Countdown = { days: number; hours: number; minutes: number; seconds: number };
 

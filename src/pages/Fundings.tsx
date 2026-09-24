@@ -183,7 +183,7 @@ const Fundings = () => {
   }, [activeFilter, approved, mine, view]);
 
   const newDropCountdown = useNewDropCountdown();
-  const newDropIds = useNewDropIds(useMemo(() => [...approved, ...mine], [approved, mine]));
+  const newDropIds = useNewDropIds(approved);
   const featured = approved[0];
 
   return (

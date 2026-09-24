@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { FreeTeeEventBanner } from "@/components/funding/FreeTeeEvent";
 import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 
@@ -191,6 +192,7 @@ const Fundings = () => {
     <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
       <Header />
       <main className="pb-24 pt-16 sm:pt-[72px]">
+        <FreeTeeEventBanner fundings={approved} />
         <NewDropEventBanner ctaHref="#collection" ctaLabel="NEW DROP 01 쇼핑하기" />
         <section className="border-b border-black/10">
           <div className="mx-auto grid min-h-[560px] max-w-[1440px] lg:grid-cols-[0.9fr_1.1fr]">

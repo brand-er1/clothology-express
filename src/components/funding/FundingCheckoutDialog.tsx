@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/use-toast";
 import { PaymentService } from "@/services/payment";
 import { getFundingErrorMessage } from "@/services/funding";
 import type { Funding, ShippingDetails } from "@/types/funding";
+import { FreeTeeEventNotice } from "@/components/funding/FreeTeeEvent";
 import { CheckCircle2, ChevronLeft, Loader2, PackageCheck, ShieldAlert } from "lucide-react";
 
 type Step = "shipping" | "payment" | "complete";
@@ -64,6 +65,7 @@ export const FundingCheckoutDialog = ({
   size,
   quantity,
   prefill,
+  freeTeeEvent = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -72,6 +74,8 @@ export const FundingCheckoutDialog = ({
   size: string;
   quantity: number;
   prefill?: Partial<ShippingDetails>;
+  /** 최근 드랍 반팔 무료 증정 이벤트 대상 상품이면 결제 단계에 안내를 보여준다. */
+  freeTeeEvent?: boolean;
 }) => {
   const [step, setStep] = useState<Step>("shipping");
   const [shipping, setShipping] = useState<ShippingDetails>(emptyShipping);
@@ -386,6 +390,7 @@ export const FundingCheckoutDialog = ({
 
           {step === "payment" && (
             <div className="space-y-4">
+              {freeTeeEvent && <FreeTeeEventNotice className="rounded-xl" />}
               <section className="space-y-2.5 rounded-xl border border-stone-200 p-4 text-sm">
                 <SummaryRow label="상품명">{funding.product_name}</SummaryRow>
                 <SummaryRow label="옵션">{color} · {size}</SummaryRow>

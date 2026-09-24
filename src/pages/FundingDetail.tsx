@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { FundingCheckoutDialog } from "@/components/funding/FundingCheckoutDialog";
+import { FreeTeeEventNotice, useLatestDropFunding } from "@/components/funding/FreeTeeEvent";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import {
+  fetchApprovedFundings,
   fetchFunding,
   getFundingErrorMessage,
   registerFundingPaymentIntent,
@@ -67,6 +69,8 @@ const FundingDetail = () => {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [shippingPrefill, setShippingPrefill] = useState<Partial<ShippingDetails>>({});
   const stickyCtaRef = useMobileStickyCtaOffset();
+  const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
+  const latestDropId = useLatestDropFunding(approvedFundings)?.id ?? null;
 
   useEffect(() => {
     if (!id) return;
@@ -74,10 +78,19 @@ const FundingDetail = () => {
     const load = async () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
-        const fundingData = await fetchFunding(id);
+        // The approved list only decides whether this is the free-tee event drop; load it
+        // alongside the product so the event notice doesn't shift the page after first paint.
+        const [fundingData, approvedList] = await Promise.all([
+          fetchFunding(id),
+          fetchApprovedFundings().catch((error) => {
+            console.error("Failed to load latest drop for free tee event:", error);
+            return [] as Funding[];
+          }),
+        ]);
         const user = sessionData.session?.user || null;
         setCurrentUserId(user?.id || null);
         setFunding(fundingData);
+        setApprovedFundings(approvedList);
 
         if (user) {
           const { data: profile } = await supabase
@@ -187,6 +200,7 @@ const FundingDetail = () => {
   const remaining = Math.max(0, funding.moq - funding.current_orders);
   const isPreview = funding.status !== "approved";
   const isCreator = currentUserId === funding.creator_id;
+  const isFreeTeeEventItem = !isPreview && funding.id === latestDropId;
   const totalPrice = (funding.price || 0) * quantity;
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
   const customerDescription = getCustomerDescription(funding);
@@ -286,6 +300,7 @@ const FundingDetail = () => {
             <p className="mt-7 text-2xl font-bold tracking-tight" data-tutorial="funding-detail-price">
               {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
             </p>
+            {isFreeTeeEventItem && <FreeTeeEventNotice className="mt-4" />}
 
             <div className="mt-8 border-y border-black/10 py-5" data-tutorial="funding-detail-progress">
               <div className="flex items-start justify-between gap-4 text-sm">
@@ -541,6 +556,7 @@ const FundingDetail = () => {
         size={selectedSize}
         quantity={quantity}
         prefill={shippingPrefill}
+        freeTeeEvent={isFreeTeeEventItem}
       />
     </div>
   );

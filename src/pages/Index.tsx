@@ -8,7 +8,7 @@ import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown } from "@/components/funding/NewDropPromo";
+import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 
 type CollectionItem = Pick<
   Funding,
@@ -120,6 +120,8 @@ const formatPrice = (price: number | null) =>
 const Index = () => {
   const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
   const newDropCountdown = useNewDropCountdown();
+  const isNewDropLive = newDropCountdown !== null;
+  const newDropIds = useNewDropIds(approvedFundings);
 
   useEffect(() => {
     let active = true;
@@ -138,9 +140,13 @@ const Index = () => {
   }, []);
 
   const collection = useMemo<CollectionItem[]>(() => {
-    if (approvedFundings.length) return approvedFundings.slice(0, 4);
-    return fallbackCollection;
-  }, [approvedFundings]);
+    if (!approvedFundings.length) return fallbackCollection;
+    if (!isNewDropLive) return approvedFundings.slice(0, 4);
+    // 이벤트 기간에는 NEW DROP 01 상품을 맨 앞에 노출
+    const dropItems = approvedFundings.filter((funding) => newDropIds.has(funding.id));
+    const others = approvedFundings.filter((funding) => !newDropIds.has(funding.id));
+    return [...dropItems, ...others].slice(0, 4);
+  }, [approvedFundings, isNewDropLive, newDropIds]);
 
   return (
     <div className="min-h-screen bg-[#f1f0ed] text-[#211b1c]">
@@ -162,10 +168,13 @@ const Index = () => {
               {newDropCountdown && (
                 <a
                   href="#new-drop"
-                  className={`mb-5 inline-flex items-center gap-2 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(249,115,22,0.35)] transition hover:brightness-110 sm:text-xs ${fireGradientClassName}`}
+                  className="mb-5 inline-flex items-center gap-2 bg-brand px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(116,27,43,0.35)] transition hover:bg-brand-dark sm:text-xs"
                 >
-                  <FlickerFlame className="h-4 w-4" />
-                  HOT · NEW DROP 01 OPEN · ~10.10
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                  </span>
+                  NEW DROP 01 OPEN · ~10.10
                   <span className="bg-white px-1.5 py-0.5 text-brand">
                     D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
                   </span>
@@ -243,6 +252,7 @@ const Index = () => {
             {collection.map((item, index) => {
               const detailPath = item.id.startsWith("preview-") ? "/fundings" : `/fundings/${item.id}`;
               const remaining = Math.max(0, item.moq - item.current_orders);
+              const isDropItem = newDropIds.has(item.id);
 
               return (
                 <Link key={item.id} to={detailPath} className="group block min-w-0">
@@ -253,7 +263,7 @@ const Index = () => {
                         alt={item.product_name}
                         className="h-full w-full object-contain p-3 transition duration-700 ease-out group-hover:scale-[1.045] sm:p-6"
                       />
-                      {newDropCountdown ? (
+                      {isNewDropLive && isDropItem ? (
                         <span className={`absolute left-3 top-3 inline-flex items-center gap-1 px-2 py-1.5 text-[8px] font-extrabold uppercase tracking-[0.15em] text-white shadow-[0_6px_18px_rgba(249,115,22,0.35)] sm:left-4 sm:top-4 sm:gap-1.5 sm:px-2.5 sm:text-[10px] ${fireGradientClassName}`}>
                           <FlickerFlame className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           Hot · Drop 01
@@ -271,7 +281,7 @@ const Index = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand sm:text-[11px]">
-                            BRAND-ER · {item.cloth_type}
+                            {isDropItem ? NEW_DROP_BRAND : "BRAND-ER"} · {item.cloth_type}
                           </p>
                           <h3 className="mt-1.5 truncate text-sm font-semibold text-[#211b1c] sm:text-base">{item.product_name}</h3>
                         </div>

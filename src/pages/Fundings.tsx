@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown } from "@/components/funding/NewDropPromo";
+import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 
 const statusLabel: Record<FundingStatus, string> = {
   pending: "승인 대기",
@@ -36,15 +36,25 @@ const getCollectionFilter = (funding: Funding): CollectionFilter => {
   return "TOP";
 };
 
-const getCustomerCopy = (funding: Funding) => {
+const getCustomerCopy = (funding: Funding, brand = "BRAND-ER") => {
   const description = funding.description?.trim();
   if (description && !description.includes("디자인 특징:") && !description.includes("목표 인원이")) {
     return description;
   }
-  return `${funding.material} 소재로 완성한 BRAND-ER 리미티드 ${funding.cloth_type} 컬렉션`;
+  return `${funding.material} 소재로 완성한 ${brand} 리미티드 ${funding.cloth_type} 컬렉션`;
 };
 
-const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMine?: boolean }) => {
+const FundingCards = ({
+  fundings,
+  isMine = false,
+  highlightNewDrop = false,
+  newDropIds,
+}: {
+  fundings: Funding[];
+  isMine?: boolean;
+  highlightNewDrop?: boolean;
+  newDropIds: Set<string>;
+}) => {
   if (!fundings.length) {
     return (
       <div className="border-y border-black/10 py-24 text-center">
@@ -66,6 +76,8 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
       {fundings.map((funding, cardIndex) => {
         const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
         const remaining = Math.max(0, funding.moq - funding.current_orders);
+        const isDropItem = newDropIds.has(funding.id);
+        const brand = isDropItem ? NEW_DROP_BRAND : "BRAND-ER";
 
         return (
           <Link
@@ -83,9 +95,16 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
                 />
                 <WatermarkOverlay />
                 <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3 sm:p-4">
-                  <span className="bg-[#f5f3ef]/90 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2a2223] backdrop-blur-sm">
-                    Limited order
-                  </span>
+                  {highlightNewDrop && isDropItem ? (
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_6px_18px_rgba(249,115,22,0.35)] ${fireGradientClassName}`}>
+                      <FlickerFlame className="h-3.5 w-3.5" />
+                      Hot · Drop 01
+                    </span>
+                  ) : (
+                    <span className="bg-[#f5f3ef]/90 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2a2223] backdrop-blur-sm">
+                      Limited order
+                    </span>
+                  )}
                   {isMine && (
                     <Badge className="rounded-none border-0 bg-brand px-2.5 py-1.5 text-[10px] text-white hover:bg-brand">
                       {statusLabel[funding.status]}
@@ -101,7 +120,7 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand sm:text-xs">
-                      BRAND-ER · {funding.cloth_type}
+                      {brand} · {funding.cloth_type}
                     </p>
                     <h3 className="mt-1.5 truncate text-sm font-semibold text-[#1f191a] sm:text-base">
                       {funding.product_name}
@@ -109,7 +128,7 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
                   </div>
                   <ArrowUpRight className="mt-1 hidden h-4 w-4 shrink-0 text-stone-400 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand sm:block" />
                 </div>
-                <p className="mt-1.5 line-clamp-1 text-xs text-stone-500 sm:text-sm">{getCustomerCopy(funding)}</p>
+                <p className="mt-1.5 line-clamp-1 text-xs text-stone-500 sm:text-sm">{getCustomerCopy(funding, brand)}</p>
                 <p className="mt-3 text-sm font-bold text-[#1f191a] sm:text-base">
                   {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
                 </p>
@@ -163,8 +182,9 @@ const Fundings = () => {
     return source.filter((funding) => getCollectionFilter(funding) === activeFilter);
   }, [activeFilter, approved, mine, view]);
 
-  const featured = approved[0];
   const newDropCountdown = useNewDropCountdown();
+  const newDropIds = useNewDropIds(useMemo(() => [...approved, ...mine], [approved, mine]));
+  const featured = approved[0];
 
   return (
     <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
@@ -202,9 +222,14 @@ const Fundings = () => {
                   />
                   <WatermarkOverlay />
                   <div className="absolute left-5 top-5 flex items-stretch shadow-[0_10px_30px_rgba(116,27,43,0.35)] sm:left-8 sm:top-8">
-                    <span className={`flex items-center gap-2 px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm ${newDropCountdown ? fireGradientClassName : "bg-brand"}`}>
-                      {newDropCountdown && <FlickerFlame className="h-4 w-4 sm:h-5 sm:w-5" />}
-                      {newDropCountdown ? "Hot · New drop 01" : "New drop 01"}
+                    <span className="flex items-center gap-2 bg-brand px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm">
+                      {newDropCountdown && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                        </span>
+                      )}
+                      New drop 01
                     </span>
                     {newDropCountdown && (
                       <span className="flex items-center bg-white px-3 text-[11px] font-extrabold tracking-[0.12em] text-brand sm:text-sm">
@@ -277,7 +302,12 @@ const Fundings = () => {
               <Loader2 className="mr-2 h-5 w-5 animate-spin text-brand" /> 컬렉션을 준비하고 있습니다
             </div>
           ) : (
-            <FundingCards fundings={visibleFundings} isMine={view === "mine"} />
+            <FundingCards
+              fundings={visibleFundings}
+              isMine={view === "mine"}
+              highlightNewDrop={Boolean(newDropCountdown) && view === "shop"}
+              newDropIds={newDropIds}
+            />
           )}
         </section>
 

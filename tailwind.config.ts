@@ -89,6 +89,10 @@ export default {
           "0%, 100%": { transform: "translateX(-6px)", opacity: "0.55" },
           "50%": { transform: "translateX(6px)", opacity: "1" },
         },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -97,6 +101,7 @@ export default {
         slideUp: "slideUp 0.5s ease-out",
         "mascot-bounce": "mascotBounce 0.32s ease-in-out infinite",
         "swipe-hint": "swipeHint 1.6s ease-in-out infinite",
+        marquee: "marquee 28s linear infinite",
       },
     },
   },

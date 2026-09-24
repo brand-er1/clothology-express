@@ -8,6 +8,7 @@ import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
+import { NewDropEventBanner, useNewDropCountdown } from "@/components/funding/NewDropPromo";
 
 type CollectionItem = Pick<
   Funding,
@@ -118,6 +119,7 @@ const formatPrice = (price: number | null) =>
 
 const Index = () => {
   const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
+  const newDropCountdown = useNewDropCountdown();
 
   useEffect(() => {
     let active = true;
@@ -157,6 +159,21 @@ const Index = () => {
               className="w-full max-w-[680px] rounded-sm bg-[#f1ece4]/92 p-6 shadow-[0_24px_80px_rgba(44,33,29,0.10)] backdrop-blur-md sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none"
               data-tutorial="home-hero"
             >
+              {newDropCountdown && (
+                <a
+                  href="#new-drop"
+                  className="mb-5 inline-flex items-center gap-2 bg-brand px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(116,27,43,0.35)] transition hover:bg-brand-dark sm:text-xs"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                  </span>
+                  NEW DROP 01 OPEN · ~10.10
+                  <span className="bg-white px-1.5 py-0.5 text-brand">
+                    D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
+                  </span>
+                </a>
+              )}
               <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">
                 <span className="h-px w-8 bg-brand" />
                 BRAND-ER · EARLY FALL 2026
@@ -179,7 +196,7 @@ const Index = () => {
                   href="#new-drop"
                   className="inline-flex h-[52px] items-center justify-center border border-[#312829]/25 bg-white/25 px-7 text-sm font-semibold text-[#312829] backdrop-blur transition hover:bg-white/55 sm:h-14"
                 >
-                  NEW DROP 보기
+                  {newDropCountdown ? "NEW DROP 01 이벤트" : "NEW DROP 보기"}
                 </a>
               </div>
               <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-500 sm:mt-10">
@@ -195,6 +212,8 @@ const Index = () => {
             <p className="mt-1 text-xl font-semibold">Form, texture and quiet confidence.</p>
           </div>
         </section>
+
+        <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
 
         <section className="overflow-hidden border-b border-black/10 bg-[#21191a] py-4 text-white">
           <div className="flex min-w-max items-center gap-10 px-5 text-[10px] font-bold uppercase tracking-[0.28em] text-white/70 sm:justify-center sm:gap-16 sm:text-xs">
@@ -213,7 +232,9 @@ const Index = () => {
         >
           <div className="flex items-end justify-between gap-6 border-b border-black/10 pb-6">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">New drop</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">
+                {newDropCountdown ? "New drop 01 · Launch event ~10.10" : "New drop"}
+              </p>
               <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-6xl">지금, 새로 나온 옷</h2>
             </div>
             <Link to="/fundings" className="hidden items-center text-sm font-semibold text-stone-600 transition hover:text-brand sm:inline-flex">

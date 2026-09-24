@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { NewDropEventBanner, useNewDropCountdown } from "@/components/funding/NewDropPromo";
 
 const statusLabel: Record<FundingStatus, string> = {
   pending: "승인 대기",
@@ -163,11 +164,13 @@ const Fundings = () => {
   }, [activeFilter, approved, mine, view]);
 
   const featured = approved[0];
+  const newDropCountdown = useNewDropCountdown();
 
   return (
     <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
       <Header />
       <main className="pb-24 pt-16 sm:pt-[72px]">
+        <NewDropEventBanner ctaHref="#collection" ctaLabel="NEW DROP 01 쇼핑하기" />
         <section className="border-b border-black/10">
           <div className="mx-auto grid min-h-[560px] max-w-[1440px] lg:grid-cols-[0.9fr_1.1fr]">
             <div className="flex flex-col justify-center px-5 py-16 sm:px-8 lg:px-12 lg:py-24 xl:px-16">
@@ -198,8 +201,21 @@ const Fundings = () => {
                     className="h-full w-full object-contain p-8 transition duration-700 group-hover:scale-[1.035] sm:p-12 lg:p-16"
                   />
                   <WatermarkOverlay />
-                  <div className="absolute left-5 top-5 bg-brand px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white sm:left-8 sm:top-8">
-                    New drop 01
+                  <div className="absolute left-5 top-5 flex items-stretch shadow-[0_10px_30px_rgba(116,27,43,0.35)] sm:left-8 sm:top-8">
+                    <span className="flex items-center gap-2 bg-brand px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm">
+                      {newDropCountdown && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                        </span>
+                      )}
+                      New drop 01
+                    </span>
+                    {newDropCountdown && (
+                      <span className="flex items-center bg-white px-3 text-[11px] font-extrabold tracking-[0.12em] text-brand sm:text-sm">
+                        ~10.10 · D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
+                      </span>
+                    )}
                   </div>
                   <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4 bg-[#f3f1ed]/92 p-4 backdrop-blur-md sm:inset-x-8 sm:bottom-8 sm:p-5">
                     <div className="min-w-0">

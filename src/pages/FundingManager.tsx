@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/use-toast";
 import {
+  cancelFundingParticipantByCreator,
   fetchFunding,
   fetchFundingParticipants,
   fetchFundingPaymentIntents,
@@ -29,7 +30,7 @@ import type {
 import { PRODUCTION_STAGE_LABEL, PRODUCTION_STAGE_ORDER, SHIPPING_STATUS_LABEL } from "@/types/funding";
 import {
   ArrowLeft, Clock3, Download, ImagePlus, Loader2, PackageCheck, Search, ShoppingBag,
-  Truck, Users, WalletCards,
+  Trash2, Truck, Users, WalletCards,
 } from "lucide-react";
 
 const statusLabel: Record<FundingParticipationStatus, string> = {
@@ -61,6 +62,9 @@ const FundingManager = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState<"all" | FundingParticipationStatus>("all");
   const [shippingStatusFilter, setShippingStatusFilter] = useState<"all" | ShippingStatus>("all");
   const [page, setPage] = useState(1);
+  const [participantToCancel, setParticipantToCancel] = useState<FundingParticipation | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellingParticipantId, setCancellingParticipantId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -222,6 +226,54 @@ const FundingManager = () => {
     }
   };
 
+  const cancelParticipant = async () => {
+    if (!participantToCancel) return;
+    const reason = cancellationReason.trim();
+    if (reason.length < 2) return;
+
+    setCancellingParticipantId(participantToCancel.id);
+    try {
+      const result = await cancelFundingParticipantByCreator(participantToCancel.id, reason);
+      const wasCounted = participantToCancel.status !== "cancelled"
+        && ["unpaid", "paid"].includes(participantToCancel.payment_status);
+
+      setParticipants((current) => current.map((item) => item.id === participantToCancel.id
+        ? {
+            ...item,
+            status: "cancelled",
+            payment_status: "cancelled",
+            payment_cancelled_at: new Date().toISOString(),
+          }
+        : item));
+      if (wasCounted) {
+        setFunding((current) => current ? {
+          ...current,
+          current_orders: Math.max(0, current.current_orders - participantToCancel.quantity),
+        } : current);
+      }
+
+      const isMockPayment = participantToCancel.payment_type === "MOCK";
+      toast({
+        title: "참여자를 취소 처리했습니다",
+        description: result.refunded
+          ? "카카오페이 결제를 전액 환불하고 구매자에게 사이트 알림을 보냈습니다."
+          : isMockPayment
+            ? "모의결제 참여를 취소하고 구매자에게 사이트 알림을 보냈습니다. 실제 환불은 발생하지 않습니다."
+            : "참여를 취소하고 구매자에게 사이트 알림을 보냈습니다.",
+      });
+      setParticipantToCancel(null);
+      setCancellationReason("");
+    } catch (error) {
+      toast({
+        title: "참여자를 취소하지 못했습니다",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setCancellingParticipantId(null);
+    }
+  };
+
   const shareSample = async () => {
     if (!id || !sampleFile) {
       toast({ title: "공유할 샘플 이미지를 선택해주세요", variant: "destructive" });
@@ -250,6 +302,9 @@ const FundingManager = () => {
 
   // Order controls shared by the desktop table and the mobile order cards.
   const renderStatusSelect = (item: FundingParticipation) => (
+    item.status === "cancelled" ? (
+      <Badge variant="secondary">취소</Badge>
+    ) :
     <Select
       value={item.status}
       disabled={updatingId === item.id || ["ready", "cancelled", "failed"].includes(item.payment_status)}
@@ -259,10 +314,34 @@ const FundingManager = () => {
         <SelectItem value="pledged">참여 접수</SelectItem>
         <SelectItem value="confirmed">참여 확정</SelectItem>
         <SelectItem value="fulfilled">처리 완료</SelectItem>
-        <SelectItem value="cancelled">취소</SelectItem>
       </SelectContent>
     </Select>
   );
+
+  const renderCancellationButton = (item: FundingParticipation) => {
+    const cannotCancel = item.status === "cancelled"
+      || item.status === "fulfilled"
+      || ["cancelled", "failed"].includes(item.payment_status);
+
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="min-h-10 w-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+        disabled={cannotCancel || cancellingParticipantId === item.id}
+        onClick={() => {
+          setParticipantToCancel(item);
+          setCancellationReason("");
+        }}
+      >
+        {cancellingParticipantId === item.id
+          ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          : <Trash2 className="mr-1.5 h-4 w-4" />}
+        {item.status === "cancelled" ? "취소 완료" : item.status === "fulfilled" ? "처리 완료" : "참여자 삭제"}
+      </Button>
+    );
+  };
 
   const renderStageSelect = (item: FundingParticipation) => (
     <Select
@@ -527,6 +606,7 @@ const FundingManager = () => {
                           <div className="min-w-0 space-y-1"><p className="text-xs font-semibold text-gray-500">제작 진행</p>{renderStageSelect(item)}</div>
                         </div>
                         <div className="mt-3">{renderShippingControls(item)}</div>
+                        <div className="mt-2">{renderCancellationButton(item)}</div>
                       </article>
                     ))}
                   </div>
@@ -546,6 +626,7 @@ const FundingManager = () => {
                           <TableHead className="min-w-36">주문상태</TableHead>
                           <TableHead className="min-w-40">제작 진행</TableHead>
                           <TableHead className="min-w-56">배송</TableHead>
+                          <TableHead className="min-w-32">관리</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -581,6 +662,9 @@ const FundingManager = () => {
                             </TableCell>
                             <TableCell>
                               {renderShippingControls(item)}
+                            </TableCell>
+                            <TableCell>
+                              {renderCancellationButton(item)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -660,6 +744,55 @@ const FundingManager = () => {
           </CardContent>
         </Card>
       </main>
+
+      <AlertDialog
+        open={!!participantToCancel}
+        onOpenChange={(open) => {
+          if (!open && !cancellingParticipantId) {
+            setParticipantToCancel(null);
+            setCancellationReason("");
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-lg rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 참여자를 취소 처리할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {participantToCancel?.orderer_name || participantToCancel?.participant_name}님의 참여가 취소되고,
+              실제 카카오페이 결제라면 전액 환불됩니다. 구매자에게 사유가 포함된 사이트 알림을 즉시 보냅니다.
+              주문 기록은 분쟁 대응을 위해 삭제하지 않고 취소 상태로 보존합니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="participant-cancellation-reason" className="text-sm font-semibold text-gray-800">
+              취소 사유 <span className="text-red-600">*</span>
+            </label>
+            <Textarea
+              id="participant-cancellation-reason"
+              value={cancellationReason}
+              onChange={(event) => setCancellationReason(event.target.value.slice(0, 500))}
+              placeholder="구매자에게 전달할 취소 사유를 입력해주세요."
+              className="min-h-28 resize-y"
+              disabled={!!cancellingParticipantId}
+            />
+            <p className="text-right text-xs text-gray-400">{cancellationReason.length}/500</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!cancellingParticipantId}>유지하기</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={!!cancellingParticipantId || cancellationReason.trim().length < 2}
+              onClick={(event) => {
+                event.preventDefault();
+                void cancelParticipant();
+              }}
+            >
+              {cancellingParticipantId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              취소·환불 및 알림
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

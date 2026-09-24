@@ -147,7 +147,9 @@ export type CommunityNotificationType =
   | "follow"
   | "purchase_intent_goal"
   | "funding_started"
-  | "funding_status_changed";
+  | "funding_status_changed"
+  | "participation_cancelled"
+  | "funding_cancelled";
 
 export interface CommunityNotification {
   id: string;

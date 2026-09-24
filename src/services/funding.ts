@@ -307,8 +307,24 @@ const invokeAuthenticatedFunction = async <T>(
 
 export const deleteFunding = async (
   fundingId: string,
+  reason: string,
 ): Promise<{ success: boolean; warnings?: string[] }> =>
-  invokeAuthenticatedFunction("delete-funding", { fundingId }, "펀딩을 삭제하지 못했습니다.");
+  invokeAuthenticatedFunction("delete-funding", { fundingId, reason }, "펀딩을 삭제하지 못했습니다.");
+
+export const cancelFundingParticipantByCreator = async (
+  participationId: string,
+  reason: string,
+): Promise<{
+  success: boolean;
+  refunded: boolean;
+  payment_provider?: string;
+  funding_id?: string;
+}> =>
+  invokeAuthenticatedFunction(
+    "creator-cancel-participation",
+    { participationId, reason },
+    "참여 취소를 처리하지 못했습니다.",
+  );
 
 export const startKakaoPayFunding = async (
   fundingId: string,

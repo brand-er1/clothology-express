@@ -2,6 +2,7 @@ import { corsHeaders, getSupabaseClients, jsonResponse } from "../_shared/kakaop
 
 type DeleteFundingRequest = {
   fundingId?: string;
+  reason?: string;
 };
 
 type FundingRecord = {
@@ -23,9 +24,13 @@ Deno.serve(async (req) => {
   try {
     const { user, serviceClient } = await getSupabaseClients(req);
     const body = (await req.json()) as DeleteFundingRequest;
+    const reason = body.reason?.trim() ?? "";
 
     if (!body.fundingId) {
       return jsonResponse({ error: "삭제할 펀딩을 선택해주세요." }, 400);
+    }
+    if (reason.length < 2 || reason.length > 500) {
+      return jsonResponse({ error: "삭제 사유를 2자 이상 500자 이하로 입력해주세요." }, 400);
     }
 
     const { data, error: fundingError } = await serviceClient
@@ -63,10 +68,14 @@ Deno.serve(async (req) => {
       }, 409);
     }
 
-    const { error: deleteError } = await serviceClient
-      .from("fundings")
-      .delete()
-      .eq("id", funding.id);
+    const { error: deleteError } = await serviceClient.rpc(
+      "delete_creator_funding_with_notifications",
+      {
+        p_funding_id: funding.id,
+        p_actor_id: user.id,
+        p_reason: reason,
+      },
+    );
     if (deleteError) throw deleteError;
 
     const warnings: string[] = [];

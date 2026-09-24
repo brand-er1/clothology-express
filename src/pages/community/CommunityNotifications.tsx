@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Loader2, Heart, MessageCircle, Flame, UserPlus, Vote, PartyPopper, Rocket, PackageCheck } from "lucide-react";
+import {
+  Ban, Flame, Heart, Loader2, MessageCircle, PackageCheck, PartyPopper, Rocket,
+  UserPlus, UserX, Vote,
+} from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -23,6 +26,8 @@ const iconByType: Record<CommunityNotificationType, typeof Heart> = {
   purchase_intent_goal: PartyPopper,
   funding_started: Rocket,
   funding_status_changed: PackageCheck,
+  participation_cancelled: UserX,
+  funding_cancelled: Ban,
 };
 
 const CommunityNotifications = () => {
@@ -48,7 +53,11 @@ const CommunityNotifications = () => {
       void markCommunityNotificationRead(notification.id);
       setNotifications((prev) => prev.map((item) => (item.id === notification.id ? { ...item, isRead: true } : item)));
     }
-    if (notification.postId) navigate(`/community/${notification.postId}`);
+    if (notification.postId) {
+      navigate(`/community/${notification.postId}`);
+    } else if (notification.fundingId) {
+      navigate(`/fundings/${notification.fundingId}`);
+    }
   };
 
   const handleMarkAllRead = async () => {
@@ -103,7 +112,7 @@ const CommunityNotifications = () => {
         )}
 
         <div className="mt-6 text-center">
-          <Link to="/community" className="text-sm font-semibold text-stone-500 hover:text-brand">매거진으로 돌아가기</Link>
+          <Link to="/profile" className="text-sm font-semibold text-stone-500 hover:text-brand">마이페이지로 돌아가기</Link>
         </div>
       </main>
     </div>

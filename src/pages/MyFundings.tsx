@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import {
   cancelFundingParticipation,
@@ -80,6 +81,7 @@ const MyFundings = () => {
   const [selectedItem, setSelectedItem] = useState<MyFundingParticipation | null>(null);
   const [deletingFundingId, setDeletingFundingId] = useState<string | null>(null);
   const [fundingToDelete, setFundingToDelete] = useState<Funding | null>(null);
+  const [fundingDeleteReason, setFundingDeleteReason] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -156,16 +158,18 @@ const MyFundings = () => {
 
   const removeFunding = async () => {
     if (!fundingToDelete) return;
+    const reason = fundingDeleteReason.trim();
+    if (reason.length < 2) return;
 
     setDeletingFundingId(fundingToDelete.id);
     try {
-      const result = await deleteFunding(fundingToDelete.id);
+      const result = await deleteFunding(fundingToDelete.id, reason);
       setCreatedFundings((current) => current.filter((funding) => funding.id !== fundingToDelete.id));
       toast({
         title: "펀딩을 삭제했습니다",
         description: result.warnings?.length
-          ? "펀딩은 삭제되었지만 일부 이미지 정리가 완료되지 않았습니다."
-          : "관련 펀딩 데이터와 전용 이미지도 함께 삭제되었습니다.",
+          ? "관련 회원에게 사이트 알림을 보냈습니다. 펀딩은 삭제됐지만 일부 이미지 정리가 완료되지 않았습니다."
+          : "관련 회원에게 사이트 알림을 보내고 펀딩과 전용 이미지를 삭제했습니다.",
       });
     } catch (error) {
       toast({
@@ -176,6 +180,7 @@ const MyFundings = () => {
     } finally {
       setDeletingFundingId(null);
       setFundingToDelete(null);
+      setFundingDeleteReason("");
     }
   };
 
@@ -273,7 +278,10 @@ const MyFundings = () => {
                             variant="outline"
                             className="col-span-2 rounded-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
                             disabled={deletingFundingId === funding.id}
-                            onClick={() => setFundingToDelete(funding)}
+                            onClick={() => {
+                              setFundingToDelete(funding);
+                              setFundingDeleteReason("");
+                            }}
                           >
                             {deletingFundingId === funding.id
                               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -329,6 +337,7 @@ const MyFundings = () => {
         open={!!fundingToDelete}
         onOpenChange={(open) => {
           if (!open && !deletingFundingId) setFundingToDelete(null);
+          if (!open && !deletingFundingId) setFundingDeleteReason("");
         }}
       >
         <AlertDialogContent className="rounded-2xl">
@@ -339,14 +348,29 @@ const MyFundings = () => {
               <span className="block">
                 펀딩 정보, 결제 예정 내역, 취소된 참여 내역과 전용 샘플 이미지가 함께 삭제되며 복구할 수 없습니다.
                 진행 중인 결제나 참여자가 있으면 고객 보호를 위해 삭제가 제한됩니다.
+                관련 참여자와 결제 예정자에게는 아래 사유가 포함된 사이트 알림이 발송됩니다.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="funding-delete-reason" className="text-sm font-semibold text-gray-800">
+              삭제 사유 <span className="text-red-600">*</span>
+            </label>
+            <Textarea
+              id="funding-delete-reason"
+              value={fundingDeleteReason}
+              onChange={(event) => setFundingDeleteReason(event.target.value.slice(0, 500))}
+              placeholder="관련 회원에게 전달할 삭제 사유를 입력해주세요."
+              className="min-h-28 resize-y"
+              disabled={!!deletingFundingId}
+            />
+            <p className="text-right text-xs text-gray-400">{fundingDeleteReason.length}/500</p>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={!!deletingFundingId}>펀딩 유지하기</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 text-white hover:bg-red-700"
-              disabled={!!deletingFundingId}
+              disabled={!!deletingFundingId || fundingDeleteReason.trim().length < 2}
               onClick={(event) => {
                 event.preventDefault();
                 void removeFunding();

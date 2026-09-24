@@ -8,7 +8,7 @@ import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown } from "@/components/funding/NewDropPromo";
+import { FlickerFlame, NewDropEventBanner, fireGradientClassName, isNewDropItem, useNewDropCountdown } from "@/components/funding/NewDropPromo";
 
 type CollectionItem = Pick<
   Funding,
@@ -120,6 +120,7 @@ const formatPrice = (price: number | null) =>
 const Index = () => {
   const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
   const newDropCountdown = useNewDropCountdown();
+  const isNewDropLive = newDropCountdown !== null;
 
   useEffect(() => {
     let active = true;
@@ -138,9 +139,13 @@ const Index = () => {
   }, []);
 
   const collection = useMemo<CollectionItem[]>(() => {
-    if (approvedFundings.length) return approvedFundings.slice(0, 4);
-    return fallbackCollection;
-  }, [approvedFundings]);
+    if (!approvedFundings.length) return fallbackCollection;
+    if (!isNewDropLive) return approvedFundings.slice(0, 4);
+    // 이벤트 기간에는 NEW DROP 01 상품을 맨 앞에 노출
+    const dropItems = approvedFundings.filter(isNewDropItem);
+    const others = approvedFundings.filter((funding) => !isNewDropItem(funding));
+    return [...dropItems, ...others].slice(0, 4);
+  }, [approvedFundings, isNewDropLive]);
 
   return (
     <div className="min-h-screen bg-[#f1f0ed] text-[#211b1c]">
@@ -253,7 +258,7 @@ const Index = () => {
                         alt={item.product_name}
                         className="h-full w-full object-contain p-3 transition duration-700 ease-out group-hover:scale-[1.045] sm:p-6"
                       />
-                      {newDropCountdown ? (
+                      {newDropCountdown && isNewDropItem(item) ? (
                         <span className={`absolute left-3 top-3 inline-flex items-center gap-1 px-2 py-1.5 text-[8px] font-extrabold uppercase tracking-[0.15em] text-white shadow-[0_6px_18px_rgba(249,115,22,0.35)] sm:left-4 sm:top-4 sm:gap-1.5 sm:px-2.5 sm:text-[10px] ${fireGradientClassName}`}>
                           <FlickerFlame className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           Hot · Drop 01

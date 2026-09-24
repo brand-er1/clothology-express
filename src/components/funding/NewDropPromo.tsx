@@ -5,6 +5,15 @@ import { ArrowRight, Flame } from "lucide-react";
 // NEW DROP 01 런칭 이벤트 종료 시각 (KST 10월 10일 자정 직전)
 export const NEW_DROP_EVENT_END = new Date("2026-10-10T23:59:59+09:00");
 
+// NEW DROP 01 은 반팔 티셔츠 드롭이라, 해당 상품에만 HOT/불꽃 강조를 붙인다.
+const NEW_DROP_PATTERN = /short[_\s-]?sleeve|반팔|반소매|\bt-?shirts?\b|\btee\b|티셔츠/i;
+const NEW_DROP_EXCLUDE_PATTERN = /tights|타이즈|long[_\s-]?sleeve|긴팔|긴소매/i;
+
+export const isNewDropItem = (item: { cloth_type: string; product_name?: string | null }) => {
+  const text = `${item.cloth_type} ${item.product_name ?? ""}`;
+  return NEW_DROP_PATTERN.test(text) && !NEW_DROP_EXCLUDE_PATTERN.test(text);
+};
+
 type Countdown = { days: number; hours: number; minutes: number; seconds: number };
 
 const getCountdown = (end: Date): Countdown | null => {

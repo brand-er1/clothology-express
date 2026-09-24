@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown } from "@/components/funding/NewDropPromo";
+import { FlickerFlame, NewDropEventBanner, fireGradientClassName, isNewDropItem, useNewDropCountdown } from "@/components/funding/NewDropPromo";
 
 const statusLabel: Record<FundingStatus, string> = {
   pending: "승인 대기",
@@ -44,7 +44,15 @@ const getCustomerCopy = (funding: Funding) => {
   return `${funding.material} 소재로 완성한 BRAND-ER 리미티드 ${funding.cloth_type} 컬렉션`;
 };
 
-const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMine?: boolean }) => {
+const FundingCards = ({
+  fundings,
+  isMine = false,
+  highlightNewDrop = false,
+}: {
+  fundings: Funding[];
+  isMine?: boolean;
+  highlightNewDrop?: boolean;
+}) => {
   if (!fundings.length) {
     return (
       <div className="border-y border-black/10 py-24 text-center">
@@ -83,9 +91,16 @@ const FundingCards = ({ fundings, isMine = false }: { fundings: Funding[]; isMin
                 />
                 <WatermarkOverlay />
                 <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3 sm:p-4">
-                  <span className="bg-[#f5f3ef]/90 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2a2223] backdrop-blur-sm">
-                    Limited order
-                  </span>
+                  {highlightNewDrop && isNewDropItem(funding) ? (
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_6px_18px_rgba(249,115,22,0.35)] ${fireGradientClassName}`}>
+                      <FlickerFlame className="h-3.5 w-3.5" />
+                      Hot · Drop 01
+                    </span>
+                  ) : (
+                    <span className="bg-[#f5f3ef]/90 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2a2223] backdrop-blur-sm">
+                      Limited order
+                    </span>
+                  )}
                   {isMine && (
                     <Badge className="rounded-none border-0 bg-brand px-2.5 py-1.5 text-[10px] text-white hover:bg-brand">
                       {statusLabel[funding.status]}
@@ -163,8 +178,9 @@ const Fundings = () => {
     return source.filter((funding) => getCollectionFilter(funding) === activeFilter);
   }, [activeFilter, approved, mine, view]);
 
-  const featured = approved[0];
   const newDropCountdown = useNewDropCountdown();
+  const newDropFeatured = newDropCountdown ? approved.find(isNewDropItem) : undefined;
+  const featured = newDropFeatured ?? approved[0];
 
   return (
     <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
@@ -202,11 +218,11 @@ const Fundings = () => {
                   />
                   <WatermarkOverlay />
                   <div className="absolute left-5 top-5 flex items-stretch shadow-[0_10px_30px_rgba(116,27,43,0.35)] sm:left-8 sm:top-8">
-                    <span className={`flex items-center gap-2 px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm ${newDropCountdown ? fireGradientClassName : "bg-brand"}`}>
-                      {newDropCountdown && <FlickerFlame className="h-4 w-4 sm:h-5 sm:w-5" />}
-                      {newDropCountdown ? "Hot · New drop 01" : "New drop 01"}
+                    <span className={`flex items-center gap-2 px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm ${newDropFeatured ? fireGradientClassName : "bg-brand"}`}>
+                      {newDropFeatured && <FlickerFlame className="h-4 w-4 sm:h-5 sm:w-5" />}
+                      {newDropFeatured ? "Hot · New drop 01" : "New drop 01"}
                     </span>
-                    {newDropCountdown && (
+                    {newDropCountdown && newDropFeatured && (
                       <span className="flex items-center bg-white px-3 text-[11px] font-extrabold tracking-[0.12em] text-brand sm:text-sm">
                         ~10.10 · D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
                       </span>
@@ -277,7 +293,11 @@ const Fundings = () => {
               <Loader2 className="mr-2 h-5 w-5 animate-spin text-brand" /> 컬렉션을 준비하고 있습니다
             </div>
           ) : (
-            <FundingCards fundings={visibleFundings} isMine={view === "mine"} />
+            <FundingCards
+              fundings={visibleFundings}
+              isMine={view === "mine"}
+              highlightNewDrop={Boolean(newDropCountdown) && view === "shop"}
+            />
           )}
         </section>
 

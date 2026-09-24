@@ -8,6 +8,7 @@ import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
+import { FreeTeeEventBanner } from "@/components/funding/FreeTeeEvent";
 import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 
 type CollectionItem = Pick<
@@ -219,6 +220,7 @@ const Index = () => {
           </div>
         </section>
 
+        <FreeTeeEventBanner fundings={approvedFundings} />
         <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
 
         <section className="overflow-hidden border-b border-black/10 bg-[#21191a] py-4 text-white">

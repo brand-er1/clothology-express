@@ -8,7 +8,7 @@ interface TutorialFaqDialogProps {
 
 export const TutorialFaqDialog = ({ open, onOpenChange }: TutorialFaqDialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-h-[80vh] overflow-y-auto rounded-2xl sm:max-w-lg">
+    <DialogContent className="max-h-[80dvh] overflow-y-auto rounded-2xl sm:max-w-lg">
       <DialogHeader>
         <DialogTitle className="text-lg font-bold">자주 묻는 질문</DialogTitle>
       </DialogHeader>

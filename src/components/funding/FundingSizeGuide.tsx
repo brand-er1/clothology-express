@@ -57,7 +57,7 @@ export const FundingSizeGuide = ({
 
   return (
     <section className="overflow-hidden rounded-[2rem] border bg-white">
-      <div className="flex flex-col justify-between gap-3 border-b bg-gray-50 px-6 py-5 sm:flex-row sm:items-end md:px-8">
+      <div className="flex flex-col justify-between gap-3 border-b bg-gray-50 px-4 py-5 sm:flex-row sm:items-end sm:px-6 md:px-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
             SIZE GUIDE
@@ -70,11 +70,12 @@ export const FundingSizeGuide = ({
         </p>
       </div>
 
-      <div className="overflow-x-auto p-4 md:p-6">
+      <p className="px-4 pt-3 text-[11px] text-gray-400 md:hidden">표를 좌우로 밀어 모든 사이즈를 확인하세요.</p>
+      <div className="overflow-x-auto overscroll-x-contain p-4 md:p-6">
         <table className="w-full min-w-[560px] border-collapse overflow-hidden rounded-2xl border text-sm">
           <thead>
             <tr className="bg-gray-950 text-white">
-              <th className="px-4 py-4 text-left">측정 부위</th>
+              <th className="sticky left-0 z-10 bg-gray-950 px-3 py-4 text-left sm:px-4">측정 부위</th>
               {visibleSizes.map((size) => (
                 <th key={size} className="bg-brand px-4 py-4 text-center">
                   <span className="block text-xs text-white/70">
@@ -95,7 +96,8 @@ export const FundingSizeGuide = ({
                 key={measurement}
                 className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
               >
-                <th className="border-t px-4 py-3 text-left font-semibold text-gray-700">
+                {/* Row labels stay pinned while the size columns scroll sideways on phones. */}
+                <th className={`sticky left-0 z-10 border-t px-3 py-3 text-left font-semibold text-gray-700 sm:px-4 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
                   {measurement}
                 </th>
                 {visibleSizes.map((size) => (

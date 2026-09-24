@@ -173,7 +173,7 @@ export const PortfolioProjectEditor = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{project ? "프로젝트 수정" : "새 프로젝트 추가"}</DialogTitle>
         </DialogHeader>

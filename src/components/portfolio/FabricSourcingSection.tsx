@@ -217,7 +217,7 @@ export const FabricSourcingSection = () => {
             <FlowBar steps={FABRIC_SOURCING_CUSTOM_FLOW_EN} />
           </Reveal>
 
-          <div className="-mx-5 mt-10 flex gap-0 overflow-x-auto px-5 pb-2 sm:mx-0 sm:overflow-visible sm:px-0 lg:flex-row lg:items-stretch">
+          <div className="-mx-5 mt-10 flex gap-0 overflow-x-auto overscroll-x-contain px-5 pb-2 lg:mx-0 lg:overflow-visible lg:px-0 lg:flex-row lg:items-stretch">
             {FABRIC_SOURCING_CUSTOM_FLOW_KO.map((step, index) => (
               <div key={step} className="flex shrink-0 items-stretch lg:flex-1">
                 <Reveal

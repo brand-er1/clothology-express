@@ -75,7 +75,7 @@ export const MultiAngleViewer = ({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="h-[100dvh] w-screen max-w-none overflow-hidden rounded-none border-0 bg-[#eee9e1] p-0 sm:h-[92vh] sm:w-[min(94vw,900px)] sm:max-w-[900px] sm:rounded-[2rem]">
+        <DialogContent className="h-[100dvh] max-h-none w-screen max-w-none overflow-hidden rounded-none border-0 bg-[#eee9e1] p-0 sm:h-[92vh] sm:w-[min(94vw,900px)] sm:max-w-[900px] sm:rounded-[2rem]">
           <DialogTitle className="sr-only">{viewerAlt}</DialogTitle>
           <div className="flex h-full min-h-0 flex-col">
             <div className="flex items-center justify-between gap-3 border-b border-stone-200/80 bg-white/70 px-5 py-4 backdrop-blur">

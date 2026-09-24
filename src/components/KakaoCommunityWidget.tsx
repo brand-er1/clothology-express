@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { MessageCircle, X } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +13,10 @@ import {
 const KAKAO_COMMUNITY_URL = "https://open.kakao.com/o/gswRryoh";
 const BUBBLE_DISMISSED_KEY = "brand-er:kakao-community-bubble-dismissed";
 const BUBBLE_SHOW_DELAY_MS = 1500;
+
+// On phones the promo chip/bubble only appears on browsing pages; on task pages (login,
+// forms, product/order, design tools) it would float over inputs and primary buttons.
+const MOBILE_BROWSE_PATHS = new Set(["/", "/index.html", "/fundings", "/community", "/portfolio"]);
 
 const communityHighlights = [
   "의류 브랜드 창업 정보",
@@ -37,6 +43,9 @@ const KakaoChip = ({ className = "h-9 w-9" }: { className?: string }) => (
 export const KakaoCommunityWidget = () => {
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { pathname } = useLocation();
+  const isMobile = useIsMobile();
+  const hiddenOnPhone = isMobile && !MOBILE_BROWSE_PATHS.has(pathname);
 
   useEffect(() => {
     if (sessionStorage.getItem(BUBBLE_DISMISSED_KEY) === "1") return;
@@ -51,11 +60,13 @@ export const KakaoCommunityWidget = () => {
 
   const openIntro = () => setIsDialogOpen(true);
 
+  if (hiddenOnPhone && !isDialogOpen) return null;
+
   return (
     <>
-      {/* Bottom offset clears the brand mascot's docked corner spot (bottom-24/right-4 mobile,
-          bottom-6/right-6 desktop in BrandGuide) so the two floating elements never overlap. */}
-      <div className="pointer-events-none fixed right-4 z-50 flex flex-col items-end gap-3 bottom-[calc(176px+env(safe-area-inset-bottom))] sm:bottom-28 sm:right-6">
+      {/* Bottom offset clears the brand mascot's docked corner spot (76px+safe-area/right-4 above the mobile bottom nav,
+          bottom-6/right-6 desktop in BrandGuide; both lift by --mobile-cta-h over a sticky CTA) so the two floating elements never overlap. */}
+      <div data-floating-widget className="pointer-events-none fixed right-4 z-50 flex flex-col items-end gap-3 bottom-[calc(156px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] md:bottom-28 md:right-6">
         {isBubbleVisible && (
           <div className="pointer-events-auto relative max-w-[180px] animate-fadeIn rounded-2xl border border-stone-200 bg-white p-3 pr-7 shadow-lg sm:max-w-[240px] sm:p-4 sm:pr-8">
             <button

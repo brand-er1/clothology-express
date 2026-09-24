@@ -277,7 +277,7 @@ export const FabricSwatchList = ({
           if (!open) setSelectedRequest(null);
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto bg-white">
+        <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto bg-white">
           <DialogHeader>
             <DialogTitle className="text-2xl">원단 스와치 신청 상세</DialogTitle>
             <DialogDescription>

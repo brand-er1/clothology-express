@@ -350,7 +350,7 @@ const FundingEditor = () => {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <Card className="overflow-hidden rounded-3xl" data-tutorial="funding-image">
             <div className="aspect-[4/3] bg-stone-100 p-4">
               <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain" />

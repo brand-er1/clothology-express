@@ -34,7 +34,7 @@ export const AddressFields = ({
         <Button
           type="button"
           onClick={onAddressSearch}
-          className="h-12 whitespace-nowrap rounded-xl bg-stone-950 px-4 hover:bg-brand"
+          className="h-12 shrink-0 whitespace-nowrap rounded-xl bg-stone-950 px-4 hover:bg-brand"
         >
           주소 검색
         </Button>

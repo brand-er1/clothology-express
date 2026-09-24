@@ -166,7 +166,7 @@ export const OrderReviewDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+      <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90dvh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl">
             {order?.request_title || "제작 의뢰 상세"}

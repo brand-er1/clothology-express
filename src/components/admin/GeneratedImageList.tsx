@@ -250,7 +250,7 @@ export const GeneratedImageList = ({
           if (!open) setSelectedImage(null);
         }}
       >
-        <DialogContent className="max-h-[94vh] w-[95vw] max-w-6xl overflow-y-auto rounded-2xl p-4 sm:p-6">
+        <DialogContent className="max-h-[94dvh] w-[95vw] max-w-6xl overflow-y-auto rounded-2xl p-4 sm:p-6">
           {selectedImage && (
             <>
               <DialogHeader>

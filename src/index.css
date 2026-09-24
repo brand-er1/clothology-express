@@ -95,8 +95,15 @@
     @apply border-border;
   }
 
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   html {
     min-width: 320px;
+    max-width: 100%;
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -111,6 +118,8 @@
     line-height: 1.65;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+    width: 100%;
+    max-width: 100%;
     overflow-x: hidden;
   }
 
@@ -126,7 +135,9 @@
   h3,
   h4 {
     word-break: keep-all;
-    overflow-wrap: break-word;
+    /* anywhere (not break-word) also shrinks min-content, so a long unspaced product
+       name can no longer force its grid/flex parent wider than the phone screen. */
+    overflow-wrap: anywhere;
     text-wrap: balance;
   }
 
@@ -153,6 +164,15 @@
     overflow-wrap: break-word;
   }
 
+  /* Keeps a focused field clear of the fixed header and bottom CTA/nav when the browser
+     scrolls it into view (keyboard open, validation focus). */
+  input,
+  select,
+  textarea {
+    scroll-margin-top: 88px;
+    scroll-margin-bottom: 120px;
+  }
+
   /* Manrope ExtraBold, reserved for the wordmark and the English hero display line. */
   .font-logo {
     font-family: Manrope, Pretendard, sans-serif;
@@ -166,16 +186,33 @@
   }
 }
 
+@layer utilities {
+  /* Long product names, order numbers, e-mails and addresses wrap instead of
+     stretching their container past the viewport. */
+  .text-wrap-anywhere {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Floating helpers (mascot, community chip, visit notice) sit above page content but must
+   never cover a modal's inputs or its pay button, so they step aside while one is open. */
+body:has([role="dialog"][data-state="open"]) [data-floating-widget],
+body:has([role="alertdialog"][data-state="open"]) [data-floating-widget] {
+  display: none !important;
+}
+
 @media (max-width: 767px) {
   body {
     font-size: 15px;
     letter-spacing: -0.018em;
   }
 
-  input,
+  /* 16px+ stops iOS Safari from auto-zooming on focus; !important because utility
+     classes such as text-xs/text-sm on individual fields would otherwise win. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
   textarea,
   select {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 
   .mobile-view main h1 {

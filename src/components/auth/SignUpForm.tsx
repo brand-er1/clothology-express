@@ -105,6 +105,9 @@ export const SignUpForm = ({
             id="email"
             name="email"
             type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
             value={formData.email}
             onChange={handleChange}
             required
@@ -114,7 +117,7 @@ export const SignUpForm = ({
           <Button
             type="button"
             onClick={checkEmail}
-            className="h-12 whitespace-nowrap rounded-xl bg-stone-950 px-4 hover:bg-brand"
+            className="h-12 shrink-0 whitespace-nowrap rounded-xl bg-stone-950 px-4 hover:bg-brand"
           >
             중복 확인
           </Button>
@@ -172,7 +175,7 @@ export const SignUpForm = ({
           <Button
             type="button"
             onClick={checkUsername}
-            className="h-12 whitespace-nowrap rounded-xl bg-stone-950 px-4 hover:bg-brand"
+            className="h-12 shrink-0 whitespace-nowrap rounded-xl bg-stone-950 px-4 hover:bg-brand"
           >
             중복 확인
           </Button>
@@ -204,6 +207,8 @@ export const SignUpForm = ({
           id="phoneNumber"
           name="phoneNumber"
           type="tel"
+          inputMode="tel"
+          autoComplete="tel"
           value={formData.phoneNumber}
           onChange={handleChange}
           required

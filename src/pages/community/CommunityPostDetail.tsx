@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { formatCommunityTime } from "@/lib/communityTime";
+import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import {
   createCommunityComment,
   deleteCommunityComment,
@@ -118,6 +119,7 @@ const CommentItem = ({
 const CommunityPostDetail = () => {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
+  const commentBarRef = useMobileStickyCtaOffset();
   const [post, setPost] = useState<CommunityPostDetailType | null>(null);
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -525,7 +527,11 @@ const CommunityPostDetail = () => {
         </section>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      {/* Phones: sits above the bottom tab bar (which owns the safe-area inset) instead of under it. */}
+      <div
+        ref={commentBarRef}
+        className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white px-4 py-3 md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      >
         {replyTarget && (
           <div className="mb-1.5 flex items-center justify-between text-xs text-stone-500">
             <span>@{replyTarget.name}님에게 답글 남기는 중</span>

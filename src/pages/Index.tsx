@@ -168,10 +168,13 @@ const Index = () => {
               {newDropCountdown && (
                 <a
                   href="#new-drop"
-                  className={`mb-5 inline-flex items-center gap-2 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(249,115,22,0.35)] transition hover:brightness-110 sm:text-xs ${fireGradientClassName}`}
+                  className="mb-5 inline-flex items-center gap-2 bg-brand px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(116,27,43,0.35)] transition hover:bg-brand-dark sm:text-xs"
                 >
-                  <FlickerFlame className="h-4 w-4" />
-                  HOT · NEW DROP 01 OPEN · ~10.10
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                  </span>
+                  NEW DROP 01 OPEN · ~10.10
                   <span className="bg-white px-1.5 py-0.5 text-brand">
                     D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
                   </span>

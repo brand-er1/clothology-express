@@ -184,8 +184,7 @@ const Fundings = () => {
 
   const newDropCountdown = useNewDropCountdown();
   const newDropIds = useNewDropIds(useMemo(() => [...approved, ...mine], [approved, mine]));
-  const newDropFeatured = newDropCountdown ? approved.find((funding) => newDropIds.has(funding.id)) : undefined;
-  const featured = newDropFeatured ?? approved[0];
+  const featured = approved[0];
 
   return (
     <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
@@ -223,11 +222,16 @@ const Fundings = () => {
                   />
                   <WatermarkOverlay />
                   <div className="absolute left-5 top-5 flex items-stretch shadow-[0_10px_30px_rgba(116,27,43,0.35)] sm:left-8 sm:top-8">
-                    <span className={`flex items-center gap-2 px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm ${newDropFeatured ? fireGradientClassName : "bg-brand"}`}>
-                      {newDropFeatured && <FlickerFlame className="h-4 w-4 sm:h-5 sm:w-5" />}
-                      {newDropFeatured ? "Hot · New drop 01" : "New drop 01"}
+                    <span className="flex items-center gap-2 bg-brand px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm">
+                      {newDropCountdown && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                        </span>
+                      )}
+                      New drop 01
                     </span>
-                    {newDropCountdown && newDropFeatured && (
+                    {newDropCountdown && (
                       <span className="flex items-center bg-white px-3 text-[11px] font-extrabold tracking-[0.12em] text-brand sm:text-sm">
                         ~10.10 · D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
                       </span>
@@ -235,9 +239,7 @@ const Fundings = () => {
                   </div>
                   <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4 bg-[#f3f1ed]/92 p-4 backdrop-blur-md sm:inset-x-8 sm:bottom-8 sm:p-5">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
-                        {newDropFeatured ? `${NEW_DROP_BRAND} · ${featured.cloth_type}` : "Featured collection"}
-                      </p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">Featured collection</p>
                       <p className="mt-1 truncate text-base font-bold sm:text-lg">{featured.product_name}</p>
                     </div>
                     <p className="shrink-0 text-sm font-bold sm:text-base">

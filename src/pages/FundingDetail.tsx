@@ -21,6 +21,7 @@ import {
 import { trackSiteEvent } from "@/lib/site-analytics";
 import type { Funding, ShippingDetails } from "@/types/funding";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
+import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -63,6 +64,7 @@ const FundingDetail = () => {
   const [intentSubmitting, setIntentSubmitting] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [shippingPrefill, setShippingPrefill] = useState<Partial<ShippingDetails>>({});
+  const stickyCtaRef = useMobileStickyCtaOffset();
 
   useEffect(() => {
     if (!id) return;
@@ -207,8 +209,8 @@ const FundingDetail = () => {
     });
   };
 
-  const purchaseButton = !isPreview && funding.price && !currentUserId ? (
-    <Button asChild className="h-14 w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark" data-tutorial="funding-detail-participate">
+  const renderPurchaseButton = (heightClassName = "h-14") => !isPreview && funding.price && !currentUserId ? (
+    <Button asChild className={`${heightClassName} w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark`} data-tutorial="funding-detail-participate">
       <Link to={loginReturnTo}>
         <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
       </Link>
@@ -217,7 +219,7 @@ const FundingDetail = () => {
     <Button
       disabled={isPreview || !funding.price}
       onClick={handleParticipate}
-      className="h-14 w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark"
+      className={`${heightClassName} w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark`}
       data-tutorial="funding-detail-participate"
     >
       {!isPreview && <WalletCards className="mr-2 h-5 w-5" />}
@@ -236,7 +238,7 @@ const FundingDetail = () => {
   return (
     <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
       <Header />
-      <main className="mx-auto max-w-[1440px] px-4 pb-32 pt-24 sm:px-8 lg:px-12 lg:pb-24 xl:px-16">
+      <main className="mx-auto max-w-[1440px] px-4 pb-16 pt-20 sm:px-8 sm:pt-24 lg:px-12 lg:pb-24 xl:px-16">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-black/10 pb-5">
           <Link to="/fundings" className="inline-flex items-center text-xs font-bold uppercase tracking-[0.14em] text-stone-500 transition hover:text-brand">
             <ArrowLeft className="mr-2 h-4 w-4" /> Shop / {funding.cloth_type}
@@ -258,7 +260,7 @@ const FundingDetail = () => {
           </div>
         </div>
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:gap-12 xl:gap-16">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:gap-12 xl:gap-16">
           <section className="overflow-hidden bg-[#e7e4df]" data-tutorial="funding-detail-image">
             <div className="relative aspect-[4/5] sm:aspect-square lg:aspect-[4/5]">
               <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain p-5 sm:p-10 lg:p-12" />
@@ -269,9 +271,9 @@ const FundingDetail = () => {
             </div>
           </section>
 
-          <aside className="lg:sticky lg:top-28" data-mascot-safezone>
+          <aside className="min-w-0 lg:sticky lg:top-28" data-mascot-safezone>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">BRAND-ER / {funding.cloth_type}</p>
-            <h1 className="mt-4 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl xl:text-6xl">
+            <h1 className="mt-3 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:mt-4 sm:text-5xl xl:text-6xl">
               {funding.product_name}
             </h1>
             <p className="mt-5 text-sm leading-7 text-stone-600">{customerDescription}</p>
@@ -293,20 +295,20 @@ const FundingDetail = () => {
                 <div className="h-full bg-brand transition-all" style={{ width: `${progress}%` }} />
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
-                  <p className="text-lg font-extrabold text-brand">{fundingRateActual}%</p>
+                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
+                  <p className="text-wrap-anywhere text-base font-extrabold text-brand sm:text-lg">{fundingRateActual}%</p>
                   <p className="mt-0.5 text-[10px] text-stone-500">달성</p>
                 </div>
-                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
-                  <p className="text-lg font-extrabold">{funding.current_orders} / {funding.moq}장</p>
+                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
+                  <p className="text-wrap-anywhere text-base font-extrabold sm:text-lg">{funding.current_orders} / {funding.moq}장</p>
                   <p className="mt-0.5 text-[10px] text-stone-500">참여 수량</p>
                 </div>
-                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
-                  <p className="text-lg font-extrabold">{expectedRevenue.toLocaleString("ko-KR")}원</p>
+                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
+                  <p className="text-wrap-anywhere text-base font-extrabold sm:text-lg">{expectedRevenue.toLocaleString("ko-KR")}원</p>
                   <p className="mt-0.5 text-[10px] text-stone-500">예상매출</p>
                 </div>
-                <div className="border border-black/10 bg-white/50 px-3 py-2.5 text-center">
-                  <p className="text-lg font-extrabold">{dDayLabel}</p>
+                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
+                  <p className="text-wrap-anywhere text-base font-extrabold sm:text-lg">{dDayLabel}</p>
                   <p className="mt-0.5 text-[10px] text-stone-500">펀딩 종료</p>
                 </div>
               </div>
@@ -325,7 +327,7 @@ const FundingDetail = () => {
                       type="button"
                       variant="outline"
                       onClick={() => setSelectedColor(color)}
-                      className={`h-11 rounded-none ${selectedColor === color ? "border-brand bg-brand/5 text-brand" : "border-black/15 bg-transparent text-stone-600 hover:bg-black/5"}`}
+                      className={`h-auto min-h-12 rounded-none px-2 md:min-h-11 ${selectedColor === color ? "border-brand bg-brand/5 text-brand" : "border-black/15 bg-transparent text-stone-600 hover:bg-black/5"}`}
                     >
                       {color}
                     </Button>
@@ -345,7 +347,7 @@ const FundingDetail = () => {
                       type="button"
                       variant="outline"
                       onClick={() => setSelectedSize(size)}
-                      className={`h-11 rounded-none ${selectedSize === size ? "border-brand bg-brand/5 text-brand" : "border-black/15 bg-transparent text-stone-600 hover:bg-black/5"}`}
+                      className={`h-auto min-h-12 rounded-none px-2 md:min-h-11 ${selectedSize === size ? "border-brand bg-brand/5 text-brand" : "border-black/15 bg-transparent text-stone-600 hover:bg-black/5"}`}
                     >
                       {size}
                     </Button>
@@ -356,22 +358,22 @@ const FundingDetail = () => {
               <div className="flex items-center justify-between border-y border-black/10 py-4">
                 <span className="text-sm font-bold">QUANTITY</span>
                 <div className="flex items-center border border-black/15 bg-white/40">
-                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-none" onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="수량 줄이기">
+                  <Button type="button" size="icon" variant="ghost" className="h-11 w-11 rounded-none" onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="수량 줄이기">
                     <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="w-10 text-center text-sm font-bold">{quantity}</span>
-                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-none" onClick={() => setQuantity(Math.min(99, quantity + 1))} aria-label="수량 늘리기">
+                  <span className="w-10 text-center text-base font-bold" aria-live="polite">{quantity}</span>
+                  <Button type="button" size="icon" variant="ghost" className="h-11 w-11 rounded-none" onClick={() => setQuantity(Math.min(99, quantity + 1))} aria-label="수량 늘리기">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              <div className="flex items-end justify-between">
+              <div className="flex flex-wrap items-end justify-between gap-x-3">
                 <span className="text-sm text-stone-500">총 주문 금액</span>
-                <strong className="text-2xl">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "가격 준비 중"}</strong>
+                <strong className="text-wrap-anywhere text-2xl">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "가격 준비 중"}</strong>
               </div>
 
-              {purchaseButton}
+              {renderPurchaseButton()}
 
               <Button
                 type="button"
@@ -476,9 +478,9 @@ const FundingDetail = () => {
                 ["COLOR", colorOptions.join(", ")],
                 ["ORDER WINDOW", `${funding.funding_days}일`],
               ].map(([term, value]) => (
-                <div key={term} className="grid grid-cols-[9rem_1fr] border-b border-black/10 py-4">
+                <div key={term} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 border-b border-black/10 py-4 sm:grid-cols-[9rem_1fr]">
                   <dt className="text-xs font-bold tracking-[0.12em] text-stone-400">{term}</dt>
-                  <dd className="font-semibold text-[#211b1c]">{value}</dd>
+                  <dd className="text-wrap-anywhere font-semibold text-[#211b1c]">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -509,13 +511,19 @@ const FundingDetail = () => {
         </section>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-[#f3f1ed]/95 px-4 py-3 backdrop-blur-md md:hidden">
+      {/* Mobile order bar: sits directly above the bottom tab bar (which owns the safe-area inset),
+          and publishes its height so floating helpers and the page's bottom padding clear it. */}
+      <div
+        ref={stickyCtaRef}
+        data-mascot-safezone
+        className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-black/10 bg-[#f3f1ed]/95 px-4 py-2.5 backdrop-blur-md md:hidden"
+      >
         <div className="mx-auto flex max-w-lg items-center gap-3">
-          <div className="min-w-24">
-            <p className="text-[10px] text-stone-400">TOTAL</p>
-            <p className="text-sm font-bold">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "준비 중"}</p>
+          <div className="min-w-0 shrink-0 basis-[34%]">
+            <p className="text-[11px] font-semibold text-stone-500">총 {quantity}장 · {selectedSize}</p>
+            <p className="text-wrap-anywhere text-base font-extrabold leading-tight">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "준비 중"}</p>
           </div>
-          <div className="flex-1">{purchaseButton}</div>
+          <div className="min-w-0 flex-1">{renderPurchaseButton("h-12")}</div>
         </div>
       </div>
 

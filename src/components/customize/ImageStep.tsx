@@ -208,7 +208,7 @@ export const ImageStep = ({
         if (!open) setPreviewImageUrl(null);
       }}
     >
-      <DialogContent className="h-[100dvh] w-screen max-w-none rounded-none border-white/15 bg-black p-0 sm:h-[94vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-2xl sm:p-3">
+      <DialogContent className="h-[100dvh] max-h-none w-screen max-w-none rounded-none border-white/15 bg-black p-0 sm:h-[94vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-2xl sm:p-3">
         <DialogTitle className="sr-only">생성된 의류 디자인 크게 보기</DialogTitle>
         {previewImageUrl && (
           <img

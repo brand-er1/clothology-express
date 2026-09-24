@@ -247,6 +247,74 @@ const FundingManager = () => {
     }
   };
 
+
+  // Order controls shared by the desktop table and the mobile order cards.
+  const renderStatusSelect = (item: FundingParticipation) => (
+    <Select
+      value={item.status}
+      disabled={updatingId === item.id || ["ready", "cancelled", "failed"].includes(item.payment_status)}
+      onValueChange={(value) => changeStatus(item.id, value as FundingParticipationStatus)}>
+      <SelectTrigger className="h-9" aria-label="주문상태"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="pledged">참여 접수</SelectItem>
+        <SelectItem value="confirmed">참여 확정</SelectItem>
+        <SelectItem value="fulfilled">처리 완료</SelectItem>
+        <SelectItem value="cancelled">취소</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const renderStageSelect = (item: FundingParticipation) => (
+    <Select
+      value={item.production_stage}
+      disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
+      onValueChange={(value) => changeFulfillment(item, { productionStage: value as ProductionStage })}
+    >
+      <SelectTrigger className="h-9" aria-label="제작 진행"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {PRODUCTION_STAGE_ORDER.map((stage) => (
+          <SelectItem key={stage} value={stage}>{PRODUCTION_STAGE_LABEL[stage]}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const renderShippingControls = (item: FundingParticipation) => (
+    <div className="space-y-1.5">
+      <Badge variant="outline" className="gap-1"><Truck className="h-3 w-3" />{SHIPPING_STATUS_LABEL[item.shipping_status]}</Badge>
+      <Input
+        value={trackingDrafts[item.id] ?? item.tracking_number ?? ""}
+        onChange={(event) => setTrackingDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
+        placeholder="송장번호 입력"
+        aria-label="송장번호"
+        className="h-8 text-xs"
+        disabled={item.status === "cancelled"}
+      />
+      <div className="flex gap-1.5">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 min-h-11 flex-1 text-xs md:min-h-10"
+          disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
+          onClick={() => changeFulfillment(item, {
+            shippingStatus: "shipped",
+            trackingNumber: trackingDrafts[item.id] ?? item.tracking_number ?? undefined,
+          })}
+        >
+          발송 처리
+        </Button>
+        <Button
+          size="sm"
+          className="h-7 min-h-11 flex-1 bg-brand text-xs hover:bg-brand-dark md:min-h-10"
+          disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
+          onClick={() => changeFulfillment(item, { shippingStatus: "delivered", productionStage: "delivered" })}
+        >
+          배송완료
+        </Button>
+      </div>
+    </div>
+  );
+
   if (loading || !funding) {
     return (
       <div className="min-h-screen bg-[#f7f5f2]">
@@ -261,20 +329,20 @@ const FundingManager = () => {
   return (
     <div className="min-h-screen bg-[#f7f5f2]">
       <Header />
-      <main className="container mx-auto max-w-7xl px-4 pb-24 pt-24">
+      <main className="container mx-auto max-w-7xl px-4 pb-16 pt-20 sm:pt-24 md:pb-24">
         <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
             <Link to={`/fundings/${funding.id}`} className="mb-5 inline-flex items-center text-sm text-gray-500 hover:text-gray-900">
               <ArrowLeft className="mr-1 h-4 w-4" /> 펀딩 상세로 돌아가기
             </Link>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">개설자 전용</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="shrink-0">개설자 전용</Badge>
               <span className="text-sm text-gray-500">참여자 정보는 개설자와 관리자만 볼 수 있습니다.</span>
             </div>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] md:text-4xl">{funding.product_name}</h1>
+            <h1 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] md:text-4xl">{funding.product_name}</h1>
             <p className="mt-2 text-gray-500">펀딩 참여자 관리</p>
           </div>
-          <Button asChild variant="outline" className="rounded-full bg-white">
+          <Button asChild variant="outline" className="self-start rounded-full bg-white md:self-auto">
             <Link to={`/fundings/${funding.id}/edit`}>펀딩 정보 수정</Link>
           </Button>
         </div>
@@ -349,7 +417,7 @@ const FundingManager = () => {
         <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_0.32fr]">
           <Card className="overflow-hidden rounded-2xl">
             <CardHeader className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle>참여자·배송 관리</CardTitle>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -421,7 +489,48 @@ const FundingManager = () => {
                 <div className="py-20 text-center text-sm text-gray-500">검색·필터 조건에 맞는 주문이 없습니다.</div>
               ) : (
                 <>
-                  <div className="overflow-x-auto rounded-xl border">
+                  {/* Phones: one card per order instead of a 12-column table. */}
+                  <div className="space-y-3 md:hidden">
+                    {pagedParticipants.map((item) => (
+                      <article key={item.id} className={`rounded-xl border bg-white p-4 text-sm ${item.status === "cancelled" ? "opacity-50" : ""}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-base font-bold">{item.orderer_name || item.participant_name}</p>
+                            <p className="text-wrap-anywhere font-mono text-xs text-gray-400">{item.order_number || "-"}</p>
+                          </div>
+                          <Badge variant={item.payment_type === "MOCK" ? "secondary" : "default"} className="shrink-0">
+                            {item.payment_type === "MOCK" ? "모의결제" : "실제결제"}
+                          </Badge>
+                        </div>
+                        <dl className="mt-3 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t pt-3 text-[13px] leading-5">
+                          <dt className="text-gray-400">옵션</dt>
+                          <dd className="font-semibold">{item.selected_color} · {item.selected_size} · {item.quantity}장</dd>
+                          <dt className="text-gray-400">금액</dt>
+                          <dd className="font-semibold">{item.total_amount.toLocaleString("ko-KR")}원</dd>
+                          <dt className="text-gray-400">연락처</dt>
+                          <dd className="text-wrap-anywhere">
+                            <a href={`tel:${item.orderer_phone || item.phone_number || ""}`} className="font-semibold text-brand">{item.orderer_phone || item.phone_number || "-"}</a>
+                            {item.orderer_email && <span className="block text-xs text-gray-400">{item.orderer_email}</span>}
+                          </dd>
+                          <dt className="text-gray-400">수령인</dt>
+                          <dd className="text-wrap-anywhere">{item.recipient_name || "-"} {item.recipient_phone && <span className="text-gray-500">({item.recipient_phone})</span>}</dd>
+                          <dt className="text-gray-400">배송지</dt>
+                          <dd className="text-wrap-anywhere">
+                            [{item.postal_code || "-"}] {item.shipping_address || item.address || "-"} {item.shipping_address_detail || ""}
+                            {item.delivery_message && <span className="mt-0.5 block text-xs text-gray-400">메모: {item.delivery_message}</span>}
+                          </dd>
+                          <dt className="text-gray-400">참여일</dt>
+                          <dd>{new Date(item.created_at).toLocaleDateString("ko-KR")}</dd>
+                        </dl>
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3">
+                          <div className="min-w-0 space-y-1"><p className="text-xs font-semibold text-gray-500">주문상태</p>{renderStatusSelect(item)}</div>
+                          <div className="min-w-0 space-y-1"><p className="text-xs font-semibold text-gray-500">제작 진행</p>{renderStageSelect(item)}</div>
+                        </div>
+                        <div className="mt-3">{renderShippingControls(item)}</div>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto rounded-xl border md:block">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -465,66 +574,13 @@ const FundingManager = () => {
                             </TableCell>
                             <TableCell>{new Date(item.created_at).toLocaleDateString("ko-KR")}</TableCell>
                             <TableCell>
-                              <Select
-                                value={item.status}
-                                disabled={updatingId === item.id || ["ready", "cancelled", "failed"].includes(item.payment_status)}
-                                onValueChange={(value) => changeStatus(item.id, value as FundingParticipationStatus)}>
-                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pledged">참여 접수</SelectItem>
-                                  <SelectItem value="confirmed">참여 확정</SelectItem>
-                                  <SelectItem value="fulfilled">처리 완료</SelectItem>
-                                  <SelectItem value="cancelled">취소</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              {renderStatusSelect(item)}
                             </TableCell>
                             <TableCell>
-                              <Select
-                                value={item.production_stage}
-                                disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
-                                onValueChange={(value) => changeFulfillment(item, { productionStage: value as ProductionStage })}
-                              >
-                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {PRODUCTION_STAGE_ORDER.map((stage) => (
-                                    <SelectItem key={stage} value={stage}>{PRODUCTION_STAGE_LABEL[stage]}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {renderStageSelect(item)}
                             </TableCell>
                             <TableCell>
-                              <div className="space-y-1.5">
-                                <Badge variant="outline" className="gap-1"><Truck className="h-3 w-3" />{SHIPPING_STATUS_LABEL[item.shipping_status]}</Badge>
-                                <Input
-                                  value={trackingDrafts[item.id] ?? item.tracking_number ?? ""}
-                                  onChange={(event) => setTrackingDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
-                                  placeholder="송장번호 입력"
-                                  className="h-8 text-xs"
-                                  disabled={item.status === "cancelled"}
-                                />
-                                <div className="flex gap-1.5">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 flex-1 text-xs"
-                                    disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
-                                    onClick={() => changeFulfillment(item, {
-                                      shippingStatus: "shipped",
-                                      trackingNumber: trackingDrafts[item.id] ?? item.tracking_number ?? undefined,
-                                    })}
-                                  >
-                                    발송 처리
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    className="h-7 flex-1 bg-brand text-xs hover:bg-brand-dark"
-                                    disabled={updatingFulfillmentId === item.id || item.status === "cancelled"}
-                                    onClick={() => changeFulfillment(item, { shippingStatus: "delivered", productionStage: "delivered" })}
-                                  >
-                                    배송완료
-                                  </Button>
-                                </div>
-                              </div>
+                              {renderShippingControls(item)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -570,7 +626,20 @@ const FundingManager = () => {
             {paymentIntents.length === 0 ? (
               <div className="py-14 text-center text-sm text-gray-500"><Clock3 className="mx-auto mb-3 h-9 w-9 text-brand/40" />아직 결제 예정자가 없습니다.</div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border">
+              <>
+              <ul className="space-y-2 md:hidden">
+                {paymentIntents.map((item) => (
+                  <li key={item.id} className="rounded-xl border px-4 py-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 font-bold">{item.participant_name}</span>
+                      <span className="shrink-0 text-xs text-gray-400">{new Date(item.created_at).toLocaleDateString("ko-KR")}</span>
+                    </div>
+                    <p className="mt-1 text-gray-600">{item.selected_color} · {item.selected_size} · {item.quantity}장</p>
+                    {item.phone_number && <a href={`tel:${item.phone_number}`} className="mt-1 inline-block font-semibold text-brand">{item.phone_number}</a>}
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto rounded-xl border md:block">
                 <Table>
                   <TableHeader><TableRow><TableHead>예정자</TableHead><TableHead>연락처</TableHead><TableHead>선택 옵션</TableHead><TableHead>예정 수량</TableHead><TableHead>등록일</TableHead></TableRow></TableHeader>
                   <TableBody>
@@ -586,6 +655,7 @@ const FundingManager = () => {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>

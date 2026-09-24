@@ -22,7 +22,7 @@ import { getMakeItems, getMyItems } from "@/components/nav/navigationData";
 type ProfileIdentity = { brandName: string; nickname: string; };
 
 const topPillClassName = ({ isActive }: { isActive: boolean }) =>
-  `rounded-full px-4 py-2 text-sm font-semibold transition ${isActive ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-stone-100 hover:text-stone-950"}`;
+  `rounded-full px-3 py-2 text-sm lg:px-4 font-semibold transition ${isActive ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-stone-100 hover:text-stone-950"}`;
 
 export const Header = () => {
   const { isAdmin } = useAdmin();
@@ -64,9 +64,9 @@ export const Header = () => {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-gray-200/80 bg-[#f9fafb]/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-6 px-4 sm:h-[72px] sm:px-6 lg:gap-8 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-4 px-4 sm:h-[72px] sm:px-6 lg:gap-8 lg:px-8">
         <Link to="/" className="flex shrink-0 items-center"><img src={getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png")} alt="BRAND-ER" className="h-8 w-auto sm:h-7" /></Link>
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-0 md:flex lg:gap-1">
           <NavLink to="/fundings" className={topPillClassName}>SHOP</NavLink>
           <MakeMegaMenu items={makeItems} />
           <NavLink to="/community" className={topPillClassName}>MAGAZINE</NavLink>
@@ -95,7 +95,7 @@ export const Header = () => {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button asChild className="h-11 rounded-full bg-brand px-5 hover:bg-brand-dark"><Link to="/customize">옷 만들기 <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+          <Button asChild className="hidden h-11 rounded-full bg-brand px-5 hover:bg-brand-dark lg:inline-flex"><Link to="/customize">옷 만들기 <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
           <Button variant="ghost" size="icon" onClick={() => setIsFullMenuOpen(true)} className="h-11 w-11 rounded-full text-stone-500 hover:text-stone-950" aria-label="전체 메뉴"><Menu className="h-5 w-5" /></Button>
         </div>
         <div className="ml-auto md:hidden"><Button variant="ghost" size="icon" onClick={() => setIsFullMenuOpen(true)} className="h-11 w-11 rounded-full" aria-label="메뉴"><Menu className="h-5.5 w-5.5" /></Button></div>

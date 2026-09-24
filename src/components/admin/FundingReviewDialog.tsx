@@ -76,7 +76,7 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+      <DialogContent className="max-h-[92dvh] max-w-4xl overflow-y-auto">
         <DialogHeader><DialogTitle>펀딩 검토</DialogTitle></DialogHeader>
         {funding && (
           <div className="space-y-6">

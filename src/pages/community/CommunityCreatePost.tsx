@@ -48,7 +48,7 @@ const DesignPickerDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto rounded-2xl">
+      <DialogContent className="max-h-[80dvh] max-w-lg overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle>내 디자인 불러오기</DialogTitle>
         </DialogHeader>

@@ -81,7 +81,7 @@ export const OrderDetails = ({ order, onClose }: OrderDetailsProps) => {
 
   return (
     <Dialog open={!!order} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+      <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
           <DialogTitle className="text-lg md:text-xl">제작 의뢰 상세 정보</DialogTitle>
           <DialogDescription className="text-base">

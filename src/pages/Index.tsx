@@ -222,7 +222,7 @@ const Index = () => {
         <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
 
         <section className="overflow-hidden border-b border-black/10 bg-[#21191a] py-4 text-white">
-          <div className="flex min-w-max items-center gap-10 px-5 text-[10px] font-bold uppercase tracking-[0.28em] text-white/70 sm:justify-center sm:gap-16 sm:text-xs">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/70 sm:gap-x-10 sm:text-xs sm:tracking-[0.28em] lg:flex-nowrap lg:gap-16">
             <span>BRAND-ER LIMITED COLLECTION</span>
             <span className="h-1 w-1 rounded-full bg-[#c999a4]" />
             <span>NEW DROP EVERY SEASON</span>
@@ -325,8 +325,8 @@ const Index = () => {
                     />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#20191a]/75 to-transparent px-4 pb-4 pt-16 text-white sm:px-6 sm:pb-6">
                       <div className="flex items-end justify-between gap-2">
-                        <div>
-                          <p className="text-2xl font-bold leading-none sm:text-3xl">{category.name}</p>
+                        <div className="min-w-0">
+                          <p className="text-xl font-bold leading-none min-[360px]:text-2xl sm:text-3xl">{category.name}</p>
                           <p className="mt-2 hidden text-xs text-white/65 sm:block">{category.note}</p>
                         </div>
                         <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />

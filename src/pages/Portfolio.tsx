@@ -228,7 +228,7 @@ const Portfolio = () => {
               </h2>
             </Reveal>
 
-            <div className="-mx-5 mt-14 flex gap-0 overflow-x-auto px-5 pb-2 sm:mx-0 sm:overflow-visible sm:px-0 lg:flex-row lg:items-stretch">
+            <div className="-mx-5 mt-14 flex gap-0 overflow-x-auto overscroll-x-contain px-5 pb-2 lg:mx-0 lg:overflow-visible lg:px-0 lg:flex-row lg:items-stretch">
               {PORTFOLIO_PROCESS_STEPS.map((step, index) => (
                 <div key={step.number} className="flex shrink-0 items-stretch lg:flex-1">
                   <Reveal delayMs={index * 70} className="flex min-w-[9.5rem] flex-1 flex-col gap-3 py-2 lg:min-w-0 lg:px-2">

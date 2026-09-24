@@ -463,11 +463,24 @@ export const BrandGuide = () => {
   // Same idea horizontally: near the left edge, right-aligning the popup to the character would
   // push it off the left of the screen, so left-align it instead.
   const flipPanelLeft = !docked && roam.xPercent < 25;
+  // Never let the menu/bubble run past a screen edge on narrow phones: cap its width to the
+  // room between the character's anchored edge and the far side of the viewport (16px gutter).
+  const halfCharacter = (isMobile ? 68 : 88) / 2;
+  const popupMaxWidth = docked
+    ? "calc(100vw - 2rem)"
+    : flipPanelLeft
+      ? `min(calc(100vw - 2rem), calc(${100 - roam.xPercent}vw + ${halfCharacter}px - 1rem))`
+      : `min(calc(100vw - 2rem), calc(${roam.xPercent}vw + ${halfCharacter}px - 1rem))`;
+  // While the character is still walking in from off-screen (or dragged to the very edge),
+  // pull a right-aligned popup back inside the viewport instead of letting it hang off it.
+  const popupRightInset = !docked && !flipPanelLeft
+    ? `max(0px, calc(${roam.xPercent}vw + ${halfCharacter}px + 1rem - 100vw))`
+    : undefined;
 
   const popupContent = (
     <>
       {isMenuOpen && (
-        <div className="w-64 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl">
+        <div className="w-64 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl" style={{ maxWidth: popupMaxWidth }}>
           <p className="px-4 pt-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
             무엇을 도와드릴까요?
           </p>
@@ -556,7 +569,7 @@ export const BrandGuide = () => {
       )}
 
       {isBubbleOpen && message && !isMenuOpen && (
-        <div className="relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl">
+        <div className="relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl" style={{ maxWidth: popupMaxWidth }}>
           <button
             type="button"
             onClick={closeBubble}
@@ -639,6 +652,7 @@ export const BrandGuide = () => {
         className={`absolute flex flex-col gap-3 ${flipPanelBelow ? "top-full mt-3" : "bottom-full mb-3"} ${
           flipPanelLeft ? "left-0 items-start" : "right-0 items-end"
         }`}
+        style={popupRightInset ? { right: popupRightInset } : undefined}
       >
         {popupContent}
       </div>
@@ -648,7 +662,7 @@ export const BrandGuide = () => {
   if (docked) {
     return (
       <>
-        <div className="pointer-events-none fixed bottom-24 right-4 z-[60] sm:bottom-6 sm:right-6">
+        <div data-floating-widget className="pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-6 md:right-6">
           {panel}
         </div>
         <TutorialFaqDialog open={isFaqOpen} onOpenChange={setIsFaqOpen} />
@@ -658,7 +672,7 @@ export const BrandGuide = () => {
 
   return (
     <>
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] h-0">
+    <div data-floating-widget className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] h-0">
       <div
         className="pointer-events-none absolute flex flex-col items-end gap-3"
         style={{

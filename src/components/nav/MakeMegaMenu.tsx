@@ -48,7 +48,7 @@ export const MakeMegaMenu = ({ items }: { items: NavLinkItem[] }) => {
         type="button"
         onClick={() => setIsOpen((value) => !value)}
         aria-expanded={isOpen}
-        className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
+        className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm lg:px-4 font-semibold transition ${
           isOpen ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-stone-100 hover:text-stone-950"
         }`}
       >

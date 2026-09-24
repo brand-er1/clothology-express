@@ -55,7 +55,7 @@ export const BottomNav = () => {
           to={to}
           end={end}
           className={({ isActive }) =>
-            `relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold transition ${
+            `relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold leading-4 transition ${
               isActive ? "text-brand" : "text-stone-400"
             }`
           }
@@ -79,4 +79,4 @@ export const BottomNav = () => {
   );
 };
 
-export const BOTTOM_NAV_SPACER_CLASSNAME = "pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-0";
+export const BOTTOM_NAV_SPACER_CLASSNAME = "pb-[calc(56px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] md:pb-0";

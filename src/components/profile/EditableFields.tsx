@@ -57,6 +57,9 @@ export const EditableFields = ({
         <Input
           id="phoneNumber"
           name="phoneNumber"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
           value={phoneNumber}
           onChange={onChange}
           placeholder="전화번호를 입력하세요"

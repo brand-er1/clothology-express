@@ -93,6 +93,16 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
         },
+        flicker: {
+          "0%, 100%": { transform: "scale(1) rotate(-3deg)", opacity: "1" },
+          "25%": { transform: "scale(1.12, 0.94) rotate(2deg)", opacity: "0.9" },
+          "50%": { transform: "scale(0.95, 1.1) rotate(-1deg)", opacity: "1" },
+          "75%": { transform: "scale(1.08, 0.97) rotate(3deg)", opacity: "0.85" },
+        },
+        fireShift: {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -102,6 +112,8 @@ export default {
         "mascot-bounce": "mascotBounce 0.32s ease-in-out infinite",
         "swipe-hint": "swipeHint 1.6s ease-in-out infinite",
         marquee: "marquee 28s linear infinite",
+        flicker: "flicker 0.9s ease-in-out infinite",
+        "fire-shift": "fireShift 3s ease-in-out infinite",
       },
     },
   },

@@ -8,7 +8,7 @@ import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
-import { NewDropEventBanner, useNewDropCountdown } from "@/components/funding/NewDropPromo";
+import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown } from "@/components/funding/NewDropPromo";
 
 type CollectionItem = Pick<
   Funding,
@@ -162,13 +162,10 @@ const Index = () => {
               {newDropCountdown && (
                 <a
                   href="#new-drop"
-                  className="mb-5 inline-flex items-center gap-2 bg-brand px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(116,27,43,0.35)] transition hover:bg-brand-dark sm:text-xs"
+                  className={`mb-5 inline-flex items-center gap-2 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(249,115,22,0.35)] transition hover:brightness-110 sm:text-xs ${fireGradientClassName}`}
                 >
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                  </span>
-                  NEW DROP 01 OPEN · ~10.10
+                  <FlickerFlame className="h-4 w-4" />
+                  HOT · NEW DROP 01 OPEN · ~10.10
                   <span className="bg-white px-1.5 py-0.5 text-brand">
                     D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
                   </span>
@@ -256,9 +253,16 @@ const Index = () => {
                         alt={item.product_name}
                         className="h-full w-full object-contain p-3 transition duration-700 ease-out group-hover:scale-[1.045] sm:p-6"
                       />
-                      <span className="absolute left-3 top-3 bg-[#f4f1eb]/90 px-2.5 py-1.5 text-[8px] font-bold uppercase tracking-[0.15em] text-[#2a2324] backdrop-blur sm:left-4 sm:top-4 sm:text-[10px]">
-                        New · 0{index + 1}
-                      </span>
+                      {newDropCountdown ? (
+                        <span className={`absolute left-3 top-3 inline-flex items-center gap-1 px-2 py-1.5 text-[8px] font-extrabold uppercase tracking-[0.15em] text-white shadow-[0_6px_18px_rgba(249,115,22,0.35)] sm:left-4 sm:top-4 sm:gap-1.5 sm:px-2.5 sm:text-[10px] ${fireGradientClassName}`}>
+                          <FlickerFlame className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          Hot · Drop 01
+                        </span>
+                      ) : (
+                        <span className="absolute left-3 top-3 bg-[#f4f1eb]/90 px-2.5 py-1.5 text-[8px] font-bold uppercase tracking-[0.15em] text-[#2a2324] backdrop-blur sm:left-4 sm:top-4 sm:text-[10px]">
+                          New · 0{index + 1}
+                        </span>
+                      )}
                       <span className="absolute bottom-0 left-0 bg-brand px-3 py-2 text-[8px] font-bold uppercase tracking-[0.14em] text-white sm:px-4 sm:text-[10px]">
                         Limited order
                       </span>

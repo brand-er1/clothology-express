@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { NewDropEventBanner, useNewDropCountdown } from "@/components/funding/NewDropPromo";
+import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown } from "@/components/funding/NewDropPromo";
 
 const statusLabel: Record<FundingStatus, string> = {
   pending: "승인 대기",
@@ -202,14 +202,9 @@ const Fundings = () => {
                   />
                   <WatermarkOverlay />
                   <div className="absolute left-5 top-5 flex items-stretch shadow-[0_10px_30px_rgba(116,27,43,0.35)] sm:left-8 sm:top-8">
-                    <span className="flex items-center gap-2 bg-brand px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm">
-                      {newDropCountdown && (
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                        </span>
-                      )}
-                      New drop 01
+                    <span className={`flex items-center gap-2 px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm ${newDropCountdown ? fireGradientClassName : "bg-brand"}`}>
+                      {newDropCountdown && <FlickerFlame className="h-4 w-4 sm:h-5 sm:w-5" />}
+                      {newDropCountdown ? "Hot · New drop 01" : "New drop 01"}
                     </span>
                     {newDropCountdown && (
                       <span className="flex items-center bg-white px-3 text-[11px] font-extrabold tracking-[0.12em] text-brand sm:text-sm">

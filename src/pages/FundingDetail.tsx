@@ -22,6 +22,7 @@ import { trackSiteEvent } from "@/lib/site-analytics";
 import type { Funding, ShippingDetails } from "@/types/funding";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
+import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -49,7 +50,8 @@ const getCustomerDescription = (funding: Funding) => {
     ? funding.color_options.join(", ")
     : funding.color || "시그니처";
   const colorCopy = colors === "기본 색상" ? "베이직 컬러" : `${colors} 컬러`;
-  return `${funding.material} 소재와 ${colorCopy}로 완성한 ${funding.cloth_type}입니다. 선택받은 수량만큼 제작하는 BRAND-ER 리미티드 컬렉션으로 만나보세요.`;
+  const brandName = funding.brand?.brand_name || "이 제작자";
+  return `${funding.material} 소재와 ${colorCopy}로 완성한 ${brandName}의 ${funding.cloth_type}입니다. BRAND-ER 플랫폼에서 선택받은 수량만큼 제작합니다.`;
 };
 
 const FundingDetail = () => {
@@ -272,11 +274,15 @@ const FundingDetail = () => {
           </section>
 
           <aside className="min-w-0 lg:sticky lg:top-28" data-mascot-safezone>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">BRAND-ER / {funding.cloth_type}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">{funding.brand?.brand_name || "제작자 정보 확인 중"} / {funding.cloth_type}</p>
             <h1 className="mt-3 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:mt-4 sm:text-5xl xl:text-6xl">
               {funding.product_name}
             </h1>
             <p className="mt-5 text-sm leading-7 text-stone-600">{customerDescription}</p>
+            <div className="mt-6 border-y border-black/10 py-4">
+              <BrandIdentity brand={funding.brand} />
+              {funding.brand?.short_description && <p className="mt-3 pl-[60px] text-xs leading-5 text-stone-500">{funding.brand.short_description}</p>}
+            </div>
             <p className="mt-7 text-2xl font-bold tracking-tight" data-tutorial="funding-detail-price">
               {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
             </p>

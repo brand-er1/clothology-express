@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Funding } from "@/types/funding";
+import type { AdminBrandSummary } from "@/types/brand";
 import { CircleAlert, ExternalLink, Loader2, PackageCheck, ShieldAlert, ShieldCheck } from "lucide-react";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 
@@ -24,17 +26,20 @@ type Props = {
   funding: Funding | null;
   open: boolean;
   saving: boolean;
+  brands: AdminBrandSummary[];
   onOpenChange: (open: boolean) => void;
   onReview: (
     status: "approved" | "rejected",
     comment: string,
     reviewValues: Pick<Funding, "moq" | "price">,
   ) => Promise<void>;
+  onAssignBrand: (fundingId: string, brandId: string) => Promise<void>;
 };
-export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onReview }: Props) => {
+export const FundingReviewDialog = ({ funding, brands, open, saving, onOpenChange, onReview, onAssignBrand }: Props) => {
   const [comment, setComment] = useState("");
   const [moq, setMoq] = useState("20");
   const [price, setPrice] = useState("");
+  const [selectedBrandId, setSelectedBrandId] = useState("");
   const screening = funding?.trademark_screening || null;
   const minimumOrderQuantity = funding
     ? getMinimumOrderQuantity(funding.cloth_type, funding.material)
@@ -46,6 +51,7 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
       String(Math.max(funding?.moq || 20, minimumOrderQuantity)),
     );
     setPrice(funding?.price == null ? "" : String(funding.price));
+    setSelectedBrandId(funding?.brand_id || "");
   }, [funding, minimumOrderQuantity]);
 
   const parsedMoq = Number(moq);
@@ -66,6 +72,7 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
         funding.trademark_screening_required && screening?.decision === "blocked"
           ? "상표 고위험 차단 건은 승인할 수 없습니다."
           : null,
+        !funding.brand_id ? "실제 제작자/브랜드를 지정해야 승인할 수 있습니다." : null,
       ].filter((issue): issue is string => Boolean(issue))
     : ["펀딩 정보를 불러오지 못했습니다."];
 
@@ -116,6 +123,22 @@ export const FundingReviewDialog = ({ funding, open, saving, onOpenChange, onRev
                 </dl>
                 <Button asChild variant="outline" className="mt-4 w-full">
                   <Link to={`/fundings/${funding.id}`} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" /> 펀딩 페이지 미리보기</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-brand/20 bg-brand/5 p-4">
+              <Label htmlFor="funding-brand">제작자/브랜드 지정</Label>
+              <p className="mt-1 text-xs leading-5 text-gray-500">브랜드를 선택하면 해당 브랜드 소유자가 실제 펀딩 제작자로 함께 지정됩니다.</p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Select value={selectedBrandId} onValueChange={setSelectedBrandId}>
+                  <SelectTrigger id="funding-brand" className="h-11 min-w-0 flex-1 bg-white"><SelectValue placeholder="브랜드 검색·선택" /></SelectTrigger>
+                  <SelectContent>
+                    {brands.map((brand) => <SelectItem key={brand.id} value={brand.id}>{brand.brand_name} · {brand.creator_profile?.display_name || "제작자"}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" disabled={saving || !funding || !selectedBrandId || selectedBrandId === funding.brand_id}
+                  onClick={() => funding && void onAssignBrand(funding.id, selectedBrandId)} className="h-11 bg-white">
+                  연결 저장
                 </Button>
               </div>
             </div>

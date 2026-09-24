@@ -20,6 +20,7 @@ const EMPTY_OVERVIEW: AdminFundingOverview = {
 };
 
 const statusBadge = (status: Funding["status"]) => {
+  if (status === "draft") return <Badge variant="secondary">준비 중</Badge>;
   if (status === "approved") return <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />승인됨</Badge>;
   if (status === "rejected") return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />거절됨</Badge>;
   if (status === "closed") return <Badge variant="secondary">종료</Badge>;
@@ -76,6 +77,7 @@ export const FundingList = ({ fundings, onReview }: { fundings: Funding[]; onRev
             <TableHeader>
               <TableRow>
                 <TableHead>디자인</TableHead>
+                <TableHead>제작 브랜드</TableHead>
                 <TableHead>상품명</TableHead>
                 <TableHead>MOQ</TableHead>
                 <TableHead>상표검수</TableHead>
@@ -91,6 +93,9 @@ export const FundingList = ({ fundings, onReview }: { fundings: Funding[]; onRev
                     <div className="h-14 w-14 overflow-hidden rounded-lg bg-gray-100">
                       <img src={funding.image_url} alt="" className="h-full w-full object-contain" />
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {funding.brand ? <><p className="font-semibold">{funding.brand.brand_name}</p><p className="text-xs text-gray-500">by {funding.brand.creator_profile?.display_name || "제작자"}</p></> : <Badge variant="destructive">미지정</Badge>}
                   </TableCell>
                   <TableCell>
                     <p className="max-w-64 truncate font-medium">{funding.product_name}</p>

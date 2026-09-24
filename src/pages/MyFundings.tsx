@@ -55,6 +55,7 @@ const paymentBadgeClass: Record<FundingPaymentStatus, string> = {
 };
 
 const fundingStatusLabel: Record<Funding["status"], string> = {
+  draft: "준비 중",
   pending: "승인 대기",
   approved: "펀딩 진행 중",
   rejected: "수정 필요",
@@ -62,6 +63,7 @@ const fundingStatusLabel: Record<Funding["status"], string> = {
 };
 
 type ParticipationFilter = "all" | "paid" | "planned";
+type CreatedFundingFilter = "all" | "preparing" | "pending" | "approved" | "closed";
 
 const MyFundings = () => {
   const [searchParams] = useSearchParams();
@@ -72,6 +74,7 @@ const MyFundings = () => {
   const [paidItems, setPaidItems] = useState<MyFundingParticipation[]>([]);
   const [plannedItems, setPlannedItems] = useState<MyFundingPaymentIntent[]>([]);
   const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>("all");
+  const [createdFilter, setCreatedFilter] = useState<CreatedFundingFilter>("all");
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MyFundingParticipation | null>(null);
@@ -120,6 +123,11 @@ const MyFundings = () => {
     .filter((item) => item.payment_status === "paid" && item.status !== "cancelled")
     .reduce((sum, item) => sum + item.total_amount, 0);
   const plannedAmount = plannedItems.reduce((sum, item) => sum + item.total_amount, 0);
+  const visibleCreatedFundings = createdFundings.filter((funding) => {
+    if (createdFilter === "all") return true;
+    if (createdFilter === "preparing") return funding.status === "draft" || funding.status === "rejected";
+    return funding.status === createdFilter;
+  });
 
   const cancelParticipation = async () => {
     if (!selectedItem) return;
@@ -217,11 +225,27 @@ const MyFundings = () => {
                 <SummaryCard icon={TrendingUp} label="평균 펀딩 달성률" value={`${sellerTotals.avg_funding_rate}%`} />
               </div>
             )}
+            {createdFundings.length > 0 && (
+              <div className="mt-6 flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {([
+                  ["all", "전체"],
+                  ["preparing", "준비 중"],
+                  ["pending", "승인 대기"],
+                  ["approved", "진행 중"],
+                  ["closed", "종료"],
+                ] as const).map(([value, label]) => (
+                  <Button key={value} type="button" size="sm" variant={createdFilter === value ? "default" : "outline"}
+                    onClick={() => setCreatedFilter(value)} className={`shrink-0 rounded-full ${createdFilter === value ? "bg-brand hover:bg-brand-dark" : "bg-white"}`}>
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            )}
             {createdFundings.length === 0 ? (
               <EmptyState title="아직 만든 펀딩이 없습니다" description="나만의 디자인으로 첫 펀딩을 만들어보세요." action="컬렉션 시작하기" to="/customize" />
             ) : (
               <div className="mt-6 grid gap-5 md:grid-cols-2">
-                {createdFundings.map((funding) => {
+                {visibleCreatedFundings.map((funding) => {
                   const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
                   const dashboardRow = sellerDashboard.get(funding.id);
                   return (
@@ -261,6 +285,9 @@ const MyFundings = () => {
                     </article>
                   );
                 })}
+                {visibleCreatedFundings.length === 0 && (
+                  <div className="col-span-full rounded-3xl border bg-white py-14 text-center text-sm text-gray-500">해당 상태의 펀딩이 없습니다.</div>
+                )}
               </div>
             )}
           </TabsContent>

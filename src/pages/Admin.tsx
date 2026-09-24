@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import {
   BarChart3,
+  Building2,
   Boxes,
   FileImage,
   FlaskConical,
@@ -39,12 +40,16 @@ import { fetchAllPortfolioProjectsForAdmin } from "@/services/portfolioProjects"
 import type { PortfolioProject } from "@/types/portfolio";
 import { CommunityAdminPanel } from "@/components/admin/CommunityAdminPanel";
 import { fetchAdminCommunityStats } from "@/services/community";
+import { BrandsAdminPanel } from "@/components/admin/BrandsAdminPanel";
+import { assignFundingBrand, fetchAdminBrands } from "@/services/brand";
+import type { AdminBrandSummary } from "@/types/brand";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
 const sectionMeta = {
   dashboard: { label: "대시보드", description: "전체 운영 현황을 빠르게 확인합니다.", icon: BarChart3 },
   customers: { label: "고객 관리", description: "회원 정보와 방문 활동을 확인합니다.", icon: Users },
+  brands: { label: "브랜드 관리", description: "제작자 계정, 브랜드 상태와 펀딩 연결 현황을 확인합니다.", icon: Building2 },
   images: { label: "이미지 생성", description: "고객이 생성한 AI 의류 이미지를 관리합니다.", icon: Image },
   closet: { label: "브랜더 옷장", description: "고객이 옷장에서 만들고 수정하고 입혀본 모든 활동을 확인합니다.", icon: Shirt },
   orders: { label: "제작 의뢰", description: "바로 제작 요청을 검토하고 상태를 변경합니다.", icon: PackageCheck },
@@ -79,6 +84,7 @@ const Admin = () => {
   const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>([]);
   const [isLoadingPortfolioProjects, setIsLoadingPortfolioProjects] = useState(true);
   const [communityPendingReports, setCommunityPendingReports] = useState(0);
+  const [brands, setBrands] = useState<AdminBrandSummary[]>([]);
 
   const section = useMemo<AdminSection>(() => {
     const value = location.pathname.split("/").filter(Boolean)[1] as AdminSection | undefined;
@@ -102,6 +108,7 @@ const Admin = () => {
     void loadClosetActivities();
     void loadPortfolioProjects();
     void loadCommunitySummary();
+    void loadBrands();
   }, [isAdmin]);
 
   const loadCommunitySummary = async () => {
@@ -110,6 +117,14 @@ const Admin = () => {
       setCommunityPendingReports(stats.pendingReports);
     } catch (error) {
       console.error("Error loading community summary:", error);
+    }
+  };
+
+  const loadBrands = async () => {
+    try { setBrands(await fetchAdminBrands()); }
+    catch (error) {
+      console.error("Error loading brands:", error);
+      toast({ title: "브랜드 목록을 불러오지 못했습니다", variant: "destructive" });
     }
   };
 
@@ -229,6 +244,21 @@ const Admin = () => {
     } finally { setIsSaving(false); }
   };
 
+  const handleAssignFundingBrand = async (fundingId: string, brandId: string) => {
+    setIsSaving(true);
+    try {
+      await assignFundingBrand(fundingId, brandId);
+      const refreshed = await fetchAllFundings();
+      setFundings(refreshed);
+      setSelectedFunding(refreshed.find((item) => item.id === fundingId) || null);
+      await loadBrands();
+      toast({ title: "펀딩 제작자와 브랜드를 연결했습니다" });
+    } catch (error) {
+      toast({ title: "브랜드를 연결하지 못했습니다", description: getFundingErrorMessage(error), variant: "destructive" });
+      throw error;
+    } finally { setIsSaving(false); }
+  };
+
   const handleSaveSystemPrompt = async (newPrompt: string) => {
     try {
       setIsSaving(true);
@@ -264,6 +294,7 @@ const Admin = () => {
   const counts: Record<AdminSection, number | null> = {
     dashboard: null,
     customers: null,
+    brands: brands.length,
     images: generatedImages.length,
     closet: closetActivities.length,
     orders: orders.filter((order) => order.status === "pending").length,
@@ -276,6 +307,7 @@ const Admin = () => {
 
   const dashboardCards = [
     { section: "customers" as const, label: "고객 관리", value: "회원·방문", icon: Users },
+    { section: "brands" as const, label: "등록 브랜드", value: brands.length.toLocaleString(), icon: Building2 },
     { section: "images" as const, label: "전체 이미지 생성", value: generatedImages.length.toLocaleString(), icon: FileImage },
     { section: "closet" as const, label: "브랜더 옷장 활동", value: closetActivities.length.toLocaleString(), icon: Shirt },
     { section: "orders" as const, label: "신규 제작 의뢰", value: counts.orders?.toLocaleString() || "0", icon: PackageCheck },
@@ -329,6 +361,7 @@ const Admin = () => {
               </div>
             )}
             {section === "customers" && <CustomerManagement />}
+            {section === "brands" && <BrandsAdminPanel brands={brands} />}
             {section === "images" && <GeneratedImageList images={generatedImages} isLoading={isLoadingGeneratedImages} />}
             {section === "closet" && <ClosetActivityList activities={closetActivities} isLoading={isLoadingClosetActivities} />}
             {section === "orders" && <OrderList orders={orders} onReviewOrder={(order) => { setSelectedOrder(order); setIsReviewDialogOpen(true); }} />}
@@ -348,7 +381,7 @@ const Admin = () => {
       </main>
 
       <OrderReviewDialog order={selectedOrder} isOpen={isReviewDialogOpen} isSaving={isSaving} onOpenChange={setIsReviewDialogOpen} onUpdateStatus={handleUpdateOrderStatus} />
-      <FundingReviewDialog funding={selectedFunding} open={isFundingReviewOpen} saving={isSaving} onOpenChange={setIsFundingReviewOpen} onReview={handleReviewFunding} />
+      <FundingReviewDialog funding={selectedFunding} brands={brands} open={isFundingReviewOpen} saving={isSaving} onOpenChange={setIsFundingReviewOpen} onReview={handleReviewFunding} onAssignBrand={handleAssignFundingBrand} />
     </div>
   );
 };

@@ -82,21 +82,9 @@ export const SignUpForm = ({
         </div>
       </div>
       {formData.accountType === "seller" && (
-        <div className="space-y-2">
-          <Label htmlFor="brandName">브랜드명</Label>
-          <Input
-            id="brandName"
-            name="brandName"
-            type="text"
-            value={formData.brandName}
-            onChange={handleChange}
-            placeholder="예: BRAND-ER STUDIO"
-            maxLength={40}
-            required
-            className="h-12 rounded-xl bg-[#fbfaf8]"
-          />
-          <p className="text-xs leading-5 text-stone-500">펀딩과 프로필에 표시할 이름이며, 상표권 보유 인증을 의미하지는 않습니다.</p>
-        </div>
+        <p className="rounded-xl bg-brand/5 p-4 text-xs leading-5 text-stone-600">
+          가입 후 마이페이지에서 제작자 프로필과 중복되지 않는 브랜드명을 등록할 수 있습니다.
+        </p>
       )}
       <div className="space-y-2">
         <Label htmlFor="email">이메일</Label>

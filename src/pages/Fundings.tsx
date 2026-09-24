@@ -9,9 +9,11 @@ import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
+import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
+import { BrandIdentity } from "@/components/brand/BrandIdentity";
 
 const statusLabel: Record<FundingStatus, string> = {
+  draft: "준비 중",
   pending: "승인 대기",
   approved: "판매 중",
   rejected: "수정 필요",
@@ -36,7 +38,7 @@ const getCollectionFilter = (funding: Funding): CollectionFilter => {
   return "TOP";
 };
 
-const getCustomerCopy = (funding: Funding, brand = "BRAND-ER") => {
+const getCustomerCopy = (funding: Funding, brand: string) => {
   const description = funding.description?.trim();
   if (description && !description.includes("디자인 특징:") && !description.includes("목표 인원이")) {
     return description;
@@ -77,7 +79,7 @@ const FundingCards = ({
         const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
         const remaining = Math.max(0, funding.moq - funding.current_orders);
         const isDropItem = newDropIds.has(funding.id);
-        const brand = isDropItem ? NEW_DROP_BRAND : "BRAND-ER";
+        const brand = funding.brand?.brand_name || "제작자 정보 확인 중";
 
         return (
           <Link
@@ -119,9 +121,8 @@ const FundingCards = ({
               <div className="pt-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand sm:text-xs">
-                      {brand} · {funding.cloth_type}
-                    </p>
+                    <BrandIdentity brand={funding.brand} compact linked={false} />
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-brand sm:text-xs">{funding.cloth_type}</p>
                     <h3 className="mt-1.5 truncate text-sm font-semibold text-[#1f191a] sm:text-base">
                       {funding.product_name}
                     </h3>
@@ -239,7 +240,7 @@ const Fundings = () => {
                   </div>
                   <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4 bg-[#f3f1ed]/92 p-4 backdrop-blur-md sm:inset-x-8 sm:bottom-8 sm:p-5">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">Featured collection</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">{featured.brand?.brand_name || "제작자 정보 확인 중"}</p>
                       <p className="mt-1 truncate text-base font-bold sm:text-lg">{featured.product_name}</p>
                     </div>
                     <p className="shrink-0 text-sm font-bold sm:text-base">

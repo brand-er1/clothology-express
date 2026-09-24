@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import {
   fetchFunding,
   resolveDefaultFabricUnitCost,
+  submitFundingForReview,
   updateFunding,
 } from "@/services/funding";
 import { analyzeProductionEstimate } from "@/services/productionEstimate";
@@ -37,6 +38,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { BrandIdentity } from "@/components/brand/BrandIdentity";
 
 const formatWon = (amount: number) =>
   `${Math.round(amount).toLocaleString("ko-KR")}원`;
@@ -125,7 +127,7 @@ const FundingEditor = () => {
     load();
   }, [id, navigate]);
 
-  const handleSave = async () => {
+  const handleSave = async (submitForReview = false) => {
     if (!funding || !id) return;
     if (!funding.product_name.trim()) {
       toast({ title: "상품명을 입력해주세요", variant: "destructive" });
@@ -154,7 +156,7 @@ const FundingEditor = () => {
     setSaving(true);
     try {
       const wasApproved = funding.status === "approved" || funding.status === "closed";
-      const updated = await updateFunding(id, {
+      let updated = await updateFunding(id, {
         product_name: funding.product_name.trim(),
         description: funding.description,
         cloth_type: funding.cloth_type,
@@ -170,10 +172,19 @@ const FundingEditor = () => {
         size_options: funding.size_options,
         measurements: funding.measurements,
       });
+      if (submitForReview && (updated.status === "draft" || updated.status === "rejected")) {
+        updated = await submitFundingForReview(id);
+      }
       setFunding(updated);
       toast({
-        title: "펀딩 페이지가 저장되었습니다",
-        description: wasApproved ? "상품명과 상세 설명이 공개 페이지에 반영됐습니다." : "현재 관리자 승인 대기 상태입니다.",
+        title: submitForReview ? "관리자 승인을 요청했습니다" : "펀딩 페이지를 저장했습니다",
+        description: wasApproved
+          ? "상품명과 상세 설명이 공개 페이지에 반영됐습니다."
+          : submitForReview
+            ? "검토가 끝나면 펀딩이 공개됩니다."
+            : updated.status === "draft"
+              ? "준비 중 상태로 안전하게 저장했습니다."
+              : "변경사항을 저장했습니다.",
       });
     } catch (error) {
       console.error(error);
@@ -199,7 +210,7 @@ const FundingEditor = () => {
   }
 
   const canEditContent = true;
-  const canEditSales = funding.status === "pending" || funding.status === "rejected";
+  const canEditSales = funding.status === "draft" || funding.status === "pending" || funding.status === "rejected";
   const colors = funding.color_options?.length ? funding.color_options : [funding.color || "기본 색상"];
   const sizes = funding.size_options?.length ? funding.size_options : [funding.size || "FREE"];
   const targetQuantity = Math.max(0, funding.moq || 0);
@@ -301,7 +312,7 @@ const FundingEditor = () => {
           <div>
             <div className="mb-3 flex items-center gap-2">
               <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">
-                {funding.status === "pending" ? "관리자 승인 대기" : funding.status === "rejected" ? "수정 필요" : "승인 완료"}
+                {funding.status === "draft" ? "준비 중" : funding.status === "pending" ? "관리자 승인 대기" : funding.status === "rejected" ? "수정 필요" : "승인 완료"}
               </Badge>
               <span className="text-sm text-gray-500">MOQ 최소 {minimumOrderQuantity}장 적용</span>
             </div>
@@ -349,6 +360,15 @@ const FundingEditor = () => {
             <strong>관리자 수정 요청:</strong> {funding.admin_comment}
           </div>
         )}
+
+        <Card className="mb-6 rounded-3xl border-brand/15 bg-white">
+          <CardHeader className="pb-3"><CardTitle className="text-lg">제작자 정보</CardTitle></CardHeader>
+          <CardContent className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1"><BrandIdentity brand={funding.brand} linked={Boolean(funding.brand)} /></div>
+            <Button asChild variant="outline" className="w-full rounded-full sm:w-auto"><Link to="/my-brand">프로필 수정</Link></Button>
+          </CardContent>
+          {!funding.brand && <CardContent className="pt-0 text-xs leading-5 text-amber-700">이 기존 펀딩에는 브랜드가 아직 연결되지 않았습니다. 내 브랜드를 등록한 뒤 관리자에게 제작자/브랜드 지정을 요청해주세요.</CardContent>}
+        </Card>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <Card className="overflow-hidden rounded-3xl" data-tutorial="funding-image">
@@ -638,15 +658,34 @@ const FundingEditor = () => {
               </div>
 
               {canEditContent && (
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="h-12 w-full rounded-full bg-brand hover:bg-brand-dark"
-                  data-tutorial="funding-submit"
-                >
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                  {canEditSales ? "저장하고 승인 대기" : "공개 페이지 내용 저장"}
-                </Button>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(funding.status === "draft" || funding.status === "rejected") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void handleSave(false)}
+                      disabled={saving}
+                      className="h-12 w-full rounded-full"
+                    >
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                      준비 중으로 저장
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    onClick={() => void handleSave(funding.status === "draft" || funding.status === "rejected")}
+                    disabled={saving || (funding.status === "draft" && !funding.brand_id)}
+                    className={`h-12 w-full rounded-full bg-brand hover:bg-brand-dark ${(funding.status === "pending" || funding.status === "approved" || funding.status === "closed") ? "sm:col-span-2" : ""}`}
+                    data-tutorial="funding-submit"
+                  >
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                    {funding.status === "draft" || funding.status === "rejected"
+                      ? "관리자 승인 요청"
+                      : funding.status === "pending"
+                        ? "승인 대기 내용 저장"
+                        : "공개 페이지 내용 저장"}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>

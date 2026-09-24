@@ -1,6 +1,7 @@
 import type { TrademarkScreening } from "@/types/trademark";
+import type { BrandWithCreator } from "@/types/brand";
 
-export type FundingStatus = "pending" | "approved" | "rejected" | "closed";
+export type FundingStatus = "draft" | "pending" | "approved" | "rejected" | "closed";
 export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
 export type FundingPaymentStatus = "unpaid" | "ready" | "paid" | "cancelled" | "failed";
 export type FundingPaymentProvider = "none" | "kakaopay" | "mock";
@@ -60,6 +61,8 @@ export type ShippingDetails = {
 export type Funding = {
   id: string;
   creator_id: string;
+  brand_id: string | null;
+  brand?: BrandWithCreator | null;
   product_name: string;
   cloth_type: string;
   material: string;

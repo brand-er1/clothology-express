@@ -19,6 +19,11 @@ import type {
 import { getAppUrl } from "@/utils/appUrl";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 
+const FUNDING_WITH_BRAND_SELECT = `
+  *,
+  brand:brands(*, creator_profile:creator_profiles(*))
+`;
+
 const requireUser = async () => {
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user;
@@ -60,6 +65,16 @@ const throwFundingError = (error: unknown, fallback?: string): never => {
 
 export const createFundingDraft = async (input: CreateFundingInput): Promise<Funding> => {
   const user = await requireUser();
+  const { data: brand, error: brandError } = await supabase
+    .from("brands")
+    .select("id")
+    .eq("owner_user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (brandError) throw brandError;
+  if (!brand) {
+    throw new Error("펀딩을 만들기 전에 마이페이지에서 제작자 프로필과 내 브랜드를 등록해주세요.");
+  }
   const minimumOrderQuantity = getMinimumOrderQuantity(
     input.clothType,
     input.material,
@@ -68,6 +83,7 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
     .from("fundings")
     .insert({
       creator_id: user.id,
+      brand_id: brand.id,
       product_name: input.productName,
       cloth_type: input.clothType,
       material: input.material,
@@ -95,9 +111,9 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       moq: minimumOrderQuantity,
       current_orders: 0,
       funding_days: 30,
-      status: "pending",
+      status: "draft",
     })
-    .select("*")
+    .select(FUNDING_WITH_BRAND_SELECT)
     .single();
 
   if (error) throw error;
@@ -112,7 +128,7 @@ export const fetchFunding = async (id: string): Promise<Funding> => {
 
   const { data, error } = await supabase
     .from("fundings")
-    .select("*")
+    .select(FUNDING_WITH_BRAND_SELECT)
     .eq("id", id)
     .single();
 
@@ -123,7 +139,7 @@ export const fetchFunding = async (id: string): Promise<Funding> => {
 export const fetchApprovedFundings = async (): Promise<Funding[]> => {
   const { data, error } = await supabase
     .from("fundings")
-    .select("*")
+    .select(FUNDING_WITH_BRAND_SELECT)
     .eq("status", "approved")
     .order("created_at", { ascending: false });
 
@@ -135,7 +151,7 @@ export const fetchMyFundings = async (): Promise<Funding[]> => {
   const user = await requireUser();
   const { data, error } = await supabase
     .from("fundings")
-    .select("*")
+    .select(FUNDING_WITH_BRAND_SELECT)
     .eq("creator_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -164,7 +180,7 @@ export const updateFunding = async (
   >
 ): Promise<Funding> => {
   await requireUser();
-  const { data, error } = await supabase.rpc("update_creator_funding", {
+  const { error } = await supabase.rpc("update_creator_funding", {
     p_funding_id: id,
     p_product_name: updates.product_name,
     p_description: updates.description,
@@ -184,13 +200,22 @@ export const updateFunding = async (
   });
 
   if (error) throw error;
-  return data as Funding;
+  return fetchFunding(id);
+};
+
+export const submitFundingForReview = async (id: string): Promise<Funding> => {
+  await requireUser();
+  const { error } = await supabase.rpc("submit_funding_for_review", {
+    p_funding_id: id,
+  });
+  if (error) throw error;
+  return fetchFunding(id);
 };
 
 export const fetchAllFundings = async (): Promise<Funding[]> => {
   const { data, error } = await supabase
     .from("fundings")
-    .select("*, trademark_screening:trademark_screenings(*)")
+    .select(`${FUNDING_WITH_BRAND_SELECT}, trademark_screening:trademark_screenings(*)`)
     .order("created_at", { ascending: false });
 
   if (error) throw error;

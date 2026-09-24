@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface EditableFieldsProps {
   username: string;
-  brandName: string;
   phoneNumber: string;
   height: string;
   weight: string;
@@ -16,7 +15,6 @@ interface EditableFieldsProps {
 
 export const EditableFields = ({
   username,
-  brandName,
   phoneNumber,
   height,
   weight,
@@ -26,19 +24,6 @@ export const EditableFields = ({
 }: EditableFieldsProps) => {
   return (
     <>
-      <div className="space-y-2">
-        <Label htmlFor="brandName">브랜드명</Label>
-        <Input
-          id="brandName"
-          name="brandName"
-          value={brandName}
-          onChange={onChange}
-          placeholder="고객에게 보여줄 브랜드 이름"
-          className="h-12 rounded-xl bg-[#fbfaf8]"
-        />
-        <p className="text-xs leading-5 text-stone-500">브랜드를 운영하지 않는 경우 비워두셔도 됩니다.</p>
-      </div>
-
       <div className="space-y-2">
         <Label htmlFor="username">공개 닉네임</Label>
         <Input

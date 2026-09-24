@@ -29,6 +29,7 @@ import { recalculateEstimateQuantity } from "@/lib/production-estimate-quantity"
 import { trackSiteEvent } from "@/lib/site-analytics";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
+import { fetchMyBrand } from "@/services/brand";
 import {
   calculateEstimateByCountry,
   getProductionCountryMoq,
@@ -502,6 +503,22 @@ export const useCustomizeForm = () => {
   const handleCreateFunding = async () => {
     try {
       setIsLoading(true);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.user) {
+        toast({ title: "로그인이 필요합니다", description: "로그인한 뒤 펀딩을 만들 수 있습니다." });
+        navigate("/auth?returnTo=/customize");
+        return;
+      }
+      const creatorBrand = await fetchMyBrand();
+      if (!creatorBrand) {
+        toast({
+          title: "내 브랜드를 먼저 등록해주세요",
+          description: "제작자 프로필과 브랜드 정보가 펀딩에 자동으로 연결됩니다.",
+        });
+        navigate("/my-brand?returnTo=/customize");
+        return;
+      }
       
       if (!generatedImageUrls || generatedImageUrls.length === 0) {
         toast({
@@ -685,7 +702,7 @@ export const useCustomizeForm = () => {
       console.error("Error creating funding:", error);
       toast({
         title: "펀딩 생성 실패",
-        description: "펀딩 페이지를 만드는 중 오류가 발생했습니다.",
+        description: error instanceof Error ? error.message : "펀딩 페이지를 만드는 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     } finally {

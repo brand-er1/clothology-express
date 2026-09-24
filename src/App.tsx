@@ -45,6 +45,8 @@ import CommunityCreatePost from './pages/community/CommunityCreatePost';
 import CommunityPostDetail from './pages/community/CommunityPostDetail';
 import CommunityProfile from './pages/community/CommunityProfile';
 import CommunityNotifications from './pages/community/CommunityNotifications';
+import MyBrand from './pages/MyBrand';
+import BrandProfile from './pages/BrandProfile';
 
 declare global {
   interface Window { Kakao?: { init: (key: string) => void; isInitialized: () => boolean; }; }
@@ -111,6 +113,8 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+            <Route path="/my-brand" element={<AuthGuard requiredAccountType="seller"><MyBrand /></AuthGuard>} />
+            <Route path="/brands/:brandId" element={<BrandProfile />} />
             <Route path="/customize" element={<Customize />} />
             <Route path="/design-quote" element={<DesignQuote />} />
             <Route path="/estimate" element={<DesignQuote />} />

@@ -101,7 +101,7 @@ export const saveMyBrand = async (input: BrandProfileInput): Promise<BrandWithCr
   return saved;
 };
 
-const compressImage = async (file: File): Promise<Blob> => {
+export const compressImage = async (file: File): Promise<Blob> => {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
     throw new Error("JPG, JPEG, PNG, WEBP 이미지만 업로드할 수 있습니다.");
   }

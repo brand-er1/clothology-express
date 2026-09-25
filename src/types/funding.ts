@@ -123,6 +123,8 @@ export type CreateFundingInput = {
   estimateDirectUnitMax?: number | null;
   estimateDevelopmentTotal?: number | null;
   trademarkScreeningId: string;
+  /** Optional planned price (set from the AI detail page); editable later in the funding editor. */
+  price?: number | null;
 };
 
 export type FundingParticipation = {

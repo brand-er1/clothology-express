@@ -73,6 +73,7 @@ const Customize = () => {
     handleBack,
     handleCreateFunding,
     handleCreateDirectRequest,
+    handleCreateDetailPage,
     // New properties for image modification
     imageModifying,
     modificationHistory,
@@ -301,6 +302,36 @@ const Customize = () => {
               />
             )}
 
+            {(currentStep === 4 || currentStep === 5) && generatedImageUrls && generatedImageUrls.length > 0 && (
+              <div className="mt-6 flex flex-col gap-3 border-t border-stone-200 px-1 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-0">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-bold text-stone-950">디자인이 마음에 드시나요?</p>
+                  <p className="mt-1 text-[13px] leading-5 text-stone-500">
+                    앞·뒷면 디자인으로 AI가 상세페이지 이미지와 문구를 만들어 펀딩용 상세페이지를 완성합니다.
+                  </p>
+                </div>
+                <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+                  {currentStep === 4 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleNext}
+                      disabled={isSubmitting}
+                      className="h-12 rounded-full border-stone-300 px-5 text-[14px] font-bold"
+                    >
+                      이미지 수정하기
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => void handleCreateDetailPage(userGender)}
+                    disabled={isSubmitting || imageModifying}
+                    className={`h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark ${currentStep === 5 ? "col-span-2" : ""}`}
+                  >
+                    {isSubmitting ? "준비 중..." : "✨ AI 상세페이지 만들기"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {currentStep === 6 && (
               <SizeStep
                 productionSizeSelection={productionSizeSelection}
@@ -339,9 +370,17 @@ const Customize = () => {
                     가상 마네킹에 입혀보기
                   </Button>
                   <Button
-                    onClick={() => void handleCreateFunding()}
+                    onClick={() => void handleCreateDetailPage(userGender)}
                     disabled={isSubmitting}
                     className="h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark sm:px-7 sm:text-sm"
+                  >
+                    {isSubmitting ? "처리 중..." : "✨ AI 상세페이지 만들기"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleCreateFunding()}
+                    disabled={isSubmitting}
+                    className="h-12 rounded-full border-brand px-5 text-[14px] font-bold text-brand hover:bg-brand/5 hover:text-brand sm:px-7 sm:text-sm"
                   >
                     {isSubmitting
                       ? "처리 중..."
@@ -362,7 +401,7 @@ const Customize = () => {
                   disabled={isSubmitting}
                   className="h-12 min-w-0 flex-1 rounded-full bg-brand px-4 text-[15px] font-bold hover:bg-brand-dark sm:flex-none sm:px-7 sm:text-sm"
                 >
-                  {currentStep === 4 ? "이 디자인 편집하기" : "다음 단계"}
+                  {currentStep === 4 ? "이미지 수정하기" : "다음 단계"}
                 </Button>
               )}
             </div>

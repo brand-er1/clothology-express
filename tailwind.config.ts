@@ -1,4 +1,5 @@
 
+import plugin from "tailwindcss/plugin";
 import type { Config } from "tailwindcss";
 
 export default {
@@ -117,5 +118,14 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // Container-width variants for the AI detail page renderer, so the same page lays out by
+    // the width it is rendered in (editor preview pane, 390px phone preview, funding page).
+    plugin(({ addVariant }) => {
+      addVariant("dp-sm", "@container detail-page (min-width: 560px)");
+      addVariant("dp-md", "@container detail-page (min-width: 768px)");
+      addVariant("dp-lg", "@container detail-page (min-width: 1024px)");
+    }),
+  ],
 } satisfies Config;

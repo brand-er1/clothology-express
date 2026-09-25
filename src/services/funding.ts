@@ -104,6 +104,7 @@ export const createFundingDraft = async (input: CreateFundingInput): Promise<Fun
       estimate_direct_unit_min: input.estimateDirectUnitMin ?? null,
       estimate_direct_unit_max: input.estimateDirectUnitMax ?? null,
       estimate_development_total: input.estimateDevelopmentTotal ?? null,
+      ...(typeof input.price === "number" && input.price >= 0 ? { price: input.price } : {}),
       fabric_unit_cost: resolveDefaultFabricUnitCost(
         input.material,
         input.clothType,

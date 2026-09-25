@@ -25,6 +25,9 @@ import type { Funding, ShippingDetails } from "@/types/funding";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
+import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer";
+import { fetchDetailPageForFunding } from "@/services/detailPage";
+import type { ProductDetailPage } from "@/types/detailPage";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -36,6 +39,7 @@ import {
   Scissors,
   ShieldCheck,
   Shirt,
+  Sparkles,
   SquarePen,
   Truck,
   Users,
@@ -71,6 +75,20 @@ const FundingDetail = () => {
   const stickyCtaRef = useMobileStickyCtaOffset();
   const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
   const latestDropId = useLatestDropFunding(approvedFundings)?.id ?? null;
+  // AI detail page linked to this funding. null → the existing product UI below (fallback).
+  const [detailPage, setDetailPage] = useState<ProductDetailPage | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setDetailPage(null);
+    void fetchDetailPageForFunding(id).then((page) => {
+      if (!cancelled) setDetailPage(page && page.document.sections.some((section) => section.visible) ? page : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -269,6 +287,9 @@ const FundingDetail = () => {
                   <Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-1.5 h-4 w-4" /> 상품 수정</Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="rounded-none bg-transparent">
+                  <Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-1.5 h-4 w-4" /> 상세페이지</Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="rounded-none bg-transparent">
                   <Link to={`/fundings/${funding.id}/manage`}><Users className="mr-1.5 h-4 w-4" /> 주문 관리</Link>
                 </Button>
               </>
@@ -292,7 +313,7 @@ const FundingDetail = () => {
             <h1 className="mt-3 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:mt-4 sm:text-5xl xl:text-6xl">
               {funding.product_name}
             </h1>
-            <p className="mt-5 text-sm leading-7 text-stone-600">{customerDescription}</p>
+            <p className="mt-5 text-sm leading-7 text-stone-600">{detailPage?.document.subtitle || customerDescription}</p>
             <div className="mt-6 border-y border-black/10 py-4">
               <BrandIdentity brand={funding.brand} />
               {funding.brand?.short_description && <p className="mt-3 pl-[60px] text-xs leading-5 text-stone-500">{funding.brand.short_description}</p>}
@@ -445,6 +466,7 @@ const FundingDetail = () => {
           </aside>
         </div>
 
+        {!detailPage && (
         <section className="mt-16 grid border-y border-black/10 sm:grid-cols-3">
           {[
             [Scissors, "국내 제작", "원단 컨택부터 봉제까지 브랜더가 관리"],
@@ -463,6 +485,7 @@ const FundingDetail = () => {
             );
           })}
         </section>
+        )}
 
         {(funding.sample_image_url || funding.sample_note) && (
           <section className="mt-16 grid overflow-hidden bg-[#e7e4df] md:grid-cols-2">
@@ -485,6 +508,30 @@ const FundingDetail = () => {
           </section>
         )}
 
+        {detailPage ? (
+          <div className="-mx-4 mt-16 sm:-mx-8 lg:-mx-12 xl:-mx-16">
+            <DetailPageRenderer
+              document={detailPage.document}
+              source={detailPage.source}
+              watermark
+              stats={{
+                targetQuantity: funding.moq,
+                currentQuantity: funding.current_orders,
+                price: funding.price,
+                endDate,
+                fundingDays: funding.funding_days,
+                sizeOptions,
+                measurements: funding.measurements,
+              }}
+            />
+            {!detailPage.document.sections.some((section) => section.type === "size" && section.visible) && (
+              <div id="size-guide" className="mx-4 mt-16 scroll-mt-24 sm:mx-8 lg:mx-12 xl:mx-16">
+                <FundingSizeGuide measurements={funding.measurements} sizeOptions={sizeOptions} />
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         <section className="mt-20 grid gap-8 border-t border-black/10 pt-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Product story</p>
@@ -530,6 +577,8 @@ const FundingDetail = () => {
             ))}
           </div>
         </section>
+        </>
+        )}
       </main>
 
       {/* Mobile order bar: sits directly above the bottom tab bar (which owns the safe-area inset),

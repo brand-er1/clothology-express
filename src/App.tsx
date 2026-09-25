@@ -47,6 +47,8 @@ import CommunityProfile from './pages/community/CommunityProfile';
 import CommunityNotifications from './pages/community/CommunityNotifications';
 import MyBrand from './pages/MyBrand';
 import BrandProfile from './pages/BrandProfile';
+import DetailPageStudio from './pages/DetailPageStudio';
+import FundingDetailPageLauncher from './pages/FundingDetailPageLauncher';
 
 declare global {
   interface Window { Kakao?: { init: (key: string) => void; isInitialized: () => boolean; }; }
@@ -128,6 +130,8 @@ function App() {
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
             <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />
+            <Route path="/fundings/:id/detail-page" element={<AuthGuard requiredAccountType="seller"><FundingDetailPageLauncher /></AuthGuard>} />
+            <Route path="/detail-pages/:pageId" element={<AuthGuard><DetailPageStudio /></AuthGuard>} />
             <Route path="/fundings/:id/manage" element={<AuthGuard requiredAccountType="seller"><FundingManager /></AuthGuard>} />
             <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
             <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />

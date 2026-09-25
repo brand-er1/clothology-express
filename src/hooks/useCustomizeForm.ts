@@ -17,8 +17,13 @@ import type {
 } from "@/types/customize";
 import {
   createFundingSizeMeasurements,
+  getProductionSizeGuide,
+  normalizeProductionGender,
   type ProductionSizeSelection,
 } from "@/lib/production-size-guide";
+import { buildDetailSourceFromDesign } from "@/lib/detail-page/source";
+import { createDetailPage, getDetailPageErrorMessage } from "@/services/detailPage";
+import { styleOptions, pocketOptions, seasonOptions } from "@/lib/customize-constants";
 import type {
   ProductionEstimateResult,
   UploadedArtworkAnalysis,
@@ -911,6 +916,119 @@ export const useCustomizeForm = () => {
     }
   };
 
+  // "✨ AI 상세페이지 만들기" — snapshots everything already chosen in this flow (image, type,
+  // fabric, color, fit, description, decorations, estimate, sizes, creator/brand) into a new
+  // product_detail_pages row and opens the detail page studio. The existing funding flow above is
+  // unchanged; the studio later creates the funding through the same services.
+  const handleCreateDetailPage = async (gender?: string) => {
+    try {
+      setIsLoading(true);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.user) {
+        toast({ title: "로그인이 필요합니다", description: "로그인한 뒤 상세페이지를 만들 수 있습니다." });
+        navigate("/auth?returnTo=/customize");
+        return;
+      }
+
+      if (!generatedImageUrls || generatedImageUrls.length === 0) {
+        toast({
+          title: "이미지 선택 필요",
+          description: "상세페이지를 만들기 전에 이미지를 생성해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const selectedIdx = selectedImageIndex >= 0 ? selectedImageIndex : 0;
+      const selectedImageUrl = currentModifiedImageUrl || generatedImageUrls[selectedIdx];
+      let finalImageUrl = currentModifiedImageUrl || storedImageUrl || selectedImageUrl;
+      let finalImagePath = imagePath;
+      try {
+        const imageResult = await storeSelectedImage(
+          selectedType,
+          selectedMaterial,
+          selectedDetail,
+          selectedImageUrl,
+          currentModifiedImageUrl || storedImageUrl,
+          imagePath,
+          generatedImageUrls,
+          storedImageUrls,
+          imagePaths,
+          selectedIdx,
+          generatedPrompt,
+          materials,
+          true,
+          modificationHistory,
+        );
+        if (imageResult) {
+          finalImageUrl = imageResult.storedImageUrl || finalImageUrl;
+          finalImagePath = imageResult.imagePath;
+        }
+      } catch (imageError) {
+        console.error("Error storing selected image for detail page:", imageError);
+      }
+      if (!finalImageUrl) throw new Error("상세페이지에 사용할 이미지 URL이 없습니다.");
+
+      const sizeSelection: ProductionSizeSelection = productionSizeSelection ?? (() => {
+        const normalizedGender = normalizeProductionGender(gender);
+        const guide = getProductionSizeGuide(normalizedGender, selectedType);
+        return {
+          gender: normalizedGender,
+          category: guide.category,
+          selectedSizes: guide.sizes.map((size) => size.label),
+          sizes: guide.sizes,
+        };
+      })();
+
+      const brand = await fetchMyBrand().catch(() => null);
+      const labelOf = <T extends { value: string; label: string }>(options: T[], value: string) =>
+        options.find((option) => option.value === value)?.label || "";
+      const source = buildDetailSourceFromDesign({
+        imageUrl: finalImageUrl,
+        imagePath: finalImagePath,
+        clothTypeId: selectedType,
+        clothType: clothTypes.find((type) => type.id === selectedType)?.name || selectedType,
+        materialId: selectedMaterial,
+        material: materials.find((material) => material.id === selectedMaterial)?.name || selectedMaterial,
+        colorId: selectedColor,
+        color: colorOptions.find((color) => color.value === selectedColor)?.label || selectedColor,
+        fitId: selectedFit,
+        fit: fitOptions.find((fit) => fit.value === selectedFit)?.label || selectedFit,
+        designDescription: selectedDetail,
+        aiPrompt: generatedPrompt,
+        styleOptions: [
+          labelOf(styleOptions, selectedStyle),
+          selectedPocket && selectedPocket !== "none" ? labelOf(pocketOptions, selectedPocket) : "",
+          labelOf(seasonOptions, selectedSeason),
+        ],
+        estimate: currentProductionEstimate
+          ? recalculateEstimateQuantity(currentProductionEstimate, directQuantity)
+          : null,
+        artworkAnalyses: currentArtworkAnalyses,
+        productionCountryLabel: productionCountryConfig[productionCountry]?.label ?? "",
+        targetQuantity: minimumOrderQuantity,
+        sizeOptions: sizeSelection.selectedSizes,
+        measurements: createFundingSizeMeasurements(sizeSelection),
+        trademarkScreeningId: currentArtworkScreeningId,
+        designId,
+        brand,
+      });
+
+      const pageId = await createDetailPage({ source, template: "minimal" });
+      navigate(`/detail-pages/${pageId}`);
+    } catch (error) {
+      console.error("Error creating detail page:", error);
+      toast({
+        title: "상세페이지를 만들지 못했어요",
+        description: getDetailPageErrorMessage(error, "잠시 후 다시 시도해주세요."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // "자동 견적 확인하기" — persists the latest selections onto the design row (self-healing if it
   // somehow doesn't exist yet) and hands off by designId, not by React state, so the estimate page
   // survives a refresh and always reflects what was actually chosen during design.
@@ -1055,6 +1173,7 @@ export const useCustomizeForm = () => {
     handleBack,
     handleCreateFunding,
     handleCreateDirectRequest,
+    handleCreateDetailPage,
     imageModifying,
     modificationHistory,
     currentModifiedImageUrl,

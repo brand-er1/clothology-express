@@ -63,3 +63,7 @@ verify_jwt = true
 verify_jwt = true
 [functions.get-fashion-trends]
 verify_jwt = false
+[functions.generate-detail-page]
+verify_jwt = true
+[functions.generate-detail-image]
+verify_jwt = true

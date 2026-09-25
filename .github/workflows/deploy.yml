@@ -56,6 +56,8 @@ jobs:
           supabase functions deploy kakaopay-cancel --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy creator-cancel-participation --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy delete-funding --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy generate-detail-page --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy generate-detail-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy get-fashion-trends --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
 
       - name: Allow GitHub Pages auth callback

@@ -265,9 +265,9 @@ begin
     raise exception '상세페이지를 저장할 권한이 없습니다.';
   end if;
 
-  select coalesce(array_agg((section->>'id')::uuid), '{}')
+  select coalesce(array_agg((elem->>'id')::uuid), '{}')
   into v_section_ids
-  from jsonb_array_elements(p_sections) section;
+  from jsonb_array_elements(p_sections) as elems(elem);
 
   delete from public.detail_page_sections
   where detail_page_id = p_page_id
@@ -277,14 +277,14 @@ begin
     id, detail_page_id, section_type, sort_order, is_visible, content, images
   )
   select
-    (section->>'id')::uuid,
+    (elem->>'id')::uuid,
     p_page_id,
-    section->>'section_type',
-    coalesce((section->>'sort_order')::integer, ordinality::integer),
-    coalesce((section->>'is_visible')::boolean, true),
-    coalesce(section->'content', '{}'::jsonb),
-    coalesce(section->'images', '[]'::jsonb)
-  from jsonb_array_elements(p_sections) with ordinality as rows(section, ordinality)
+    elem->>'section_type',
+    coalesce((elem->>'sort_order')::integer, (ord - 1)::integer),
+    coalesce((elem->>'is_visible')::boolean, true),
+    coalesce(elem->'content', '{}'::jsonb),
+    coalesce(elem->'images', '[]'::jsonb)
+  from jsonb_array_elements(p_sections) with ordinality as elems(elem, ord)
   on conflict (id) do update
   set section_type = excluded.section_type,
       sort_order = excluded.sort_order,

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
+import { buildOrderSheet, buildQuantitySheet, exportFileDate, type OrderExportRow } from "@/lib/order-export";
+import { downloadBlob, downloadXlsx, safeFileName } from "@/lib/xlsx";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -172,34 +174,53 @@ const FundingManager = () => {
     }
   };
 
+  const toExportRow = (item: FundingParticipation): OrderExportRow => ({
+    orderNumber: item.order_number,
+    orderedAt: item.created_at,
+    paidAt: item.payment_approved_at,
+    productName: funding?.product_name ?? null,
+    color: item.selected_color,
+    size: item.selected_size,
+    quantity: item.quantity,
+    unitPrice: item.unit_price,
+    totalAmount: item.total_amount,
+    paymentType: item.payment_type,
+    paymentProvider: item.payment_provider,
+    paymentStatus: item.payment_status,
+    orderStatus: item.status,
+    ordererName: item.orderer_name || item.participant_name,
+    ordererPhone: item.orderer_phone || item.phone_number,
+    ordererEmail: item.orderer_email,
+    recipientName: item.recipient_name,
+    recipientPhone: item.recipient_phone,
+    postalCode: item.postal_code,
+    address: item.shipping_address || item.address,
+    addressDetail: item.shipping_address_detail,
+    deliveryMessage: item.delivery_message,
+    productionStage: item.production_stage,
+    shippingStatus: item.shipping_status,
+    trackingNumber: item.tracking_number,
+  });
+
+  // 엑셀(.xlsx): [주문 목록(현재 필터)] + [컬러·사이즈별 생산 수량(전체 유효 주문)]
+  const downloadOrdersExcel = () => {
+    try {
+      downloadXlsx(`${safeFileName(funding?.product_name || "펀딩")}_참여자목록_${exportFileDate()}.xlsx`, [
+        buildOrderSheet(filteredParticipants.map(toExportRow), false),
+        buildQuantitySheet(participants.map(toExportRow), funding?.size_options ?? [], funding?.color_options ?? []),
+      ]);
+    } catch (error) {
+      toast({ title: "엑셀 파일을 만들지 못했습니다", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    }
+  };
+
   const downloadOrdersCsv = () => {
-    const headers = [
-      "주문번호", "주문자", "연락처", "상품", "컬러", "사이즈", "수량", "금액",
-      "수령인", "수령인 연락처", "우편번호", "주소", "상세주소", "배송메모",
-    ];
-    const rows = filteredParticipants.map((item) => [
-      item.order_number,
-      item.orderer_name || item.participant_name,
-      item.orderer_phone || item.phone_number,
-      funding?.product_name,
-      item.selected_color,
-      item.selected_size,
-      item.quantity,
-      item.total_amount,
-      item.recipient_name,
-      item.recipient_phone,
-      item.postal_code,
-      item.shipping_address || item.address,
-      item.shipping_address_detail,
-      item.delivery_message,
-    ]);
-    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${funding?.product_name || "펀딩"}_주문목록_${new Date().toISOString().slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    const sheet = buildOrderSheet(filteredParticipants.map(toExportRow), false);
+    const csv = sheet.rows.map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+    downloadBlob(
+      new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }),
+      `${safeFileName(funding?.product_name || "펀딩")}_참여자목록_${exportFileDate()}.csv`,
+    );
   };
 
   const changeStatus = async (participationId: string, status: FundingParticipationStatus) => {
@@ -526,21 +547,24 @@ const FundingManager = () => {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm" className="rounded-full" disabled={filteredParticipants.length === 0}>
-                      <Download className="mr-1.5 h-4 w-4" /> 주문 CSV 다운로드
+                      <Download className="mr-1.5 h-4 w-4" /> 엑셀 다운로드
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
                       <AlertDialogTitle>개인정보가 포함된 파일입니다</AlertDialogTitle>
                       <AlertDialogDescription>
-                        다운로드하는 CSV에는 주문자·수령인 이름, 연락처, 배송 주소 등 개인정보가 포함됩니다.
-                        생산·배송 업무 목적 외에는 사용하지 말고, 안전하게 보관·폐기해주세요.
+                        현재 목록 {filteredParticipants.length}건(검색·필터 적용)과 컬러·사이즈별 생산 수량표가 엑셀(.xlsx) 파일로 저장됩니다.
+                        파일에는 주문자·수령인 이름, 연락처, 배송 주소 등 개인정보가 포함되니 생산·배송 업무 목적 외에는 사용하지 말고, 안전하게 보관·폐기해주세요.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>취소</AlertDialogCancel>
-                      <AlertDialogAction onClick={downloadOrdersCsv} className="bg-brand hover:bg-brand-dark">
-                        동의하고 다운로드
+                      <AlertDialogAction onClick={downloadOrdersCsv} className="border border-input bg-background text-foreground hover:bg-stone-100">
+                        CSV로 받기
+                      </AlertDialogAction>
+                      <AlertDialogAction onClick={downloadOrdersExcel} className="bg-brand hover:bg-brand-dark">
+                        동의하고 엑셀 다운로드
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

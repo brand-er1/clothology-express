@@ -24,7 +24,7 @@ export const DressingLoadingOverlay = ({ active }: { active: boolean }) => {
   if (!active) return null;
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[1.75rem] bg-white/85 backdrop-blur-sm">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/85 backdrop-blur-sm">
       <Loader2 className="h-8 w-8 animate-spin text-brand" />
       <p className="text-sm font-bold text-stone-950">{loadingMessages[index]}</p>
     </div>

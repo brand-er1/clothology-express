@@ -57,13 +57,13 @@ const Auth = () => {
     <div className="min-h-screen bg-[#f4f0ea]">
       <Header />
       <main className="mx-auto grid min-h-screen max-w-[1440px] gap-0 px-0 pt-16 sm:pt-[72px] lg:grid-cols-[0.9fr_1.1fr] lg:px-6 lg:pb-6">
-        <section className="relative hidden overflow-hidden bg-[#201819] px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-[2rem]">
+        <section className="relative hidden overflow-hidden bg-[#201819] px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between lg:rounded-xl">
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand/40 blur-3xl" />
           <div className="relative">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-white/55">
               <BrandMark className="h-4 w-4" variant="white" /> Brand launch workspace
             </p>
-            <h1 className="mt-7 max-w-lg text-5xl font-extrabold leading-[1.06] tracking-[-0.03em]">
+            <h1 className="mt-7 max-w-lg text-5xl font-bold leading-[1.06] tracking-[-0.03em]">
               아이디어를 브랜드로,
               <br />첫 제품을 현실로.
             </h1>
@@ -73,7 +73,7 @@ const Auth = () => {
           </div>
 
           <div className="relative">
-            <div className="mb-8 overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/5 p-3 backdrop-blur">
+            <div className="mb-8 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur">
               <div className="flex items-center justify-between rounded-t-[1.25rem] bg-[#eee9e2] px-5 py-3 text-[10px] font-bold tracking-[0.16em] text-stone-500">
                 <span>BRAND-ER AI STUDIO</span>
                 <ArrowUpRight className="h-4 w-4" />
@@ -101,7 +101,7 @@ const Auth = () => {
 
         <section className="flex items-start justify-center px-3 py-8 sm:px-8 sm:py-10 lg:px-14 lg:py-16">
           <Card
-            className={`w-full border-0 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.09)] ${isSignUp ? "max-w-2xl" : "max-w-lg"} rounded-[2rem]`}
+            className={`w-full border-0 bg-white ${isSignUp ? "max-w-2xl" : "max-w-lg"} rounded-xl`}
             data-mascot-safezone
           >
             <CardHeader className="space-y-3 px-5 pb-4 pt-7 sm:px-10 sm:pt-10">

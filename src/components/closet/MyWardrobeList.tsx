@@ -32,10 +32,10 @@ export const MyWardrobeList = ({
   return (
     <div
       data-mascot-safezone
-      className="space-y-3 rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm"
+      className="space-y-3 rounded-xl border border-stone-200 bg-white p-5 shadow-sm"
     >
       <div>
-        <p className="text-sm font-black text-stone-950">👗 내가 만든 옷</p>
+        <p className="text-sm font-bold text-stone-950">👗 내가 만든 옷</p>
         <p className="mt-1 text-xs leading-5 text-stone-500">
           AI로 만들거나 업로드한 옷을 골라 입혀보고, 마음에 안 드는 부분만 수정해보세요.
         </p>

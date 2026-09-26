@@ -33,7 +33,7 @@ export const EditableFields = ({
           onChange={onChange}
           required
           placeholder="커뮤니티와 펀딩에서 사용할 이름"
-          className="h-12 rounded-xl bg-[#fbfaf8]"
+          className="h-12 rounded-md bg-[#fbfaf8]"
         />
       </div>
 
@@ -48,14 +48,14 @@ export const EditableFields = ({
           value={phoneNumber}
           onChange={onChange}
           placeholder="전화번호를 입력하세요"
-          className="h-12 rounded-xl bg-[#fbfaf8]"
+          className="h-12 rounded-md bg-[#fbfaf8]"
         />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="gender">성별</Label>
         <Select value={gender} onValueChange={onGenderChange}>
-          <SelectTrigger id="gender" className="h-12 rounded-xl bg-[#fbfaf8]">
+          <SelectTrigger id="gender" className="h-12 rounded-md bg-[#fbfaf8]">
             <SelectValue placeholder="성별을 선택하세요" />
           </SelectTrigger>
           <SelectContent>
@@ -74,7 +74,7 @@ export const EditableFields = ({
           value={height}
           onChange={onChange}
           required
-          className="h-12 rounded-xl bg-[#fbfaf8]"
+          className="h-12 rounded-md bg-[#fbfaf8]"
         />
       </div>
 
@@ -87,7 +87,7 @@ export const EditableFields = ({
           value={weight}
           onChange={onChange}
           required
-          className="h-12 rounded-xl bg-[#fbfaf8]"
+          className="h-12 rounded-md bg-[#fbfaf8]"
         />
       </div>
     </>

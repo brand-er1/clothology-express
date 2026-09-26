@@ -29,7 +29,7 @@ export const QuoteGarmentPicker = ({ open, onOpenChange, garments, onSelect, isP
           type="button"
           disabled={isPreparing}
           onClick={() => onSelect(garment)}
-          className="overflow-hidden rounded-2xl border border-stone-200 bg-white text-left transition hover:border-brand/50 disabled:opacity-50"
+          className="overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition hover:border-brand/50 disabled:opacity-50"
         >
           <div className="flex aspect-square items-center justify-center bg-[#f4f0ea] p-2">
             <img src={garment.imageUrl} alt={garment.label} className="h-full w-full object-contain" />
@@ -87,10 +87,10 @@ export const QuoteGarmentPicker = ({ open, onOpenChange, garments, onSelect, isP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[1.75rem] bg-white p-6 shadow-xl">
+      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <p className="text-base font-black text-stone-950">견적을 확인할 의류를 선택해주세요</p>
+            <p className="text-base font-bold text-stone-950">견적을 확인할 의류를 선택해주세요</p>
             {description}
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} aria-label="닫기">

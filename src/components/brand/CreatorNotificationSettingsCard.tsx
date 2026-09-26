@@ -57,9 +57,9 @@ export const CreatorNotificationSettingsCard = () => {
   };
 
   return (
-    <section className="min-w-0 rounded-3xl border border-stone-200 bg-white p-5 sm:p-7" aria-labelledby="creator-notification-title">
+    <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-5 sm:p-7" aria-labelledby="creator-notification-title">
       <div className="flex items-start gap-3">
-        <span className="rounded-2xl bg-brand/10 p-2.5 text-brand"><BellRing className="h-5 w-5" /></span>
+        <span className="rounded-lg bg-brand/10 p-2.5 text-brand"><BellRing className="h-5 w-5" /></span>
         <div className="min-w-0">
           <h2 id="creator-notification-title" className="text-xl font-bold">연락처 · 알림 설정</h2>
           <p className="mt-1 text-sm leading-6 text-stone-500">
@@ -93,21 +93,21 @@ export const CreatorNotificationSettingsCard = () => {
                   : "번호가 없으면 사이트 알림만 발송됩니다."}
             </p>
           </div>
-          <div className="flex items-center justify-between gap-4 rounded-2xl bg-stone-50 px-4 py-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg bg-stone-50 px-4 py-3">
             <div className="min-w-0">
               <Label htmlFor="funding-success-toggle" className="font-semibold">펀딩 성공 알림 받기</Label>
               <p className="text-xs text-stone-500">목표 수량 달성 시 사이트 알림(및 문자)을 받습니다.</p>
             </div>
             <Switch id="funding-success-toggle" checked={fundingSuccessEnabled} onCheckedChange={setFundingSuccessEnabled} />
           </div>
-          <div className="flex items-center justify-between gap-4 rounded-2xl bg-stone-50 px-4 py-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg bg-stone-50 px-4 py-3">
             <div className="min-w-0">
               <Label htmlFor="sms-toggle" className="font-semibold">문자(SMS) 알림 수신 동의</Label>
               <p className="text-xs text-stone-500">펀딩 진행 관련 안내 문자를 받습니다.</p>
             </div>
             <Switch id="sms-toggle" checked={smsEnabled} disabled={!fundingSuccessEnabled} onCheckedChange={setSmsEnabled} />
           </div>
-          <Button type="button" variant="outline" onClick={save} disabled={saving || phoneInvalid} className="h-12 w-full rounded-full font-bold">
+          <Button type="button" variant="outline" onClick={save} disabled={saving || phoneInvalid} className="h-12 w-full rounded-[3px] font-bold">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}알림 설정 저장
           </Button>
         </div>

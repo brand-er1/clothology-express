@@ -367,7 +367,7 @@ export const TutorialOverlay = () => {
               key={cta.to}
               type="button"
               onClick={() => handleCta(cta.to)}
-              className={`h-11 w-full rounded-full text-sm font-bold transition sm:h-10 ${
+              className={`h-11 w-full rounded-[3px] text-sm font-bold transition sm:h-10 ${
                 index === 0
                   ? "bg-brand text-white hover:bg-brand-dark"
                   : "border border-stone-200 text-stone-700 hover:bg-stone-50"
@@ -381,7 +381,7 @@ export const TutorialOverlay = () => {
         <button
           type="button"
           onClick={handleFinish}
-          className="h-11 w-full rounded-full bg-brand text-sm font-bold text-white transition hover:bg-brand-dark sm:h-10"
+          className="h-11 w-full rounded-[3px] bg-brand text-sm font-bold text-white transition hover:bg-brand-dark sm:h-10"
         >
           완료 ✓
         </button>
@@ -414,7 +414,7 @@ export const TutorialOverlay = () => {
           <button
             type="button"
             onClick={goPrev}
-            className="h-11 flex-1 rounded-full border border-stone-200 text-sm font-bold text-stone-600"
+            className="h-11 flex-1 rounded-[3px] border border-stone-200 text-sm font-bold text-stone-600"
           >
             ← 이전
           </button>
@@ -422,7 +422,7 @@ export const TutorialOverlay = () => {
         <button
           type="button"
           onClick={handleNext}
-          className="h-11 flex-1 rounded-full bg-brand text-sm font-bold text-white transition hover:bg-brand-dark"
+          className="h-11 flex-1 rounded-[3px] bg-brand text-sm font-bold text-white transition hover:bg-brand-dark"
         >
           다음 →
         </button>

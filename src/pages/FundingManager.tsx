@@ -440,7 +440,7 @@ const FundingManager = () => {
               <Badge variant="secondary" className="shrink-0">개설자 전용</Badge>
               <span className="text-sm text-gray-500">참여자 정보는 개설자와 관리자만 볼 수 있습니다.</span>
             </div>
-            <h1 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] md:text-4xl">{funding.product_name}</h1>
+            <h1 className="mt-3 text-2xl font-bold tracking-[-0.03em] md:text-4xl">{funding.product_name}</h1>
             <p className="mt-2 text-gray-500">펀딩 참여자 관리</p>
           </div>
           <Button asChild variant="outline" className="self-start rounded-full bg-white md:self-auto">
@@ -449,38 +449,38 @@ const FundingManager = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card className="rounded-2xl">
+          <Card className="rounded-lg">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-2xl bg-brand/10 p-3 text-brand"><Users className="h-6 w-6" /></div>
+              <div className="rounded-lg bg-brand/10 p-3 text-brand"><Users className="h-6 w-6" /></div>
               <div><p className="text-sm text-gray-500">참여 건수</p><p className="text-2xl font-bold">{activeParticipants.length}건</p></div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl">
+          <Card className="rounded-lg">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-2xl bg-brand/10 p-3 text-brand"><ShoppingBag className="h-6 w-6" /></div>
+              <div className="rounded-lg bg-brand/10 p-3 text-brand"><ShoppingBag className="h-6 w-6" /></div>
               <div><p className="text-sm text-gray-500">총 참여 수량</p><p className="text-2xl font-bold">{totalQuantity}장</p></div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl">
+          <Card className="rounded-lg">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-2xl bg-brand/10 p-3 text-brand"><WalletCards className="h-6 w-6" /></div>
+              <div className="rounded-lg bg-brand/10 p-3 text-brand"><WalletCards className="h-6 w-6" /></div>
               <div><p className="text-sm text-gray-500">총 참여 금액</p><p className="text-2xl font-bold">{totalAmount.toLocaleString("ko-KR")}원</p></div>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl border-brand/20">
+          <Card className="rounded-lg border-brand/20">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-2xl bg-amber-100 p-3 text-amber-800"><Clock3 className="h-6 w-6" /></div>
+              <div className="rounded-lg bg-amber-100 p-3 text-amber-800"><Clock3 className="h-6 w-6" /></div>
               <div><p className="text-sm text-gray-500">결제 예정자</p><p className="text-2xl font-bold">{paymentIntents.length}명</p><p className="text-xs text-gray-400">예정 수량 {intendedQuantity}장</p></div>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="mt-5 rounded-2xl border-brand/20">
+        <Card className="mt-5 rounded-lg border-brand/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><ImagePlus className="h-5 w-5 text-brand" /> 제작 샘플 공유</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-5 md:grid-cols-[0.45fr_1fr]">
-            <div className="overflow-hidden rounded-2xl border bg-stone-50">
+            <div className="overflow-hidden rounded-lg border bg-stone-50">
               {funding.sample_image_url ? (
                 <img src={funding.sample_image_url} alt="현재 공유 중인 제작 샘플" className="aspect-square h-full w-full object-cover" />
               ) : (
@@ -505,7 +505,7 @@ const FundingManager = () => {
           </CardContent>
         </Card>
 
-        <Card className="mt-5 rounded-2xl">
+        <Card className="mt-5 rounded-lg">
           <CardContent className="p-6">
             <div className="mb-3 flex items-end justify-between">
               <div>
@@ -522,7 +522,7 @@ const FundingManager = () => {
           </CardContent>
         </Card>
 
-        <Card className="mt-5 rounded-2xl">
+        <Card className="mt-5 rounded-lg">
           <CardContent className="grid gap-5 p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="min-w-0">
               <p className="text-sm font-bold">컬러별 주문 수량</p>
@@ -540,7 +540,7 @@ const FundingManager = () => {
         </Card>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_0.32fr]">
-          <Card className="overflow-hidden rounded-2xl">
+          <Card className="overflow-hidden rounded-lg">
             <CardHeader className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle>참여자·배송 관리</CardTitle>
@@ -550,7 +550,7 @@ const FundingManager = () => {
                       <Download className="mr-1.5 h-4 w-4" /> 엑셀 다운로드
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="rounded-2xl">
+                  <AlertDialogContent className="rounded-lg">
                     <AlertDialogHeader>
                       <AlertDialogTitle>개인정보가 포함된 파일입니다</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -732,7 +732,7 @@ const FundingManager = () => {
             </CardContent>
           </Card>
 
-          <Card className="h-fit rounded-2xl">
+          <Card className="h-fit rounded-lg">
             <CardHeader><CardTitle className="text-lg">옵션별 수량</CardTitle></CardHeader>
             <CardContent>
               {optionSummary.length === 0 ? (
@@ -750,7 +750,7 @@ const FundingManager = () => {
           </Card>
         </div>
 
-        <Card className="mt-6 overflow-hidden rounded-2xl">
+        <Card className="mt-6 overflow-hidden rounded-lg">
           <CardHeader>
             <CardTitle>샘플 확인 후 결제 예정자</CardTitle>
             <p className="text-sm text-gray-500">결제 예정 등록은 실제 결제가 아니며 펀딩 달성 수량에는 포함되지 않습니다.</p>
@@ -803,7 +803,7 @@ const FundingManager = () => {
           }
         }}
       >
-        <AlertDialogContent className="max-w-lg rounded-2xl">
+        <AlertDialogContent className="max-w-lg rounded-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>이 참여자를 취소 처리할까요?</AlertDialogTitle>
             <AlertDialogDescription>

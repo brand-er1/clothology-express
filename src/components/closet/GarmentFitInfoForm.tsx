@@ -109,7 +109,7 @@ export const GarmentFitInfoForm = ({ slot, fitInfo, onChange }: GarmentFitInfoFo
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-stone-200 bg-[#faf8f5] p-3">
+    <div className="space-y-3 rounded-lg border border-stone-200 bg-[#faf8f5] p-3">
       <div className="space-y-1.5">
         <p className="text-[11px] font-bold text-stone-500">의류 기준 사이즈</p>
         <Input

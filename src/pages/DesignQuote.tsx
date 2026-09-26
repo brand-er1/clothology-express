@@ -476,7 +476,7 @@ const DesignQuote = () => {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
               Brand-er AI estimate
             </p>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-5xl">
+            <h1 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-stone-950 sm:text-5xl">
               디자인 견적
             </h1>
             <p className="mt-4 max-w-2xl text-[15px] leading-7 text-stone-500">
@@ -489,7 +489,7 @@ const DesignQuote = () => {
             <Button
               asChild
               variant="outline"
-              className="h-12 rounded-full border-stone-300 bg-white px-6"
+              className="h-12 rounded-[3px] border-stone-300 bg-white px-6"
             >
               <Link to="/customize">
                 <BrandMark className="mr-2 h-4 w-4" />
@@ -498,7 +498,7 @@ const DesignQuote = () => {
             </Button>
             <Button
               type="button"
-              className="h-12 rounded-full bg-brand px-6 hover:bg-brand-dark"
+              className="h-12 rounded-[3px] bg-brand px-6 hover:bg-brand-dark"
               onClick={() => {
                 if (effectiveImages.length > 0) {
                   setIsAnalyzing(true);
@@ -515,7 +515,7 @@ const DesignQuote = () => {
         </div>
 
         {closetHandoff?.fromCloset && (
-          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-bold text-brand">
+          <div className="mb-6 flex items-center gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-bold text-brand">
             <Gamepad2 className="h-4 w-4" />
             AI 가상 피팅에서 가져온 디자인 · {closetHandoff.fromCloset.garmentLabel}
           </div>
@@ -529,7 +529,7 @@ const DesignQuote = () => {
           ].map((step) => (
             <div
               key={step.label}
-              className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
+              className={`rounded-lg border px-4 py-3 text-sm font-bold ${
                 step.done
                   ? "border-brand bg-brand text-white"
                   : "border-stone-200 bg-white text-stone-400"
@@ -542,14 +542,14 @@ const DesignQuote = () => {
         </div>
 
         {designId && isLoadingDesign && (
-          <Card className="mb-6 flex items-center gap-3 rounded-2xl border-brand/20 bg-white px-5 py-4">
+          <Card className="mb-6 flex items-center gap-3 rounded-lg border-brand/20 bg-white px-5 py-4">
             <Loader2 className="h-5 w-5 animate-spin text-brand" />
             <p className="text-sm font-bold text-stone-600">디자인을 불러오고 있습니다...</p>
           </Card>
         )}
 
         {designLoadError && !isLoadingDesign && (
-          <Card className="mb-6 flex items-start gap-3 rounded-2xl border-rose-200 bg-rose-50/60 px-5 py-4">
+          <Card className="mb-6 flex items-start gap-3 rounded-lg border-rose-200 bg-rose-50/60 px-5 py-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
             <div className="flex-1">
               <p className="text-sm font-bold text-rose-900">{designLoadError}</p>
@@ -585,8 +585,8 @@ const DesignQuote = () => {
 
         <div className="grid items-start gap-6 lg:grid-cols-[0.78fr_1.22fr]">
           {designImages || closetImages ? (
-            <Card className="overflow-hidden rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
-              <p className="text-sm font-extrabold text-stone-950">가져온 디자인 이미지</p>
+            <Card className="overflow-hidden rounded-xl border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
+              <p className="text-sm font-bold text-stone-950">가져온 디자인 이미지</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {(designImages || closetImages || []).map((image, index) => (
                   <div
@@ -607,11 +607,11 @@ const DesignQuote = () => {
               </p>
             </Card>
           ) : (
-          <Card className="overflow-hidden rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
+          <Card className="overflow-hidden rounded-xl border-stone-200 bg-[#fbfaf8] p-4 shadow-sm sm:p-6 lg:sticky lg:top-24">
             {images.length === 0 ? (
               <button
                 type="button"
-                className={`flex min-h-[430px] w-full flex-col items-center justify-center overflow-hidden rounded-[1.35rem] border-2 border-dashed transition ${
+                className={`flex min-h-[430px] w-full flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition ${
                   isDragging
                     ? "border-brand bg-brand/5"
                     : "border-stone-300 bg-white hover:border-brand/50"
@@ -640,7 +640,7 @@ const DesignQuote = () => {
                   <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
                     <ImagePlus className="h-7 w-7" />
                   </span>
-                  <p className="mt-5 text-lg font-extrabold text-stone-950">
+                  <p className="mt-5 text-lg font-bold text-stone-950">
                     의류 이미지를 올려주세요
                   </p>
                   <p className="mt-2 text-sm leading-6 text-stone-500">
@@ -653,7 +653,7 @@ const DesignQuote = () => {
               </button>
             ) : (
               <div
-                className={`rounded-[1.35rem] border-2 border-dashed p-3 transition ${
+                className={`rounded-xl border-2 border-dashed p-3 transition ${
                   isDragging ? "border-brand bg-brand/5" : "border-transparent"
                 }`}
                 onDragEnter={(event) => {
@@ -747,7 +747,7 @@ const DesignQuote = () => {
               <Button
                 type="button"
                 variant="outline"
-                className="mt-3 h-11 w-full rounded-full border-stone-300 bg-white text-sm font-bold"
+                className="mt-3 h-11 w-full rounded-[3px] border-stone-300 bg-white text-sm font-bold"
                 onClick={() => cameraInputRef.current?.click()}
               >
                 <Camera className="mr-2 h-4 w-4" />
@@ -762,7 +762,7 @@ const DesignQuote = () => {
 
             <Button
               type="button"
-              className="mt-4 h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
+              className="mt-4 h-12 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark"
               onClick={startAnalysis}
               disabled={isPreparing}
               data-tutorial="quote-analyze"
@@ -797,7 +797,7 @@ const DesignQuote = () => {
                 )}
 
                 {estimate && !isAnalyzing && (
-                  <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     {estimate.imageCount ?? effectiveImages.length}장의 이미지를 종합하여{" "}
                     {estimate.items?.length ?? 1}개의 제품으로 분석했습니다.
@@ -832,13 +832,13 @@ const DesignQuote = () => {
                 {estimate &&
                   !isAnalyzing &&
                   (submittedOrderId ? (
-                    <Card className="rounded-[1.75rem] border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+                    <Card className="rounded-xl border-emerald-200 bg-emerald-50 p-6 shadow-sm">
                       <div className="flex items-start gap-3">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
                           <CheckCircle2 className="h-5 w-5" />
                         </span>
                         <div>
-                          <h2 className="text-xl font-extrabold tracking-[-0.03em] text-emerald-950">
+                          <h2 className="text-xl font-bold tracking-[-0.03em] text-emerald-950">
                             제작 의뢰가 접수되었습니다
                           </h2>
                           <p className="mt-2 text-sm leading-6 text-emerald-800">
@@ -863,13 +863,13 @@ const DesignQuote = () => {
                       </div>
                     </Card>
                   ) : (
-                    <Card className="rounded-[1.75rem] border-brand/20 bg-white p-6 shadow-sm">
+                    <Card className="rounded-xl border-brand/20 bg-white p-6 shadow-sm">
                       <div className="flex items-start gap-3">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                           <ClipboardCheck className="h-5 w-5" />
                         </span>
                         <div>
-                          <h2 className="text-xl font-extrabold tracking-[-0.03em] text-stone-950">
+                          <h2 className="text-xl font-bold tracking-[-0.03em] text-stone-950">
                             이 견적으로 제작 의뢰하기
                           </h2>
                           <p className="mt-1 text-sm leading-6 text-stone-500">
@@ -877,12 +877,12 @@ const DesignQuote = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-5 rounded-2xl bg-stone-50 p-4">
+                      <div className="mt-5 rounded-lg bg-stone-50 p-4">
                         <div className="flex items-center justify-between gap-4 text-sm">
                           <span className="font-semibold text-stone-500">
                             {estimate.totals.quantity}장 기준 예상 제작비
                           </span>
-                          <span className="text-lg font-black text-brand">
+                          <span className="text-lg font-bold text-brand">
                             {formatWonRange(
                               estimate.totals.totalMin,
                               estimate.totals.totalMax,
@@ -905,7 +905,7 @@ const DesignQuote = () => {
                       </label>
                       <Button
                         type="button"
-                        className="mt-4 h-12 w-full rounded-full bg-brand text-base font-black hover:bg-brand-dark"
+                        className="mt-4 h-12 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark"
                         onClick={() => void submitProductionRequest()}
                         disabled={isSubmitting}
                       >
@@ -927,7 +927,7 @@ const DesignQuote = () => {
                           <Button
                             type="button"
                             variant="outline"
-                            className="mt-3 h-12 w-full rounded-full border-brand/30 bg-white text-base font-black text-brand hover:bg-brand/5"
+                            className="mt-3 h-12 w-full rounded-[3px] border-brand/30 bg-white text-base font-bold text-brand hover:bg-brand/5"
                             onClick={() => void startFundingFromCloset()}
                             disabled={isFundingSubmitting || fundingCreated}
                           >
@@ -952,7 +952,7 @@ const DesignQuote = () => {
                         <Button
                           type="button"
                           variant="outline"
-                          className="mt-3 h-12 w-full rounded-full border-stone-300 bg-white text-base font-black text-stone-700 hover:bg-stone-50"
+                          className="mt-3 h-12 w-full rounded-[3px] border-stone-300 bg-white text-base font-bold text-stone-700 hover:bg-stone-50"
                           onClick={() =>
                             navigate("/closet", {
                               state: {
@@ -984,11 +984,11 @@ const DesignQuote = () => {
                   ))}
               </div>
             ) : (
-              <Card className="flex min-h-[430px] flex-col items-center justify-center rounded-[1.75rem] border-stone-200 bg-[#fbfaf8] p-8 text-center shadow-sm">
+              <Card className="flex min-h-[430px] flex-col items-center justify-center rounded-xl border-stone-200 bg-[#fbfaf8] p-8 text-center shadow-sm">
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 text-stone-400">
                   <BrandMark className="h-6 w-6" />
                 </span>
-                <h2 className="mt-5 text-xl font-extrabold tracking-[-0.03em] text-stone-950">
+                <h2 className="mt-5 text-xl font-bold tracking-[-0.03em] text-stone-950">
                   분석 결과와 자동 견적서
                 </h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-stone-500">

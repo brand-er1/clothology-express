@@ -29,7 +29,7 @@ export const ProductionCountryPicker = ({
     return (
       <div>
         {showHeading && (
-          <p className="mb-2 text-xs font-extrabold text-stone-600">생산 국가 선택</p>
+          <p className="mb-2 text-xs font-bold text-stone-600">생산 국가 선택</p>
         )}
         <div className="grid grid-cols-3 gap-2">
           {productionCountryOrder.map((countryKey) => {
@@ -42,7 +42,7 @@ export const ProductionCountryPicker = ({
                 type="button"
                 onClick={() => onSelect(countryKey)}
                 aria-pressed={isSelected}
-                className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-3 text-center transition sm:flex-row sm:items-center sm:justify-center sm:gap-2 sm:px-3 ${
+                className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-3 text-center transition sm:flex-row sm:items-center sm:justify-center sm:gap-2 sm:px-3 ${
                   isSelected
                     ? "border-brand bg-brand/10"
                     : "border-stone-200 bg-white hover:border-brand/40"
@@ -50,10 +50,10 @@ export const ProductionCountryPicker = ({
               >
                 <span className="flex items-center gap-1.5">
                   <span className="text-lg leading-none">{option.flag}</span>
-                  <span className={`text-sm font-black ${isSelected ? "text-brand" : "text-stone-900"}`}>
+                  <span className={`text-sm font-bold ${isSelected ? "text-brand" : "text-stone-900"}`}>
                     {option.label}
                   </span>
-                  <span className="rounded-full bg-stone-950 px-1.5 py-0.5 text-[10px] font-black text-white">
+                  <span className="rounded-full bg-stone-950 px-1.5 py-0.5 text-[10px] font-bold text-white">
                     {multiplierLabel(option.multiplier)}
                   </span>
                 </span>
@@ -75,7 +75,7 @@ export const ProductionCountryPicker = ({
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand sm:text-xs sm:tracking-[0.2em]">
             Production country
           </p>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-3xl">
+          <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-stone-950 sm:text-3xl">
             어디에서 생산하시겠어요?
           </h2>
           <p className="mt-2 text-[15px] leading-6 text-stone-500 sm:text-sm">
@@ -92,7 +92,7 @@ export const ProductionCountryPicker = ({
           return (
             <Card
               key={countryKey}
-              className={`relative flex flex-col justify-between overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition ${
+              className={`relative flex flex-col justify-between overflow-hidden rounded-xl border-2 p-5 shadow-sm transition ${
                 isSelected
                   ? "border-brand bg-brand/5"
                   : "border-stone-200 bg-white hover:border-brand/40"
@@ -106,11 +106,11 @@ export const ProductionCountryPicker = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-3xl leading-none">{option.flag}</span>
-                  <span className="text-lg font-black text-stone-950">
+                  <span className="text-lg font-bold text-stone-950">
                     {option.label} 생산
                   </span>
                 </div>
-                <span className="mt-2 inline-block rounded-full bg-stone-950 px-3 py-1 text-xs font-black text-white">
+                <span className="mt-2 inline-block rounded-full bg-stone-950 px-3 py-1 text-xs font-bold text-white">
                   {multiplierLabel(option.multiplier)}
                 </span>
                 <p className="mt-3 text-sm font-bold text-stone-700">{option.headline}</p>
@@ -129,7 +129,7 @@ export const ProductionCountryPicker = ({
               <Button
                 type="button"
                 onClick={() => onSelect(countryKey)}
-                className={`mt-5 h-11 w-full rounded-full text-sm font-bold ${
+                className={`mt-5 h-11 w-full rounded-[3px] text-sm font-bold ${
                   isSelected
                     ? "bg-brand hover:bg-brand-dark"
                     : "bg-stone-950 hover:bg-stone-800"

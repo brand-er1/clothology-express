@@ -547,7 +547,7 @@ export const ProductionEstimateCard = ({
                 {garment.label} · 견적 수량 직접 조절
               </span>
             </div>
-            <h3 className="mt-3 flex items-center gap-2 text-xl font-extrabold">
+            <h3 className="mt-3 flex items-center gap-2 text-xl font-bold">
               <Calculator className="h-5 w-5" />
               {countryOption.flag} {countryOption.label} 생산 예상 견적
             </h3>
@@ -559,7 +559,7 @@ export const ProductionEstimateCard = ({
             {meetsCountryMoq ? (
               <>
                 <p className="text-xs font-semibold text-white/70">{totalLabel}</p>
-                <p className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
+                <p className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
                   {formatRange(
                     totals.totalMin,
                     totals.totalMax,
@@ -573,7 +573,7 @@ export const ProductionEstimateCard = ({
             ) : (
               <>
                 <p className="text-xs font-semibold text-white/70">MOQ 미달</p>
-                <p className="mt-1 text-lg font-black tracking-tight">
+                <p className="mt-1 text-lg font-bold tracking-tight">
                   최소 {countryMoq.toLocaleString("ko-KR")}장부터 견적 확인 가능
                 </p>
               </>
@@ -584,7 +584,7 @@ export const ProductionEstimateCard = ({
 
       {meetsCountryMoq && isAbroad && totals.domesticProductionMin != null && totals.domesticProductionMax != null && (
         <div className="border-b border-brand/10 bg-brand/5 px-5 py-4">
-          <p className="text-xs font-extrabold text-brand">
+          <p className="text-xs font-bold text-brand">
             {countryOption.label} 생산 적용 기준
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -598,7 +598,7 @@ export const ProductionEstimateCard = ({
             </span>
             <span className="text-stone-400">→</span>
             <span className="text-stone-500">예상 생산 단가</span>
-            <span className="font-black text-stone-950">
+            <span className="font-bold text-stone-950">
               {totals.productionMin === null || totals.productionMax === null
                 ? "상담 후 확정"
                 : formatRange(totals.productionMin, totals.productionMax)}
@@ -610,7 +610,7 @@ export const ProductionEstimateCard = ({
       <div className="border-b border-brand/10 bg-white px-5 py-4">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="text-sm font-extrabold text-stone-950">견적 수량</p>
+            <p className="text-sm font-bold text-stone-950">견적 수량</p>
             <p className="mt-1 text-xs leading-5 text-stone-500">
               {isKnit
                 ? "니트 생산공임은 수량과 관계없이 장당 20,000원 기준"
@@ -626,7 +626,7 @@ export const ProductionEstimateCard = ({
               step={1}
               value={activeQuantity}
               onChange={(event) => changeQuantity(Number(event.target.value))}
-              className="h-12 rounded-xl pr-12 text-right text-lg font-black"
+              className="h-12 rounded-xl pr-12 text-right text-lg font-bold"
             />
             <span className="pointer-events-none absolute right-4 top-3.5 text-sm font-bold text-stone-500">
               장
@@ -650,10 +650,10 @@ export const ProductionEstimateCard = ({
       </div>
 
       {!meetsCountryMoq && (
-        <div className="mx-5 mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <div className="mx-5 mb-5 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-5">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
           <div>
-            <p className="font-extrabold text-amber-900">
+            <p className="font-bold text-amber-900">
               {countryOption.flag} {countryOption.label} 생산 MOQ 미달
             </p>
             <p className="mt-1 text-sm leading-6 text-amber-800">
@@ -671,7 +671,7 @@ export const ProductionEstimateCard = ({
         <div className="border-b border-stone-200 bg-[#fbfaf8] p-5">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-brand" />
-            <p className="font-extrabold text-stone-950">
+            <p className="font-bold text-stone-950">
               이미지에서 {allItems.length}개의 제작 품목을 감지했습니다
             </p>
           </div>
@@ -686,7 +686,7 @@ export const ProductionEstimateCard = ({
               return (
                 <div
                   key={item.itemIndex}
-                  className={`overflow-hidden rounded-2xl border transition ${
+                  className={`overflow-hidden rounded-lg border transition ${
                     included ? "border-brand/30 bg-white" : "border-stone-200 bg-stone-50 opacity-60"
                   }`}
                 >
@@ -703,7 +703,7 @@ export const ProductionEstimateCard = ({
                       >
                         <CircleCheck className="h-3.5 w-3.5" />
                       </span>
-                      <span className="text-sm font-extrabold text-stone-950">
+                      <span className="text-sm font-bold text-stone-950">
                         ITEM {index + 1} · {item.itemLabel}
                       </span>
                     </span>
@@ -770,10 +770,10 @@ export const ProductionEstimateCard = ({
 
           <div className="mt-4 rounded-xl bg-brand/5 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-extrabold text-brand">
+              <p className="text-xs font-bold text-brand">
                 SET TOTAL · {totals.quantity}세트 기준
               </p>
-              <p className="text-sm font-black text-brand">
+              <p className="text-sm font-bold text-brand">
                 {formatRange(totals.totalMin, totals.totalMax, totals.totalIsStartingFrom)}
               </p>
             </div>
@@ -789,10 +789,10 @@ export const ProductionEstimateCard = ({
       {meetsCountryMoq && (
       <>
       {ambiguousDecorations.length > 0 && (
-        <div className="mx-5 mb-5 mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <div className="mx-5 mb-5 mt-5 rounded-lg border border-amber-200 bg-amber-50 p-5">
           <div className="flex items-center gap-2">
             <CircleHelp className="h-4 w-4 text-amber-700" />
-            <p className="font-extrabold text-amber-900">
+            <p className="font-bold text-amber-900">
               가공 방식을 확인해주세요 ({ambiguousDecorations.length}건)
             </p>
           </div>
@@ -864,7 +864,7 @@ export const ProductionEstimateCard = ({
         <div className="border-b border-stone-200 bg-[#fbfaf8] p-5">
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
             <div>
-              <p className="font-extrabold text-stone-950">AI 분석 결과 확인</p>
+              <p className="font-bold text-stone-950">AI 분석 결과 확인</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">
                 잘못 인식된 항목을 수정하면 기존 계산식으로 견적이 즉시 다시 계산됩니다.
               </p>
@@ -1117,7 +1117,7 @@ export const ProductionEstimateCard = ({
               <p className="flex items-center gap-1.5 text-xs text-gray-500">
                 <Shirt className="h-4 w-4" /> AI 분석 의류
               </p>
-              <p className="mt-2 font-extrabold text-gray-950">{garment.label}</p>
+              <p className="mt-2 font-bold text-gray-950">{garment.label}</p>
               <p className="mt-1 text-xs text-gray-500">
                 판단 신뢰도 {Math.round(analysis.categoryConfidence * 100)}%
               </p>
@@ -1138,7 +1138,7 @@ export const ProductionEstimateCard = ({
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
             <BrandMark className="h-4 w-4" /> AI 분석 소재
           </p>
-          <p className="mt-2 font-extrabold text-gray-950">
+          <p className="mt-2 font-bold text-gray-950">
             {estimate.material.composition}
           </p>
           <p className="mt-1 text-xs text-gray-500">
@@ -1271,7 +1271,7 @@ export const ProductionEstimateCard = ({
             {isKnit ? "패치·후가공" : "프린팅·후가공"}{" "}
             {decorations.length > 0 && `(${decorations.length}개)`} (장당)
           </p>
-          <p className="font-extrabold text-brand">
+          <p className="font-bold text-brand">
             {decorations.length
               ? formatRange(totals.decorationMin, totals.decorationMax)
               : "없음"}
@@ -1339,7 +1339,7 @@ export const ProductionEstimateCard = ({
             <CirclePlus className="h-4 w-4 text-brand" />
             이미지 판별 부자재 (장당)
           </p>
-          <p className="font-extrabold text-brand">
+          <p className="font-bold text-brand">
             {accessories.length
               ? formatWon(accessoryUnitTotal)
               : "없음"}
@@ -1386,7 +1386,7 @@ export const ProductionEstimateCard = ({
             <p className="text-xs font-semibold text-gray-500">
               장당 제작 공임
             </p>
-            <p className="mt-1 text-lg font-extrabold text-gray-950">
+            <p className="mt-1 text-lg font-bold text-gray-950">
               {formatRange(totals.directUnitMin, totals.directUnitMax)}
             </p>
             <p className="mt-1 text-[11px] leading-4 text-gray-500">
@@ -1397,7 +1397,7 @@ export const ProductionEstimateCard = ({
             <p className="text-xs font-semibold text-gray-500">
               별도 개발비 (1회)
             </p>
-            <p className="mt-1 text-lg font-extrabold text-gray-950">
+            <p className="mt-1 text-lg font-bold text-gray-950">
               {formatWon(totals.developmentTotal)}
             </p>
             <p className="mt-1 text-[11px] leading-4 text-gray-500">
@@ -1414,7 +1414,7 @@ export const ProductionEstimateCard = ({
         </div>
 
         <div className="border-t border-gray-100 bg-brand/5 p-4">
-          <p className="text-xs font-extrabold text-brand">
+          <p className="text-xs font-bold text-brand">
             {totals.quantity}장 제작 기준
           </p>
           <div className="mt-3 space-y-2 text-sm">
@@ -1460,7 +1460,7 @@ export const ProductionEstimateCard = ({
           </div>
           <div className="mt-3 flex items-end justify-between gap-4 border-t border-brand/15 pt-3">
             <div>
-              <p className="text-sm font-extrabold text-gray-950">
+              <p className="text-sm font-bold text-gray-950">
                 총 예상 제작비
               </p>
               <p className="mt-0.5 text-[11px] text-gray-500">
@@ -1471,7 +1471,7 @@ export const ProductionEstimateCard = ({
                 )}
               </p>
             </div>
-            <p className="text-xl font-black text-brand">
+            <p className="text-xl font-bold text-brand">
               {formatRange(
                 totals.totalMin,
                 totals.totalMax,
@@ -1504,7 +1504,7 @@ export const ProductionEstimateCard = ({
         <div className="mx-5 mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-xs leading-5 text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <div className="space-y-1">
-            <p className="font-extrabold">해외 생산 안내</p>
+            <p className="font-bold">해외 생산 안내</p>
             <p>
               표시된 금액은 예상 생산 견적입니다. 실제 견적은 디자인, 원단,
               부자재, 가공 방식 및 생산 공장에 따라 달라질 수 있습니다.
@@ -1531,7 +1531,7 @@ export const ProductionEstimateCard = ({
               ? "※ 니트 생산공임은 장당 20,000원 고정 기준입니다."
               : "※ 수량 할인은 생산공임에만 적용됩니다. 100장 이상 5%, 200장 이상 7%, 300장 이상 10% 할인됩니다."}
           </p>
-          <p className="font-extrabold text-brand">
+          <p className="font-bold text-brand">
             {isKnit
               ? "※ 니트 평균 원단비 13,000원/장은 별도입니다."
               : "※ 원단 가격은 별도입니다."}

@@ -1,6 +1,5 @@
 
 import { Header } from "@/components/Header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
 import { useProfileForm } from "@/hooks/useProfileForm";
@@ -41,19 +40,21 @@ const Profile = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#f4f0ea]">
+    <div className="min-h-screen bg-[#f6f3ee]">
       <Header />
-      <main className="mx-auto max-w-3xl px-4 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28">
-        <div className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">My page</p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-[-0.03em]">마이페이지</h1>
+      <main className="page-shell max-w-[1180px] pb-16 pt-24 sm:pb-24 sm:pt-32">
+        <div className="mb-12 sm:mb-16">
+          <p className="eyebrow">My page</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">마이페이지</h1>
           <p className="mt-3 text-sm leading-6 text-stone-500">공개 브랜드 정보와 주문·배송용 회원정보를 구분해 관리하세요.</p>
         </div>
-        <Card className="mb-6 rounded-[2rem] border-stone-200 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.06)]">
-          <CardHeader className="px-6 pt-7 sm:px-10">
-            <CardTitle className="flex items-center gap-2 text-2xl"><Store className="h-5 w-5 text-brand" />내 브랜드</CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-7 sm:px-10">
+        {/* Label column on the left, content on the right: sections are separated by hairlines, not cards. */}
+        <section className="grid gap-6 border-t border-black/10 py-10 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-12">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-semibold tracking-[-0.02em]"><Store className="h-4 w-4 text-brand" />내 브랜드</h2>
+            <p className="mt-2 text-xs leading-5 text-stone-500">펀딩 페이지에 공개되는 제작자 정보입니다.</p>
+          </div>
+          <div className="max-w-xl">
             {brand ? (
               <div className="space-y-5">
                 <BrandIdentity brand={brand} linked />
@@ -66,22 +67,23 @@ const Profile = () => {
             ) : (
               <p className="text-sm leading-6 text-stone-500">펀딩을 만들려면 먼저 제작자 프로필과 내 브랜드를 등록해야 합니다.</p>
             )}
-            <Button asChild variant={brand ? "outline" : "default"} className={`mt-6 w-full rounded-full ${brand ? "" : "bg-brand hover:bg-brand-dark"}`}>
+            <Button asChild variant={brand ? "outline" : "default"} className={`mt-6 w-full sm:w-auto ${brand ? "" : "bg-brand hover:bg-brand-dark"}`}>
               <Link to="/my-brand">{brand ? "브랜드 프로필 수정" : "내 브랜드 등록"}</Link>
             </Button>
-          </CardContent>
-        </Card>
-        <Card className="mx-auto rounded-[2rem] border-stone-200 bg-white shadow-[0_24px_80px_rgba(36,26,24,0.06)]">
-          <CardHeader className="px-5 pt-7 sm:px-10 sm:pt-8">
-            <CardTitle className="text-2xl">회원·배송 정보</CardTitle>
+          </div>
+        </section>
+        <section className="grid gap-6 border-t border-black/10 py-10 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-12">
+          <div>
+            <h2 className="text-xl font-semibold tracking-[-0.02em]">회원·배송 정보</h2>
+            <p className="mt-2 text-xs leading-5 text-stone-500">주문과 배송에만 사용되며 공개되지 않습니다.</p>
+          </div>
+          <div className="max-w-xl">
             {isFundingReturn && (
-              <p className="flex items-start gap-2 rounded-xl bg-brand/10 p-4 text-sm leading-6 text-brand-dark">
+              <p className="mb-6 flex items-start gap-2 border-l-2 border-brand bg-brand/[0.05] p-4 text-sm leading-6 text-brand-dark">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 펀딩 참여에 필요한 전화번호와 배송지를 입력해주세요. 저장하면 펀딩 페이지로 돌아갑니다.
               </p>
             )}
-          </CardHeader>
-          <CardContent className="px-5 pb-7 sm:px-10 sm:pb-10">
             <form onSubmit={handleSubmit} className="space-y-5">
               <ReadOnlyFields 
                 email={email}
@@ -106,12 +108,12 @@ const Profile = () => {
                 onChange={handleChange}
               />
 
-              <Button type="submit" className="h-14 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark" disabled={isLoading}>
+              <Button type="submit" className="h-14 w-full rounded-[2px] bg-brand text-base font-semibold hover:bg-brand-dark" disabled={isLoading}>
                 {isLoading ? "저장 중..." : "저장하기"}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </main>
     </div>
   );

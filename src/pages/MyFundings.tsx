@@ -8,8 +8,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { ProgressLine } from "@/components/funding/FundingProductCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -51,7 +50,7 @@ const paymentBadgeClass: Record<FundingPaymentStatus, string> = {
   unpaid: "bg-slate-100 text-slate-700 hover:bg-slate-100",
   ready: "bg-amber-100 text-amber-800 hover:bg-amber-100",
   paid: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
-  cancelled: "bg-gray-100 text-gray-500 hover:bg-gray-100",
+  cancelled: "bg-gray-100 text-stone-500 hover:bg-gray-100",
   failed: "bg-red-100 text-red-700 hover:bg-red-100",
 };
 
@@ -185,45 +184,45 @@ const MyFundings = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-[#f7f5f2]"><Header /><div className="flex min-h-screen items-center justify-center text-gray-500">
+    <div className="min-h-screen bg-[#f6f3ee]"><Header /><div className="flex min-h-screen items-center justify-center text-stone-500">
       <Loader2 className="mr-2 h-6 w-6 animate-spin text-brand" /> 내 펀딩을 불러오는 중입니다
     </div></div>
   );
 
   return (
-    <div className="min-h-screen bg-[#f7f5f2]">
+    <div className="min-h-screen bg-[#f6f3ee]">
       <Header />
-      <main className="container mx-auto max-w-6xl px-4 pb-16 pt-20 sm:pt-24 md:pb-24">
+      <main className="page-shell max-w-[1280px] pb-16 pt-20 sm:pt-28 md:pb-24">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-brand">MY FUNDING</p>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] md:text-5xl">내 펀딩</h1>
-            <p className="mt-3 text-gray-500">내가 만든 펀딩과 참여한 펀딩을 한곳에서 확인하세요.</p>
+            <p className="eyebrow">My funding</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] md:text-5xl">내 펀딩</h1>
+            <p className="mt-3 text-stone-500">내가 만든 펀딩과 참여한 펀딩을 한곳에서 확인하세요.</p>
           </div>
-          <Button asChild className="self-start rounded-full bg-brand hover:bg-brand-dark md:self-auto"><Link to="/fundings">새 펀딩 둘러보기 <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+          <Link to="/fundings" className="cta-text self-start md:self-auto"><span className="link-draw">새 펀딩 둘러보기</span> <ArrowRight className="h-4 w-4" /></Link>
         </div>
 
-        <Tabs defaultValue={initialTab} className="mt-8">
-          <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl bg-white p-1.5 shadow-sm md:w-[520px]">
+        <Tabs defaultValue={initialTab} className="mt-10">
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-none border-b border-black/10 bg-transparent p-0 md:flex md:justify-start md:gap-8">
             <TabsTrigger
               value="created"
-              className="min-h-12 whitespace-normal rounded-xl px-2 py-2.5 text-sm data-[state=active]:bg-brand data-[state=active]:text-white sm:px-4 sm:text-base"
+              className="-mb-px min-h-12 whitespace-normal rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-medium text-stone-500 data-[state=active]:border-brand data-[state=active]:bg-transparent data-[state=active]:text-[#211b1c] data-[state=active]:shadow-none sm:text-base"
               data-tutorial="myf-created-tab"
             >
-              내가 만든 펀딩 <span className="ml-2 opacity-70">{createdFundings.length}</span>
+              내가 만든 펀딩 <sup className="ml-1 font-display text-[10px] text-brand">{createdFundings.length}</sup>
             </TabsTrigger>
             <TabsTrigger
               value="joined"
-              className="min-h-12 whitespace-normal rounded-xl px-2 py-2.5 text-sm data-[state=active]:bg-brand data-[state=active]:text-white sm:px-4 sm:text-base"
+              className="-mb-px min-h-12 whitespace-normal rounded-none border-b-2 border-transparent px-0 py-3 text-sm font-medium text-stone-500 data-[state=active]:border-brand data-[state=active]:bg-transparent data-[state=active]:text-[#211b1c] data-[state=active]:shadow-none sm:text-base"
               data-tutorial="myf-joined-tab"
             >
-              내가 참여한 펀딩 <span className="ml-2 opacity-70">{activePaidItems.length + plannedItems.length}</span>
+              내가 참여한 펀딩 <sup className="ml-1 font-display text-[10px] text-brand">{activePaidItems.length + plannedItems.length}</sup>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="created" className="mt-7">
+          <TabsContent value="created" className="mt-10">
             {createdFundings.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-8 xl:grid-cols-4">
                 <SummaryCard icon={WalletCards} label="총 예상매출" value={`${sellerTotals.total_expected_revenue.toLocaleString("ko-KR")}원`} />
                 <SummaryCard icon={Users} label="총 참여자 수" value={`${sellerTotals.total_participants.toLocaleString("ko-KR")}명`} />
                 <SummaryCard icon={ShoppingBag} label="총 판매수량" value={`${sellerTotals.total_quantity.toLocaleString("ko-KR")}장`} />
@@ -231,7 +230,7 @@ const MyFundings = () => {
               </div>
             )}
             {createdFundings.length > 0 && (
-              <div className="mt-6 flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="mt-12 flex max-w-full gap-6 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {([
                   ["all", "전체"],
                   ["preparing", "준비 중"],
@@ -239,44 +238,43 @@ const MyFundings = () => {
                   ["approved", "진행 중"],
                   ["closed", "종료"],
                 ] as const).map(([value, label]) => (
-                  <Button key={value} type="button" size="sm" variant={createdFilter === value ? "default" : "outline"}
-                    onClick={() => setCreatedFilter(value)} className={`shrink-0 rounded-full ${createdFilter === value ? "bg-brand hover:bg-brand-dark" : "bg-white"}`}>
+                  <button key={value} type="button" aria-pressed={createdFilter === value}
+                    onClick={() => setCreatedFilter(value)} className={`min-h-10 shrink-0 border-b px-0.5 text-sm transition-colors duration-300 ${createdFilter === value ? "border-brand font-semibold text-[#211b1c]" : "border-transparent text-stone-500 hover:text-[#211b1c]"}`}>
                     {label}
-                  </Button>
+                  </button>
                 ))}
               </div>
             )}
             {createdFundings.length === 0 ? (
               <EmptyState title="아직 만든 펀딩이 없습니다" description="나만의 디자인으로 첫 펀딩을 만들어보세요." action="컬렉션 시작하기" to="/customize" />
             ) : (
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <div className="mt-8 grid gap-x-8 gap-y-14 md:grid-cols-2">
                 {visibleCreatedFundings.map((funding) => {
                   const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
                   const dashboardRow = sellerDashboard.get(funding.id);
                   return (
-                    <article key={funding.id} className="overflow-hidden rounded-[1.75rem] border bg-white">
-                      <Link to={`/fundings/${funding.id}`} className="block aspect-[16/10] bg-stone-100 p-6">
-                        <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain" />
+                    <article key={funding.id} className="min-w-0">
+                      <Link to={`/fundings/${funding.id}`} className="group block aspect-[16/10] overflow-hidden bg-[#ebe7e1] p-6">
+                        <img src={funding.image_url} alt={funding.product_name} className="img-zoom h-full w-full object-contain mix-blend-multiply" />
                       </Link>
-                      <div className="p-5 sm:p-6">
-                        <div className="flex items-center justify-between gap-3"><Badge variant="secondary">{fundingStatusLabel[funding.status]}</Badge><span className="text-xs text-gray-400">{new Date(funding.created_at).toLocaleDateString("ko-KR")}</span></div>
-                        <Link to={`/fundings/${funding.id}`} className="text-wrap-anywhere mt-3 block text-xl font-bold hover:text-brand">{funding.product_name}</Link>
-                        <div className="mt-5 flex items-end justify-between"><strong className="text-2xl text-brand">{progress}%</strong><span className="text-sm text-gray-500">{funding.current_orders} / {funding.moq}장</span></div>
-                        <Progress value={progress} className="mt-2 h-2.5" />
+                      <div className="pt-5">
+                        <div className="flex items-center justify-between gap-3"><Badge variant="secondary">{fundingStatusLabel[funding.status]}</Badge><span className="font-display text-xs text-stone-400">{new Date(funding.created_at).toLocaleDateString("ko-KR")}</span></div>
+                        <Link to={`/fundings/${funding.id}`} className="text-wrap-anywhere mt-3 block text-xl font-semibold tracking-[-0.02em] transition-colors hover:text-brand">{funding.product_name}</Link>
+                        <ProgressLine current={funding.current_orders} target={funding.moq} size="md" className="mt-5" caption={`${funding.current_orders} / ${funding.moq}장 · 달성 ${progress}%`} />
                         {dashboardRow && (
-                          <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-stone-50 p-3 text-center text-xs [&>div]:min-w-0 [&_p:first-child]:text-wrap-anywhere">
-                            <div><p className="font-bold text-stone-900">{dashboardRow.participant_count}명</p><p className="mt-0.5 text-stone-400">참여자</p></div>
-                            <div><p className="font-bold text-stone-900">{dashboardRow.expected_revenue.toLocaleString("ko-KR")}원</p><p className="mt-0.5 text-stone-400">예상매출</p></div>
-                            <div><p className="font-bold text-stone-900">{dashboardRow.end_date ? new Date(dashboardRow.end_date).toLocaleDateString("ko-KR") : "미정"}</p><p className="mt-0.5 text-stone-400">종료일</p></div>
-                          </div>
+                          <dl className="mt-5 grid grid-cols-3 gap-3 border-y border-black/10 py-3 text-xs [&>div]:min-w-0 [&_dd]:text-wrap-anywhere">
+                            <div><dt className="text-stone-400">참여자</dt><dd className="mt-0.5 font-display text-sm font-semibold text-stone-900">{dashboardRow.participant_count}명</dd></div>
+                            <div><dt className="text-stone-400">예상매출</dt><dd className="mt-0.5 font-display text-sm font-semibold text-stone-900">{dashboardRow.expected_revenue.toLocaleString("ko-KR")}원</dd></div>
+                            <div><dt className="text-stone-400">종료일</dt><dd className="mt-0.5 font-display text-sm font-semibold text-stone-900">{dashboardRow.end_date ? new Date(dashboardRow.end_date).toLocaleDateString("ko-KR") : "미정"}</dd></div>
+                          </dl>
                         )}
                         <div className="mt-5 grid grid-cols-2 gap-2">
-                          <Button asChild variant="outline" className="rounded-full"><Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-2 h-4 w-4" />정보 수정</Link></Button>
-                          <Button asChild className="rounded-full bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />참여자 관리</Link></Button>
+                          <Button asChild variant="outline"><Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-2 h-4 w-4" />정보 수정</Link></Button>
+                          <Button asChild className="bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />참여자 관리</Link></Button>
                           <Button
                             type="button"
-                            variant="outline"
-                            className="col-span-2 rounded-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                            variant="ghost"
+                            className="col-span-2 text-red-700 hover:bg-red-50 hover:text-red-800"
                             disabled={deletingFundingId === funding.id}
                             onClick={() => {
                               setFundingToDelete(funding);
@@ -294,29 +292,29 @@ const MyFundings = () => {
                   );
                 })}
                 {visibleCreatedFundings.length === 0 && (
-                  <div className="col-span-full rounded-3xl border bg-white py-14 text-center text-sm text-gray-500">해당 상태의 펀딩이 없습니다.</div>
+                  <div className="col-span-full border-t border-black/10 py-14 text-sm text-stone-500">해당 상태의 펀딩이 없습니다.</div>
                 )}
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="joined" className="mt-7">
-            <div className="grid gap-4 sm:grid-cols-3">
+          <TabsContent value="joined" className="mt-10">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
               <SummaryCard icon={ShoppingBag} label="결제 완료" value={`${activePaidItems.filter((item) => item.payment_status === "paid").length}건`} />
               <SummaryCard icon={WalletCards} label="결제 금액" value={`${paidAmount.toLocaleString("ko-KR")}원`} />
               <SummaryCard icon={Clock3} label="결제 예정" value={`${plannedItems.length}건 · ${plannedAmount.toLocaleString("ko-KR")}원`} />
             </div>
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-12 flex flex-wrap gap-6">
               {([['all', '전체'], ['paid', '결제 내역'], ['planned', '결제 예정']] as const).map(([value, label]) => (
-                <Button key={value} size="sm" variant={participationFilter === value ? "default" : "outline"}
-                  onClick={() => setParticipationFilter(value)} className={participationFilter === value ? "rounded-full bg-brand hover:bg-brand-dark" : "rounded-full bg-white"}>{label}</Button>
+                <button key={value} type="button" aria-pressed={participationFilter === value}
+                  onClick={() => setParticipationFilter(value)} className={`min-h-10 border-b px-0.5 text-sm transition-colors duration-300 ${participationFilter === value ? "border-brand font-semibold text-[#211b1c]" : "border-transparent text-stone-500 hover:text-[#211b1c]"}`}>{label}</button>
               ))}
             </div>
 
             {activePaidItems.length + plannedItems.length === 0 ? (
               <EmptyState title="아직 참여한 펀딩이 없습니다" description="마음에 드는 디자인을 선택해 첫 펀딩에 참여해보세요." action="펀딩 보러 가기" to="/fundings" />
             ) : (
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 border-b border-black/10">
                 {participationFilter !== "planned" && activePaidItems.map((item) => (
                   <PaidParticipationCard key={`paid-${item.id}`} item={item} cancelling={cancellingId === item.id} onCancel={() => setSelectedItem(item)} />
                 ))}
@@ -344,7 +342,7 @@ const MyFundings = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>이 펀딩을 영구 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <span className="block font-medium text-gray-800">{fundingToDelete?.product_name}</span>
+              <span className="block font-medium text-stone-800">{fundingToDelete?.product_name}</span>
               <span className="block">
                 펀딩 정보, 결제 예정 내역, 취소된 참여 내역과 전용 샘플 이미지가 함께 삭제되며 복구할 수 없습니다.
                 진행 중인 결제나 참여자가 있으면 고객 보호를 위해 삭제가 제한됩니다.
@@ -353,7 +351,7 @@ const MyFundings = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-            <label htmlFor="funding-delete-reason" className="text-sm font-semibold text-gray-800">
+            <label htmlFor="funding-delete-reason" className="text-sm font-semibold text-stone-800">
               삭제 사유 <span className="text-red-600">*</span>
             </label>
             <Textarea
@@ -364,7 +362,7 @@ const MyFundings = () => {
               className="min-h-28 resize-y"
               disabled={!!deletingFundingId}
             />
-            <p className="text-right text-xs text-gray-400">{fundingDeleteReason.length}/500</p>
+            <p className="text-right text-xs text-stone-400">{fundingDeleteReason.length}/500</p>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={!!deletingFundingId}>펀딩 유지하기</AlertDialogCancel>
@@ -388,64 +386,65 @@ const MyFundings = () => {
   );
 };
 
+// Dashboard figure: label + number on a hairline, no card chrome.
 const SummaryCard = ({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) => (
-  <Card className="rounded-2xl"><CardContent className="flex items-center gap-4 p-4 sm:p-5"><div className="shrink-0 rounded-2xl bg-brand/10 p-3 text-brand"><Icon className="h-5 w-5" /></div><div className="min-w-0"><p className="text-sm text-gray-500">{label}</p><p className="text-wrap-anywhere text-xl font-bold">{value}</p></div></CardContent></Card>
+  <div className="min-w-0 border-t border-black/15 pt-4"><p className="flex items-center gap-1.5 text-xs text-stone-500"><Icon className="h-3.5 w-3.5 text-brand" strokeWidth={1.8} />{label}</p><p className="text-wrap-anywhere mt-2 font-display text-xl font-semibold tracking-[-0.03em] sm:text-2xl">{value}</p></div>
 );
 
 const EmptyState = ({ title, description, action, to }: { title: string; description: string; action: string; to: string }) => (
-  <div className="mt-6 rounded-[2rem] border bg-white px-6 py-20 text-center"><PackageOpen className="mx-auto h-12 w-12 text-brand/30" /><h2 className="mt-5 text-xl font-extrabold tracking-[-0.03em]">{title}</h2><p className="mt-2 text-sm text-gray-500">{description}</p><Button asChild className="mt-6 rounded-full bg-brand hover:bg-brand-dark"><Link to={to}>{action}</Link></Button></div>
+  <div className="mt-8 border-t border-black/10 py-16 sm:py-20"><PackageOpen className="h-10 w-10 text-brand/30" strokeWidth={1.5} /><h2 className="mt-5 text-xl font-semibold tracking-[-0.03em] sm:text-2xl">{title}</h2><p className="mt-2 text-sm text-stone-500">{description}</p><Link to={to} className="cta-primary mt-7">{action} <ArrowRight className="h-4 w-4" /></Link></div>
 );
 
 // Phones: compact thumbnail beside the order text, actions in a full-width row underneath.
 // md+: the original image | details | action columns.
 const PARTICIPATION_CARD_GRID = "grid grid-cols-[88px_minmax(0,1fr)] md:grid-cols-[160px_minmax(0,1fr)_auto]";
-const PARTICIPATION_CARD_IMAGE = "ml-4 mt-4 block aspect-square self-start rounded-xl bg-stone-100 p-2 md:m-0 md:self-auto md:rounded-none md:p-5";
-const PARTICIPATION_CARD_ACTIONS = "col-span-2 flex items-center border-t px-4 py-3 md:col-span-1 md:border-l md:border-t-0 md:px-6 md:py-5";
+const PARTICIPATION_CARD_IMAGE = "mt-5 block aspect-square self-start bg-[#ebe7e1] p-2 md:my-5 md:p-4 [&_img]:mix-blend-multiply";
+const PARTICIPATION_CARD_ACTIONS = "col-span-2 flex items-center pb-5 md:col-span-1 md:px-2 md:py-5";
 
 const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFundingParticipation; cancelling: boolean; onCancel: () => void }) => {
   const isCancelled = item.status === "cancelled" || ["cancelled", "failed"].includes(item.payment_status);
   const canCancel = item.status !== "fulfilled" && !isCancelled && item.payment_status !== "failed";
   const fundingRate = item.funding_moq > 0 ? Math.round((item.funding_current_orders / item.funding_moq) * 100) : 0;
   return (
-    <article className={`overflow-hidden rounded-[1.75rem] border bg-white ${isCancelled ? "opacity-65" : ""}`}><div className={PARTICIPATION_CARD_GRID}>
+    <article className={`border-t border-black/10 ${isCancelled ? "opacity-65" : ""}`}><div className={PARTICIPATION_CARD_GRID}>
       <Link to={`/fundings/${item.funding_id}`} className={PARTICIPATION_CARD_IMAGE}><img src={item.image_url} alt={item.product_name} className="h-full w-full object-contain" /></Link>
-      <div className="min-w-0 p-4 md:p-6"><div className="flex flex-wrap gap-2">
+      <div className="min-w-0 p-4 md:px-8 md:py-6"><div className="flex flex-wrap gap-2">
           <Badge className={paymentBadgeClass[item.payment_status]}>{paymentLabel[item.payment_status]}</Badge>
           <Badge variant={item.payment_type === "MOCK" ? "secondary" : "default"}>{item.payment_type === "MOCK" ? "모의결제" : "실제결제"}</Badge>
           {item.status === "fulfilled" && <Badge variant="secondary">제작 처리 완료</Badge>}
         </div>
         <Link to={`/fundings/${item.funding_id}`} className="text-wrap-anywhere mt-3 block text-lg font-bold leading-snug hover:text-brand md:text-xl">{item.product_name}</Link>
-        <p className="text-wrap-anywhere mt-1 font-mono text-xs text-gray-400">주문번호 {item.order_number || item.id.slice(0, 8)}</p>
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 md:gap-x-6"><span>{item.selected_color} · {item.selected_size}</span><span>{item.quantity}장</span><strong className="text-gray-900">{item.total_amount.toLocaleString("ko-KR")}원</strong></div>
+        <p className="text-wrap-anywhere mt-1 font-mono text-xs text-stone-400">주문번호 {item.order_number || item.id.slice(0, 8)}</p>
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-500 md:gap-x-6"><span>{item.selected_color} · {item.selected_size}</span><span>{item.quantity}장</span><strong className="text-stone-900">{item.total_amount.toLocaleString("ko-KR")}원</strong></div>
         {!isCancelled && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <Badge variant="outline" className="gap-1"><Truck className="h-3 w-3" />{PRODUCTION_STAGE_LABEL[item.production_stage]}</Badge>
-            <span className="text-gray-400">펀딩 진행률 {fundingRate}%</span>
+            <span className="text-stone-400">펀딩 진행률 {fundingRate}%</span>
           </div>
         )}
         {(item.shipping_address || item.address) && (
-          <p className="text-wrap-anywhere mt-3 text-xs leading-5 text-gray-400">
+          <p className="text-wrap-anywhere mt-3 text-xs leading-5 text-stone-400">
             배송지 [{item.postal_code || "-"}] {item.shipping_address || item.address} {item.shipping_address_detail || ""}
-            {item.tracking_number && <span className="ml-2 font-semibold text-gray-600">송장 {item.tracking_number}</span>}
+            {item.tracking_number && <span className="ml-2 font-semibold text-stone-600">송장 {item.tracking_number}</span>}
           </p>
         )}
-        <p className="mt-4 flex items-center text-xs text-gray-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 참여</p>
+        <p className="mt-4 flex items-center text-xs text-stone-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 참여</p>
       </div>
-      <div className={PARTICIPATION_CARD_ACTIONS}>{canCancel ? <Button variant="outline" className="w-full rounded-full border-red-200 text-red-700 hover:bg-red-50 md:w-auto" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-gray-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}</div>
+      <div className={PARTICIPATION_CARD_ACTIONS}>{canCancel ? <Button variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50 md:w-auto" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-stone-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}</div>
     </div></article>
   );
 };
 
 const PlannedParticipationCard = ({ item }: { item: MyFundingPaymentIntent }) => (
-  <article className="overflow-hidden rounded-[1.75rem] border border-amber-200 bg-white"><div className={PARTICIPATION_CARD_GRID}>
+  <article className="border-t border-black/10"><div className={PARTICIPATION_CARD_GRID}>
     <Link to={`/fundings/${item.funding_id}`} className={PARTICIPATION_CARD_IMAGE}><img src={item.image_url} alt={item.product_name} className="h-full w-full object-contain" /></Link>
-    <div className="min-w-0 p-4 md:p-6"><Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100"><Clock3 className="mr-1.5 h-3.5 w-3.5" />샘플 확인 후 결제 예정</Badge>
+    <div className="min-w-0 p-4 md:px-8 md:py-6"><Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100"><Clock3 className="mr-1.5 h-3.5 w-3.5" />샘플 확인 후 결제 예정</Badge>
       <Link to={`/fundings/${item.funding_id}`} className="text-wrap-anywhere mt-3 block text-lg font-bold leading-snug hover:text-brand md:text-xl">{item.product_name}</Link>
-      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 md:gap-x-6 text-sm text-gray-500"><span>{item.selected_color} · {item.selected_size}</span><span>{item.quantity}장</span><strong className="text-gray-900">예정 금액 {item.total_amount.toLocaleString("ko-KR")}원</strong></div>
-      <p className="mt-4 flex items-center text-xs text-gray-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 등록</p>
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 md:gap-x-6 text-sm text-stone-500"><span>{item.selected_color} · {item.selected_size}</span><span>{item.quantity}장</span><strong className="text-stone-900">예정 금액 {item.total_amount.toLocaleString("ko-KR")}원</strong></div>
+      <p className="mt-4 flex items-center text-xs text-stone-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 등록</p>
       {item.sample_shared_at && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">판매자가 제작 샘플을 공유했습니다. 확인 후 결제할 수 있습니다.</p>}
     </div>
-    <div className={PARTICIPATION_CARD_ACTIONS}><Button asChild className="w-full rounded-full bg-brand hover:bg-brand-dark md:w-auto"><Link to={`/fundings/${item.funding_id}`}>{item.sample_shared_at ? "샘플 확인·결제" : "펀딩 확인"}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></div>
+    <div className={PARTICIPATION_CARD_ACTIONS}><Button asChild className="w-full bg-brand hover:bg-brand-dark md:w-auto"><Link to={`/fundings/${item.funding_id}`}>{item.sample_shared_at ? "샘플 확인·결제" : "펀딩 확인"}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></div>
   </div></article>
 );
 

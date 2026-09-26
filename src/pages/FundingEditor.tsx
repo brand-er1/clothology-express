@@ -317,7 +317,7 @@ const FundingEditor = () => {
               </Badge>
               <span className="text-sm text-gray-500">MOQ 최소 {minimumOrderQuantity}장 적용</span>
             </div>
-            <h1 className="text-3xl font-extrabold tracking-[-0.03em] md:text-4xl">펀딩 페이지 자동 작성</h1>
+            <h1 className="text-3xl font-bold tracking-[-0.03em] md:text-4xl">펀딩 페이지 자동 작성</h1>
             <p className="mt-2 text-gray-500">생성한 이미지와 옵션을 가져왔습니다. 소개 문구와 가격만 확인해주세요.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -357,13 +357,13 @@ const FundingEditor = () => {
         </div>
 
         {funding.status === "rejected" && funding.admin_comment && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
             <strong>관리자 수정 요청:</strong> {funding.admin_comment}
           </div>
         )}
 
         <AiDetailPageEntry fundingId={funding.id} />
-        <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-stone-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-stone-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="font-bold">컬러별 상품 이미지</p>
             <p className="mt-1 text-sm text-gray-500">컬러를 추가하면 디자인은 그대로, 컬러만 바꾼 AI 상품 이미지(앞/뒤)를 만들 수 있어요. 승인 후에도 컬러 추가가 가능합니다.</p>
@@ -373,7 +373,7 @@ const FundingEditor = () => {
           </Button>
         </div>
 
-        <Card className="mb-6 rounded-3xl border-brand/15 bg-white">
+        <Card className="mb-6 rounded-xl border-brand/15 bg-white">
           <CardHeader className="pb-3"><CardTitle className="text-lg">제작자 정보</CardTitle></CardHeader>
           <CardContent className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1"><BrandIdentity brand={funding.brand} linked={Boolean(funding.brand)} /></div>
@@ -383,7 +383,7 @@ const FundingEditor = () => {
         </Card>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <Card className="overflow-hidden rounded-3xl" data-tutorial="funding-image">
+          <Card className="overflow-hidden rounded-xl" data-tutorial="funding-image">
             <div className="aspect-[4/3] bg-stone-100 p-4">
               <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain" />
             </div>
@@ -395,7 +395,7 @@ const FundingEditor = () => {
             </CardContent>
           </Card>
 
-          <Card className="rounded-3xl">
+          <Card className="rounded-xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
                 <BrandMark className="h-5 w-5" /> 펀딩 정보
@@ -424,7 +424,7 @@ const FundingEditor = () => {
                 />
               </div>
 
-              <div className="grid gap-5 rounded-2xl border bg-stone-50 p-5 md:grid-cols-2">
+              <div className="grid gap-5 rounded-lg border bg-stone-50 p-5 md:grid-cols-2">
                 <div className="space-y-3">
                   <div>
                     <Label htmlFor="new-color">출시 컬러</Label>
@@ -563,14 +563,14 @@ const FundingEditor = () => {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-brand/20 bg-white">
+              <div className="overflow-hidden rounded-lg border border-brand/20 bg-white">
                 <div className="flex flex-col justify-between gap-4 bg-brand px-5 py-5 text-white sm:flex-row sm:items-end">
                   <div>
                     <p className="flex items-center gap-2 text-sm font-bold text-white/80">
                       <TrendingUp className="h-4 w-4" />
                       펀딩 성공 시 예상 순이익
                     </p>
-                    <p className="mt-2 text-2xl font-black tracking-tight md:text-3xl">
+                    <p className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">
                       {estimating
                         ? "이전 견적 불러오는 중"
                         : netProfitMin == null || netProfitMax == null
@@ -657,7 +657,7 @@ const FundingEditor = () => {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+              <div className="rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-600">
                 <div className="flex gap-3">
                   <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
                   <p>
@@ -677,7 +677,7 @@ const FundingEditor = () => {
                       variant="outline"
                       onClick={() => void handleSave(false)}
                       disabled={saving}
-                      className="h-12 w-full rounded-full"
+                      className="h-12 w-full rounded-[3px]"
                     >
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                       준비 중으로 저장
@@ -687,7 +687,7 @@ const FundingEditor = () => {
                     type="button"
                     onClick={() => void handleSave(funding.status === "draft" || funding.status === "rejected")}
                     disabled={saving || (funding.status === "draft" && !funding.brand_id)}
-                    className={`h-12 w-full rounded-full bg-brand hover:bg-brand-dark ${(funding.status === "pending" || funding.status === "approved" || funding.status === "closed") ? "sm:col-span-2" : ""}`}
+                    className={`h-12 w-full rounded-[3px] bg-brand hover:bg-brand-dark ${(funding.status === "pending" || funding.status === "approved" || funding.status === "closed") ? "sm:col-span-2" : ""}`}
                     data-tutorial="funding-submit"
                   >
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}

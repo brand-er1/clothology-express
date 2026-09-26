@@ -65,7 +65,7 @@ const ComparisonBody = ({
         {entries.map(({ size, result }) => (
           <div
             key={size}
-            className={`w-[72vw] shrink-0 snap-center overflow-hidden rounded-2xl border bg-white sm:w-auto ${
+            className={`w-[72vw] shrink-0 snap-center overflow-hidden rounded-lg border bg-white sm:w-auto ${
               size === currentSize ? "border-brand ring-2 ring-brand/15" : "border-stone-200"
             }`}
           >
@@ -80,7 +80,7 @@ const ComparisonBody = ({
                 <p className="px-3 text-center text-xs font-semibold text-stone-400">생성하지 못했어요</p>
               )}
             </div>
-            <p className="p-2 text-center text-sm font-black text-stone-950">
+            <p className="p-2 text-center text-sm font-bold text-stone-950">
               {mannequinSizeShortLabel[size as keyof typeof mannequinSizeShortLabel]}
               {size === currentSize && <span className="ml-1 text-xs font-bold text-brand">현재</span>}
             </p>
@@ -130,9 +130,9 @@ export const SizeComparisonView = ({ open, onOpenChange, gender, currentSize, ga
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-[1.75rem] bg-white p-6 shadow-xl">
+      <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-lg font-black text-stone-950">사이즈별 비교</p>
+          <p className="text-lg font-bold text-stone-950">사이즈별 비교</p>
           <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} aria-label="닫기">
             <X className="h-4 w-4" />
           </Button>

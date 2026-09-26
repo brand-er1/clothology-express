@@ -246,7 +246,7 @@ export const FundingCheckoutDialog = ({
           sm+: the original centred dialog, capped to the viewport height. */}
       <DialogContent
         style={sheetStyle}
-        className="left-0 top-[var(--checkout-vt,0px)] flex h-[var(--checkout-vh,100dvh)] max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 max-sm:data-[state=open]:slide-in-from-bottom-8 max-sm:data-[state=open]:slide-in-from-left-0 max-sm:data-[state=closed]:slide-out-to-left-0 sm:left-[50%] sm:top-[50%] sm:h-auto sm:max-h-[min(90dvh,880px)] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl sm:border"
+        className="left-0 top-[var(--checkout-vt,0px)] flex h-[var(--checkout-vh,100dvh)] max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 max-sm:data-[state=open]:slide-in-from-bottom-8 max-sm:data-[state=open]:slide-in-from-left-0 max-sm:data-[state=closed]:slide-out-to-left-0 sm:left-[50%] sm:top-[50%] sm:h-auto sm:max-h-[min(90dvh,880px)] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:border"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <div className="shrink-0 border-b border-stone-100 px-4 pb-3 pr-14 pt-[max(0.875rem,env(safe-area-inset-top))] sm:px-6 sm:pt-6">

@@ -107,8 +107,8 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
   };
 
   return (
-    <div className="space-y-3 rounded-[1.5rem] border border-brand/20 bg-brand/5 p-5">
-      <p className="flex items-center gap-2 text-sm font-black text-stone-950">
+    <div className="space-y-3 rounded-xl border border-brand/20 bg-brand/5 p-5">
+      <p className="flex items-center gap-2 text-sm font-bold text-stone-950">
         <BrandMark className="h-4 w-4" />✨ 새 옷 만들기
       </p>
       <p className="text-xs leading-5 text-stone-500">
@@ -134,11 +134,11 @@ export const ClosetGarmentStudio = ({ onGarmentCreated }: ClosetGarmentStudioPro
         value={prompt}
         onChange={(event) => setPrompt(event.target.value)}
         placeholder="예: 블랙 오버사이즈 맨투맨, 왼쪽 가슴에 작은 로고"
-        className="min-h-[72px] resize-none rounded-2xl border-stone-200 bg-white text-base"
+        className="min-h-[72px] resize-none rounded-lg border-stone-200 bg-white text-base"
       />
       <Button
         type="button"
-        className="h-11 w-full rounded-full bg-brand text-sm font-bold hover:bg-brand-dark"
+        className="h-11 w-full rounded-[3px] bg-brand text-sm font-bold hover:bg-brand-dark"
         onClick={() => void handleGenerate()}
         disabled={isGenerating}
       >

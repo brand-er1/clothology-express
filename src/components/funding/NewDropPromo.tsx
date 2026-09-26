@@ -83,12 +83,12 @@ export const NewDropTicker = () => {
   const items = [...tickerItems, ...tickerItems];
 
   return (
-    <div className="overflow-hidden bg-brand py-3 text-white">
-      <div className="flex w-max animate-marquee items-center gap-10 whitespace-nowrap text-[11px] font-extrabold uppercase tracking-[0.24em] motion-reduce:animate-none sm:text-xs">
+    <div className="overflow-hidden border-y border-black/[0.08] py-2.5 text-brand">
+      <div className="flex w-max animate-marquee items-center gap-10 whitespace-nowrap font-display text-[11px] font-semibold uppercase tracking-[0.24em] motion-reduce:animate-none">
         {[...items, ...items].map((item, index) => (
           <span key={index} className="flex items-center gap-10">
             {item}
-            <span className="h-1.5 w-1.5 rotate-45 bg-white/70" />
+            <span className="h-1 w-1 rounded-full bg-brand/50" />
           </span>
         ))}
       </div>
@@ -96,17 +96,18 @@ export const NewDropTicker = () => {
   );
 };
 
+// Countdown set as type (numbers + hairline labels), not as a row of boxes.
 const CountdownBlocks = ({ countdown }: { countdown: Countdown }) => (
-  <div className="flex items-center gap-1.5 sm:gap-2">
+  <div className="flex items-start gap-4 sm:gap-6">
     {[
       { value: countdown.days, label: "DAYS" },
       { value: countdown.hours, label: "HRS" },
       { value: countdown.minutes, label: "MIN" },
       { value: countdown.seconds, label: "SEC" },
     ].map((unit) => (
-      <div key={unit.label} className="min-w-[54px] bg-white/10 px-2 py-2 text-center ring-1 ring-white/15 sm:min-w-[68px] sm:py-3">
-        <p className="font-mono text-2xl font-extrabold tabular-nums sm:text-3xl">{pad(unit.value)}</p>
-        <p className="mt-0.5 text-[8px] font-bold tracking-[0.2em] text-white/55 sm:text-[9px]">{unit.label}</p>
+      <div key={unit.label} className="min-w-[2.6rem] sm:min-w-[3.4rem]">
+        <p className="font-display text-[2rem] font-light leading-none tabular-nums tracking-[-0.04em] text-[#211b1c] sm:text-[2.75rem]">{pad(unit.value)}</p>
+        <p className="mt-2 border-t border-black/15 pt-1.5 text-[9px] font-semibold tracking-[0.2em] text-stone-500">{unit.label}</p>
       </div>
     ))}
   </div>
@@ -122,47 +123,37 @@ export const NewDropEventBanner = ({ ctaTo, ctaHref, ctaLabel = "NEW DROP 01 보
   const countdown = useNewDropCountdown();
   if (!countdown) return null;
 
-  const ctaClassName =
-    "inline-flex h-12 shrink-0 items-center justify-center bg-white px-6 text-sm font-extrabold text-brand transition hover:bg-[#f3e6e9]";
+  const ctaClassName = "cta-primary shrink-0";
 
   return (
-    <section className="border-b border-black/10">
+    <section>
       <NewDropTicker />
-      <div className="relative overflow-hidden bg-[#1f1718] text-white">
-        <div className="pointer-events-none absolute -right-10 top-1/2 hidden -translate-y-1/2 select-none font-logo text-[13rem] leading-none text-white/[0.04] lg:block">
-          DROP 01
+      <div className="page-shell grid gap-8 py-10 sm:py-14 lg:grid-cols-12 lg:items-end lg:gap-8">
+        <div className="lg:col-span-6">
+          <p className="eyebrow flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+            </span>
+            Launch event
+            <span className="text-stone-400">D-{countdown.days === 0 ? "DAY" : countdown.days} · ~10.10 (토)</span>
+          </p>
+          <h2 className="mt-4 font-display text-[clamp(2.4rem,5vw,4rem)] font-semibold leading-[0.95] tracking-[-0.045em] text-[#211b1c]">NEW DROP 01</h2>
+          <p className="mt-3 max-w-md text-sm leading-6 text-stone-600 sm:text-base">
+            {NEW_DROP_BRAND} 반팔 티셔츠 런칭 기념 · <strong className="font-semibold text-[#211b1c]">10월 10일까지만</strong> 선주문을 받습니다.
+          </p>
         </div>
-        <div className="relative mx-auto flex max-w-[1440px] flex-col gap-6 px-5 py-8 sm:px-8 sm:py-10 lg:flex-row lg:items-center lg:justify-between lg:px-12 xl:px-16">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 bg-brand px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.2em]">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-                </span>
-                Launch event
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#d9a9b4]">
-                D-{countdown.days === 0 ? "DAY" : countdown.days} · ~10.10 (토)
-              </span>
-            </div>
-            <h2 className="mt-3 font-logo text-[clamp(2.2rem,5vw,3.8rem)] leading-[0.95]">NEW DROP 01</h2>
-            <p className="mt-2 text-sm text-white/70 sm:text-base">
-              {NEW_DROP_BRAND} 반팔 티셔츠 런칭 기념 · <strong className="text-white">10월 10일까지만</strong> 선주문을 받습니다.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <CountdownBlocks countdown={countdown} />
-            {ctaTo ? (
-              <Link to={ctaTo} className={ctaClassName}>
-                {ctaLabel} <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            ) : (
-              <a href={ctaHref} className={ctaClassName}>
-                {ctaLabel} <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
-            )}
-          </div>
+        <div className="flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between lg:col-span-6 lg:justify-end lg:gap-10">
+          <CountdownBlocks countdown={countdown} />
+          {ctaTo ? (
+            <Link to={ctaTo} className={ctaClassName}>
+              {ctaLabel} <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <a href={ctaHref} className={ctaClassName}>
+              {ctaLabel} <ArrowRight className="h-4 w-4" />
+            </a>
+          )}
         </div>
       </div>
     </section>

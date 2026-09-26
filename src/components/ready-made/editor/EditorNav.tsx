@@ -22,7 +22,7 @@ export const EditorNav = ({ active, onSelect, orientation }: EditorNavProps) => 
     className={
       orientation === "vertical"
         ? "flex w-20 shrink-0 flex-col gap-1 border-r border-stone-200 bg-white py-3"
-        : "flex w-full items-stretch justify-between overflow-hidden rounded-2xl border border-stone-200 bg-white p-1 shadow-sm"
+        : "flex w-full items-stretch justify-between overflow-hidden rounded-lg border border-stone-200 bg-white p-1 shadow-sm"
     }
   >
     {EDITOR_PANELS.map(({ key, label, icon: Icon }) => {

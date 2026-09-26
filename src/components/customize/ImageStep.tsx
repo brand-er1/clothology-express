@@ -62,7 +62,7 @@ export const ImageStep = ({
           </div>
 
           {isLoading && !generatedImageUrls ? (
-            <div className="flex min-h-[520px] w-full items-center justify-center rounded-2xl bg-gray-100 sm:min-h-[660px]">
+            <div className="flex min-h-[520px] w-full items-center justify-center rounded-lg bg-gray-100 sm:min-h-[660px]">
               <div className="flex flex-col items-center space-y-2">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
                 <p className="text-[14px] text-gray-500">이미지 생성 중...</p>
@@ -87,7 +87,7 @@ export const ImageStep = ({
                   return (
                   <div
                     key={index}
-                    className="relative overflow-hidden rounded-[1.35rem] border border-gray-200 bg-[#f2efeb] shadow-[0_18px_55px_rgba(36,26,24,0.08)] transition-all sm:rounded-2xl"
+                    className="relative overflow-hidden rounded-xl border border-gray-200 bg-[#f2efeb] transition-all sm:rounded-lg"
                   >
                     {!imageErrors[index] ? (
                       <button
@@ -147,7 +147,7 @@ export const ImageStep = ({
               <Button
                 onClick={onGenerateImage}
                 variant="outline"
-                className="h-12 w-full rounded-full"
+                className="h-12 w-full rounded-[3px]"
                 disabled={isLoading}
                 data-tutorial="customize-generate"
               >
@@ -160,11 +160,11 @@ export const ImageStep = ({
               </Button>
             </div>
           ) : (
-            <div className="flex min-h-[520px] w-full items-center justify-center rounded-2xl bg-gray-100 sm:min-h-[660px]">
+            <div className="flex min-h-[520px] w-full items-center justify-center rounded-lg bg-gray-100 sm:min-h-[660px]">
               <div className="flex flex-col items-center">
                 <Button
                   onClick={onGenerateImage}
-                  className="h-12 rounded-full bg-brand px-7 hover:bg-brand-dark"
+                  className="h-12 rounded-[3px] bg-brand px-7 hover:bg-brand-dark"
                   disabled={isLoading}
                   data-tutorial="customize-generate"
                 >
@@ -181,7 +181,7 @@ export const ImageStep = ({
         </div>
       </Card>
 
-      <Card className="h-fit rounded-2xl p-4 sm:p-6 xl:sticky xl:top-28">
+      <Card className="h-fit rounded-lg p-4 sm:p-6 xl:sticky xl:top-28">
         <div className="space-y-4">
           <h3 className="text-[17px] font-semibold sm:text-lg">선택한 옵션</h3>
           <div className="space-y-2">
@@ -208,7 +208,7 @@ export const ImageStep = ({
         if (!open) setPreviewImageUrl(null);
       }}
     >
-      <DialogContent className="h-[100dvh] max-h-none w-screen max-w-none rounded-none border-white/15 bg-black p-0 sm:h-[94vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-2xl sm:p-3">
+      <DialogContent className="h-[100dvh] max-h-none w-screen max-w-none rounded-none border-white/15 bg-black p-0 sm:h-[94vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-lg sm:p-3">
         <DialogTitle className="sr-only">생성된 의류 디자인 크게 보기</DialogTitle>
         {previewImageUrl && (
           <img

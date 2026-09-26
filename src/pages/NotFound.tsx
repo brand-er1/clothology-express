@@ -18,7 +18,7 @@ const NotFound = () => {
       <div className="flex flex-col items-center text-center">
         <BrandMascot pose="idle" size={104} />
         <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.24em] text-brand">404</p>
-        <h1 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-5xl">
+        <h1 className="mt-3 text-4xl font-bold tracking-[-0.03em] sm:text-5xl">
           어라? 여긴 어디지? 👀
         </h1>
         <p className="mt-4 max-w-sm text-sm leading-7 text-stone-600 sm:text-base">

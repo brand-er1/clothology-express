@@ -127,7 +127,7 @@ const GarmentEditBody = ({
           </div>
           <div className="min-w-0">
             <p className="text-[11px] font-bold text-brand">{closetSlotLabel[garment.slot]}</p>
-            <p className="truncate text-sm font-black text-stone-950">{garment.label}</p>
+            <p className="truncate text-sm font-bold text-stone-950">{garment.label}</p>
           </div>
         </div>
 
@@ -139,13 +139,13 @@ const GarmentEditBody = ({
             <div className="hidden grid-cols-2 gap-3 sm:grid">
               <div>
                 <p className="mb-1 text-center text-[11px] font-bold text-stone-400">수정 전</p>
-                <div className="flex aspect-square items-center justify-center rounded-2xl bg-[#f4f0ea] p-2">
+                <div className="flex aspect-square items-center justify-center rounded-lg bg-[#f4f0ea] p-2">
                   <img src={garment.imageUrl} alt="수정 전" className="h-full w-full object-contain" />
                 </div>
               </div>
               <div>
                 <p className="mb-1 text-center text-[11px] font-bold text-brand">수정 후</p>
-                <div className="flex aspect-square items-center justify-center rounded-2xl border-2 border-brand/30 bg-[#f4f0ea] p-2">
+                <div className="flex aspect-square items-center justify-center rounded-lg border-2 border-brand/30 bg-[#f4f0ea] p-2">
                   <img src={pending.imageUrl} alt="수정 후" className="h-full w-full object-contain" />
                 </div>
               </div>
@@ -171,7 +171,7 @@ const GarmentEditBody = ({
                   수정 후
                 </button>
               </div>
-              <div className="flex aspect-square items-center justify-center rounded-2xl bg-[#f4f0ea] p-2">
+              <div className="flex aspect-square items-center justify-center rounded-lg bg-[#f4f0ea] p-2">
                 <img
                   src={compareView === "before" ? garment.imageUrl : pending.imageUrl}
                   alt={compareView === "before" ? "수정 전" : "수정 후"}
@@ -199,7 +199,7 @@ const GarmentEditBody = ({
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl bg-[#f4f0ea] p-3">
+            <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-[#f4f0ea] p-3">
               <img src={garment.imageUrl} alt={garment.label} className="h-full w-full object-contain" />
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -218,7 +218,7 @@ const GarmentEditBody = ({
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               placeholder="어떻게 수정할까요?"
-              className="min-h-[76px] resize-none rounded-2xl border-stone-200 bg-white text-base"
+              className="min-h-[76px] resize-none rounded-lg border-stone-200 bg-white text-base"
             />
             {isEditing && (
               <p className="flex items-center gap-1.5 text-xs font-bold text-brand">
@@ -237,7 +237,7 @@ const GarmentEditBody = ({
         >
           <Button
             type="button"
-            className="h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
+            className="h-12 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark"
             onClick={() => void handleGenerate()}
             disabled={isEditing}
           >
@@ -313,9 +313,9 @@ export const GarmentEditPanel = ({
   if (!open) return null;
 
   return (
-    <div className="rounded-[1.5rem] border border-brand/20 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-brand/20 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-sm font-black text-stone-950">
+        <p className="flex items-center gap-1.5 text-sm font-bold text-stone-950">
           <BrandMark className="h-4 w-4" />이 옷 수정하기
         </p>
         <button

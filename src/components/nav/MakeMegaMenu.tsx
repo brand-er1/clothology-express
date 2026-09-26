@@ -4,9 +4,9 @@ import { ChevronDown } from "lucide-react";
 import type { NavLinkItem } from "./navigationData";
 
 /**
- * Desktop-only hover mega menu for MAKE. A custom hover/click panel (rather than Radix
- * NavigationMenu's viewport primitive) keeps full control over the icon+description grid layout
- * the design calls for, while staying simple to reason about.
+ * Desktop-only hover menu for 제작하기. A custom hover/click panel (rather than Radix
+ * NavigationMenu's viewport primitive) keeps full control over the numbered editorial list,
+ * while staying simple to reason about.
  */
 export const MakeMegaMenu = ({ items }: { items: NavLinkItem[] }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,49 +42,42 @@ export const MakeMegaMenu = ({ items }: { items: NavLinkItem[] }) => {
 
   if (items.length === 0) return null;
 
+  const isMakeRoute = items.some((item) => location.pathname === item.to);
+
   return (
     <div ref={wrapperRef} className="relative" onMouseEnter={open} onMouseLeave={scheduleClose}>
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
         aria-expanded={isOpen}
-        className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm lg:px-4 font-semibold transition ${
-          isOpen ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-stone-100 hover:text-stone-950"
+        className={`relative flex items-center gap-1 py-2 text-[14px] font-medium tracking-[-0.01em] transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:bg-brand after:transition-transform after:duration-300 ${
+          isOpen || isMakeRoute ? "text-brand after:scale-x-100" : "text-stone-600 after:scale-x-0 hover:text-[#211b1c]"
         }`}
       >
-        MAKE
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        제작하기
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute left-1/2 top-full z-50 mt-3 w-[560px] -translate-x-1/2 rounded-3xl border border-stone-200 bg-white p-3 shadow-2xl">
-          <p className="px-4 pb-2 pt-2 text-xs font-bold uppercase tracking-[0.22em] text-brand">
-            Make your clothes
-          </p>
-          <div className="grid grid-cols-2 gap-1">
-            {items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-start gap-3 rounded-2xl p-3 transition hover:bg-stone-50"
-                >
-                  {Icon && (
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                      <Icon className="h-5 w-5" />
-                    </span>
+        <div className="absolute left-0 top-full z-50 mt-5 w-[520px] animate-in fade-in-0 slide-in-from-top-1 border border-black/[0.07] bg-[#fbfaf8] px-7 pb-6 pt-6 shadow-[0_24px_60px_rgba(33,27,28,0.10)] duration-300">
+          <p className="eyebrow">Make your clothes</p>
+          <div className="mt-4 grid grid-cols-2 gap-x-8">
+            {items.map((item, index) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setIsOpen(false)}
+                className="group flex items-baseline gap-3 border-t border-black/[0.07] py-4"
+              >
+                <span className="font-display text-[11px] font-medium text-stone-400">{String(index + 1).padStart(2, "0")}</span>
+                <span className="min-w-0">
+                  <span className="link-draw text-[15px] font-semibold text-[#211b1c] transition-colors group-hover:text-brand">{item.label}</span>
+                  {item.description && (
+                    <span className="mt-1 block text-xs leading-5 text-stone-500">{item.description}</span>
                   )}
-                  <span className="min-w-0">
-                    <span className="block text-sm font-bold text-stone-900">{item.label}</span>
-                    {item.description && (
-                      <span className="mt-0.5 block text-xs leading-5 text-stone-500">{item.description}</span>
-                    )}
-                  </span>
-                </Link>
-              );
-            })}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       )}

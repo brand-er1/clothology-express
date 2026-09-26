@@ -26,8 +26,8 @@ export const MaterialStep = ({
 }: MaterialStepProps) => {
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-brand/15 bg-brand/5 px-4 py-3.5 sm:px-5">
-        <p className="flex items-center gap-2 text-sm font-extrabold text-stone-900">
+      <div className="rounded-lg border border-brand/15 bg-brand/5 px-4 py-3.5 sm:px-5">
+        <p className="flex items-center gap-2 text-sm font-bold text-stone-900">
           <Info className="h-4 w-4 text-brand" /> 카테고리에서 자주 쓰는 추천 원단
         </p>
         <p className="mt-1 text-xs leading-5 text-stone-600">
@@ -45,9 +45,9 @@ export const MaterialStep = ({
               key={material.id}
               role="button"
               tabIndex={0}
-              className={`relative cursor-pointer overflow-hidden rounded-2xl transition-all ${
+              className={`relative cursor-pointer overflow-hidden rounded-lg transition-all ${
                 isSelected
-                  ? "border-brand bg-[#fff9f7] shadow-[0_12px_35px_rgba(113,16,17,0.08)] ring-1 ring-brand"
+                  ? "border-brand bg-[#fff9f7] ring-1 ring-brand"
                   : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-lg"
               } ${material.isCustom ? "border-dashed" : ""}`}
               onClick={() => onSelectMaterial(material.id)}
@@ -100,7 +100,7 @@ export const MaterialStep = ({
         })}
       </div>
 
-      <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-4 sm:p-6">
+      <div className="rounded-lg border border-dashed border-stone-300 bg-white p-4 sm:p-6">
         <div className="mb-3">
           <p className="text-[15px] font-bold sm:text-sm">원하는 원단이 목록에 없나요?</p>
           <p className="mt-1 text-[13px] text-stone-500 sm:text-xs">알고 있는 원단명을 직접 추가할 수 있어요.</p>

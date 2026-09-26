@@ -128,7 +128,7 @@ export const SizeStep = ({
 
   return (
     <div className="space-y-5">
-      <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+      <Card className="overflow-hidden rounded-xl border-0 shadow-sm">
         <div className="bg-brand px-5 py-6 text-white md:px-7">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
@@ -136,7 +136,7 @@ export const SizeStep = ({
                 <Ruler className="h-4 w-4" />
                 등록 방식 선택 전 마지막 확인
               </p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] md:text-3xl">
+              <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] md:text-3xl">
                 생산 사이즈와 수량을 확인하세요
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/75">
@@ -145,7 +145,7 @@ export const SizeStep = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-3 rounded-2xl bg-white/10 p-1">
+            <div className="grid grid-cols-3 rounded-lg bg-white/10 p-1">
               {(["남성", "여성", "남녀공용"] as ProductionGender[]).map((option) => (
                 <Button
                   key={option}
@@ -181,7 +181,7 @@ export const SizeStep = ({
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-black ${
+                      className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold ${
                         isSelected
                           ? "bg-brand text-white"
                           : "bg-gray-100 text-gray-500"
@@ -193,7 +193,7 @@ export const SizeStep = ({
                       <p className="text-xs font-semibold text-gray-400">
                         {selectedGender} {size.number}사이즈
                       </p>
-                      <p className="text-lg font-black text-gray-950">
+                      <p className="text-lg font-bold text-gray-950">
                         {size.domesticLabel}
                       </p>
                     </div>
@@ -214,13 +214,13 @@ export const SizeStep = ({
 
           <div className="p-5 md:p-7">
             <div
-              className="mb-6 grid gap-4 rounded-2xl border border-brand/15 bg-brand/5 p-5 sm:grid-cols-[1fr_220px] sm:items-center"
+              className="mb-6 grid gap-4 rounded-lg border border-brand/15 bg-brand/5 p-5 sm:grid-cols-[1fr_220px] sm:items-center"
               data-tutorial="customize-quantity"
             >
               <div className="flex gap-3">
                 <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
                 <div>
-                  <h3 className="font-black text-gray-950">제작 의뢰 수량</h3>
+                  <h3 className="font-bold text-gray-950">제작 의뢰 수량</h3>
                   <p className="mt-1 text-sm leading-6 text-gray-600">
                     제작 의뢰를 선택하면 이 수량이 관리자에게 전달됩니다.
                     MOQ는 {minimumOrderQuantity}장이며, 수량에 따라 자동 견적과 생산공임 할인이
@@ -249,7 +249,7 @@ export const SizeStep = ({
                       ),
                     )
                   }
-                  className="h-12 rounded-xl bg-white pr-12 text-right text-lg font-black"
+                  className="h-12 rounded-xl bg-white pr-12 text-right text-lg font-bold"
                 />
                 <span className="pointer-events-none absolute right-4 top-3.5 text-sm font-bold text-gray-500">
                   장
@@ -259,7 +259,7 @@ export const SizeStep = ({
 
             <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>
-                <h3 className="text-lg font-black text-gray-950">
+                <h3 className="text-lg font-bold text-gray-950">
                   {category} 평균 사이즈표
                 </h3>
                 <p className="mt-1 text-xs leading-5 text-gray-500">
@@ -281,7 +281,7 @@ export const SizeStep = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border">
+            <div className="overflow-x-auto rounded-lg border">
               <table className="w-full min-w-[620px] border-collapse text-sm">
                 <thead>
                   <tr className="bg-gray-950 text-white">
@@ -368,7 +368,7 @@ export const SizeStep = ({
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <div className="flex gap-3 rounded-2xl bg-brand/5 p-4 text-sm leading-6 text-gray-700">
+              <div className="flex gap-3 rounded-lg bg-brand/5 p-4 text-sm leading-6 text-gray-700">
                 <Users className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
                 <p>
                   <strong className="text-gray-950">사이즈 번호 기준</strong>
@@ -380,7 +380,7 @@ export const SizeStep = ({
                       : "남녀공용 1=90–95 · 2=100 · 3=105–110"}
                 </p>
               </div>
-              <div className="flex gap-3 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+              <div className="flex gap-3 rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                 <p>
                   평균 사이즈는 생산 기준 초안이며, 패턴·샘플 제작 과정에서

@@ -11,6 +11,27 @@ import {
 import { ReasonDialog, type ReasonDialogState } from "@/components/admin/shell/ReasonDialog";
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { useAdminContext } from "@/components/admin/shell/AdminContext";
+import { Download } from "lucide-react";
+import { buildOrderSheet, buildQuantitySheet, exportFileDate, type OrderExportRow } from "@/lib/order-export";
+import { downloadXlsx, safeFileName } from "@/lib/xlsx";
+
+type ExportRow = {
+  order_number: string | null; ordered_at: string | null; paid_at: string | null; product_name: string | null; brand_name: string | null;
+  color: string | null; size: string | null; quantity: number; unit_price: number | null; total_amount: number | null;
+  payment_type: string | null; payment_provider: string | null; payment_status: string | null; order_status: string | null;
+  orderer_name: string | null; orderer_phone: string | null; orderer_email: string | null; recipient_name: string | null;
+  recipient_phone: string | null; postal_code: string | null; address: string | null; address_detail: string | null;
+  delivery_message: string | null; production_stage: string | null; shipping_status: string | null; tracking_number: string | null;
+};
+
+const toExportRow = (row: ExportRow): OrderExportRow => ({
+  orderNumber: row.order_number, orderedAt: row.ordered_at, paidAt: row.paid_at, productName: row.product_name, brandName: row.brand_name,
+  color: row.color, size: row.size, quantity: Number(row.quantity ?? 0), unitPrice: row.unit_price, totalAmount: row.total_amount,
+  paymentType: row.payment_type, paymentProvider: row.payment_provider, paymentStatus: row.payment_status, orderStatus: row.order_status,
+  ordererName: row.orderer_name, ordererPhone: row.orderer_phone, ordererEmail: row.orderer_email, recipientName: row.recipient_name,
+  recipientPhone: row.recipient_phone, postalCode: row.postal_code, address: row.address, addressDetail: row.address_detail,
+  deliveryMessage: row.delivery_message, productionStage: row.production_stage, shippingStatus: row.shipping_status, trackingNumber: row.tracking_number,
+});
 
 const PAGE = 30;
 const STATES = ["all", "payment_pending", "paid", "in_production", "ready_to_ship", "shipping", "delivered", "cancelled", "refunded"] as const;
@@ -118,10 +139,39 @@ const OrdersPage = () => {
     [search, state, page, fundingId],
   );
   const rows = data ?? [];
+  const { can } = useAdminContext();
+  const [exportDialog, setExportDialog] = useState<ReasonDialogState>(null);
+
+  // 개인정보 원문이 포함되므로 orders.pii 권한 + 사유 입력 + 서버 Audit Log 기록
+  const openExport = () => setExportDialog({
+    title: "주문 · 참여자 엑셀 다운로드",
+    description: <>현재 검색·상태·펀딩 조건에 맞는 주문 전체가 엑셀(.xlsx)로 저장됩니다{fundingId ? " (컬러·사이즈별 생산 수량표 포함)" : ""}. 이름·연락처·주소 등 개인정보가 포함되며 다운로드 기록이 Audit Log 에 남습니다.</>,
+    confirmLabel: "다운로드",
+    reasonLabel: "다운로드 사유",
+    placeholder: "예: 배송 준비용 수령인 목록",
+    successMessage: "엑셀 파일을 저장했습니다",
+    onConfirm: async (reason) => {
+      const result = await adminRpc<{ rows: ExportRow[]; count: number }>("admin_export_orders", {
+        p_search: search || null, p_state: state, p_funding_id: fundingId, p_reason: reason,
+      });
+      const exportRows = (result.rows ?? []).map(toExportRow);
+      const productName = fundingId ? exportRows[0]?.productName : null;
+      downloadXlsx(`${safeFileName(productName || "BRAND-ER")}_주문목록_${exportFileDate()}.xlsx`, [
+        buildOrderSheet(exportRows, true),
+        ...(fundingId ? [buildQuantitySheet(exportRows)] : []),
+      ]);
+      return { warning: `${result.count}건을 내보냈습니다.` };
+    },
+  });
 
   return (
     <div>
-      <PageHeader eyebrow="Orders" title="주문 · 참여자 관리" description="펀딩 참여 주문 전체를 조회합니다. 주문번호·이름·전화번호·펀딩·브랜드로 검색할 수 있습니다." />
+      <PageHeader
+        eyebrow="Orders"
+        title="주문 · 참여자 관리"
+        description="펀딩 참여 주문 전체를 조회합니다. 주문번호·이름·전화번호·펀딩·브랜드로 검색할 수 있습니다."
+        actions={can("orders.pii") ? <Button variant="outline" size="sm" onClick={openExport}><Download className="mr-1.5 h-3.5 w-3.5" />엑셀 다운로드</Button> : undefined}
+      />
       {fundingId && <div className="mb-3"><Notice tone="blue">특정 펀딩의 참여자만 표시 중입니다. <button className="font-bold underline" onClick={() => setParams({})}>전체 보기</button></Notice></div>}
       <Panel bodyClassName="p-0" title={
         <div className="flex flex-col gap-2">
@@ -151,6 +201,7 @@ const OrdersPage = () => {
         <Pager page={page} pageSize={PAGE} total={totalOf(rows)} onPage={setPage} />
       </Panel>
       <OrderSheet orderId={selected} onClose={() => setSelected(null)} onChanged={reload} />
+      <ReasonDialog state={exportDialog} onClose={() => setExportDialog(null)} />
     </div>
   );
 };

@@ -12,7 +12,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 DB="${ADMIN_TEST_DB:-brander_admin_test}"
 # 검증 대상(신규) 마이그레이션. 나머지는 "운영에 이미 적용된 상태"로 간주해 먼저 적용한다.
-NEW_MIGRATIONS=(20260926000000 20260926010000 20260926020000 20260927000000 20260928000000 20260929000000)
+NEW_MIGRATIONS=(20260926000000 20260926010000 20260926020000 20260927000000 20260928000000 20260929000000 20260930000000)
 is_new() { local base; base="$(basename "$1")"; for v in "${NEW_MIGRATIONS[@]}"; do [[ "$base" == "$v"* ]] && return 0; done; return 1; }
 P=(psql -v ON_ERROR_STOP=1 -q -d "$DB")
 
@@ -45,4 +45,8 @@ done
 
 "${P[@]}" -f "$HERE/60_funding_colors.sql" >/dev/null 2>&1
 "${P[@]}" -At -c "select '60_funding_colors', count(*) filter (where ok) as pass, count(*) filter (where not ok) as fail from _t"
+"${P[@]}" -At -c "select 'FAIL: ' || label || ' | ' || detail from _t where not ok"
+
+"${P[@]}" -f "$HERE/70_order_export.sql" >/dev/null 2>&1
+"${P[@]}" -At -c "select '70_order_export', count(*) filter (where ok) as pass, count(*) filter (where not ok) as fail from _t"
 "${P[@]}" -At -c "select 'FAIL: ' || label || ' | ' || detail from _t where not ok"

@@ -50,46 +50,47 @@ const pressArticles: PressArticle[] = [
 
 const CommunityInsights = () => {
   return (
-    <section className="border-t-2 border-stone-950 pb-8 pt-5 sm:pt-7">
+    <section className="border-t border-stone-950 pb-8 pt-5 sm:pt-7">
       <div className="mb-8 flex items-end justify-between gap-5 border-b border-stone-300 pb-4">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand">MEDIA COVERAGE</p>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-3xl">
+          <p className="eyebrow">Media coverage</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-stone-950 sm:text-3xl">
             BRAND-ER NEWS
           </h2>
         </div>
         <p className="hidden text-xs font-medium text-stone-500 sm:block">기사 카드를 누르면 원문으로 이동합니다.</p>
       </div>
 
-      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 md:gap-7">
+      {/* Magazine layout: the lead story takes half the width, the rest run as a narrower column. */}
+      <div className="grid gap-10 sm:grid-cols-2 md:gap-8 lg:grid-cols-12">
         {pressArticles.map((article, index) => (
           <a
             key={article.href}
             href={article.href}
             target="_blank"
             rel="noreferrer"
-            className="group block"
+            className={`group block ${index === 0 ? "sm:col-span-2 lg:col-span-6 lg:row-span-3" : "lg:col-span-6 lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-6"}`}
           >
-            <div className="overflow-hidden rounded-[1.75rem] bg-stone-200 shadow-sm">
+            <div className="overflow-hidden bg-stone-200">
               <img
                 src={article.image}
                 alt={`${article.source} 기사 이미지`}
-                className="aspect-[16/10] w-full object-cover transition duration-500 group-hover:scale-[1.025]"
+                className={`img-zoom w-full object-cover ${index === 0 ? "aspect-[4/3]" : "aspect-[16/10] lg:aspect-[4/3]"}`}
                 loading={index === 0 ? "eager" : "lazy"}
               />
             </div>
 
-            <div className="px-1 pt-5">
-              <div className="flex items-center gap-2 text-[11px] font-bold text-stone-500">
+            <div className={index === 0 ? "pt-6" : "pt-5 lg:pt-0"}>
+              <div className="flex items-center gap-2 text-[11px] font-semibold text-stone-500">
                 <span className="text-brand">{article.source}</span>
                 <span className="text-stone-300">|</span>
                 <span>{article.date}</span>
               </div>
-              <h3 className="mt-3 text-2xl font-bold leading-[1.32] tracking-[-0.035em] text-stone-950 group-hover:text-brand sm:text-[1.7rem]">
+              <h3 className={`mt-3 font-semibold tracking-[-0.035em] text-stone-950 transition-colors group-hover:text-brand ${index === 0 ? "text-2xl leading-[1.3] sm:text-[2.1rem]" : "text-xl leading-[1.35] lg:line-clamp-3 lg:text-lg"}`}>
                 {article.title}
               </h3>
-              <p className="mt-3 text-sm leading-6 text-stone-600">{article.summary}</p>
-              <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-extrabold text-stone-950 transition group-hover:text-brand">
+              <p className={`mt-3 text-sm leading-6 text-stone-600 ${index === 0 ? "" : "lg:line-clamp-2"}`}>{article.summary}</p>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-950 transition-colors group-hover:text-brand">
                 기사 원문 보기 <ArrowUpRight className="h-4 w-4" />
               </span>
             </div>

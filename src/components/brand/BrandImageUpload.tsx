@@ -32,7 +32,7 @@ export const BrandImageUpload = ({ label, kind, value, onChange }: Props) => {
   };
 
   return (
-    <div className="min-w-0 space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
+    <div className="min-w-0 space-y-3 rounded-lg border border-stone-200 bg-white p-4">
       <Label>{label}</Label>
       <div className="flex min-w-0 items-center gap-4">
         <SafeBrandImage src={value} alt={label} kind={kind} className="h-20 w-20" />

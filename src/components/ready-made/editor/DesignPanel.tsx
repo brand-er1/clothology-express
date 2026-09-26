@@ -19,7 +19,7 @@ export const DesignPanel = ({ form }: DesignPanelProps) => {
 
   return (
     <div>
-      <h3 className="text-sm font-black text-stone-950">디자인</h3>
+      <h3 className="text-sm font-bold text-stone-950">디자인</h3>
       <p className="mt-1 text-xs leading-5 text-stone-500">
         업로드하면 캔버스 위에 바로 나타나요. PNG 투명 배경을 권장해요.
       </p>

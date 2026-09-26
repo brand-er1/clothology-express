@@ -33,7 +33,6 @@ import { fetchDetailPageForFunding } from "@/services/detailPage";
 import type { ProductDetailPage } from "@/types/detailPage";
 import {
   ArrowLeft,
-  CheckCircle2,
   Clock3,
   Loader2,
   Minus,
@@ -255,7 +254,7 @@ const FundingDetail = () => {
   };
 
   const renderPurchaseButton = (heightClassName = "h-14") => !isPreview && funding.price && !currentUserId ? (
-    <Button asChild className={`${heightClassName} w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark`} data-tutorial="funding-detail-participate">
+    <Button asChild className={`${heightClassName} w-full rounded-[2px] bg-brand text-base font-semibold text-white hover:bg-brand-dark`} data-tutorial="funding-detail-participate">
       <Link to={loginReturnTo}>
         <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
       </Link>
@@ -264,7 +263,7 @@ const FundingDetail = () => {
     <Button
       disabled={isPreview || !funding.price}
       onClick={handleParticipate}
-      className={`${heightClassName} w-full rounded-none bg-brand text-base font-bold text-white hover:bg-brand-dark`}
+      className={`${heightClassName} w-full rounded-[2px] bg-brand text-base font-semibold text-white hover:bg-brand-dark`}
       data-tutorial="funding-detail-participate"
     >
       {!isPreview && <WalletCards className="mr-2 h-5 w-5" />}
@@ -281,11 +280,11 @@ const FundingDetail = () => {
   const dDayLabel = daysLeft === null ? "기간 미정" : daysLeft > 0 ? `D-${daysLeft}` : daysLeft === 0 ? "D-DAY" : "펀딩 종료";
 
   return (
-    <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
+    <div className="min-h-screen bg-[#f6f3ee] text-[#211b1c]">
       <Header />
-      <main className="mx-auto max-w-[1440px] px-4 pb-16 pt-20 sm:px-8 sm:pt-24 lg:px-12 lg:pb-24 xl:px-16">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-black/10 pb-5">
-          <Link to="/fundings" className="inline-flex items-center text-xs font-bold uppercase tracking-[0.14em] text-stone-500 transition hover:text-brand">
+      <main className="page-shell pb-16 pt-20 sm:pt-24 lg:pb-24">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 pb-2">
+          <Link to="/fundings" className="inline-flex items-center font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500 transition-colors hover:text-brand">
             <ArrowLeft className="mr-2 h-4 w-4" /> Shop / {funding.cloth_type}
           </Link>
           <div className="flex flex-wrap items-center gap-2">
@@ -318,7 +317,7 @@ const FundingDetail = () => {
             overlay={
               <>
                 <WatermarkOverlay />
-                <span className="pointer-events-none absolute left-4 top-4 bg-[#f3f1ed]/90 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-brand backdrop-blur-sm sm:left-6 sm:top-6">
+                <span className="pointer-events-none absolute left-4 top-4 font-display text-[10px] font-semibold uppercase tracking-[0.22em] text-brand sm:left-6 sm:top-6">
                   Limited pre-order
                 </span>
               </>
@@ -326,8 +325,8 @@ const FundingDetail = () => {
           />
 
           <aside className="min-w-0 lg:sticky lg:top-28" data-mascot-safezone>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">{funding.brand?.brand_name || "제작자 정보 확인 중"} / {funding.cloth_type}</p>
-            <h1 className="mt-3 text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:mt-4 sm:text-5xl xl:text-6xl">
+            <p className="eyebrow">{funding.brand?.brand_name || "제작자 정보 확인 중"} / {funding.cloth_type}</p>
+            <h1 className="mt-3 text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:mt-4 sm:text-5xl xl:text-[3.5rem]">
               {funding.product_name}
             </h1>
             <p className="mt-5 text-sm leading-7 text-stone-600">{detailPage?.document.subtitle || customerDescription}</p>
@@ -335,48 +334,47 @@ const FundingDetail = () => {
               <BrandIdentity brand={funding.brand} />
               {funding.brand?.short_description && <p className="mt-3 pl-[60px] text-xs leading-5 text-stone-500">{funding.brand.short_description}</p>}
             </div>
-            <p className="mt-7 text-2xl font-bold tracking-tight" data-tutorial="funding-detail-price">
+            <p className="mt-7 text-2xl font-semibold tracking-[-0.02em]" data-tutorial="funding-detail-price">
               {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
             </p>
             {isFreeTeeEventItem && <FreeTeeEventNotice className="mt-4" />}
 
-            <div className="mt-8 border-y border-black/10 py-5" data-tutorial="funding-detail-progress">
-              <div className="flex items-start justify-between gap-4 text-sm">
-                <div>
-                  <p className="font-bold text-[#211b1c]">
-                    {remaining > 0 ? `제작 확정까지 ${remaining}장의 주문이 더 필요해요` : "제작이 확정된 컬렉션입니다"}
-                  </p>
-                  <p className="mt-1 text-xs text-stone-500">선택받은 수량만큼 제작하는 리미티드 오더</p>
-                </div>
-                <span className="shrink-0 text-xs font-bold text-brand">{funding.current_orders}/{funding.moq}</span>
+            <div className="mt-8 border-t border-black/10 pt-6" data-tutorial="funding-detail-progress">
+              <div className="flex items-end justify-between gap-4">
+                <p className="font-display text-[clamp(3rem,5vw,4.25rem)] font-semibold leading-[0.85] tracking-[-0.05em] text-brand">
+                  {fundingRateActual}<span className="text-[0.45em]">%</span>
+                </p>
+                <p className="pb-1 text-right font-display text-sm font-medium tabular-nums text-stone-500">
+                  <span className="text-[#211b1c]">{funding.current_orders}</span> / {funding.moq}장
+                </p>
               </div>
-              <div className="mt-4 h-1 overflow-hidden bg-black/10">
-                <div className="h-full bg-brand transition-all" style={{ width: `${progress}%` }} />
+              <div className="relative mt-4 h-[3px] overflow-hidden bg-black/10">
+                <div className="absolute inset-y-0 left-0 bg-brand transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
-                  <p className="text-wrap-anywhere text-base font-extrabold text-brand sm:text-lg">{fundingRateActual}%</p>
-                  <p className="mt-0.5 text-[10px] text-stone-500">달성</p>
+              <p className="mt-3 text-sm font-medium text-[#211b1c]">
+                {remaining > 0 ? `제작 확정까지 ${remaining}장의 주문이 더 필요해요` : "제작이 확정된 컬렉션입니다"}
+              </p>
+              <p className="mt-0.5 text-xs text-stone-500">선택받은 수량만큼 제작하는 리미티드 오더</p>
+              <dl className="mt-6 grid grid-cols-3 gap-4 border-y border-black/10 py-4">
+                <div className="min-w-0">
+                  <dt className="text-[11px] text-stone-500">참여 수량</dt>
+                  <dd className="text-wrap-anywhere mt-1 font-display text-base font-semibold tabular-nums sm:text-lg">{funding.current_orders}장</dd>
                 </div>
-                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
-                  <p className="text-wrap-anywhere text-base font-extrabold sm:text-lg">{funding.current_orders} / {funding.moq}장</p>
-                  <p className="mt-0.5 text-[10px] text-stone-500">참여 수량</p>
+                <div className="min-w-0">
+                  <dt className="text-[11px] text-stone-500">예상매출</dt>
+                  <dd className="text-wrap-anywhere mt-1 font-display text-base font-semibold tabular-nums sm:text-lg">{expectedRevenue.toLocaleString("ko-KR")}원</dd>
                 </div>
-                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
-                  <p className="text-wrap-anywhere text-base font-extrabold sm:text-lg">{expectedRevenue.toLocaleString("ko-KR")}원</p>
-                  <p className="mt-0.5 text-[10px] text-stone-500">예상매출</p>
+                <div className="min-w-0">
+                  <dt className="text-[11px] text-stone-500">펀딩 종료</dt>
+                  <dd className="text-wrap-anywhere mt-1 font-display text-base font-semibold sm:text-lg">{dDayLabel}</dd>
                 </div>
-                <div className="min-w-0 border border-black/10 bg-white/50 px-2 py-2.5 text-center sm:px-3">
-                  <p className="text-wrap-anywhere text-base font-extrabold sm:text-lg">{dDayLabel}</p>
-                  <p className="mt-0.5 text-[10px] text-stone-500">펀딩 종료</p>
-                </div>
-              </div>
+              </dl>
             </div>
 
             <div className="mt-7 space-y-6">
               <div>
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-bold">COLOR</p>
+                  <p className="font-display text-xs font-semibold tracking-[0.18em]">COLOR</p>
                   <span className="text-xs text-stone-500">{selectedColor}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -396,7 +394,7 @@ const FundingDetail = () => {
 
               <div data-tutorial="funding-detail-size">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-bold">SIZE</p>
+                  <p className="font-display text-xs font-semibold tracking-[0.18em]">SIZE</p>
                   <a href="#size-guide" className="text-xs text-stone-500 underline underline-offset-4 hover:text-brand">사이즈 가이드</a>
                 </div>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -415,7 +413,7 @@ const FundingDetail = () => {
               </div>
 
               <div className="flex items-center justify-between border-y border-black/10 py-4">
-                <span className="text-sm font-bold">QUANTITY</span>
+                <span className="font-display text-xs font-semibold tracking-[0.18em]">QUANTITY</span>
                 <div className="flex items-center border border-black/15 bg-white/40">
                   <Button type="button" size="icon" variant="ghost" className="h-11 w-11 rounded-none" onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="수량 줄이기">
                     <Minus className="h-4 w-4" />
@@ -505,16 +503,16 @@ const FundingDetail = () => {
         )}
 
         {(funding.sample_image_url || funding.sample_note) && (
-          <section className="mt-16 grid overflow-hidden bg-[#e7e4df] md:grid-cols-2">
+          <section className="mt-24 grid gap-8 md:grid-cols-12 md:gap-8">
             {funding.sample_image_url && (
-              <div className="relative overflow-hidden">
+              <div className="relative overflow-hidden md:col-span-7">
                 <img src={funding.sample_image_url} alt={`${funding.product_name} 제작 샘플`} className="aspect-[4/3] h-full w-full object-cover" />
                 <WatermarkOverlay />
               </div>
             )}
-            <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Sample archive</p>
-              <h2 className="mt-4 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">실제 제작 샘플</h2>
+            <div className="flex flex-col justify-end md:col-span-4 md:col-start-9">
+              <p className="eyebrow">Sample archive</p>
+              <h2 className="display-section mt-4">실제 제작 샘플</h2>
               <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-stone-600">
                 {funding.sample_note || "판매자가 실제 제작된 샘플 이미지를 공유했습니다."}
               </p>
@@ -550,10 +548,10 @@ const FundingDetail = () => {
           </div>
         ) : (
         <>
-        <section className="mt-20 grid gap-8 border-t border-black/10 pt-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
+        <section className="mt-24 grid gap-8 border-t border-black/10 pt-10 lg:mt-32 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">Product story</p>
-            <h2 className="mt-4 text-4xl font-extrabold tracking-[-0.03em] sm:text-5xl">옷에 담긴 이야기</h2>
+            <p className="eyebrow">Product story</p>
+            <h2 className="display-section mt-4">옷에 담긴 이야기</h2>
           </div>
           <div>
             <p className="whitespace-pre-wrap text-base leading-8 text-stone-600 sm:text-lg sm:leading-9">{customerDescription}</p>
@@ -565,8 +563,8 @@ const FundingDetail = () => {
                 ["ORDER WINDOW", `${funding.funding_days}일`],
               ].map(([term, value]) => (
                 <div key={term} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 border-b border-black/10 py-4 sm:grid-cols-[9rem_1fr]">
-                  <dt className="text-xs font-bold tracking-[0.12em] text-stone-400">{term}</dt>
-                  <dd className="text-wrap-anywhere font-semibold text-[#211b1c]">{value}</dd>
+                  <dt className="font-display text-[11px] font-semibold tracking-[0.16em] text-stone-400">{term}</dt>
+                  <dd className="text-wrap-anywhere font-medium text-[#211b1c]">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -577,23 +575,24 @@ const FundingDetail = () => {
           <FundingSizeGuide measurements={funding.measurements} sizeOptions={sizeOptions} />
         </div>
 
-        <section className="mt-20 border-t border-black/10 pt-10">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">How it is made</p>
-          <h2 className="mt-4 text-4xl font-extrabold tracking-[-0.03em]">선택이 옷이 되는 과정</h2>
-          <div className="mt-9 grid gap-px overflow-hidden bg-black/10 md:grid-cols-3">
+        <section className="mt-24 border-t border-black/10 pt-10 lg:mt-32">
+          <div className="grid gap-4 lg:grid-cols-12">
+            <p className="eyebrow lg:col-span-3">How it is made</p>
+            <h2 className="display-section lg:col-span-8">선택이 옷이 되는 과정</h2>
+          </div>
+          <ol className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8 lg:ml-[25%]">
             {[
               ["01", "선주문", `최소 ${funding.moq}장의 주문이 모이면 제작을 확정합니다.`],
               ["02", "샘플 검수", "원단과 핏, 봉제 완성도를 본생산 전에 확인합니다."],
               ["03", "생산과 배송", "필요한 수량만 생산한 뒤 검수·포장해 보내드립니다."],
-            ].map(([number, title, text]) => (
-              <div key={number} className="bg-[#f3f1ed] p-7 sm:p-9">
-                <CheckCircle2 className="mb-12 h-5 w-5 text-brand" />
-                <p className="text-xs font-bold tracking-[0.16em] text-stone-400">{number}</p>
-                <h3 className="mt-3 text-lg font-bold">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-stone-500">{text}</p>
-              </div>
+            ].map(([number, title, text], index) => (
+              <li key={number} className={index === 1 ? "md:mt-10" : index === 2 ? "md:mt-20" : ""}>
+                <span className="display-number block text-[4rem] text-brand">{number}</span>
+                <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-500">{text}</p>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
         </>
         )}
@@ -604,7 +603,7 @@ const FundingDetail = () => {
       <div
         ref={stickyCtaRef}
         data-mascot-safezone
-        className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-black/10 bg-[#f3f1ed]/95 px-4 py-2.5 backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-black/10 bg-[#f6f3ee]/95 px-4 py-2.5 backdrop-blur-md md:hidden"
       >
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <div className="min-w-0 shrink-0 basis-[34%]">

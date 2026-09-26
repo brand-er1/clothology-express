@@ -87,7 +87,7 @@ const QuickGroupWear = () => {
       <main className="mx-auto max-w-[1440px] pb-10 pt-20 lg:pb-8 lg:pt-24">
         <div className="px-4 pb-4 sm:px-6 lg:px-8">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Brand-er design editor</p>
-          <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-3xl">
+          <h1 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-stone-950 sm:text-3xl">
             단체복 직접 디자인하기
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
@@ -96,7 +96,7 @@ const QuickGroupWear = () => {
         </div>
 
         {/* Desktop / tablet: 3-column editor */}
-        <div className="hidden overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm lg:mx-4 lg:flex lg:h-[calc(100vh-220px)] lg:min-h-[640px] xl:mx-8">
+        <div className="hidden overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm lg:mx-4 lg:flex lg:h-[calc(100vh-220px)] lg:min-h-[640px] xl:mx-8">
           <EditorNav active={activePanel} onSelect={setActivePanel} orientation="vertical" />
 
           <div className="w-80 shrink-0 overflow-y-auto border-r border-stone-200 bg-white p-5">
@@ -144,7 +144,7 @@ const QuickGroupWear = () => {
           </div>
 
           <div className="px-4 pt-1 sm:px-6">
-            <div className="rounded-2xl border border-stone-200 bg-white p-3">
+            <div className="rounded-lg border border-stone-200 bg-white p-3">
               <GarmentCanvas
                 product={form.selectedProduct}
                 color={form.selectedColor}
@@ -160,7 +160,7 @@ const QuickGroupWear = () => {
               />
             </div>
 
-            <div className="mt-3 rounded-2xl border border-stone-200 bg-white p-3.5">
+            <div className="mt-3 rounded-lg border border-stone-200 bg-white p-3.5">
               <EditorSummaryBar form={form} layout="row" />
             </div>
           </div>

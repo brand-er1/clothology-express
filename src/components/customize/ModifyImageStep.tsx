@@ -703,7 +703,7 @@ export const ModifyImageStep = ({
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Button
                     type="button"
-                    className="h-11 rounded-full bg-brand px-4 text-sm font-bold hover:bg-brand-dark"
+                    className="h-11 rounded-[3px] bg-brand px-4 text-sm font-bold hover:bg-brand-dark"
                     onClick={onGoToEstimate}
                     disabled={isSavingDesign}
                     data-tutorial="customize-go-to-estimate"
@@ -718,7 +718,7 @@ export const ModifyImageStep = ({
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-11 rounded-full border-brand/30 bg-brand/5 px-4 text-sm font-bold text-brand hover:bg-brand/10"
+                    className="h-11 rounded-[3px] border-brand/30 bg-brand/5 px-4 text-sm font-bold text-brand hover:bg-brand/10"
                     onClick={() =>
                       navigate("/closet", {
                         state: {
@@ -750,7 +750,7 @@ export const ModifyImageStep = ({
 
           <div className="flex flex-col items-center space-y-4">
             <div
-              className={`relative w-full max-w-3xl select-none overflow-hidden rounded-[1.35rem] border bg-gray-50 shadow-[0_18px_55px_rgba(36,26,24,0.08)] sm:rounded-xl ${
+              className={`relative w-full max-w-3xl select-none overflow-hidden rounded-xl border bg-gray-50 sm:rounded-xl ${
                 artworkPreview || stagedArtworks.length > 0
                   ? "border-brand/40 shadow-inner"
                   : "border-gray-200"
@@ -878,12 +878,12 @@ export const ModifyImageStep = ({
             </div>
 
             <div
-              className="w-full rounded-2xl border border-brand/15 bg-brand/5 p-4 sm:p-5"
+              className="w-full rounded-lg border border-brand/15 bg-brand/5 p-4 sm:p-5"
               data-tutorial="customize-artwork"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h4 className="flex items-center gap-2 font-extrabold text-gray-950">
+                  <h4 className="flex items-center gap-2 font-bold text-gray-950">
                     <ImagePlus className="h-5 w-5 text-brand" />
                     내 이미지 옷에 넣기
                   </h4>
@@ -921,7 +921,7 @@ export const ModifyImageStep = ({
                     disabled={isLoading || isPreparingArtwork}
                     aria-pressed={artworkContentType === "logo"}
                   >
-                    <span className="block text-sm font-extrabold">
+                    <span className="block text-sm font-bold">
                       로고·일러스트
                     </span>
                     <span className="mt-1 block text-[11px] leading-4">
@@ -941,7 +941,7 @@ export const ModifyImageStep = ({
                     disabled={isLoading || isPreparingArtwork}
                     aria-pressed={artworkContentType === "photo"}
                   >
-                    <span className="block text-sm font-extrabold">사진</span>
+                    <span className="block text-sm font-bold">사진</span>
                     <span className="mt-1 block text-[11px] leading-4">
                       원본 배경 그대로 유지
                     </span>
@@ -1058,7 +1058,7 @@ export const ModifyImageStep = ({
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-                    <p className="text-xs font-extrabold text-brand">
+                    <p className="text-xs font-bold text-brand">
                       {artworkContentType === "logo"
                         ? uploadedArtwork?.backgroundRemoval === "removed"
                           ? "배경과 흰 테두리를 정리한 미리보기입니다."
@@ -1162,7 +1162,7 @@ export const ModifyImageStep = ({
                     )}
                     <div className="min-w-0">
                       <p
-                        className={`text-xs font-extrabold ${
+                        className={`text-xs font-bold ${
                           trademarkScreening.decision === "blocked"
                             ? "text-red-700"
                             : trademarkScreening.decision === "review"
@@ -1184,7 +1184,7 @@ export const ModifyImageStep = ({
                           <span className="text-[11px] font-bold text-gray-500">
                             복합 위험점수
                           </span>
-                          <span className="text-sm font-black text-gray-900">
+                          <span className="text-sm font-bold text-gray-900">
                             {Math.round(
                               trademarkScreening.composite_risk_score || 0,
                             )}
@@ -1200,7 +1200,7 @@ export const ModifyImageStep = ({
                               <p className="text-[9px] font-bold text-gray-400">
                                 {label}
                               </p>
-                              <p className="text-[11px] font-extrabold text-gray-700">
+                              <p className="text-[11px] font-bold text-gray-700">
                                 {Math.round(
                                   trademarkScreening.similarity_scores?.[key] ||
                                     0,
@@ -1348,13 +1348,13 @@ export const ModifyImageStep = ({
                     {currentArtworkAnalyses.map((analysis, index) => (
                       <li key={index} className="py-2 first:pt-1 last:pb-0">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <p className="font-extrabold text-gray-950">
+                          <p className="font-bold text-gray-950">
                             {currentArtworkAnalyses.length > 1 &&
                               `${analysis.locationLabel} · `}
                             {analysis.artworkTypeLabel} ·{" "}
                             {analysis.priceLabel || "인쇄 방식 상담"}
                           </p>
-                          <p className="text-sm font-black text-brand">
+                          <p className="text-sm font-bold text-brand">
                             장당 {formatArtworkPrice(analysis)}
                           </p>
                         </div>
@@ -1424,7 +1424,7 @@ export const ModifyImageStep = ({
       </Card>
 
       {/* Chat history - occupies 1/3 of the space */}
-      <Card className="flex flex-col overflow-hidden rounded-2xl p-4 sm:p-6">
+      <Card className="flex flex-col overflow-hidden rounded-lg p-4 sm:p-6">
         <div className="space-y-4">
           <h3 className="text-[17px] font-semibold sm:text-lg">수정 챗봇</h3>
           

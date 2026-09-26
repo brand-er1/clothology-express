@@ -30,7 +30,7 @@ export const VisitDataNotice = () => {
           자세히
         </Link>
       </p>
-      <button type="button" onClick={close} className="flex min-h-9 shrink-0 items-center rounded-full bg-stone-950 px-3.5 text-xs font-bold text-white hover:bg-brand">
+      <button type="button" onClick={close} className="flex min-h-9 shrink-0 items-center rounded-[3px] bg-stone-950 px-3.5 text-xs font-bold text-white hover:bg-brand">
         확인
       </button>
       <button type="button" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-400 hover:bg-stone-100" aria-label="안내 닫기">

@@ -216,7 +216,7 @@ export const SignUpForm = ({
           handleGenderChange={handleGenderChange}
         />
       )}
-      <Button type="submit" className="h-14 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark" disabled={isLoading}>
+      <Button type="submit" className="h-14 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark" disabled={isLoading}>
         {isLoading ? "브랜더 계정 만드는 중..." : "브랜더 시작하기"}
       </Button>
     </>

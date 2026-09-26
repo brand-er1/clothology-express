@@ -8,7 +8,7 @@ interface ColorPanelProps {
 
 export const ColorPanel = ({ form }: ColorPanelProps) => (
   <div>
-    <h3 className="text-sm font-black text-stone-950">색상</h3>
+    <h3 className="text-sm font-bold text-stone-950">색상</h3>
     <p className="mt-1 text-xs leading-5 text-stone-500">
       {form.selectedProduct.label} · 선택하면 캔버스가 바로 바뀝니다.
     </p>

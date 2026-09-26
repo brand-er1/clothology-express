@@ -82,7 +82,7 @@ const CommunityNotifications = () => {
       <Header />
       <main className="mx-auto max-w-xl px-4 pb-16 pt-20 sm:pt-24">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-extrabold tracking-[-0.03em] text-stone-950">알림</h1>
+          <h1 className="text-xl font-bold tracking-[-0.03em] text-stone-950">알림</h1>
           {notifications.some((item) => !item.isRead) && (
             <Button variant="ghost" size="sm" className="text-xs font-bold text-brand" onClick={handleMarkAllRead}>
               모두 읽음 처리
@@ -95,7 +95,7 @@ const CommunityNotifications = () => {
         ) : notifications.length === 0 ? (
           <p className="py-24 text-center text-sm text-stone-400">아직 알림이 없습니다.</p>
         ) : (
-          <div className="mt-4 divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div className="mt-4 divide-y divide-stone-100 overflow-hidden rounded-lg bg-white shadow-sm">
             {notifications.map((notification) => {
               const Icon = iconByType[notification.type] ?? Heart;
               return (
@@ -109,7 +109,7 @@ const CommunityNotifications = () => {
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    {notification.title && <span className="block text-sm font-extrabold text-stone-900">{notification.title}</span>}
+                    {notification.title && <span className="block text-sm font-bold text-stone-900">{notification.title}</span>}
                     <span className="block whitespace-pre-line text-sm text-stone-800">{notification.message}</span>
                     {notification.type === "funding_success" && isSafeInternalPath(notification.linkPath) && (
                       <span className="mt-2 inline-flex rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">펀딩 관리하기</span>

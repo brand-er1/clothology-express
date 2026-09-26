@@ -207,7 +207,7 @@ export const DetailInput = ({
   };
 
   return (
-    <Card className="overflow-hidden rounded-2xl border-stone-200 bg-white shadow-none">
+    <Card className="overflow-hidden rounded-lg border-stone-200 bg-white shadow-none">
       <div className="space-y-5 p-4 sm:p-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-brand">
@@ -285,7 +285,7 @@ export const DetailInput = ({
                   variant="outline"
                   size="sm"
                   onClick={() => onExampleUse?.(promptExample.text)}
-                  className={`h-9 rounded-full bg-white px-4 text-xs font-bold text-stone-700 ${
+                  className={`h-9 rounded-[3px] bg-white px-4 text-xs font-bold text-stone-700 ${
                     promptExample.isTrend
                       ? "border-brand/35 hover:bg-brand/10 hover:text-brand"
                       : "border-amber-300 hover:bg-amber-100 hover:text-stone-950"
@@ -300,7 +300,7 @@ export const DetailInput = ({
                   variant="ghost"
                   size="sm"
                   onClick={showNextExample}
-                  className={`h-9 rounded-full px-3 text-xs font-bold ${
+                  className={`h-9 rounded-[3px] px-3 text-xs font-bold ${
                     promptExample.isTrend
                       ? "text-brand hover:bg-brand/10 hover:text-brand"
                       : "text-amber-800 hover:bg-amber-100 hover:text-amber-950"
@@ -314,7 +314,7 @@ export const DetailInput = ({
                     href={trendData.sourceUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-9 items-center rounded-full px-2 text-[11px] font-semibold text-stone-500 transition hover:text-stone-900"
+                    className="inline-flex h-9 items-center rounded-[3px] px-2 text-[11px] font-semibold text-stone-500 transition hover:text-stone-900"
                   >
                     무신사 상품 랭킹 기반
                     <ExternalLink

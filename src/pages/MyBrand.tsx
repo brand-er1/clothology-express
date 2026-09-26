@@ -160,11 +160,11 @@ const MyBrand = () => {
           <form onSubmit={handleSubmit} className="min-w-0 space-y-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Creator & brand</p>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">{brand ? "내 브랜드 수정" : "내 브랜드 등록"}</h1>
+              <h1 className="mt-3 text-3xl font-bold tracking-[-0.03em] sm:text-4xl">{brand ? "내 브랜드 수정" : "내 브랜드 등록"}</h1>
               <p className="mt-3 text-sm leading-6 text-stone-500">이 정보는 펀딩 카드와 상세페이지에 제작자 정보로 공개됩니다.</p>
             </div>
 
-            <section className="min-w-0 rounded-3xl border border-stone-200 bg-white p-5 sm:p-7">
+            <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-5 sm:p-7">
               <h2 className="text-xl font-bold">제작자 프로필</h2>
               <div className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2">
                 <BrandImageUpload label="프로필 사진" kind="profile" value={form.profileImageUrl} onChange={(url) => setField("profileImageUrl", url)} />
@@ -175,7 +175,7 @@ const MyBrand = () => {
               </div>
             </section>
 
-            <section className="min-w-0 rounded-3xl border border-stone-200 bg-white p-5 sm:p-7">
+            <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-5 sm:p-7">
               <h2 className="text-xl font-bold">브랜드 정보</h2>
               <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2">
                 <BrandImageUpload label="브랜드 로고" kind="logo" value={form.brandLogoUrl} onChange={(url) => setField("brandLogoUrl", url)} />
@@ -199,7 +199,7 @@ const MyBrand = () => {
               </div>
             </section>
 
-            <Button type="submit" disabled={saving || availability === "taken" || availability === "checking"} className="h-14 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark">
+            <Button type="submit" disabled={saving || availability === "taken" || availability === "checking"} className="h-14 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark">
               {saving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}{saving ? "저장 중" : "브랜드 프로필 저장"}
             </Button>
           </form>
@@ -208,7 +208,7 @@ const MyBrand = () => {
           </div>
 
           <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit">
-            <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">펀딩 노출 미리보기</p>
               <div className="mt-5"><BrandIdentity brand={previewBrand} linked={false} /></div>
               <p className="mt-5 text-sm leading-6 text-stone-500">{form.shortDescription || "브랜드 한 줄 소개가 여기에 표시됩니다."}</p>

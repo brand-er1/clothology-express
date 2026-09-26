@@ -46,7 +46,7 @@ export const BottomNav = () => {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stone-200 bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-black/10 bg-[#f6f3ee]/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
       aria-label="주요 메뉴"
     >
       {navItems.map(({ to, label, icon: Icon, end }) => (

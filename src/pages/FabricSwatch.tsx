@@ -155,27 +155,27 @@ const FabricSwatch = () => {
       <div className="min-h-screen bg-[#f5f1eb]">
         <Header />
         <main className="mx-auto flex min-h-screen max-w-3xl items-center px-4 pb-16 pt-28">
-          <section className="w-full rounded-[32px] border border-stone-200 bg-white px-6 py-14 text-center shadow-[0_24px_70px_rgba(65,43,30,0.08)] md:px-14">
+          <section className="w-full rounded-[32px] border border-stone-200 bg-white px-6 py-14 text-center md:px-14">
             <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand text-white">
               <Check className="h-8 w-8" />
             </span>
             <p className="mt-7 text-xs font-bold uppercase tracking-[0.22em] text-brand">
               Request received
             </p>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] text-stone-950 md:text-4xl">
+            <h1 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-stone-950 md:text-4xl">
               원단 스와치 신청이 완료되었습니다
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-stone-600 md:text-base">
               담당자가 신청 내용을 확인해 조건에 맞는 원단 스와치를 최소 5개 이상
               선별합니다. 추천 준비가 완료되면 등록된 계정으로 안내드리겠습니다.
             </p>
-            <div className="mt-8 rounded-2xl bg-[#f6f2ec] px-5 py-4 text-sm font-semibold text-stone-700">
+            <div className="mt-8 rounded-lg bg-[#f6f2ec] px-5 py-4 text-sm font-semibold text-stone-700">
               {fabricFeeling} · {selectedColors.join(", ")}
             </div>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button
                 asChild
-                className="h-12 rounded-full bg-brand px-7 hover:bg-brand-dark"
+                className="h-12 rounded-[3px] bg-brand px-7 hover:bg-brand-dark"
               >
                 <Link to="/">
                   홈으로 이동 <ArrowRight className="ml-2 h-4 w-4" />
@@ -183,7 +183,7 @@ const FabricSwatch = () => {
               </Button>
               <Button
                 variant="outline"
-                className="h-12 rounded-full border-stone-300 px-7"
+                className="h-12 rounded-[3px] border-stone-300 px-7"
                 onClick={() => {
                   setFabricFeeling(null);
                   setSelectedColors([]);
@@ -212,7 +212,7 @@ const FabricSwatch = () => {
                 <BrandMark className="h-4 w-4" variant="white" />
                 FABRIC CURATION
               </div>
-              <h1 className="mt-5 text-4xl font-extrabold tracking-[-0.03em] md:text-6xl">
+              <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] md:text-6xl">
                 원단 스와치 신청
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-white/65 md:text-lg">
@@ -224,7 +224,7 @@ const FabricSwatch = () => {
         </section>
 
         <section className="container mx-auto px-4 py-10 md:py-14">
-          <div className="mb-8 grid overflow-hidden rounded-2xl border border-stone-200 bg-white sm:grid-cols-3">
+          <div className="mb-8 grid overflow-hidden rounded-lg border border-stone-200 bg-white sm:grid-cols-3">
             {[
               ["01", "느낌·색상 선택"],
               ["02", "담당자 원단 선별"],
@@ -237,7 +237,7 @@ const FabricSwatch = () => {
                 }`}
               >
                 <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black ${
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                     index === 0
                       ? "bg-brand text-white"
                       : "bg-stone-100 text-stone-400"
@@ -258,7 +258,7 @@ const FabricSwatch = () => {
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
                       01 · Touch
                     </p>
-                    <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950">
+                    <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-stone-950">
                       원하는 원단 느낌 <span className="text-brand">*</span>
                     </h2>
                     <p className="mt-2 text-sm text-stone-500">
@@ -274,7 +274,7 @@ const FabricSwatch = () => {
                         key={option}
                         type="button"
                         onClick={() => setFabricFeeling(option)}
-                        className={`rounded-2xl border p-4 text-left transition ${
+                        className={`rounded-lg border p-4 text-left transition ${
                           selected
                             ? "border-brand bg-brand/[0.045] shadow-[0_0_0_1px_rgba(113,16,17,0.12)]"
                             : "border-stone-200 hover:border-stone-400 hover:bg-stone-50"
@@ -308,7 +308,7 @@ const FabricSwatch = () => {
                 </p>
                 <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
                   <div>
-                    <h2 className="text-2xl font-extrabold tracking-[-0.03em] text-stone-950">
+                    <h2 className="text-2xl font-bold tracking-[-0.03em] text-stone-950">
                       원하는 색상 <span className="text-brand">*</span>
                     </h2>
                     <p className="mt-2 text-sm text-stone-500">
@@ -328,7 +328,7 @@ const FabricSwatch = () => {
                         key={color.name}
                         type="button"
                         onClick={() => toggleColor(color.name)}
-                        className={`group rounded-2xl border px-2 py-3 text-center transition ${
+                        className={`group rounded-lg border px-2 py-3 text-center transition ${
                           selected
                             ? "border-brand bg-brand/[0.045]"
                             : "border-stone-200 hover:border-stone-400"
@@ -359,7 +359,7 @@ const FabricSwatch = () => {
                   })}
                 </div>
 
-                <div className="mt-6 rounded-2xl bg-[#f7f4ef] p-4">
+                <div className="mt-6 rounded-lg bg-[#f7f4ef] p-4">
                   <Label htmlFor="custom-color" className="font-bold text-stone-800">
                     색상명 직접 입력
                   </Label>
@@ -410,7 +410,7 @@ const FabricSwatch = () => {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
                   03 · Reference
                 </p>
-                <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-stone-950">
+                <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-stone-950">
                   참고 이미지 업로드 <span className="text-stone-400">(선택)</span>
                 </h2>
                 <p className="mt-2 text-sm text-stone-500">
@@ -418,7 +418,7 @@ const FabricSwatch = () => {
                 </p>
 
                 {previewUrl ? (
-                  <div className="mt-6 overflow-hidden rounded-2xl border border-stone-200 bg-stone-50">
+                  <div className="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
                     <div className="relative aspect-[16/9]">
                       <img
                         src={previewUrl}
@@ -462,7 +462,7 @@ const FabricSwatch = () => {
                       setIsDragging(false);
                       acceptReferenceImage(event.dataTransfer.files[0]);
                     }}
-                    className={`mt-6 flex w-full flex-col items-center justify-center rounded-2xl border border-dashed px-5 py-12 text-center transition ${
+                    className={`mt-6 flex w-full flex-col items-center justify-center rounded-lg border border-dashed px-5 py-12 text-center transition ${
                       isDragging
                         ? "border-brand bg-brand/[0.04]"
                         : "border-stone-300 bg-stone-50 hover:border-brand/60 hover:bg-brand/[0.025]"
@@ -511,7 +511,7 @@ const FabricSwatch = () => {
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="mt-7 h-14 w-full rounded-full bg-white px-5 font-black text-brand hover:bg-stone-100"
+                  className="mt-7 h-14 w-full rounded-[3px] bg-white px-5 font-bold text-brand hover:bg-stone-100"
                 >
                   {isSubmitting ? (
                     <>
@@ -527,7 +527,7 @@ const FabricSwatch = () => {
                 </Button>
               </section>
 
-              <section className="rounded-2xl border border-stone-200 bg-white p-5">
+              <section className="rounded-lg border border-stone-200 bg-white p-5">
                 <div className="flex items-start gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3ece5] text-brand">
                     <Palette className="h-4 w-4" />

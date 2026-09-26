@@ -48,7 +48,7 @@ const DesignPickerDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80dvh] max-w-lg overflow-y-auto rounded-2xl">
+      <DialogContent className="max-h-[80dvh] max-w-lg overflow-y-auto rounded-lg">
         <DialogHeader>
           <DialogTitle>내 디자인 불러오기</DialogTitle>
         </DialogHeader>
@@ -173,23 +173,23 @@ const CommunityCreatePost = () => {
     <div className="min-h-screen bg-[#f7f6f4]">
       <Header />
       <main className="mx-auto max-w-2xl px-4 pb-28 pt-20 sm:pt-24">
-        <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-stone-950">새 디자인 공유하기</h1>
+        <h1 className="text-2xl font-bold tracking-[-0.03em] text-stone-950">새 디자인 공유하기</h1>
         <p className="mt-1 text-sm text-stone-500">CREATE한 디자인을 매거진에 SHARE하고 반응을 VALIDATE해보세요.</p>
 
         <section className="mt-6 space-y-3">
           <Label className="text-sm font-bold text-stone-800">디자인 이미지</Label>
           {!frontImage ? (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Button type="button" variant="outline" className="h-24 flex-col gap-2 rounded-2xl border-dashed" onClick={() => setIsPickerOpen(true)}>
+              <Button type="button" variant="outline" className="h-24 flex-col gap-2 rounded-lg border-dashed" onClick={() => setIsPickerOpen(true)}>
                 <Sparkles className="h-5 w-5 text-brand" /> AI 디자인 불러오기
               </Button>
-              <Button type="button" variant="outline" className="h-24 flex-col gap-2 rounded-2xl border-dashed" onClick={() => setIsPickerOpen(true)}>
+              <Button type="button" variant="outline" className="h-24 flex-col gap-2 rounded-lg border-dashed" onClick={() => setIsPickerOpen(true)}>
                 <ImagePlus className="h-5 w-5 text-brand" /> 내가 만든 디자인
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="h-24 flex-col gap-2 rounded-2xl border-dashed"
+                className="h-24 flex-col gap-2 rounded-lg border-dashed"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
@@ -210,7 +210,7 @@ const CommunityCreatePost = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-stone-200">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-stone-200">
                 <img src={frontImage.imageUrl} alt="앞면" className="h-full w-full object-cover" />
                 <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">앞면</span>
                 <button type="button" onClick={() => removeImage("front")} className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white">
@@ -218,7 +218,7 @@ const CommunityCreatePost = () => {
                 </button>
               </div>
               {backImage ? (
-                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-stone-200">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-stone-200">
                   <img src={backImage.imageUrl} alt="뒷면" className="h-full w-full object-cover" />
                   <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">뒷면</span>
                   <button type="button" onClick={() => removeImage("back")} className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white">
@@ -229,7 +229,7 @@ const CommunityCreatePost = () => {
                 <button
                   type="button"
                   onClick={() => backFileInputRef.current?.click()}
-                  className="flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-stone-300 text-stone-400 hover:border-brand hover:text-brand"
+                  className="flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-stone-300 text-stone-400 hover:border-brand hover:text-brand"
                 >
                   <ImagePlus className="h-6 w-6" />
                   <span className="text-xs font-semibold">뒷면 이미지 추가 (선택)</span>
@@ -274,7 +274,7 @@ const CommunityCreatePost = () => {
           </div>
         </section>
 
-        <section className="mt-6 space-y-4 rounded-2xl border border-stone-200 bg-white p-4">
+        <section className="mt-6 space-y-4 rounded-lg border border-stone-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-stone-800">피드백 요청</p>
@@ -299,7 +299,7 @@ const CommunityCreatePost = () => {
           )}
         </section>
 
-        <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-4">
+        <section className="mt-6 rounded-lg border border-stone-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-stone-800">디자인 투표 만들기</p>
@@ -338,7 +338,7 @@ const CommunityCreatePost = () => {
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting || isUploading}
-          className="mt-8 h-13 w-full rounded-full bg-brand py-3.5 text-base font-bold hover:bg-brand-dark"
+          className="mt-8 h-13 w-full rounded-[3px] bg-brand py-3.5 text-base font-bold hover:bg-brand-dark"
         >
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           매거진에 공유하기

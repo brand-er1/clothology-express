@@ -173,7 +173,7 @@ export const GarmentCanvas = ({
 
       <div
         ref={setContainerRef}
-        className="relative mt-3 h-[52vh] min-h-[360px] w-full touch-none overflow-hidden rounded-2xl bg-stone-50 sm:h-[60vh] lg:h-[70vh]"
+        className="relative mt-3 h-[52vh] min-h-[360px] w-full touch-none overflow-hidden rounded-lg bg-stone-50 sm:h-[60vh] lg:h-[70vh]"
         onPointerMove={handlePointerMove}
         onPointerUp={endGesture}
         onPointerCancel={endGesture}

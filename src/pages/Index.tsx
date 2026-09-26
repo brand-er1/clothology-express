@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Header } from "@/components/Header";
-import { BrandMascot } from "@/components/BrandMascot";
-import { BrandMark } from "@/components/BrandMark";
 import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
 import { FreeTeeEventBanner } from "@/components/funding/FreeTeeEvent";
 import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
+import { FundingProductCard } from "@/components/funding/FundingProductCard";
+import { Reveal, RevealImage } from "@/components/portfolio/ScrollReveal";
 
 type CollectionItem = Pick<
   Funding,
@@ -27,7 +27,7 @@ const fallbackCollection: CollectionItem[] = [
   {
     id: "preview-jacket",
     product_name: "Burgundy Sculpted Jacket",
-    image_url: getAppPath("/lovable-uploads/jacket.png"),
+    image_url: getAppPath("/portfolio/burgundy-leather-jacket.webp"),
     cloth_type: "아우터",
     material: "소프트 터치 우븐",
     current_orders: 14,
@@ -37,7 +37,7 @@ const fallbackCollection: CollectionItem[] = [
   {
     id: "preview-knit",
     product_name: "Quiet Form Sweatshirt",
-    image_url: getAppPath("/lovable-uploads/sweatshirt.png"),
+    image_url: getAppPath("/portfolio/hood-pullover.webp"),
     cloth_type: "스웻셔츠",
     material: "헤비 코튼",
     current_orders: 12,
@@ -47,7 +47,7 @@ const fallbackCollection: CollectionItem[] = [
   {
     id: "preview-shirt",
     product_name: "Essential Long Sleeve",
-    image_url: getAppPath("/lovable-uploads/long_sleeve.png"),
+    image_url: getAppPath("/portfolio/rolled-hem-long-sleeve.webp"),
     cloth_type: "상의",
     material: "코튼 저지",
     current_orders: 9,
@@ -57,7 +57,7 @@ const fallbackCollection: CollectionItem[] = [
   {
     id: "preview-pants",
     product_name: "Relaxed Wide Pants",
-    image_url: getAppPath("/lovable-uploads/long_pants.png"),
+    image_url: getAppPath("/portfolio/wide-trousers.webp"),
     cloth_type: "하의",
     material: "코튼 블렌드",
     current_orders: 8,
@@ -66,57 +66,85 @@ const fallbackCollection: CollectionItem[] = [
   },
 ];
 
+// Category index — typographic rows that deep-link into the matching SHOP filter.
 const categories = [
-  {
-    name: "OUTER",
-    label: "아우터",
-    note: "구조적인 실루엣",
-    image: "/lovable-uploads/jacket.png",
-    tone: "bg-[#d8d3cd]",
-  },
-  {
-    name: "TOPS",
-    label: "상의",
-    note: "매일 입는 새로운 기본",
-    image: "/lovable-uploads/short_sleeve.png",
-    tone: "bg-[#e6e3dd]",
-  },
-  {
-    name: "SWEATS",
-    label: "스웻",
-    note: "부드럽고 여유로운 형태",
-    image: "/lovable-uploads/sweatshirt.png",
-    tone: "bg-[#d5d6d8]",
-  },
-  {
-    name: "BOTTOMS",
-    label: "하의",
-    note: "움직임을 위한 균형",
-    image: "/lovable-uploads/long_pants.png",
-    tone: "bg-[#cec8c1]",
-  },
+  { name: "OUTER", label: "아우터", note: "구조적인 실루엣", filter: "OUTER", image: "/portfolio/work-jacket.webp" },
+  { name: "TOPS", label: "상의", note: "매일 입는 새로운 기본", filter: "TOP", image: "/portfolio/rolled-hem-long-sleeve.webp" },
+  { name: "KNIT", label: "니트", note: "부드럽고 여유로운 형태", filter: "KNIT", image: "/portfolio/rib-half-zip.webp" },
+  { name: "BOTTOMS", label: "하의", note: "움직임을 위한 균형", filter: "BOTTOM", image: "/portfolio/wide-trousers.webp" },
 ];
+
+// The making story, told as one continuous sequence instead of four equal cards.
+const processSteps = [
+  {
+    number: "01",
+    title: "DESIGN",
+    label: "디자인",
+    description: "텍스트 한 줄이나 레퍼런스 이미지로 AI 디자인을 만들고 원하는 대로 다듬습니다.",
+    image: "/lovable-uploads/ready-made/hoodie_front.png",
+    fit: "contain",
+    frame: "aspect-[4/5]",
+    offset: "lg:mt-0",
+  },
+  {
+    number: "02",
+    title: "FABRIC",
+    label: "원단",
+    description: "제품 콘셉트와 예산에 맞는 원단을 제안하고 스와치로 직접 확인합니다.",
+    image: "/fabrics/cotton-twill.webp",
+    fit: "cover",
+    frame: "aspect-square",
+    offset: "lg:mt-28",
+  },
+  {
+    number: "03",
+    title: "SAMPLE",
+    label: "샘플",
+    description: "본생산 전에 실제 샘플로 핏과 봉제 완성도를 먼저 검수합니다.",
+    image: "/portfolio/work-jacket.webp",
+    fit: "contain",
+    frame: "aspect-[3/4]",
+    offset: "lg:mt-10",
+  },
+  {
+    number: "04",
+    title: "PRODUCTION",
+    label: "생산 · 펀딩",
+    description: "펀딩으로 모인 수량만큼 생산하고, 샘플부터 배송까지 진행 상황을 공유합니다.",
+    image: "/portfolio/technical-shell.webp",
+    fit: "contain",
+    frame: "aspect-[4/5]",
+    offset: "lg:mt-40",
+  },
+] as const;
 
 const shopperPromises = [
   {
     number: "01",
-    title: "LIMITED PRODUCTION",
+    title: "Limited production",
     description: "선택받은 수량만 제작해 불필요한 재고를 남기지 않습니다.",
   },
   {
     number: "02",
-    title: "MADE IN KOREA",
+    title: "Made in Korea",
     description: "원단 선택부터 봉제와 검수까지 국내 생산 기준으로 완성합니다.",
   },
   {
     number: "03",
-    title: "TRACK YOUR ORDER",
+    title: "Track your order",
     description: "선주문 이후 샘플, 생산, 배송까지 진행 과정을 확인할 수 있습니다.",
   },
 ];
 
-const formatPrice = (price: number | null) =>
-  price ? `${price.toLocaleString("ko-KR")}원` : "가격 준비 중";
+// Staggered editorial placement for the four collection pieces on desktop.
+const collectionLayout = [
+  "col-span-2 lg:col-span-5 lg:row-span-2",
+  "lg:col-span-3 lg:col-start-7 lg:mt-20",
+  "lg:col-span-3 lg:col-start-10 lg:row-start-1 lg:mt-52",
+  "lg:col-span-3 lg:col-start-7 lg:mt-16",
+];
+
+const lookbookIds = ["burgundy-leather-jacket", "studded-hoodie", "technical-shell"];
 
 const Index = () => {
   const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
@@ -149,319 +177,334 @@ const Index = () => {
     return [...dropItems, ...others].slice(0, 4);
   }, [approvedFundings, isNewDropLive, newDropIds]);
 
+  const lookbook = useMemo(
+    () => lookbookIds.map((id) => portfolioProducts.find((product) => product.id === id)).filter((product) => product !== undefined),
+    [],
+  );
+
   return (
-    <div className="min-h-screen bg-[#f1f0ed] text-[#211b1c]">
+    <div className="min-h-screen bg-[#f6f3ee] text-[#211b1c]">
       <Header />
       <main className="pt-16 sm:pt-[72px]">
-        <section className="relative isolate min-h-[680px] overflow-hidden border-b border-black/10 sm:min-h-[760px] lg:min-h-[calc(100vh-72px)]">
-          <img
-            src={getAppPath("/brand-er-hero-editorial-v2.webp")}
-            alt="BRAND-ER 리미티드 컬렉션"
-            className="absolute inset-0 h-full w-full object-cover object-[66%_center] sm:object-center"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(27,21,22,0.04)_0%,rgba(27,21,22,0.02)_52%,rgba(27,21,22,0.36)_100%)] sm:bg-[linear-gradient(90deg,rgba(235,229,220,0.96)_0%,rgba(235,229,220,0.82)_31%,rgba(235,229,220,0.10)_59%,rgba(25,19,20,0.06)_100%)]" />
+        {/* HERO — one editorial canvas: message on paper, the garments bleeding off the right edge. */}
+        <section className="relative" data-tutorial="home-hero">
+          <div className="lg:grid lg:min-h-[calc(100svh-72px)] lg:grid-cols-12">
+            <div className="relative order-2 aspect-[4/5] overflow-hidden bg-[#e8e2da] sm:aspect-[16/11] lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-1 lg:aspect-auto">
+              <img
+                src={getAppPath("/brand-er-hero-editorial-v2.webp")}
+                alt="BRAND-ER 스튜디오에서 제작한 의류"
+                className="h-full w-full object-cover object-[72%_center] animate-in fade-in-0 duration-700"
+              />
+              <p className="absolute bottom-4 right-4 font-display text-[10px] font-medium uppercase tracking-[0.24em] text-white/80 sm:bottom-6 sm:right-6">
+                Studio archive — Fall 2026
+              </p>
+            </div>
 
-          <div className="relative mx-auto flex min-h-[680px] max-w-[1440px] items-end px-5 pb-11 pt-16 sm:min-h-[760px] sm:items-center sm:px-8 sm:pb-16 lg:min-h-[calc(100vh-72px)] lg:px-12 xl:px-16">
-            <div
-              className="w-full max-w-[680px] rounded-sm bg-[#f1ece4]/92 p-6 shadow-[0_24px_80px_rgba(44,33,29,0.10)] backdrop-blur-md sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none"
-              data-tutorial="home-hero"
-            >
+            <div className="page-shell relative z-10 flex flex-col justify-end pb-12 pt-10 sm:pb-16 lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:max-w-none lg:pb-24 lg:pl-[clamp(1.25rem,4.4vw,4.5rem)] lg:pr-0 lg:pt-24">
               {newDropCountdown && (
-                <a
-                  href="#new-drop"
-                  className="mb-5 inline-flex items-center gap-2 bg-brand px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_10px_30px_rgba(116,27,43,0.35)] transition hover:bg-brand-dark sm:text-xs"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                <a href="#new-drop" className="eyebrow mb-8 inline-flex w-fit items-center gap-2 transition-colors hover:text-brand-dark">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
                   </span>
-                  NEW DROP 01 OPEN · ~10.10
-                  <span className="bg-white px-1.5 py-0.5 text-brand">
-                    D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
-                  </span>
+                  New drop 01 open · D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
                 </a>
               )}
-              <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">
-                <span className="h-px w-8 bg-brand" />
-                BRAND-ER · EARLY FALL 2026
-              </div>
-              <h1 className="mt-5 font-logo text-[clamp(3.25rem,7.4vw,7.4rem)] leading-[0.92] text-[#251d1e]">
-                WEAR THE<br />UNSEEN.
-              </h1>
-              <p className="mt-6 max-w-md text-base font-medium leading-7 text-stone-700 sm:mt-8 sm:text-lg sm:leading-8">
-                아직 세상에 없는 옷을, 가장 먼저.<br />
-                새로운 디자이너의 리미티드 컬렉션을 만나보세요.
+              <p className="font-display text-[11px] font-semibold uppercase tracking-[0.3em] text-stone-500 animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
+                Make your idea wearable
               </p>
-              <div className="mt-7 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:items-center">
-                <Link
-                  to="/fundings"
-                  className="inline-flex h-[52px] items-center justify-center bg-brand px-7 text-sm font-bold text-white transition hover:bg-brand-dark sm:h-14"
-                >
-                  컬렉션 쇼핑하기 <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-                <a
-                  href="#new-drop"
-                  className="inline-flex h-[52px] items-center justify-center border border-[#312829]/25 bg-white/25 px-7 text-sm font-semibold text-[#312829] backdrop-blur transition hover:bg-white/55 sm:h-14"
-                >
-                  {newDropCountdown ? "NEW DROP 01 이벤트" : "NEW DROP 보기"}
-                </a>
-              </div>
-              <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-500 sm:mt-10">
-                <span>Limited order</span>
-                <span>Made in Korea</span>
-                <span>Small batch only</span>
+              <h1 className="display-hero mt-5 max-w-[11ch] text-[#1f191a] animate-in fade-in-0 slide-in-from-bottom-3 duration-700 lg:max-w-none lg:[text-shadow:0_0_32px_rgba(246,243,238,0.9)]">
+                아이디어가
+                <br />
+                옷이 되는
+                <br />
+                가장 쉬운 방법<span className="text-brand">.</span>
+              </h1>
+              <div className="mt-8 grid gap-8 sm:mt-10 lg:ml-[12%] lg:max-w-md">
+                <p className="text-base leading-7 text-stone-600 animate-in fade-in-0 duration-700 [animation-delay:150ms] [animation-fill-mode:both] sm:text-lg sm:leading-8">
+                  디자인부터 원단, 샘플, 생산까지.
+                  <br />
+                  <span className="font-display font-semibold tracking-[0.02em] text-[#211b1c]">BRAND-ER</span>
+                </p>
+                <div className="flex flex-col items-start gap-3 animate-in fade-in-0 duration-700 [animation-delay:300ms] [animation-fill-mode:both] sm:flex-row sm:items-center sm:gap-8">
+                  <Link to="/customize" className="cta-primary w-full sm:w-auto">
+                    디자인 시작하기 <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link to="/fundings" className="cta-text">
+                    <span className="link-draw">펀딩 둘러보기</span> <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div className="absolute bottom-0 right-0 hidden border-l border-t border-white/30 bg-[#251d1e]/75 px-7 py-5 text-white backdrop-blur-lg lg:block">
-            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/55">Editorial no. 01</p>
-            <p className="mt-1 text-xl font-semibold">Form, texture and quiet confidence.</p>
           </div>
         </section>
 
         <FreeTeeEventBanner fundings={approvedFundings} />
         <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
 
-        <section className="overflow-hidden border-b border-black/10 bg-[#21191a] py-4 text-white">
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/70 sm:gap-x-10 sm:text-xs sm:tracking-[0.28em] lg:flex-nowrap lg:gap-16">
-            <span>BRAND-ER LIMITED COLLECTION</span>
-            <span className="h-1 w-1 rounded-full bg-[#c999a4]" />
-            <span>NEW DROP EVERY SEASON</span>
-            <span className="h-1 w-1 rounded-full bg-[#c999a4]" />
-            <span>MADE ONLY WHEN CHOSEN</span>
-          </div>
-        </section>
-
+        {/* NOW FUNDING — commerce grid set with an editorial stagger. */}
         <section
           id="new-drop"
-          className="mx-auto max-w-[1440px] scroll-mt-20 px-4 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16"
+          className="page-shell scroll-mt-20 pb-24 pt-20 sm:pb-32 sm:pt-28 lg:pb-40 lg:pt-36"
           data-tutorial="home-collection"
         >
-          <div className="flex items-end justify-between gap-6 border-b border-black/10 pb-6">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">
-                {newDropCountdown ? "New drop 01 · Launch event ~10.10" : "New drop"}
+          <div className="grid gap-6 lg:grid-cols-12 lg:items-end">
+            <Reveal className="lg:col-span-6">
+              <p className="eyebrow">{newDropCountdown ? "New drop 01 · Launch event ~10.10" : "Now funding"}</p>
+              <h2 className="display-section mt-4">
+                지금, 새로 나온 옷
+              </h2>
+            </Reveal>
+            <Reveal delayMs={120} className="lg:col-span-3 lg:col-start-7">
+              <p className="text-sm leading-7 text-stone-600 sm:text-[15px]">
+                선택받은 수량만큼만 제작합니다. 목표 수량이 모이면 샘플 검수를 거쳐 생산이 시작됩니다.
               </p>
-              <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-6xl">지금, 새로 나온 옷</h2>
-            </div>
-            <Link to="/fundings" className="hidden items-center text-sm font-semibold text-stone-600 transition hover:text-brand sm:inline-flex">
-              전체 컬렉션 <ArrowRight className="ml-2 h-4 w-4" />
+            </Reveal>
+            <Link to="/fundings" className="cta-text hidden justify-self-end lg:col-span-2 lg:col-start-11 lg:inline-flex">
+              <span className="link-draw">전체 컬렉션</span> <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
-          <div className="mt-9 grid grid-cols-2 gap-x-3 gap-y-11 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-7">
+          <div className="mt-12 grid grid-cols-2 gap-x-4 gap-y-12 sm:mt-16 sm:gap-x-6 lg:grid-cols-12 lg:gap-x-8 lg:gap-y-0">
             {collection.map((item, index) => {
               const detailPath = item.id.startsWith("preview-") ? "/fundings" : `/fundings/${item.id}`;
-              const remaining = Math.max(0, item.moq - item.current_orders);
               const isDropItem = newDropIds.has(item.id);
+              const isLead = index === 0;
 
               return (
-                <Link key={item.id} to={detailPath} className="group block min-w-0">
-                  <article>
-                    <div className={`relative aspect-[4/5] overflow-hidden ${index % 2 === 0 ? "bg-[#dedbd6]" : "bg-[#e6e3df]"}`}>
-                      <img
-                        src={item.image_url}
-                        alt={item.product_name}
-                        className="h-full w-full object-contain p-3 transition duration-700 ease-out group-hover:scale-[1.045] sm:p-6"
-                      />
-                      {isNewDropLive && isDropItem ? (
-                        <span className={`absolute left-3 top-3 inline-flex items-center gap-1 px-2 py-1.5 text-[8px] font-extrabold uppercase tracking-[0.15em] text-white shadow-[0_6px_18px_rgba(249,115,22,0.35)] sm:left-4 sm:top-4 sm:gap-1.5 sm:px-2.5 sm:text-[10px] ${fireGradientClassName}`}>
-                          <FlickerFlame className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <Reveal key={item.id} delayMs={index * 90} className={`min-w-0 ${collectionLayout[index] ?? "lg:col-span-3"}`}>
+                  <FundingProductCard
+                    item={item}
+                    to={detailPath}
+                    brandName={`${isDropItem ? NEW_DROP_BRAND : "BRAND-ER"}`}
+                    imageAspect={isLead ? "aspect-[4/5] lg:aspect-[5/6]" : "aspect-[4/5]"}
+                    titleSize={isLead ? "lg" : "md"}
+                    badge={
+                      isNewDropLive && isDropItem ? (
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-white sm:text-[10px] ${fireGradientClassName}`}>
+                          <FlickerFlame className="h-3 w-3" />
                           Hot · Drop 01
                         </span>
                       ) : (
-                        <span className="absolute left-3 top-3 bg-[#f4f1eb]/90 px-2.5 py-1.5 text-[8px] font-bold uppercase tracking-[0.15em] text-[#2a2324] backdrop-blur sm:left-4 sm:top-4 sm:text-[10px]">
-                          New · 0{index + 1}
+                        <span className="font-display text-[10px] font-semibold tracking-[0.2em] text-stone-500">
+                          {String(index + 1).padStart(2, "0")}
                         </span>
-                      )}
-                      <span className="absolute bottom-0 left-0 bg-brand px-3 py-2 text-[8px] font-bold uppercase tracking-[0.14em] text-white sm:px-4 sm:text-[10px]">
-                        Limited order
-                      </span>
-                    </div>
-                    <div className="pt-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand sm:text-[11px]">
-                            {isDropItem ? NEW_DROP_BRAND : "BRAND-ER"} · {item.cloth_type}
-                          </p>
-                          <h3 className="mt-1.5 truncate text-sm font-semibold text-[#211b1c] sm:text-base">{item.product_name}</h3>
-                        </div>
-                        <ArrowUpRight className="mt-1 hidden h-4 w-4 shrink-0 text-stone-400 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand sm:block" />
-                      </div>
-                      <p className="mt-1 truncate text-[11px] text-stone-500 sm:text-sm">{item.material}</p>
-                      <p className="mt-3 text-sm font-bold sm:text-base">{formatPrice(item.price)}</p>
-                      <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-3 text-[9px] text-stone-500 sm:text-[11px]">
-                        <span>{remaining > 0 ? `제작 확정까지 ${remaining}장` : "제작 확정"}</span>
-                        <span>{item.current_orders}/{item.moq} 선주문</span>
-                      </div>
-                    </div>
-                  </article>
-                </Link>
+                      )
+                    }
+                  />
+                </Reveal>
               );
             })}
           </div>
 
-          <Link to="/fundings" className="mt-10 inline-flex h-12 w-full items-center justify-center border border-[#211b1c] text-sm font-bold transition hover:bg-[#211b1c] hover:text-white sm:hidden">
-            전체 컬렉션 보기 <ArrowRight className="ml-2 h-4 w-4" />
+          <Link to="/fundings" className="cta-text mt-12 lg:hidden">
+            <span className="link-draw">전체 컬렉션 보기</span> <ArrowRight className="h-4 w-4" />
           </Link>
         </section>
 
-        <section id="category" className="border-y border-black/10 bg-[#e9e7e3]">
-          <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
-            <div className="max-w-2xl">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">Shop by category</p>
-              <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-6xl">무드에 맞는 실루엣</h2>
-              <p className="mt-5 text-sm leading-7 text-stone-600 sm:text-base">과장된 로고보다 좋은 소재와 균형 잡힌 형태에 집중한 컬렉션입니다.</p>
-            </div>
-
-            <div className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
-              {categories.map((category, index) => (
-                <Link key={category.name} to="/fundings" className="group relative block overflow-hidden">
-                  <div className={`relative aspect-[3/4] overflow-hidden ${category.tone}`}>
-                    <span className="absolute left-3 top-3 z-10 text-[9px] font-bold uppercase tracking-[0.18em] text-stone-600 sm:left-5 sm:top-5 sm:text-[11px]">0{index + 1}</span>
-                    <img
-                      src={getAppPath(category.image)}
-                      alt={category.label}
-                      className="h-full w-full object-contain p-4 transition duration-700 group-hover:scale-105 sm:p-8"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#20191a]/75 to-transparent px-4 pb-4 pt-16 text-white sm:px-6 sm:pb-6">
-                      <div className="flex items-end justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xl font-bold leading-none min-[360px]:text-2xl sm:text-3xl">{category.name}</p>
-                          <p className="mt-2 hidden text-xs text-white/65 sm:block">{category.note}</p>
-                        </div>
-                        <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="border-y border-black/10 bg-[#f1f0ed]">
-          <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
-            <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">Production portfolio</p>
-                <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-6xl">
-                  아이디어에서<br />실제 제품까지
+        {/* PROCESS — one story read left to right (stacked on mobile). Numbers carry the rhythm. */}
+        <section className="pb-24 sm:pb-32 lg:pb-44">
+          <div className="page-shell">
+            <div className="grid gap-6 border-t border-black/10 pt-10 lg:grid-cols-12 lg:pt-14">
+              <Reveal className="lg:col-span-5">
+                <p className="eyebrow">How it is made</p>
+                <h2 className="display-section mt-4">
+                  그리는 순간부터
+                  <br />
+                  입는 순간까지.
                 </h2>
-                <p className="mt-5 max-w-md text-sm leading-7 text-stone-600 sm:text-base">
-                  브랜더가 제작한 다양한 의류와<br />
-                  AI 디자인부터 샘플·본생산까지 이어지는 제작 과정을 확인해보세요.
+              </Reveal>
+              <Reveal delayMs={120} className="lg:col-span-4 lg:col-start-8 lg:self-end">
+                <p className="text-sm leading-7 text-stone-600 sm:text-[15px]">
+                  브랜더는 디자인 도구에서 끝나지 않습니다. 원단, 샘플, 생산과 펀딩까지 하나의 흐름으로 이어집니다.
                 </p>
-                <Link
-                  to="/portfolio"
-                  className="mt-7 inline-flex h-12 items-center justify-center bg-brand px-7 text-sm font-bold text-white transition hover:bg-brand-dark sm:h-14"
-                >
-                  제작 포트폴리오 보기 <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                {portfolioProducts
-                  .filter((product) =>
-                    ["burgundy-leather-jacket", "technical-shell", "studded-hoodie", "work-jacket"].includes(product.id),
-                  )
-                  .map((product, index) => (
-                    <Link
-                      key={product.id}
-                      to="/portfolio"
-                      className={`aspect-[3/4] overflow-hidden bg-[#e9e5dd] transition hover:opacity-90 ${
-                        index % 2 === 1 ? "mt-6 sm:mt-10" : ""
-                      }`}
-                    >
-                      <img
-                        src={product.image}
-                        alt={product.nameKo}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-contain p-4 sm:p-5"
-                      />
-                    </Link>
-                  ))}
-              </div>
+              </Reveal>
             </div>
-          </div>
-        </section>
 
-        <section className="bg-[#711a2a] text-white">
-          <div className="mx-auto grid min-h-[650px] max-w-[1440px] lg:grid-cols-[0.82fr_1.18fr]">
-            <div className="flex flex-col justify-center px-6 py-16 sm:px-10 lg:px-12 xl:px-16">
-              <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-[#e6b7c2] sm:text-xs">The burgundy edit</p>
-              <h2 className="mt-5 text-[clamp(3.5rem,7vw,7rem)] font-extrabold leading-[0.92] tracking-[-0.03em]">
-                DEEPER<br />THAN RED.
-              </h2>
-              <p className="mt-7 max-w-md text-sm leading-7 text-white/65 sm:text-base">
-                빛에 따라 달라지는 깊은 와인 컬러. 조용하지만 분명하게 남는 이번 시즌의 시그니처입니다.
-              </p>
-              <Link to="/fundings" className="mt-9 inline-flex w-fit items-center border-b border-white/70 pb-2 text-sm font-bold transition hover:border-white/30 hover:text-white/70">
-                BURGUNDY EDIT 보기 <ArrowRight className="ml-2 h-4 w-4" />
+            <ol className="mt-16 grid gap-16 sm:mt-20 sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4 lg:gap-x-10 lg:gap-y-0">
+              {processSteps.map((step, index) => (
+                <li key={step.number} className={`min-w-0 ${step.offset}`}>
+                  <Reveal delayMs={index * 110}>
+                    <div className="flex items-end gap-4">
+                      <span className="display-number text-[5.5rem] text-brand sm:text-[6.5rem] lg:text-[7.5rem]">{step.number}</span>
+                      <span className="mb-2 h-px flex-1 bg-black/15" aria-hidden />
+                    </div>
+                    <p className="mt-6 font-display text-sm font-semibold tracking-[0.2em] text-[#211b1c]">{step.title}</p>
+                    <p className="mt-1 text-sm text-stone-500">{step.label}</p>
+                  </Reveal>
+                  <RevealImage delayMs={index * 110 + 120} className={`mt-6 bg-[#ebe7e1] ${step.frame}`}>
+                    <img
+                      src={getAppPath(step.image)}
+                      alt={`${step.label} 단계`}
+                      loading="lazy"
+                      decoding="async"
+                      className={`h-full w-full ${step.fit === "cover" ? "object-cover" : "object-contain p-[8%] mix-blend-multiply"}`}
+                    />
+                  </RevealImage>
+                  <p className="mt-5 max-w-[26ch] text-sm leading-6 text-stone-600">{step.description}</p>
+                </li>
+              ))}
+            </ol>
+
+            <div className="mt-16 flex flex-col gap-3 sm:mt-24 sm:flex-row sm:items-center sm:gap-8 lg:ml-[calc(50%+1.25rem)]">
+              <Link to="/customize" className="cta-primary">
+                디자인 시작하기 <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link to="/design-quote" className="cta-text">
+                <span className="link-draw">제작 견적 받아보기</span> <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-
-            <div className="relative min-h-[520px] overflow-hidden bg-[#5d1422] lg:min-h-[650px]">
-              <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.16)_1px,transparent_1px)] [background-size:64px_64px]" />
-              <div className="absolute left-[9%] top-[9%] h-[68%] w-[47%] rotate-[-5deg] bg-[#e8e3dc] shadow-[0_40px_80px_rgba(36,5,12,0.35)]">
-                <img src={getAppPath("/lovable-uploads/jacket.png")} alt="버건디 에디트 재킷" className="h-full w-full object-contain p-6 sm:p-10" />
-              </div>
-              <div className="absolute bottom-[7%] right-[7%] h-[63%] w-[43%] rotate-[5deg] bg-[#c9c6c2] shadow-[0_40px_80px_rgba(36,5,12,0.4)]">
-                <img src={getAppPath("/lovable-uploads/long_pants.png")} alt="버건디 에디트 팬츠" className="h-full w-full object-contain p-5 sm:p-9" />
-              </div>
-              <span className="absolute bottom-5 left-5 text-[9px] font-bold uppercase tracking-[0.22em] text-white/55 sm:bottom-8 sm:left-8 sm:text-[11px]">BRAND-ER COLOR STUDY · 2026</span>
-            </div>
           </div>
         </section>
 
-        <section id="story" className="bg-[#f1f0ed]">
-          <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
-            <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand sm:text-xs">Why brand-er</p>
-                <h2 className="mt-4 max-w-lg text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
-                  좋은 옷만<br />남기는 방식.
-                </h2>
-              </div>
-              <div className="border-t border-black/15">
-                {shopperPromises.map((item) => (
-                  <article key={item.number} className="grid gap-4 border-b border-black/15 py-7 sm:grid-cols-[76px_1fr] sm:py-9">
-                    <span className="text-[10px] font-bold tracking-[0.18em] text-brand">{item.number}</span>
-                    <div>
-                      <h3 className="text-2xl font-bold tracking-[-0.025em] sm:text-3xl">{item.title}</h3>
-                      <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600 sm:text-base">{item.description}</p>
-                    </div>
-                  </article>
-                ))}
+        {/* PORTFOLIO — lookbook spread with deliberately unequal image sizes. */}
+        <section className="bg-[#ece7e0] py-24 sm:py-32 lg:py-40">
+          <div className="page-shell">
+            <div className="grid gap-12 lg:grid-cols-12 lg:gap-8">
+              {lookbook[0] && (
+                <Link to="/portfolio" className="group block lg:col-span-7">
+                  <RevealImage className="aspect-[4/5] bg-[#e2dcd3] lg:aspect-[6/7]">
+                    <img src={lookbook[0].image} alt={lookbook[0].nameKo} loading="lazy" decoding="async" className="img-zoom h-full w-full object-contain p-[9%]" />
+                  </RevealImage>
+                </Link>
+              )}
+
+              <div className="flex flex-col lg:col-span-4 lg:col-start-9">
+                <Reveal>
+                  <p className="eyebrow">Production portfolio</p>
+                  <h2 className="display-section mt-4">
+                    아이디어에서
+                    <br />
+                    실제 제품까지.
+                  </h2>
+                  <p className="mt-6 text-sm leading-7 text-stone-600 sm:text-[15px]">
+                    브랜더가 제작한 의류를 둘러보세요. AI 디자인에서 샘플, 본생산까지 실제로 완성된 옷들입니다.
+                  </p>
+                </Reveal>
+
+                {lookbook[0] && (
+                  <Reveal delayMs={120} className="mt-10 border-t border-black/10 pt-5 lg:mt-14">
+                    <p className="font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-brand">Project 01</p>
+                    <p className="mt-2 text-xl font-semibold tracking-[-0.02em]">{lookbook[0].nameKo}</p>
+                    <p className="mt-1 font-display text-xs uppercase tracking-[0.14em] text-stone-500">{lookbook[0].nameEn}</p>
+                  </Reveal>
+                )}
+
+                {lookbook[1] && (
+                  <Link to="/portfolio" className="group mt-10 block w-2/3 self-end lg:mt-auto lg:w-4/5">
+                    <RevealImage delayMs={160} className="aspect-[3/4] bg-[#e2dcd3]">
+                      <img src={lookbook[1].image} alt={lookbook[1].nameKo} loading="lazy" decoding="async" className="img-zoom h-full w-full object-contain p-[10%]" />
+                    </RevealImage>
+                    <p className="mt-3 flex items-baseline justify-between gap-3 text-sm">
+                      <span className="font-medium">{lookbook[1].nameKo}</span>
+                      <span className="font-display text-[11px] tracking-[0.18em] text-stone-500">02</span>
+                    </p>
+                  </Link>
+                )}
               </div>
             </div>
+
+            {lookbook[2] && (
+              <div className="mt-16 grid gap-8 sm:mt-24 lg:grid-cols-12 lg:items-end lg:gap-8">
+                <Reveal className="order-2 lg:order-none lg:col-span-3">
+                  <p className="font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-brand">Project 03</p>
+                  <p className="mt-2 text-xl font-semibold tracking-[-0.02em]">{lookbook[2].nameKo}</p>
+                  <p className="mt-1 font-display text-xs uppercase tracking-[0.14em] text-stone-500">{lookbook[2].nameEn}</p>
+                  <Link to="/portfolio" className="cta-text mt-6">
+                    <span className="link-draw">포트폴리오 전체 보기</span> <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Reveal>
+                <Link to="/portfolio" className="group block lg:col-span-8 lg:col-start-5">
+                  <RevealImage className="aspect-[4/3] bg-[#e2dcd3] lg:aspect-[16/9]">
+                    <img src={lookbook[2].image} alt={lookbook[2].nameKo} loading="lazy" decoding="async" className="img-zoom h-full w-full object-contain p-[7%]" />
+                  </RevealImage>
+                </Link>
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="border-t border-black/10 bg-[#21191a] text-white">
-          <div className="mx-auto grid max-w-[1440px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_auto] lg:items-end lg:px-12 xl:px-16">
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#d7a6b2] sm:text-xs">
-                <BrandMark className="h-4 w-4" variant="white" /> BRAND-ER STUDIO
-              </div>
-              <div className="mt-5 flex items-end gap-3 sm:gap-4">
-                <BrandMascot size={64} className="hidden shrink-0 pb-1 sm:block" />
-                <h2 className="max-w-4xl text-4xl font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-6xl">
-                  찾던 옷이 없다면,<br />당신의 컬렉션을 시작하세요.
-                </h2>
-              </div>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-white/55 sm:text-base">
-                아이디어를 디자인으로 만들고, 선택받은 수량만큼 실제 옷으로 완성합니다.
+        {/* CATEGORY INDEX — words as navigation. */}
+        <section id="category" className="page-shell py-24 sm:py-32">
+          <div className="grid gap-10 lg:grid-cols-12">
+            <Reveal className="lg:col-span-3">
+              <p className="eyebrow">Shop by category</p>
+              <p className="mt-4 max-w-[22ch] text-sm leading-7 text-stone-600">
+                과장된 로고보다 좋은 소재와 균형 잡힌 형태에 집중한 컬렉션입니다.
               </p>
+            </Reveal>
+            <ul className="border-t border-black/10 lg:col-span-9">
+              {categories.map((category, index) => (
+                <li key={category.name} className="border-b border-black/10">
+                  <Link
+                    to={`/fundings?category=${category.filter}`}
+                    className="group relative flex items-center gap-5 py-6 sm:gap-8 sm:py-8"
+                  >
+                    <span className="w-6 font-display text-[11px] font-medium text-stone-400">0{index + 1}</span>
+                    <span className="font-display text-[clamp(2.25rem,6vw,5rem)] font-semibold leading-none tracking-[-0.05em] text-[#211b1c] transition-[color,transform] duration-500 group-hover:translate-x-2 group-hover:text-brand">
+                      {category.name}
+                    </span>
+                    <span className="ml-auto hidden text-right text-sm text-stone-500 sm:block">
+                      {category.label}
+                      <span className="block text-xs text-stone-400">{category.note}</span>
+                    </span>
+                    <span className="pointer-events-none absolute right-[22%] top-1/2 hidden h-36 w-28 -translate-y-1/2 overflow-hidden bg-[#ebe7e1] opacity-0 transition-opacity duration-500 group-hover:opacity-100 lg:block">
+                      <img src={getAppPath(category.image)} alt="" loading="lazy" className="h-full w-full object-contain p-2" />
+                    </span>
+                    <ArrowUpRight className="ml-auto h-5 w-5 shrink-0 text-stone-400 transition-colors group-hover:text-brand sm:ml-0" strokeWidth={1.5} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* STATEMENT + CLOSING CTA — type as the design element. */}
+        <section className="page-shell pb-28 pt-8 sm:pb-36 lg:pb-44">
+          <div className="grid gap-16 lg:grid-cols-12 lg:gap-8">
+            <Reveal className="lg:col-span-7">
+              <p className="whitespace-nowrap font-display text-[clamp(3rem,8.4vw,7.25rem)] font-semibold uppercase leading-[0.86] tracking-[-0.055em] text-[#211b1c]">
+                Make
+                <br />
+                <span className="pl-[0.9em]">your</span>
+                <br />
+                idea
+                <br />
+                <span className="pl-[0.45em]">wearable<span className="text-brand">.</span></span>
+              </p>
+            </Reveal>
+
+            <div className="flex flex-col justify-end lg:col-span-4 lg:col-start-9">
+              <ol className="space-y-8">
+                {shopperPromises.map((item, index) => (
+                  <Reveal key={item.number} delayMs={index * 90}>
+                    <li className="grid grid-cols-[2.5rem_1fr] gap-2">
+                      <span className="font-display text-xs font-semibold text-brand">{item.number}</span>
+                      <div>
+                        <h3 className="font-display text-base font-semibold tracking-[-0.01em]">{item.title}</h3>
+                        <p className="mt-1.5 text-sm leading-6 text-stone-600">{item.description}</p>
+                      </div>
+                    </li>
+                  </Reveal>
+                ))}
+              </ol>
+
+              <Reveal delayMs={300} className="mt-14 border-t border-black/10 pt-8">
+                <h2 className="text-2xl font-semibold leading-snug tracking-[-0.03em] sm:text-[1.75rem]">
+                  찾던 옷이 없다면,
+                  <br />
+                  당신의 컬렉션을 시작하세요.
+                </h2>
+                <div className="mt-7 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-8">
+                  <Link to="/customize" className="cta-primary w-full sm:w-auto" data-tutorial="home-start-cta">
+                    디자인 시작하기 <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link to="/fundings" className="cta-text">
+                    <span className="link-draw">펀딩 둘러보기</span> <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </Reveal>
             </div>
-            <Link
-              to="/customize"
-              className="inline-flex h-14 items-center justify-center border border-white/35 px-7 text-sm font-bold transition hover:bg-white hover:text-[#21191a]"
-              data-tutorial="home-start-cta"
-            >
-              컬렉션 시작하기 <ChevronRight className="ml-2 h-4 w-4" />
-            </Link>
           </div>
         </section>
       </main>

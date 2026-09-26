@@ -20,7 +20,7 @@ export const EditorSummaryBar = ({ form, layout }: EditorSummaryBarProps) => {
 
   return (
     <div className={layout === "column" ? "space-y-3" : "flex items-center gap-4 overflow-x-auto"}>
-      {layout === "column" && <p className="text-sm font-black text-stone-950">실시간 요약</p>}
+      {layout === "column" && <p className="text-sm font-bold text-stone-950">실시간 요약</p>}
 
       <div className={layout === "column" ? "space-y-2" : "flex shrink-0 items-center gap-4"}>
         <div className={layout === "row" ? "flex shrink-0 items-center gap-1.5" : undefined}>
@@ -45,7 +45,7 @@ export const EditorSummaryBar = ({ form, layout }: EditorSummaryBarProps) => {
         }
       >
         <span className="text-xs font-bold text-stone-600">예상 총액</span>
-        <span className="ml-2 text-base font-black text-brand">
+        <span className="ml-2 text-base font-bold text-brand">
           {form.quote ? formatWon(form.quote.total) : "-"}
         </span>
       </div>

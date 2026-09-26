@@ -23,7 +23,7 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
   if (form.submittedOrderId) {
     return (
       <div>
-        <h3 className="text-sm font-black text-emerald-950">제작 의뢰가 접수되었습니다</h3>
+        <h3 className="text-sm font-bold text-emerald-950">제작 의뢰가 접수되었습니다</h3>
         <p className="mt-2 text-xs leading-5 text-emerald-800">관리자가 확인 후 등록된 연락처로 안내드립니다.</p>
         <div className="mt-4 grid gap-2">
           {form.isAuthenticated && (
@@ -50,7 +50,7 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
 
   return (
     <div>
-      <h3 className="text-sm font-black text-stone-950">실시간 견적</h3>
+      <h3 className="text-sm font-bold text-stone-950">실시간 견적</h3>
       <p className="mt-1 text-xs leading-5 text-stone-500">선택하신 옵션 기준 자동 계산된 예상 견적입니다.</p>
 
       {!quote ? (
@@ -73,7 +73,7 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
             ))}
             <div className="flex items-center justify-between border-t border-dashed border-stone-200 pt-2">
               <span className="font-bold text-stone-600">장당 예상금액</span>
-              <span className="text-sm font-black text-brand">{formatWon(quote.unitPrice)}</span>
+              <span className="text-sm font-bold text-brand">{formatWon(quote.unitPrice)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="font-semibold text-stone-500">수량</span>
@@ -90,8 +90,8 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
               <span className="font-bold text-stone-800">{formatWon(quote.vat)}</span>
             </div>
             <div className="flex items-center justify-between border-t border-stone-200 pt-1.5">
-              <span className="text-sm font-black text-stone-950">총 예상금액</span>
-              <span className="text-base font-black text-brand">{formatWon(quote.total)}</span>
+              <span className="text-sm font-bold text-stone-950">총 예상금액</span>
+              <span className="text-base font-bold text-brand">{formatWon(quote.total)}</span>
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-stone-500">
               <Timer className="h-3 w-3" />
@@ -142,7 +142,7 @@ export const QuotePanel = ({ form }: QuotePanelProps) => {
 
       <Button
         type="button"
-        className="mt-3 h-11 w-full rounded-full bg-brand text-sm font-black hover:bg-brand-dark"
+        className="mt-3 h-11 w-full rounded-[3px] bg-brand text-sm font-bold hover:bg-brand-dark"
         onClick={() => void form.submitRequest()}
         disabled={
           form.isSubmitting ||

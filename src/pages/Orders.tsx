@@ -45,7 +45,7 @@ const Orders = () => {
       <Header />
       <main className="container mx-auto px-4 pt-20 md:pt-24 pb-12">
         <div className={`flex ${isMobile ? 'flex-col' : 'justify-between'} items-center mb-6 md:mb-8 gap-4`}>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-[-0.03em]">내 제작 의뢰</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-[-0.03em]">내 제작 의뢰</h1>
           <Button 
             onClick={handleNewOrder}
             className={`bg-brand hover:bg-brand-dark ${isMobile ? 'w-full h-12 text-base' : ''}`}

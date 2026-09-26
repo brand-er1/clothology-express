@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { fetchApprovedFundings, fetchMyFundings } from "@/services/funding";
 import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
-import { ArrowRight, ArrowUpRight, Loader2, Plus } from "lucide-react";
-import { BrandMark } from "@/components/BrandMark";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { FreeTeeEventBanner } from "@/components/funding/FreeTeeEvent";
 import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
-import { BrandIdentity } from "@/components/brand/BrandIdentity";
+import { FundingProductCard, ProgressLine, formatWon } from "@/components/funding/FundingProductCard";
+import { Reveal } from "@/components/portfolio/ScrollReveal";
 
 const statusLabel: Record<FundingStatus, string> = {
   draft: "준비 중",
@@ -39,13 +37,8 @@ const getCollectionFilter = (funding: Funding): CollectionFilter => {
   return "TOP";
 };
 
-const getCustomerCopy = (funding: Funding, brand: string) => {
-  const description = funding.description?.trim();
-  if (description && !description.includes("디자인 특징:") && !description.includes("목표 인원이")) {
-    return description;
-  }
-  return `${funding.material} 소재로 완성한 ${brand} 리미티드 ${funding.cloth_type} 컬렉션`;
-};
+const isCollectionFilter = (value: string | null): value is CollectionFilter =>
+  collectionFilters.some((filter) => filter.value === value);
 
 const FundingCards = ({
   fundings,
@@ -60,87 +53,46 @@ const FundingCards = ({
 }) => {
   if (!fundings.length) {
     return (
-      <div className="border-y border-black/10 py-24 text-center">
-        <BrandMark className="mx-auto mb-5 h-8 w-8" />
-        <h3 className="text-2xl font-bold text-[#211b1c]">새로운 컬렉션을 준비하고 있습니다.</h3>
-        <p className="mt-3 text-sm text-stone-500">곧 공개될 BRAND-ER의 다음 드롭을 기다려주세요.</p>
-        <Button asChild variant="outline" className="mt-7 rounded-none border-stone-400 bg-transparent px-6">
-          <Link to="/customize">내 디자인 출시하기</Link>
-        </Button>
+      <div className="grid gap-8 border-t border-black/10 py-20 sm:py-28 lg:grid-cols-12">
+        <p className="display-number text-[6rem] text-black/10 sm:text-[9rem] lg:col-span-4">00</p>
+        <div className="lg:col-span-6 lg:col-start-6 lg:self-end">
+          <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#211b1c] sm:text-3xl">새로운 컬렉션을 준비하고 있습니다.</h3>
+          <p className="mt-3 text-sm leading-7 text-stone-500">곧 공개될 BRAND-ER의 다음 드롭을 기다려주세요.</p>
+          <Link to="/customize" className="cta-text mt-6">
+            <span className="link-draw">내 디자인 출시하기</span> <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-x-6 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-7 xl:gap-y-16"
+      className="grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-x-6 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-20 xl:grid-cols-4"
       data-tutorial="fundings-grid"
     >
       {fundings.map((funding, cardIndex) => {
-        const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
-        const remaining = Math.max(0, funding.moq - funding.current_orders);
         const isDropItem = newDropIds.has(funding.id);
-        const brand = funding.brand?.brand_name || "제작자 정보 확인 중";
 
         return (
-          <Link
-            key={funding.id}
-            to={`/fundings/${funding.id}`}
-            className="group block min-w-0"
-            data-tutorial={cardIndex === 0 ? "funding-card" : undefined}
-          >
-            <article>
-              <div className="relative aspect-[4/5] overflow-hidden bg-[#e9e7e3]">
-                <img
-                  src={funding.image_url}
-                  alt={funding.product_name}
-                  className="h-full w-full object-contain p-3 transition duration-700 ease-out group-hover:scale-[1.045] sm:p-5"
-                />
-                <WatermarkOverlay />
-                <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3 sm:p-4">
-                  {highlightNewDrop && isDropItem ? (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_6px_18px_rgba(249,115,22,0.35)] ${fireGradientClassName}`}>
-                      <FlickerFlame className="h-3.5 w-3.5" />
-                      Hot · Drop 01
-                    </span>
-                  ) : (
-                    <span className="bg-[#f5f3ef]/90 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#2a2223] backdrop-blur-sm">
-                      Limited order
-                    </span>
-                  )}
-                  {isMine && (
-                    <Badge className="rounded-none border-0 bg-brand px-2.5 py-1.5 text-[10px] text-white hover:bg-brand">
-                      {statusLabel[funding.status]}
-                    </Badge>
-                  )}
-                </div>
-                <div className="absolute inset-x-0 bottom-0 h-[3px] bg-black/10">
-                  <div className="h-full bg-brand transition-all" style={{ width: `${progress}%` }} />
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <BrandIdentity brand={funding.brand} compact linked={false} />
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-brand sm:text-xs">{funding.cloth_type}</p>
-                    <h3 className="mt-1.5 truncate text-sm font-semibold text-[#1f191a] sm:text-base">
-                      {funding.product_name}
-                    </h3>
-                  </div>
-                  <ArrowUpRight className="mt-1 hidden h-4 w-4 shrink-0 text-stone-400 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand sm:block" />
-                </div>
-                <p className="mt-1.5 line-clamp-1 text-xs text-stone-500 sm:text-sm">{getCustomerCopy(funding, brand)}</p>
-                <p className="mt-3 text-sm font-bold text-[#1f191a] sm:text-base">
-                  {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
-                </p>
-                <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-stone-500 sm:text-xs">
-                  <span>{remaining > 0 ? `제작 확정까지 ${remaining}장` : "제작 확정"}</span>
-                  <span>{funding.current_orders}/{funding.moq} orders</span>
-                </div>
-              </div>
-            </article>
-          </Link>
+          <Reveal key={funding.id} delayMs={(cardIndex % 4) * 70} className="min-w-0">
+            <FundingProductCard
+              item={funding}
+              to={`/fundings/${funding.id}`}
+              brandName={funding.brand?.brand_name || "제작자 정보 확인 중"}
+              watermark
+              tutorialId={cardIndex === 0 ? "funding-card" : undefined}
+              statusLabel={isMine ? statusLabel[funding.status] : undefined}
+              badge={
+                highlightNewDrop && isDropItem ? (
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white ${fireGradientClassName}`}>
+                    <FlickerFlame className="h-3.5 w-3.5" />
+                    Hot · Drop 01
+                  </span>
+                ) : undefined
+              }
+            />
+          </Reveal>
         );
       })}
     </div>
@@ -148,11 +100,15 @@ const FundingCards = ({
 };
 
 const Fundings = () => {
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get("category");
   const [approved, setApproved] = useState<Funding[]>([]);
   const [mine, setMine] = useState<Funding[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<CollectionFilter>("ALL");
+  const [activeFilter, setActiveFilter] = useState<CollectionFilter>(
+    isCollectionFilter(initialFilter) ? initialFilter : "ALL",
+  );
   const [view, setView] = useState<"shop" | "mine">("shop");
 
   useEffect(() => {
@@ -184,102 +140,119 @@ const Fundings = () => {
     return source.filter((funding) => getCollectionFilter(funding) === activeFilter);
   }, [activeFilter, approved, mine, view]);
 
+  const filterCounts = useMemo(() => {
+    const source = view === "mine" ? mine : approved;
+    const counts: Record<CollectionFilter, number> = { ALL: source.length, TOP: 0, OUTER: 0, BOTTOM: 0, KNIT: 0 };
+    source.forEach((funding) => {
+      counts[getCollectionFilter(funding)] += 1;
+    });
+    return counts;
+  }, [approved, mine, view]);
+
   const newDropCountdown = useNewDropCountdown();
   const newDropIds = useNewDropIds(approved);
   const featured = approved[0];
 
   return (
-    <div className="min-h-screen bg-[#f3f1ed] text-[#211b1c]">
+    <div className="min-h-screen bg-[#f6f3ee] text-[#211b1c]">
       <Header />
       <main className="pb-24 pt-16 sm:pt-[72px]">
         <FreeTeeEventBanner fundings={approved} />
         <NewDropEventBanner ctaHref="#collection" ctaLabel="NEW DROP 01 쇼핑하기" />
-        <section className="border-b border-black/10">
-          <div className="mx-auto grid min-h-[560px] max-w-[1440px] lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="flex flex-col justify-center px-5 py-16 sm:px-8 lg:px-12 lg:py-24 xl:px-16">
-              <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand">Brand-er limited collection</p>
-              <h1 className="mt-6 font-logo text-[clamp(3.25rem,7vw,7.2rem)] leading-[0.92] text-[#241d1e]">
-                WEAR<br />THE NEXT.
+
+        {/* Masthead: title on the left, the featured piece large on the right — no framed boxes. */}
+        <section className="page-shell pt-12 sm:pt-16 lg:pt-20">
+          <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
+            <div className="flex flex-col lg:col-span-5">
+              <p className="eyebrow">Brand-er funding collection</p>
+              <h1 className="display-hero mt-5 font-display uppercase">
+                Wear
+                <br />
+                the next<span className="text-brand">.</span>
               </h1>
-              <p className="mt-7 max-w-lg text-base leading-7 text-stone-600 sm:text-lg">
-                아직 세상에 없는 옷을 가장 먼저 만나보세요.<br className="hidden sm:block" />
-                주문이 모인 만큼만 국내에서 정성껏 제작합니다.
+              <p className="mt-6 max-w-md text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+                아직 세상에 없는 옷을 가장 먼저 만나보세요.
+                <br className="hidden sm:block" />
+                주문이 모인 만큼만 정성껏 제작합니다.
               </p>
-              <div className="mt-9 flex flex-wrap items-center gap-4">
-                <a href="#collection" className="inline-flex h-12 items-center bg-brand px-6 text-sm font-bold text-white transition hover:bg-brand-dark">
-                  신상품 보기 <ArrowRight className="ml-2 h-4 w-4" />
+              <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
+                <a href="#collection" className="cta-primary">
+                  컬렉션 보기 <ArrowRight className="h-4 w-4" />
                 </a>
-                <Link to="/customize" className="inline-flex h-12 items-center text-sm font-semibold text-stone-600 transition hover:text-brand">
-                  내 디자인 출시하기 <Plus className="ml-1.5 h-4 w-4" />
+                <Link to="/customize" className="cta-text">
+                  <span className="link-draw">내 디자인 출시하기</span> <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
+
+              {!loading && (
+                <dl className="mt-12 grid max-w-md grid-cols-2 gap-6 border-t border-black/10 pt-6 lg:mt-auto">
+                  <div>
+                    <dt className="text-xs text-stone-500">진행 중인 펀딩</dt>
+                    <dd className="mt-1 font-display text-3xl font-light tracking-[-0.04em] text-[#211b1c]">{approved.length}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-stone-500">제작 확정</dt>
+                    <dd className="mt-1 font-display text-3xl font-light tracking-[-0.04em] text-brand">
+                      {approved.filter((funding) => funding.current_orders >= funding.moq).length}
+                    </dd>
+                  </div>
+                </dl>
+              )}
             </div>
 
-            <div className="relative min-h-[420px] overflow-hidden bg-[#d9d5cf] lg:min-h-[560px]">
+            <div className="lg:col-span-6 lg:col-start-7">
               {featured ? (
-                <Link to={`/fundings/${featured.id}`} className="group absolute inset-0">
-                  <img
-                    src={featured.image_url}
-                    alt={featured.product_name}
-                    className="h-full w-full object-contain p-8 transition duration-700 group-hover:scale-[1.035] sm:p-12 lg:p-16"
-                  />
-                  <WatermarkOverlay />
-                  <div className="absolute left-5 top-5 flex items-stretch shadow-[0_10px_30px_rgba(116,27,43,0.35)] sm:left-8 sm:top-8">
-                    <span className="flex items-center gap-2 bg-brand px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white sm:px-4 sm:py-2.5 sm:text-sm">
-                      {newDropCountdown && (
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                        </span>
-                      )}
-                      New drop 01
+                <Link to={`/fundings/${featured.id}`} className="group block">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#ebe7e1] sm:aspect-[5/4] lg:aspect-[6/7]">
+                    <img
+                      src={featured.image_url}
+                      alt={featured.product_name}
+                      className="img-zoom h-full w-full object-contain p-[8%] mix-blend-multiply"
+                    />
+                    <WatermarkOverlay />
+                    <span className="absolute left-4 top-4 font-display text-[10px] font-semibold uppercase tracking-[0.22em] text-brand sm:left-6 sm:top-6">
+                      {newDropCountdown ? `New drop 01 · D-${newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}` : "Featured"}
                     </span>
-                    {newDropCountdown && (
-                      <span className="flex items-center bg-white px-3 text-[11px] font-extrabold tracking-[0.12em] text-brand sm:text-sm">
-                        ~10.10 · D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
-                      </span>
-                    )}
                   </div>
-                  <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4 bg-[#f3f1ed]/92 p-4 backdrop-blur-md sm:inset-x-8 sm:bottom-8 sm:p-5">
+                  <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end sm:gap-8">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">{featured.brand?.brand_name || "제작자 정보 확인 중"}</p>
-                      <p className="mt-1 truncate text-base font-bold sm:text-lg">{featured.product_name}</p>
+                      <p className="font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">{featured.brand?.brand_name || "제작자 정보 확인 중"}</p>
+                      <p className="mt-1.5 text-xl font-medium tracking-[-0.02em] sm:text-2xl"><span className="link-draw">{featured.product_name}</span></p>
+                      <p className="mt-1 text-sm font-semibold">{formatWon(featured.price)}</p>
                     </div>
-                    <p className="shrink-0 text-sm font-bold sm:text-base">
-                      {featured.price ? `${featured.price.toLocaleString("ko-KR")}원` : "Coming soon"}
-                    </p>
+                    <ProgressLine current={featured.current_orders} target={featured.moq} size="md" />
                   </div>
                 </Link>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="font-extrabold text-[32vw] leading-none text-[#c8c2bb] lg:text-[18rem]">B</span>
+                <div className="flex aspect-[5/4] items-end bg-[#ebe7e1] p-6 lg:aspect-[6/7]">
+                  <span className="display-number text-[10rem] text-black/[0.06] lg:text-[16rem]">B</span>
                 </div>
               )}
             </div>
           </div>
         </section>
 
-        <section id="collection" className="mx-auto max-w-[1440px] scroll-mt-20 px-4 py-14 sm:px-8 sm:py-20 lg:px-12 xl:px-16">
-          <div className="flex flex-col gap-7 border-b border-black/10 pb-7 lg:flex-row lg:items-end lg:justify-between">
+        <section id="collection" className="page-shell scroll-mt-20 pt-24 sm:pt-32 lg:pt-40">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand">Latest collection</p>
-              <h2 className="mt-3 text-4xl font-extrabold tracking-[-0.03em] sm:text-5xl">
+              <p className="eyebrow">Latest collection</p>
+              <h2 className="display-section mt-4">
                 지금 만날 수 있는 컬렉션
               </h2>
             </div>
             {isAuthenticated && (
-              <div className="flex items-center gap-1 text-sm">
+              <div className="flex items-center gap-6 text-sm">
                 <button
                   type="button"
                   onClick={() => setView("shop")}
-                  className={`border-b px-3 py-2 font-semibold transition ${view === "shop" ? "border-brand text-brand" : "border-transparent text-stone-400 hover:text-stone-700"}`}
+                  className={`border-b py-2 font-medium transition-colors duration-300 ${view === "shop" ? "border-brand text-brand" : "border-transparent text-stone-400 hover:text-stone-700"}`}
                 >
                   SHOP
                 </button>
                 <button
                   type="button"
                   onClick={() => setView("mine")}
-                  className={`border-b px-3 py-2 font-semibold transition ${view === "mine" ? "border-brand text-brand" : "border-transparent text-stone-400 hover:text-stone-700"}`}
+                  className={`border-b py-2 font-medium transition-colors duration-300 ${view === "mine" ? "border-brand text-brand" : "border-transparent text-stone-400 hover:text-stone-700"}`}
                 >
                   내가 만든 컬렉션
                 </button>
@@ -287,21 +260,23 @@ const Fundings = () => {
             )}
           </div>
 
-          <div className="mb-9 flex gap-1 overflow-x-auto border-b border-black/10 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-5 mb-10 mt-8 flex gap-7 overflow-x-auto border-b border-black/10 px-5 [scrollbar-width:none] sm:mx-0 sm:px-0 sm:gap-9 [&::-webkit-scrollbar]:hidden">
             {collectionFilters.map((filter) => (
               <button
                 key={filter.value}
                 type="button"
                 onClick={() => setActiveFilter(filter.value)}
-                className={`shrink-0 px-4 py-2 text-sm font-semibold transition ${activeFilter === filter.value ? "bg-[#211b1c] text-white" : "text-stone-500 hover:bg-black/5 hover:text-[#211b1c]"}`}
+                aria-pressed={activeFilter === filter.value}
+                className={`-mb-px flex shrink-0 items-baseline gap-1.5 border-b py-3.5 text-[15px] transition-colors duration-300 ${activeFilter === filter.value ? "border-brand font-semibold text-[#211b1c]" : "border-transparent text-stone-500 hover:text-[#211b1c]"}`}
               >
                 {filter.label}
+                <sup className={`font-display text-[10px] ${activeFilter === filter.value ? "text-brand" : "text-stone-400"}`}>{filterCounts[filter.value]}</sup>
               </button>
             ))}
           </div>
 
           {loading ? (
-            <div className="flex h-72 items-center justify-center text-sm text-stone-500">
+            <div className="flex h-72 items-center text-sm text-stone-500">
               <Loader2 className="mr-2 h-5 w-5 animate-spin text-brand" /> 컬렉션을 준비하고 있습니다
             </div>
           ) : (
@@ -314,20 +289,23 @@ const Fundings = () => {
           )}
         </section>
 
-        <section className="mx-auto max-w-[1440px] px-4 sm:px-8 lg:px-12 xl:px-16">
-          <div className="grid overflow-hidden bg-[#211819] text-white lg:grid-cols-[1fr_auto]">
-            <div className="px-6 py-10 sm:px-10 sm:py-14">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/50">Made only when chosen</p>
-              <h2 className="mt-4 max-w-2xl text-3xl font-extrabold leading-tight sm:text-5xl">
-                선택받은 옷만 만들고,<br />오래 입을 옷만 남깁니다.
+        {/* Closing note set as type on the page, not as a dark box. */}
+        <section className="page-shell pt-28 sm:pt-36 lg:pt-44">
+          <div className="grid gap-8 border-t border-black/10 pt-10 lg:grid-cols-12 lg:gap-8">
+            <p className="eyebrow lg:col-span-3">Made only when chosen</p>
+            <div className="lg:col-span-6">
+              <h2 className="display-section">
+                선택받은 옷만 만들고,
+                <br />
+                오래 입을 옷만 남깁니다.
               </h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-white/60 sm:text-base">
+              <p className="mt-6 max-w-xl text-sm leading-7 text-stone-600 sm:text-base">
                 선주문 수량만큼 생산해 불필요한 재고를 줄이고, 브랜더가 샘플 검수부터 생산과 배송까지 관리합니다.
               </p>
             </div>
-            <div className="flex min-w-72 items-end justify-start px-6 pb-10 sm:px-10 lg:justify-center lg:pb-14 lg:pr-14">
-              <Link to="/customize" className="inline-flex h-12 items-center border border-white/40 px-6 text-sm font-bold transition hover:bg-white hover:text-[#211819]">
-                나의 컬렉션 만들기 <ArrowRight className="ml-2 h-4 w-4" />
+            <div className="lg:col-span-3 lg:self-end lg:justify-self-end">
+              <Link to="/customize" className="cta-primary">
+                나의 컬렉션 만들기 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>

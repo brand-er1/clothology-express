@@ -167,16 +167,16 @@ const Customize = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f2f3f5]">
+    <div className="min-h-screen bg-[#f6f3ee]">
       <Header />
       <main className="mx-auto max-w-[1320px] px-3 pb-24 pt-20 sm:px-6 sm:pt-24 lg:px-8 lg:pt-28">
         <div>
           <div className="mb-6 flex flex-col justify-between gap-3 px-1 sm:mb-8 md:flex-row md:items-end">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand sm:text-xs sm:tracking-[0.2em]">
+              <p className="eyebrow">
                 Brand-er design studio
               </p>
-              <h1 className="mt-2 text-[2rem] font-extrabold leading-tight tracking-[-0.03em] text-stone-950 sm:mt-3 md:text-5xl">
+              <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-[-0.04em] text-stone-950 sm:mt-3 md:text-5xl">
                 나만의 첫 컬렉션
               </h1>
             </div>
@@ -198,15 +198,15 @@ const Customize = () => {
           <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
           <section
-            className={`mt-4 rounded-[1.5rem] border border-gray-200 bg-[#fafbfc] shadow-[0_24px_80px_rgba(44,31,37,0.06)] sm:mt-6 sm:rounded-[2rem] sm:p-9 lg:p-12 ${
+            className={`mt-4 rounded-lg border border-black/[0.07] bg-[#fbfaf8] sm:mt-6 sm:p-9 lg:p-12 ${
               currentStep === 4 || currentStep === 5 ? "p-2.5" : "p-4"
             }`}
           >
             <div className="mb-6 border-b border-stone-200 px-1 pb-5 pt-2 sm:mb-8 sm:px-0 sm:pb-6 sm:pt-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand sm:text-xs sm:tracking-[0.16em]">
+              <p className="font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">
                 Step {String(currentStep).padStart(2, "0")}
               </p>
-              <h2 className="mt-2 text-[1.55rem] font-extrabold leading-tight tracking-[-0.03em] text-stone-950 md:text-3xl">
+              <h2 className="mt-2 text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-stone-950 md:text-3xl">
                 {stepContent[currentStep - 1]?.[0]}
               </h2>
               <p className="mt-2 text-[15px] leading-6 text-stone-500 sm:text-sm">
@@ -316,7 +316,7 @@ const Customize = () => {
                       variant="outline"
                       onClick={handleNext}
                       disabled={isSubmitting}
-                      className="h-12 rounded-full border-stone-300 px-5 text-[14px] font-bold"
+                      className="h-12 rounded-[3px] border-stone-300 px-5 text-[14px] font-bold"
                     >
                       이미지 수정하기
                     </Button>
@@ -324,7 +324,7 @@ const Customize = () => {
                   <Button
                     onClick={() => void handleCreateDetailPage(userGender)}
                     disabled={isSubmitting || imageModifying}
-                    className={`h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark ${currentStep === 5 ? "col-span-2" : ""}`}
+                    className={`h-12 rounded-[3px] bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark ${currentStep === 5 ? "col-span-2" : ""}`}
                   >
                     {isSubmitting ? "준비 중..." : "✨ AI 상세페이지 제작"}
                   </Button>
@@ -347,14 +347,14 @@ const Customize = () => {
 
             <div
               ref={stepNavRef}
-              className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 mt-8 flex items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-white/95 p-2.5 shadow-[0_16px_45px_rgba(36,26,24,0.12)] backdrop-blur sm:static sm:mt-10 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+              className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 mt-8 flex items-center justify-between gap-2 rounded-md border border-black/10 bg-[#fbfaf8]/95 p-2.5 shadow-[0_12px_32px_rgba(36,26,24,0.10)] backdrop-blur sm:static sm:mt-10 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
               data-mascot-safezone
             >
               {currentStep > 1 ? (
                 <Button
                   variant="outline"
                   onClick={handleBack}
-                  className="h-12 shrink-0 rounded-full border-stone-300 px-5 sm:px-6"
+                  className="h-12 shrink-0 rounded-[3px] border-stone-300 px-5 sm:px-6"
                 >
                   이전
                 </Button>
@@ -365,14 +365,14 @@ const Customize = () => {
                     variant="outline"
                     onClick={openVirtualFitting}
                     disabled={isSubmitting || !fittingImageUrl}
-                    className="h-12 rounded-full border-brand/40 bg-brand/5 px-5 text-[14px] font-bold text-brand hover:bg-brand/10 hover:text-brand sm:px-7 sm:text-sm"
+                    className="h-12 rounded-[3px] border-brand/40 bg-brand/5 px-5 text-[14px] font-bold text-brand hover:bg-brand/10 hover:text-brand sm:px-7 sm:text-sm"
                   >
                     가상 마네킹에 입혀보기
                   </Button>
                   <Button
                     onClick={() => void handleCreateDetailPage(userGender)}
                     disabled={isSubmitting}
-                    className="h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark sm:px-7 sm:text-sm"
+                    className="h-12 rounded-[3px] bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark sm:px-7 sm:text-sm"
                   >
                     {isSubmitting ? "처리 중..." : "✨ AI 상세페이지 제작"}
                   </Button>
@@ -380,7 +380,7 @@ const Customize = () => {
                     variant="outline"
                     onClick={() => void handleCreateFunding()}
                     disabled={isSubmitting}
-                    className="h-12 rounded-full border-brand px-5 text-[14px] font-bold text-brand hover:bg-brand/5 hover:text-brand sm:px-7 sm:text-sm"
+                    className="h-12 rounded-[3px] border-brand px-5 text-[14px] font-bold text-brand hover:bg-brand/5 hover:text-brand sm:px-7 sm:text-sm"
                   >
                     {isSubmitting
                       ? "처리 중..."
@@ -390,7 +390,7 @@ const Customize = () => {
                     variant="outline"
                     onClick={() => void handleCreateDirectRequest()}
                     disabled={isSubmitting}
-                    className="h-12 rounded-full border-brand px-5 text-[14px] font-bold text-brand hover:bg-brand/5 hover:text-brand sm:px-7 sm:text-sm"
+                    className="h-12 rounded-[3px] border-brand px-5 text-[14px] font-bold text-brand hover:bg-brand/5 hover:text-brand sm:px-7 sm:text-sm"
                   >
                     {isSubmitting ? "처리 중..." : "제작 의뢰하기"}
                   </Button>
@@ -399,7 +399,7 @@ const Customize = () => {
                 <Button
                   onClick={handleNext}
                   disabled={isSubmitting}
-                  className="h-12 min-w-0 flex-1 rounded-full bg-brand px-4 text-[15px] font-bold hover:bg-brand-dark sm:flex-none sm:px-7 sm:text-sm"
+                  className="h-12 min-w-0 flex-1 rounded-[3px] bg-brand px-4 text-[15px] font-bold hover:bg-brand-dark sm:flex-none sm:px-7 sm:text-sm"
                 >
                   {currentStep === 4 ? "이미지 수정하기" : "다음 단계"}
                 </Button>

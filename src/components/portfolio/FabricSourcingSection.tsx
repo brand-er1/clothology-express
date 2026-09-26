@@ -14,7 +14,7 @@ const FlowBar = ({ steps }: { steps: string[] }) => (
   <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
     {steps.map((step, index) => (
       <div key={step} className="flex items-center gap-2">
-        <span className="whitespace-nowrap border border-black/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.06em] text-stone-600">
+        <span className="whitespace-nowrap font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-600">
           {step}
         </span>
         {index < steps.length - 1 && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-stone-300" />}
@@ -43,12 +43,12 @@ const PullQuote = ({ children }: { children: string }) => (
 /** Image is rendered at its natural aspect ratio (no aspect-box, no object-fit: cover) so the
  * full swatch — including a color-swatch board's edge text — is always visible, uncropped. */
 const MaterialCard = ({ material, index }: { material: SpecialMaterialCard; index: number }) => (
-  <Reveal delayMs={index * 120} className="flex flex-col bg-white">
+  <Reveal delayMs={index * 120} className={`flex flex-col ${index % 2 === 1 ? "lg:mt-24" : ""}`}>
     <img src={material.image} alt={material.imageAlt} loading="lazy" decoding="async" className="w-full" />
 
-    <div className="flex flex-1 flex-col p-6 sm:p-8">
-      <span className="text-[10px] font-bold tracking-[0.2em] text-brand">{material.nameEn}</span>
-      <h4 className="mt-2 text-2xl font-bold tracking-[-0.02em] sm:text-[1.8rem]">
+    <div className="flex flex-1 flex-col pt-6 sm:pt-8">
+      <span className="font-display text-[11px] font-semibold tracking-[0.2em] text-brand">{material.nameEn}</span>
+      <h4 className="mt-2 text-2xl font-semibold tracking-[-0.03em] sm:text-[1.8rem]">
         {material.nameKo}
       </h4>
       <p className="mt-3 text-sm leading-7 text-stone-600 sm:text-base sm:leading-8">
@@ -63,7 +63,7 @@ const MaterialCard = ({ material, index }: { material: SpecialMaterialCard; inde
       <PointList points={material.features} />
 
       {material.noteVariant === "highlight" ? (
-        <p className="mt-6 w-fit border border-brand/30 bg-brand/5 px-4 py-2 text-xs font-bold text-brand">
+        <p className="mt-6 w-fit border-l-2 border-brand pl-3 text-xs font-semibold text-brand">
           {material.note}
         </p>
       ) : (
@@ -73,7 +73,7 @@ const MaterialCard = ({ material, index }: { material: SpecialMaterialCard; inde
       <Link
         to={`/design-quote?ref=${encodeURIComponent(material.nameKo)}`}
         state={{ fromPortfolio: { productName: material.nameKo } }}
-        className="mt-6 inline-flex h-11 w-fit items-center justify-center gap-2 bg-brand px-6 text-sm font-bold text-white transition hover:bg-brand-dark sm:h-12"
+        className="cta-text mt-6 w-fit"
       >
         이 소재로 제작 문의하기 <ArrowRight className="h-4 w-4" />
       </Link>
@@ -85,16 +85,15 @@ export const FabricSourcingSection = () => {
   return (
     <>
       {/* SPECIAL FABRIC SOURCING — intro */}
-      <section id="fabric-sourcing" className="scroll-mt-20 border-b border-black/10">
-        <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
+      <section id="fabric-sourcing" className="scroll-mt-20">
+        <div className="page-shell py-20 sm:py-28 lg:py-32">
           <Reveal>
-            <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">
-              <span className="h-px w-8 bg-brand" />
+            <p className="eyebrow">
               Special Fabric Sourcing
             </p>
           </Reveal>
           <Reveal delayMs={100}>
-            <h2 className="mt-6 max-w-3xl text-[clamp(2.2rem,5.5vw,4.5rem)] font-extrabold leading-[1.05] tracking-[-0.03em]">
+            <h2 className="display-section mt-6 max-w-3xl">
               특별한 원단까지,
               <br />
               BRAND-ER가 찾아드립니다.
@@ -111,11 +110,11 @@ export const FabricSourcingSection = () => {
       </section>
 
       {/* 01. 아동복 안전기준 대응 원단 수급 */}
-      <section className="border-b border-black/10 bg-white">
-        <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
+      <section>
+        <div className="page-shell py-20 sm:py-28 lg:py-32">
           <Reveal>
-            <span className="text-[10px] font-bold tracking-[0.2em] text-brand">01</span>
-            <h3 className="mt-3 max-w-2xl text-3xl font-bold leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
+            <span className="display-number block text-[4rem] text-brand sm:text-[5rem]">01</span>
+            <h3 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.12] tracking-[-0.035em] sm:text-[2.6rem]">
               아이들이 입는 옷, 왜 원단부터 중요할까요?
             </h3>
           </Reveal>
@@ -125,7 +124,7 @@ export const FabricSourcingSection = () => {
 
           <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
             {/* Visual first in DOM so mobile shows the swatch board before the long body copy. */}
-            <RevealImage className="relative aspect-[4/5] overflow-hidden bg-[#f6f4ef] sm:aspect-[6/5]">
+            <RevealImage className="relative aspect-[4/5] overflow-hidden bg-[#ebe6df] sm:aspect-[6/5]">
               <img
                 src={`${import.meta.env.BASE_URL}fabrics/kc-safety-swatch.png`}
                 alt="KC 안전기준 대응 아동복 원단 컬러 스와치 보드"
@@ -133,7 +132,7 @@ export const FabricSourcingSection = () => {
                 decoding="async"
                 className="h-full w-full object-cover"
               />
-              <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-white/90 px-3 py-2 shadow-sm sm:bottom-6 sm:left-6">
+              <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-[#f6f3ee]/90 px-3 py-2 sm:bottom-6 sm:left-6">
                 <ShieldCheck className="h-4 w-4 text-brand" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.04em] text-[#211b1c] sm:text-xs">
                   KC 안전기준 대응 원단 서칭
@@ -166,16 +165,15 @@ export const FabricSourcingSection = () => {
       </section>
 
       {/* 02. SPECIAL MATERIALS & CERTIFIED FABRICS — 비건 한지 레더 / KC 인증 아동복 원단 */}
-      <section id="special-materials" className="border-b border-black/10 bg-[#efe7db]">
-        <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
+      <section id="special-materials" className="bg-[#ece7e0]">
+        <div className="page-shell py-20 sm:py-28 lg:py-32">
           <Reveal>
-            <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.08em] text-brand sm:text-xs">
-              <span className="h-px w-8 bg-brand" />
+            <p className="eyebrow">
               Special Materials &amp; Certified Fabrics
             </p>
           </Reveal>
           <Reveal delayMs={100}>
-            <h3 className="mt-6 max-w-2xl text-3xl font-bold leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
+            <h3 className="mt-6 max-w-2xl text-3xl font-semibold leading-[1.12] tracking-[-0.035em] sm:text-[2.6rem]">
               일반적인 원단을 넘어,
               <br />
               브랜드의 차별화를 만드는 소재까지.
@@ -197,11 +195,11 @@ export const FabricSourcingSection = () => {
       </section>
 
       {/* 03. 맞춤 특수 원단 서칭 */}
-      <section className="border-b border-black/10 bg-[#f1f0ed]">
-        <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12 xl:px-16">
+      <section>
+        <div className="page-shell py-20 sm:py-28 lg:py-32">
           <Reveal>
-            <span className="text-[10px] font-bold tracking-[0.2em] text-brand">03</span>
-            <h3 className="mt-3 max-w-2xl text-3xl font-bold leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
+            <span className="display-number block text-[4rem] text-brand sm:text-[5rem]">03</span>
+            <h3 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.12] tracking-[-0.035em] sm:text-[2.6rem]">
               원하는 원단이 없다면, BRAND-ER가 찾아드립니다.
             </h3>
           </Reveal>
@@ -224,10 +222,10 @@ export const FabricSourcingSection = () => {
                   delayMs={index * 70}
                   className="flex min-w-[8.5rem] flex-1 flex-col gap-2 border-t border-black/15 py-4 lg:min-w-0 lg:px-2"
                 >
-                  <span className="text-[10px] font-bold tracking-[0.2em] text-brand">
+                  <span className="font-display text-[11px] font-semibold tracking-[0.2em] text-brand">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <span className="text-lg font-bold tracking-[-0.02em] sm:text-xl">{step}</span>
+                  <span className="text-lg font-semibold tracking-[-0.02em] sm:text-xl">{step}</span>
                 </Reveal>
                 {index < FABRIC_SOURCING_CUSTOM_FLOW_KO.length - 1 && (
                   <div className="flex w-6 shrink-0 items-center justify-center text-stone-300 lg:w-8">→</div>
@@ -239,26 +237,21 @@ export const FabricSourcingSection = () => {
       </section>
 
       {/* Fabric sourcing CTA */}
-      <section className="border-b border-black/10 bg-[#211b1c] text-white">
-        <div className="mx-auto max-w-[1440px] px-5 py-16 text-center sm:px-8 sm:py-24 lg:px-12 xl:px-16">
-          <Reveal>
-            <h2 className="mx-auto max-w-2xl text-[clamp(1.9rem,4.4vw,3.2rem)] font-extrabold leading-[1.1] tracking-[-0.03em]">
+      <section>
+        <div className="page-shell grid gap-8 pb-8 pt-4 lg:grid-cols-12 lg:items-end lg:gap-8">
+          <Reveal className="border-t border-black/10 pt-10 lg:col-span-7">
+            <h2 className="display-section max-w-2xl">
               찾고 있는 특별한 원단이 있으신가요?
             </h2>
-          </Reveal>
-          <Reveal delayMs={120}>
-            <p className="mx-auto mt-6 max-w-lg text-sm leading-7 text-white/70 sm:text-base">
+            <p className="mt-6 max-w-lg text-sm leading-7 text-stone-600 sm:text-base">
               사진 한 장이나 레퍼런스만 보내주세요.
               <br />
               BRAND-ER가 원단부터 생산 방법까지 함께 찾아드립니다.
             </p>
           </Reveal>
-          <Reveal delayMs={220}>
-            <Link
-              to="/design-quote"
-              className="mt-9 inline-flex h-12 items-center justify-center bg-white px-7 text-sm font-bold text-[#211b1c] transition hover:bg-white/90 sm:h-14"
-            >
-              특수 원단 제작 문의하기 <ArrowRight className="ml-2 h-4 w-4" />
+          <Reveal delayMs={140} className="lg:col-span-4 lg:col-start-9">
+            <Link to="/design-quote" className="cta-primary w-full sm:w-auto">
+              특수 원단 제작 문의하기 <ArrowRight className="h-4 w-4" />
             </Link>
           </Reveal>
         </div>

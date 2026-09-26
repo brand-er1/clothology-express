@@ -56,13 +56,13 @@ export const FundingSizeGuide = ({
     typeof measurements.category === "string" ? measurements.category : "";
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border bg-white">
+    <section className="overflow-hidden rounded-xl border bg-white">
       <div className="flex flex-col justify-between gap-3 border-b bg-gray-50 px-4 py-5 sm:flex-row sm:items-end sm:px-6 md:px-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
             SIZE GUIDE
           </p>
-          <h2 className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-gray-950">{title}</h2>
+          <h2 className="mt-1 text-xl font-bold tracking-[-0.03em] text-gray-950">{title}</h2>
         </div>
         <p className="text-xs leading-5 text-gray-500">
           {[gender, category].filter(Boolean).join(" · ")} 평균 기준 · 단면
@@ -72,7 +72,7 @@ export const FundingSizeGuide = ({
 
       <p className="px-4 pt-3 text-[11px] text-gray-400 md:hidden">표를 좌우로 밀어 모든 사이즈를 확인하세요.</p>
       <div className="overflow-x-auto overscroll-x-contain p-4 md:p-6">
-        <table className="w-full min-w-[560px] border-collapse overflow-hidden rounded-2xl border text-sm">
+        <table className="w-full min-w-[560px] border-collapse overflow-hidden rounded-lg border text-sm">
           <thead>
             <tr className="bg-gray-950 text-white">
               <th className="sticky left-0 z-10 bg-gray-950 px-3 py-4 text-left sm:px-4">측정 부위</th>

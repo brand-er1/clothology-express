@@ -41,7 +41,7 @@ export const DressingCanvas = ({
   }, [renderedCharacterImage]);
 
   return (
-    <div className={`relative aspect-[3/4] w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-[#f4f0ea] to-[#ece5db] ${className}`}>
+    <div className={`relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gradient-to-b from-[#f4f0ea] to-[#ece5db] ${className}`}>
       {renderedCharacterImage ? (
         <RotationViewer
           frames={frames}

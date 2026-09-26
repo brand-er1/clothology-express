@@ -42,7 +42,7 @@ export const ColorOrderSummary = ({ fundingId, className, refreshKey }: { fundin
           </li>
         ))}
       </ul>
-      <div className="mt-2 flex items-center justify-between border-t border-stone-200 pt-2 text-sm font-extrabold">
+      <div className="mt-2 flex items-center justify-between border-t border-stone-200 pt-2 text-sm font-bold">
         <span>총</span>
         <span className="tabular-nums">{total}장{pending > 0 && <span className="ml-1.5 text-xs font-normal text-stone-400">대기 {pending}</span>}</span>
       </div>

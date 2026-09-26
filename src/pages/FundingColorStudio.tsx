@@ -160,7 +160,7 @@ const FundingColorStudio = () => {
         <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Color options</p>
-            <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">컬러별 상품 이미지</h1>
+            <h1 className="mt-2 text-2xl font-bold tracking-[-0.03em] sm:text-3xl">컬러별 상품 이미지</h1>
             <p className="mt-2 text-sm text-stone-500">
               {funding?.product_name ?? "펀딩"} · 디자인·핏·로고/프린팅 위치는 그대로 두고 컬러만 바꾼 AI 이미지를 만들어요. 승인한 이미지만 고객에게 보입니다.
             </p>
@@ -173,7 +173,7 @@ const FundingColorStudio = () => {
         <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="min-w-0 space-y-4">
             {/* 컬러 추가 */}
-            <section className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5" aria-labelledby="add-color-title">
+            <section className="rounded-lg border border-stone-200 bg-white p-4 sm:p-5" aria-labelledby="add-color-title">
               <h2 id="add-color-title" className="flex items-center gap-2 text-base font-bold"><Plus className="h-4 w-4 text-brand" />컬러 추가</h2>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {presets.slice(0, 12).map((preset) => (
@@ -224,14 +224,14 @@ const FundingColorStudio = () => {
           </div>
 
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:h-fit">
-            <section className="rounded-2xl border border-stone-200 bg-white p-4">
+            <section className="rounded-lg border border-stone-200 bg-white p-4">
               <h2 className="text-sm font-bold">원본 디자인</h2>
               {funding?.image_url && <img src={funding.image_url} alt="원본 디자인" className="mt-3 aspect-square w-full rounded-lg bg-stone-100 object-contain" />}
               <p className="mt-2 text-xs leading-5 text-stone-500">
                 ★ 기준 컬러는 원본 이미지의 컬러예요. 다른 컬러는 기준 컬러 이미지(앞/뒤)를 참고해 AI 가 컬러만 바꿔 만듭니다.
               </p>
             </section>
-            <section className="rounded-2xl border border-stone-200 bg-white p-4">
+            <section className="rounded-lg border border-stone-200 bg-white p-4">
               <h2 className="text-sm font-bold">컬러별 주문 수량</h2>
               <ColorOrderSummary fundingId={id} className="mt-2" refreshKey={summaryKey} />
             </section>
@@ -288,7 +288,7 @@ const ColorCard = ({ color, index, count, busy, jobs, onGenerate, onApprove, onR
   const dirty = name.trim() !== color.name || (color.hex ?? colorHexOf(color)) !== hex;
 
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5" data-testid={`color-card-${color.name}`}>
+    <section className="rounded-lg border border-stone-200 bg-white p-4 sm:p-5" data-testid={`color-card-${color.name}`}>
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-full border border-black/15" style={{ backgroundColor: hex }}>
           <input type="color" value={hex} onChange={(event) => setHex(event.target.value.toUpperCase())} className="absolute inset-0 cursor-pointer opacity-0" aria-label={`${color.name} 색상 변경`} />

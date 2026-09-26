@@ -413,7 +413,7 @@ const Closet = () => {
         {view === "select-gender" && (
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">AI Virtual Fitting</p>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-5xl">
+            <h1 className="mt-3 text-3xl font-bold tracking-[-0.03em] text-stone-950 sm:text-5xl">
               누구에게 입혀볼까요?
             </h1>
             <p className="mt-4 max-w-xl text-[15px] leading-7 text-stone-500">
@@ -430,7 +430,7 @@ const Closet = () => {
         {view === "select-size" && (
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Step 2</p>
-            <h1 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-4xl">
+            <h1 className="mt-3 text-2xl font-bold tracking-[-0.03em] text-stone-950 sm:text-4xl">
               체형 사이즈를 선택해주세요
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-stone-500">
@@ -443,7 +443,7 @@ const Closet = () => {
                 <GenderSizeSelect gender={character} size={mannequinSize} onGender={setCharacter} onSize={setMannequinSize} />
                 <Button
                   type="button"
-                  className="h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark sm:w-auto sm:px-10"
+                  className="h-12 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark sm:w-auto sm:px-10"
                   onClick={handleConfirmSize}
                 >
                   이 마네킹으로 시작하기
@@ -458,7 +458,7 @@ const Closet = () => {
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
               <BrandMark className="h-7 w-7" />
             </span>
-            <h2 className="mt-5 text-2xl font-extrabold tracking-[-0.03em] text-stone-950">선택 완료!</h2>
+            <h2 className="mt-5 text-2xl font-bold tracking-[-0.03em] text-stone-950">선택 완료!</h2>
             <p className="mt-2 text-stone-500">이제 옷을 골라 피팅해볼까요?</p>
           </div>
         )}
@@ -470,7 +470,7 @@ const Closet = () => {
             >
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">AI Virtual Fitting</p>
-                <h1 className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-stone-950 sm:mt-2 sm:text-3xl">
+                <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-stone-950 sm:mt-2 sm:text-3xl">
                   {view === "look-complete" ? "MY BRAND-ER FITTING" : "마네킹을 코디해보세요"}
                 </h1>
               </div>
@@ -578,8 +578,8 @@ const Closet = () => {
                       onApply={handleApplyEditedGarment}
                       onRestoreRevision={handleRestoreRevision}
                     />
-                    <Card className="rounded-[1.5rem] border-stone-200 bg-white p-5 shadow-sm">
-                      <p className="mb-1 text-sm font-black text-stone-950">코디 아이템</p>
+                    <Card className="rounded-xl border-stone-200 bg-white p-5 shadow-sm">
+                      <p className="mb-1 text-sm font-bold text-stone-950">코디 아이템</p>
                       <p className="mb-3 text-xs leading-5 text-stone-500">
                         옷을 고르고, 톱니바퀴 아이콘으로 기준 사이즈·핏·실측값·원단 정보를 입력한 뒤
                         아래 "AI 피팅 생성"을 눌러주세요.
@@ -595,7 +595,7 @@ const Closet = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 w-full rounded-full border-brand/40 text-sm font-bold text-brand hover:bg-brand/5"
+                      className="h-11 w-full rounded-[3px] border-brand/40 text-sm font-bold text-brand hover:bg-brand/5"
                       onClick={handleRegenerate}
                       disabled={isDressing || wornSlotCount === 0}
                     >
@@ -604,7 +604,7 @@ const Closet = () => {
                     </Button>
                     <Button
                       type="button"
-                      className="h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
+                      className="h-12 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark"
                       disabled={wornSlotCount === 0}
                       onClick={() => setView("look-complete")}
                     >
@@ -614,8 +614,8 @@ const Closet = () => {
                   </>
                 ) : (
                   <>
-                    <Card className="rounded-[1.5rem] border-stone-200 bg-white p-5 shadow-sm">
-                      <p className="text-sm font-black text-stone-950">마네킹</p>
+                    <Card className="rounded-xl border-stone-200 bg-white p-5 shadow-sm">
+                      <p className="text-sm font-bold text-stone-950">마네킹</p>
                       <p className="mt-1 text-sm text-stone-600">
                         {characterConfig[character].label} · {mannequinSizeShortLabel[mannequinSize]} 사이즈
                       </p>
@@ -652,7 +652,7 @@ const Closet = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 w-full rounded-full border-stone-300 bg-white text-sm font-bold"
+                      className="h-11 w-full rounded-[3px] border-stone-300 bg-white text-sm font-bold"
                       onClick={() => setShowComparison(true)}
                     >
                       <Ruler className="mr-2 h-4 w-4" />
@@ -662,7 +662,7 @@ const Closet = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 w-full rounded-full border-stone-300 bg-white font-bold"
+                      className="h-11 w-full rounded-[3px] border-stone-300 bg-white font-bold"
                       onClick={() => void handleDownload()}
                       disabled={isDownloading}
                     >
@@ -670,14 +670,14 @@ const Closet = () => {
                       {isDownloading ? "저장하는 중..." : "피팅 이미지 저장"}
                     </Button>
 
-                    <Card className="rounded-[1.5rem] border-brand/20 bg-brand/5 p-5 text-center">
-                      <p className="font-black text-stone-950">이 디자인, 실제로 만들어볼까요?</p>
+                    <Card className="rounded-xl border-brand/20 bg-brand/5 p-5 text-center">
+                      <p className="font-bold text-stone-950">이 디자인, 실제로 만들어볼까요?</p>
                       <p className="mt-1 text-xs text-stone-500">
                         비회원도 견적을 볼 수 있어요. 제작 의뢰·펀딩 등록은 로그인 후 이어서 진행돼요.
                       </p>
                       <Button
                         type="button"
-                        className="mt-3 h-12 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark"
+                        className="mt-3 h-12 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark"
                         onClick={goToQuote}
                         disabled={isPreparingQuote}
                       >
@@ -714,7 +714,7 @@ const Closet = () => {
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-10 w-full rounded-full text-sm font-bold text-stone-500"
+                      className="h-10 w-full rounded-[3px] text-sm font-bold text-stone-500"
                       onClick={() => setView("dressing")}
                     >
                       코디 다시 바꾸기

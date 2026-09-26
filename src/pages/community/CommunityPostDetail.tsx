@@ -416,7 +416,7 @@ const CommunityPostDetail = () => {
             </p>
           )}
 
-          <h1 className="mt-3 text-lg font-extrabold tracking-[-0.03em] text-stone-950">{post.title}</h1>
+          <h1 className="mt-3 text-lg font-bold tracking-[-0.03em] text-stone-950">{post.title}</h1>
           {post.description && <p className="mt-1.5 whitespace-pre-line text-sm leading-6 text-stone-700">{post.description}</p>}
           {post.hashtags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -428,7 +428,7 @@ const CommunityPostDetail = () => {
           <p className="mt-2 text-xs text-stone-400">{formatCommunityTime(post.createdAt)}</p>
 
           {post.poll && (
-            <div className="mt-5 rounded-2xl border border-stone-200 p-4">
+            <div className="mt-5 rounded-lg border border-stone-200 p-4">
               <p className="text-sm font-bold text-stone-900">{post.poll.question}</p>
               <div className="mt-3 space-y-2">
                 {post.poll.options.map((option) => {
@@ -462,13 +462,13 @@ const CommunityPostDetail = () => {
           )}
 
           {post.isOwner && goalReached && !post.fundingId && (
-            <div className="mt-5 rounded-2xl bg-brand p-5 text-center text-white">
-              <p className="text-base font-black">🔥 구매의향 목표를 달성했습니다!</p>
+            <div className="mt-5 rounded-lg bg-brand p-5 text-center text-white">
+              <p className="text-base font-bold">🔥 구매의향 목표를 달성했습니다!</p>
               <p className="mt-1 text-sm text-white/90">"{post.purchaseIntentCount}명이 이 디자인을 구매하고 싶어합니다."</p>
               <Button
                 onClick={handleStartFunding}
                 disabled={isStartingFunding}
-                className="mt-4 h-11 w-full rounded-full bg-white font-bold text-brand hover:bg-white/90"
+                className="mt-4 h-11 w-full rounded-[3px] bg-white font-bold text-brand hover:bg-white/90"
               >
                 {isStartingFunding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 이 디자인으로 펀딩 시작하기
@@ -477,7 +477,7 @@ const CommunityPostDetail = () => {
           )}
 
           {post.fundingId && (
-            <div className="mt-5 rounded-2xl border border-stone-200 p-4">
+            <div className="mt-5 rounded-lg border border-stone-200 p-4">
               <p className="text-sm font-bold text-stone-900">🔥 현재 {post.fundingStatusLabel}</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {COMMUNITY_FUNDING_STATUS_ORDER.map((status) => {
@@ -491,7 +491,7 @@ const CommunityPostDetail = () => {
                   );
                 })}
               </div>
-              <Button asChild className="mt-4 h-10 w-full rounded-full bg-brand hover:bg-brand-dark">
+              <Button asChild className="mt-4 h-10 w-full rounded-[3px] bg-brand hover:bg-brand-dark">
                 <Link to={`/fundings/${post.fundingId}`}>펀딩 참여하기</Link>
               </Button>
             </div>
@@ -543,7 +543,7 @@ const CommunityPostDetail = () => {
             value={commentDraft}
             onChange={(event) => setCommentDraft(event.target.value)}
             placeholder={currentUserId ? "따뜻한 피드백을 남겨주세요." : "댓글을 남기려면 로그인해주세요."}
-            className="h-10 min-h-10 flex-1 resize-none rounded-full border-stone-200 px-4 py-2.5 text-sm"
+            className="h-10 min-h-10 flex-1 resize-none rounded-[3px] border-stone-200 px-4 py-2.5 text-sm"
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();

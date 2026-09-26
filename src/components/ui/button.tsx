@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-normal rounded-md text-center text-sm font-semibold leading-snug tracking-[-0.01em] ring-offset-background transition-colors sm:whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-normal rounded-[3px] text-center text-sm font-semibold leading-snug tracking-[-0.01em] ring-offset-background transition-colors duration-300 sm:whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -13,16 +13,16 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-foreground/20 bg-transparent hover:border-foreground/50 hover:bg-foreground/[0.03]",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-foreground/[0.05]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "min-h-11 px-5 py-2.5",
-        sm: "min-h-10 rounded-md px-4 py-2",
-        lg: "min-h-12 rounded-md px-9 py-3 text-base",
+        sm: "min-h-10 px-4 py-2",
+        lg: "min-h-12 px-9 py-3 text-base",
         icon: "h-11 w-11",
       },
     },

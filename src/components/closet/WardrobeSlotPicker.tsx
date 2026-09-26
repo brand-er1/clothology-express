@@ -74,7 +74,7 @@ export const WardrobeSlotPicker = ({
         return (
           <div
             key={slot}
-            className={`overflow-hidden rounded-2xl border bg-white transition ${
+            className={`overflow-hidden rounded-lg border bg-white transition ${
               isOpen ? "border-brand/40 ring-2 ring-brand/10" : "border-stone-200"
             }`}
           >
@@ -109,7 +109,7 @@ export const WardrobeSlotPicker = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-full border-stone-300 px-3 text-xs font-bold text-stone-700"
+                  className="h-9 rounded-[3px] border-stone-300 px-3 text-xs font-bold text-stone-700"
                   onClick={() => setOpenSlot(isOpen ? null : slot)}
                   aria-expanded={isOpen}
                 >
@@ -204,7 +204,7 @@ export const WardrobeSlotPicker = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-3 h-9 w-full rounded-full border-dashed border-stone-300 bg-white text-xs font-bold text-stone-700"
+                  className="mt-3 h-9 w-full rounded-[3px] border-dashed border-stone-300 bg-white text-xs font-bold text-stone-700"
                   onClick={() => fileInputRefs.current[slot]?.click()}
                 >
                   <Upload className="mr-1.5 h-3.5 w-3.5" />

@@ -39,7 +39,7 @@ export const LoginForm = ({ formData, handleChange, isLoading }: LoginFormProps)
           className="h-12 rounded-xl bg-[#fbfaf8]"
         />
       </div>
-      <Button type="submit" className="h-14 w-full rounded-full bg-brand text-base font-bold hover:bg-brand-dark" disabled={isLoading}>
+      <Button type="submit" className="h-14 w-full rounded-[3px] bg-brand text-base font-bold hover:bg-brand-dark" disabled={isLoading}>
         {isLoading ? "로그인 중..." : "브랜더 시작하기"}
       </Button>
     </>

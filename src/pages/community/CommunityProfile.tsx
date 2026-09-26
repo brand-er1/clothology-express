@@ -149,7 +149,7 @@ const CommunityProfile = () => {
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h1 className="text-lg font-extrabold tracking-[-0.03em] text-stone-950">{displayName}</h1>
+                <h1 className="text-lg font-bold tracking-[-0.03em] text-stone-950">{displayName}</h1>
                 {profile.username && <p className="text-sm text-stone-500">@{profile.username}</p>}
               </div>
               {!profile.isMe && (

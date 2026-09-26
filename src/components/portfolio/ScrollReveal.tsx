@@ -58,20 +58,20 @@ interface RevealProps {
   style?: CSSProperties;
 }
 
-/** Fade-up / fade-in text & block reveal. Duration is intentionally long (900–1100ms) with a
+/** Fade-up / fade-in text & block reveal. A 600ms decelerating ease (images 800ms) with a
  * decelerating ease so it reads as premium/editorial, not snappy. */
 const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 export const Reveal = ({ children, className = "", delayMs = 0, variant = "up", style }: RevealProps) => {
   const { ref, inView } = useInView();
-  const hidden = variant === "up" ? "translate-y-8 opacity-0" : "opacity-0";
+  const hidden = variant === "up" ? "translate-y-5 opacity-0" : "opacity-0";
   return (
     <div
       ref={ref}
       className={`${inView ? "translate-y-0 opacity-100" : hidden} ${className}`}
       style={{
         transitionProperty: "opacity, transform",
-        transitionDuration: "1000ms",
+        transitionDuration: "600ms",
         transitionTimingFunction: EASE,
         transitionDelay: `${delayMs}ms`,
         ...style,
@@ -92,7 +92,7 @@ export const RevealImage = ({ children, className = "", delayMs = 0 }: RevealPro
       className={`overflow-hidden ${className}`}
       style={{
         clipPath: inView ? "inset(0% 0% 0% 0%)" : "inset(0% 0% 100% 0%)",
-        transition: `clip-path 1200ms ${EASE}`,
+        transition: `clip-path 800ms ${EASE}`,
         transitionDelay: `${delayMs}ms`,
       }}
     >
@@ -100,9 +100,9 @@ export const RevealImage = ({ children, className = "", delayMs = 0 }: RevealPro
         className="h-full w-full"
         style={{
           opacity: inView ? 1 : 0,
-          transform: inView ? "scale(1)" : "scale(1.08)",
+          transform: inView ? "scale(1)" : "scale(1.04)",
           transitionProperty: "opacity, transform",
-          transitionDuration: "1300ms",
+          transitionDuration: "800ms",
           transitionTimingFunction: EASE,
           transitionDelay: `${delayMs}ms`,
         }}

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, CircleX, Ruler, Scissors, Timer, Zap } from "lucide-react";
-import { Card } from "@/components/ui/card";
 
 interface ComparisonPoint {
   icon: typeof Zap;
@@ -24,48 +23,43 @@ interface ServiceComparisonCardsProps {
   className?: string;
 }
 
+// Two services compared side by side as columns on a hairline, not as two boxed cards.
 export const ServiceComparisonCards = ({ className = "" }: ServiceComparisonCardsProps) => (
-  <div className={`grid gap-4 sm:grid-cols-2 ${className}`}>
-    <Card className="flex flex-col justify-between rounded-[1.75rem] border-brand/25 bg-brand/[0.04] p-6 shadow-sm">
+  <div className={`grid gap-8 border-t border-black/10 pt-6 sm:grid-cols-2 sm:gap-10 ${className}`}>
+    <div className="flex flex-col justify-between">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Quick production</p>
-        <h3 className="mt-2 text-xl font-black text-stone-950">빠른 단체복 제작</h3>
-        <ul className="mt-4 space-y-2.5">
+        <p className="font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">Quick production</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-stone-950">빠른 단체복 제작</h3>
+        <ul className="mt-4 space-y-2">
           {quickPoints.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-2.5 text-sm font-semibold text-stone-700">
-              <Icon className="h-4 w-4 shrink-0 text-brand" />
+            <li key={label} className="flex items-center gap-2.5 text-sm text-stone-700">
+              <Icon className="h-3.5 w-3.5 shrink-0 text-brand" strokeWidth={1.8} />
               {label}
             </li>
           ))}
         </ul>
       </div>
-      <Link
-        to="/quick-group-wear"
-        className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-brand px-5 text-sm font-bold text-white transition hover:bg-brand-dark"
-      >
-        빠른 단체복 제작 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
+      <Link to="/quick-group-wear" className="cta-primary mt-6 w-full sm:w-fit">
+        빠른 단체복 제작 시작하기 <ArrowRight className="h-4 w-4" />
       </Link>
-    </Card>
+    </div>
 
-    <Card className="flex flex-col justify-between rounded-[1.75rem] border-stone-200 bg-white p-6 shadow-sm">
+    <div className="flex flex-col justify-between border-t border-black/10 pt-8 sm:border-l sm:border-t-0 sm:pl-10 sm:pt-0">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Custom production</p>
-        <h3 className="mt-2 text-xl font-black text-stone-950">맞춤 의류 제작</h3>
-        <ul className="mt-4 space-y-2.5">
+        <p className="font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">Custom production</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-stone-950">맞춤 의류 제작</h3>
+        <ul className="mt-4 space-y-2">
           {customPoints.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-2.5 text-sm font-semibold text-stone-700">
-              <Icon className="h-4 w-4 shrink-0 text-stone-500" />
+            <li key={label} className="flex items-center gap-2.5 text-sm text-stone-700">
+              <Icon className="h-3.5 w-3.5 shrink-0 text-stone-500" strokeWidth={1.8} />
               {label}
             </li>
           ))}
         </ul>
       </div>
-      <Link
-        to="/customize"
-        className="mt-6 inline-flex h-11 items-center justify-center rounded-full border border-stone-300 bg-white px-5 text-sm font-bold text-stone-800 transition hover:bg-stone-100"
-      >
-        맞춤 의류 제작 시작하기 <ArrowRight className="ml-2 h-4 w-4" />
+      <Link to="/customize" className="cta-text mt-6">
+        <span className="link-draw">맞춤 의류 제작 시작하기</span> <ArrowRight className="h-4 w-4" />
       </Link>
-    </Card>
+    </div>
   </div>
 );

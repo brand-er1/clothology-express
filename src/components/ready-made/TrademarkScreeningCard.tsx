@@ -39,7 +39,7 @@ export const TrademarkScreeningCard = ({ screening, isScreening }: TrademarkScre
         )}
         <div className="min-w-0">
           <p
-            className={`text-xs font-extrabold ${
+            className={`text-xs font-bold ${
               tone === "red" ? "text-red-700" : tone === "amber" ? "text-amber-700" : "text-emerald-700"
             }`}
           >

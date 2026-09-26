@@ -464,6 +464,9 @@ export const createMockFundingOrder = async (
   if (error) throwFundingError(error, "모의결제 참여를 처리하지 못했습니다.");
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) throw new Error("모의결제 참여 내역을 만들지 못했습니다.");
+  // 펀딩 성공 판정·알림 생성은 주문 트랜잭션 안에서 서버(DB)가 이미 처리했다.
+  // 여기서는 서버가 만들어 둔 SMS 발송 작업을 처리하도록 디스패처만 깨운다(결과와 무관하게 주문은 완료).
+  void supabase.functions.invoke("dispatch-notifications", { body: { fundingId } }).catch(() => undefined);
   return {
     participationId: row.participation_id as string,
     orderNumber: row.partner_order_id as string,

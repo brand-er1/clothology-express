@@ -69,3 +69,5 @@ verify_jwt = false
 verify_jwt = true
 [functions.generate-detail-image]
 verify_jwt = true
+[functions.dispatch-notifications]
+verify_jwt = true

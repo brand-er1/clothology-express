@@ -29,7 +29,12 @@ const iconByType: Record<CommunityNotificationType, typeof Heart> = {
   participation_cancelled: UserX,
   funding_cancelled: Ban,
   admin_notice: Megaphone,
+  funding_success: PartyPopper,
+  funding_success_participant: PartyPopper,
 };
+
+// 서버가 내려준 내부 경로만 따라간다(외부 URL/프로토콜 상대 경로 차단).
+const isSafeInternalPath = (path: string | null): path is string => Boolean(path && path.startsWith("/") && !path.startsWith("//"));
 
 const CommunityNotifications = () => {
   const navigate = useNavigate();
@@ -54,7 +59,9 @@ const CommunityNotifications = () => {
       void markCommunityNotificationRead(notification.id);
       setNotifications((prev) => prev.map((item) => (item.id === notification.id ? { ...item, isRead: true } : item)));
     }
-    if (notification.postId) {
+    if (isSafeInternalPath(notification.linkPath)) {
+      navigate(notification.linkPath);
+    } else if (notification.postId) {
       navigate(`/community/${notification.postId}`);
     } else if (notification.fundingId) {
       navigate(`/fundings/${notification.fundingId}`);
@@ -102,7 +109,11 @@ const CommunityNotifications = () => {
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-stone-800">{notification.message}</span>
+                    {notification.title && <span className="block text-sm font-extrabold text-stone-900">{notification.title}</span>}
+                    <span className="block whitespace-pre-line text-sm text-stone-800">{notification.message}</span>
+                    {notification.type === "funding_success" && isSafeInternalPath(notification.linkPath) && (
+                      <span className="mt-2 inline-flex rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">펀딩 관리하기</span>
+                    )}
                     <span className="mt-0.5 block text-xs text-stone-400">{formatCommunityTime(notification.createdAt)}</span>
                   </span>
                   {!notification.isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />}

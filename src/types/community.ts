@@ -150,7 +150,9 @@ export type CommunityNotificationType =
   | "funding_status_changed"
   | "participation_cancelled"
   | "funding_cancelled"
-  | "admin_notice";
+  | "admin_notice"
+  | "funding_success"
+  | "funding_success_participant";
 
 export interface CommunityNotification {
   id: string;
@@ -164,6 +166,9 @@ export interface CommunityNotification {
   fundingId: string | null;
   isRead: boolean;
   createdAt: string;
+  /** 서버가 지정한 제목/이동 경로(예: 펀딩 성공 → /fundings/:id/manage). 없으면 기존 규칙으로 이동. */
+  title: string | null;
+  linkPath: string | null;
 }
 
 export interface MyDesignSummary {

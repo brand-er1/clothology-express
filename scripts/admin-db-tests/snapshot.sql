@@ -8,4 +8,6 @@ union all select 'reports', md5(string_agg(md5(row(id,status,reason)::text), ','
 union all select 'user_roles', md5(string_agg(md5(row(user_id,role)::text), ',' order by user_id)) from public.user_roles
 union all select 'detail_pages', md5(string_agg(md5(row(id,user_id,funding_id,template,title,subtitle,main_copy,status,source)::text), ',' order by id)) from public.product_detail_pages
 union all select 'detail_sections', md5(string_agg(md5(row(id,detail_page_id,section_type,sort_order,is_visible,content,images)::text), ',' order by id)) from public.detail_page_sections
+union all select 'creator_profiles', md5(string_agg(md5(row(user_id,display_name,profile_image_url,bio)::text), ',' order by user_id)) from public.creator_profiles
+union all select 'notifications', md5(string_agg(md5(row(id,recipient_id,type,funding_id,message,is_read)::text), ',' order by id)) from public.community_notifications
 order by 1;

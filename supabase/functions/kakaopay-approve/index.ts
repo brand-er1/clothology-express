@@ -6,6 +6,7 @@ import {
   getSupabaseClients,
   jsonResponse,
 } from "../_shared/kakaopay.ts";
+import { dispatchNotificationsSafely } from "../_shared/notificationDispatch.ts";
 
 type ApproveRequest = {
   participationId?: string;
@@ -87,6 +88,10 @@ Deno.serve(async (req) => {
       }
       throw new Error("참여 반영에 실패해 카카오페이 결제를 자동 취소했습니다. 다시 시도해주세요.");
     }
+
+    // 펀딩 성공 판정은 결제 트랜잭션 안에서 DB 가 이미 끝냈다. 여기서는 만들어진 SMS 작업만 발송한다.
+    // 발송 실패/지연은 결제 결과에 영향을 주지 않는다(예외를 던지지 않음, 시간 제한).
+    await dispatchNotificationsSafely(serviceClient, { fundingId: participation.funding_id as string });
 
     return jsonResponse({ success: true, funding_id: participation.funding_id });
   } catch (error) {

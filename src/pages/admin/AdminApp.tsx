@@ -19,6 +19,7 @@ const ProductionPage = lazy(() => import("./ProductionPage"));
 const ShippingPage = lazy(() => import("./ShippingPage"));
 const ContentPage = lazy(() => import("./ContentPage"));
 const NotificationsPage = lazy(() => import("./NotificationsPage"));
+const NotificationLogsPage = lazy(() => import("./NotificationLogsPage"));
 const AnalyticsPage = lazy(() => import("./AnalyticsPage"));
 const AdminsPage = lazy(() => import("./AdminsPage"));
 const AuditLogPage = lazy(() => import("./AuditLogPage"));
@@ -69,6 +70,7 @@ const AdminRoutes = () => {
           <Route path="shipping" element={<Guard anyOf={["shipping.view"]}><ShippingPage /></Guard>} />
           <Route path="content" element={<Guard anyOf={["content.view", "reports.manage", "cs.view"]}><ContentPage /></Guard>} />
           <Route path="notifications" element={<Guard anyOf={["notifications.send"]}><NotificationsPage /></Guard>} />
+          <Route path="notification-logs" element={<Guard anyOf={["notifications.send"]}><NotificationLogsPage /></Guard>} />
           <Route path="admins" element={<Guard anyOf={["admins.manage"]}><AdminsPage /></Guard>} />
           <Route path="audit" element={<Guard anyOf={["audit.view"]}><AuditLogPage /></Guard>} />
           <Route path="ai-usage" element={<Guard anyOf={["ai_usage.view"]}><AiUsagePage /></Guard>} />

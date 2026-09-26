@@ -483,6 +483,8 @@ interface RawNotificationRow {
   funding_id: string | null;
   is_read: boolean;
   created_at: string;
+  title?: string | null;
+  link_path?: string | null;
 }
 
 export const fetchCommunityNotifications = async (limit = 50): Promise<CommunityNotification[]> => {
@@ -501,6 +503,8 @@ export const fetchCommunityNotifications = async (limit = 50): Promise<Community
     fundingId: row.funding_id,
     isRead: row.is_read,
     createdAt: row.created_at,
+    title: row.title ?? null,
+    linkPath: row.link_path ?? null,
   }));
 };
 

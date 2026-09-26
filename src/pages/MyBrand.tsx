@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, Save, XCircle } from "l
 import { Header } from "@/components/Header";
 import { BrandImageUpload } from "@/components/brand/BrandImageUpload";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
+import { CreatorNotificationSettingsCard } from "@/components/brand/CreatorNotificationSettingsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,6 +156,7 @@ const MyBrand = () => {
       <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-24 sm:px-6">
         <Link to="/profile" className="inline-flex items-center text-sm text-stone-500 hover:text-brand"><ArrowLeft className="mr-1 h-4 w-4" />마이페이지</Link>
         <div className="mt-6 grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-6">
           <form onSubmit={handleSubmit} className="min-w-0 space-y-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Creator & brand</p>
@@ -201,6 +203,9 @@ const MyBrand = () => {
               {saving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}{saving ? "저장 중" : "브랜드 프로필 저장"}
             </Button>
           </form>
+
+            {brand && <CreatorNotificationSettingsCard />}
+          </div>
 
           <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit">
             <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">

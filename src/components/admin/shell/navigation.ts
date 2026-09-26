@@ -1,5 +1,5 @@
 import {
-  BarChart3, Building2, ClipboardList, CreditCard, Factory, Flag, LayoutDashboard, Megaphone, Palette,
+  BarChart3, BellRing, Building2, ClipboardList, CreditCard, Factory, Flag, LayoutDashboard, Megaphone, Palette,
   ReceiptText, RotateCcw, ScrollText, Settings, ShieldCheck, Sparkles, Truck, Users, WalletCards, Wrench,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/admin/permissions";
@@ -36,6 +36,7 @@ export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
   { group: "커뮤니케이션", items: [
     { path: "content", label: "콘텐츠/신고", icon: Flag, anyOf: ["content.view", "reports.manage", "cs.view"] },
     { path: "notifications", label: "공지/알림", icon: Megaphone, anyOf: ["notifications.send"] },
+    { path: "notification-logs", label: "알림 발송 내역", icon: BellRing, anyOf: ["notifications.send"] },
   ] },
   { group: "시스템", items: [
     { path: "admins", label: "관리자 관리", icon: ShieldCheck, anyOf: ["admins.manage"] },

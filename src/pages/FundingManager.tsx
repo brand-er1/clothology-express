@@ -486,7 +486,14 @@ const FundingManager = () => {
         <Card className="mt-5 rounded-2xl">
           <CardContent className="p-6">
             <div className="mb-3 flex items-end justify-between">
-              <div><strong className="text-3xl text-brand">{progress}%</strong><span className="ml-2 text-sm text-gray-500">달성</span></div>
+              <div>
+                <strong className="text-3xl text-brand">{progress}%</strong><span className="ml-2 text-sm text-gray-500">달성</span>
+                {funding.success_at && (
+                  <Badge className="ml-3 bg-emerald-600 align-middle hover:bg-emerald-600">
+                    🎉 {funding.funding_status === "production" ? "제작 진행 중" : "펀딩 성공"} · {new Date(funding.success_at).toLocaleDateString("ko-KR")}
+                  </Badge>
+                )}
+              </div>
               <span className="text-sm text-gray-500">{funding.current_orders} / {funding.moq}장</span>
             </div>
             <Progress value={progress} className="h-3" />

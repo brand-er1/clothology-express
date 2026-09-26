@@ -95,6 +95,10 @@ export type Funding = {
   sample_image_path: string | null;
   sample_note: string | null;
   sample_shared_at: string | null;
+  /** 서버(DB 트리거)가 판정한 펀딩 단계. 프론트엔드는 표시만 한다. */
+  funding_status?: "funding" | "success" | "production";
+  success_at?: string | null;
+  final_quantity?: number | null;
 };
 
 export type FundingPaymentIntent = {

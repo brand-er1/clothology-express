@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ExternalLink,
+  Eye,
+  History,
   Loader2,
   Monitor,
   Rocket,
@@ -10,6 +12,7 @@ import {
   Smartphone,
   Sparkles,
   Wand2,
+  X,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,13 @@ import {
   SaveStatusBadge,
   TemplatePicker,
 } from "@/components/detail-page/DetailStudioParts";
+import {
+  CreatorBriefForm,
+  PublishStateBadge,
+  QuotaNote,
+  ReferenceUploader,
+  VersionHistoryDialog,
+} from "@/components/detail-page/DetailStudioExtras";
 import { readUnsyncedBackup, useDetailPageAutosave } from "@/hooks/useDetailPageAutosave";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import {
@@ -49,6 +59,7 @@ import {
 import {
   DETAIL_IMAGE_SPECS,
   fetchLatestImageJobs,
+  getDetailImageSpec,
   requestDetailImage,
   runWithConcurrency,
 } from "@/lib/detail-page/imagePipeline";
@@ -60,12 +71,21 @@ import { fetchFunding } from "@/services/funding";
 import {
   DetailPageBrandRequiredError,
   fetchDetailPage,
+  fetchDetailPagePublishState,
+  fetchMyAiQuota,
   generateDetailCopy,
   getDetailPageErrorMessage,
+  publishDetailPage,
+  recordDetailPageVersion,
+  restoreDetailPageVersion,
   saveDetailPage,
   startFundingFromDetailPage,
 } from "@/services/detailPage";
 import type {
+  AiQuota,
+  DetailCopyTone,
+  DetailPagePublishState,
+  DetailPageVersion,
   DetailFundingStats,
   DetailImageJob,
   DetailImageJobStatus,
@@ -135,12 +155,21 @@ const DetailPageStudio = () => {
     DETAIL_IMAGE_SPECS.filter((spec) => spec.defaultOn).map((spec) => spec.type),
   );
   const [regeneratingImageIds, setRegeneratingImageIds] = useState<string[]>([]);
+  const [readOnly, setReadOnly] = useState(false);
+  const [publishState, setPublishState] = useState<DetailPagePublishState | null>(null);
+  const [quota, setQuota] = useState<AiQuota | null>(null);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const snapshot = useMemo(
     () => (document && source ? { document, source, generation } : null),
     [document, source, generation],
   );
-  const autosave = useDetailPageAutosave(page?.id ?? null, snapshot);
+  // 관리자 열람(read-only)에서는 자동저장을 끈다.
+  const autosave = useDetailPageAutosave(readOnly ? null : page?.id ?? null, readOnly ? null : snapshot);
   const { resetBaseline } = autosave;
 
   useEffect(() => {
@@ -150,18 +179,24 @@ const DetailPageStudio = () => {
       try {
         const loaded = await fetchDetailPage(pageId);
         const { data: session } = await supabase.auth.getSession();
-        if (session.session?.user.id !== loaded.userId) throw new Error("이 상세페이지를 편집할 권한이 없습니다.");
-        const brand = await fetchMyBrand().catch(() => null);
+        let viewOnly = false;
+        if (session.session?.user.id !== loaded.userId) {
+          // 다른 제작자의 상세페이지는 편집 불가. 관리자는 확인(읽기 전용)만 가능.
+          const { data: canView } = await supabase.rpc("has_admin_permission" as never, { p_permission: "fundings.view" } as never);
+          if (canView !== true) throw new Error("이 상세페이지를 편집할 권한이 없습니다.");
+          viewOnly = true;
+        }
+        const brand = viewOnly ? null : await fetchMyBrand().catch(() => null);
         const linkedFunding = loaded.fundingId ? await fetchFunding(loaded.fundingId).catch(() => null) : null;
         const jobs = await fetchLatestImageJobs(loaded.id);
         if (cancelled) return;
         const serverSnapshot = {
           document: loaded.document,
-          source: refreshBrandInSource(loaded.source, brand),
+          source: viewOnly ? loaded.source : refreshBrandInSource(loaded.source, brand),
           generation: loaded.generation,
         };
         resetBaseline(serverSnapshot);
-        const backup = readUnsyncedBackup(loaded.id, loaded.updatedAt);
+        const backup = viewOnly ? null : readUnsyncedBackup(loaded.id, loaded.updatedAt);
         const restored = backup ?? serverSnapshot;
         // Images that finished after the creator left the page are placed now.
         let restoredDocument = restored.document;
@@ -178,8 +213,11 @@ const DetailPageStudio = () => {
         if (backup) {
           toast({ title: "저장되지 않았던 마지막 편집 내용을 복원했어요", description: "자동으로 다시 저장합니다." });
         }
+        setReadOnly(viewOnly);
         setPage(loaded);
         setFunding(linkedFunding);
+        void fetchDetailPagePublishState(loaded.id).then((state) => { if (!cancelled) setPublishState(state); });
+        if (!viewOnly) void fetchMyAiQuota().then((value) => { if (!cancelled) setQuota(value); });
         setDocument(initial.document);
         setSource(initial.source);
         setGeneration(initial.generation);
@@ -192,7 +230,13 @@ const DetailPageStudio = () => {
     return () => {
       cancelled = true;
     };
-  }, [pageId, resetBaseline]);
+  }, [pageId, resetBaseline, reloadKey]);
+
+  const refreshMeta = useCallback(() => {
+    if (!page) return;
+    void fetchDetailPagePublishState(page.id).then(setPublishState);
+    if (!readOnly) void fetchMyAiQuota().then(setQuota);
+  }, [page, readOnly]);
 
   const stats = useMemo(() => (source ? statsFrom(source, funding) : null), [source, funding]);
   const imageStatus = useMemo(() => {
@@ -251,8 +295,9 @@ const DetailPageStudio = () => {
           setJob(imageType, { status: "failed", error: getDetailPageErrorMessage(error, "이미지 생성 실패") });
         }
       });
+      refreshMeta();
     },
-    [page, setJob],
+    [page, setJob, refreshMeta],
   );
 
   const runGeneration = async () => {
@@ -261,7 +306,7 @@ const DetailPageStudio = () => {
     setConfirmRegenerate(false);
     setCopyStatus("generating");
     try {
-      const result = await generateDetailCopy(source, document.template);
+      const result = await generateDetailCopy(source, document.template, { detailPageId: page.id });
       const composed = composeDetailDocument(source, result.copy, document.template, imageTypes);
       // Keep sections the creator added by hand (not the auto MOOD section, which is rebuilt).
       const keptCustom = document.sections.filter(
@@ -279,6 +324,7 @@ const DetailPageStudio = () => {
       // Persist first: the image function reads the page's design/source from the database.
       await saveDetailPage({ id: page.id, document: nextDocument, source, generation: nextGeneration });
       resetBaseline({ document: nextDocument, source, generation: nextGeneration });
+      void recordDetailPageVersion(page.id, "ai_generated", result.provider === "ai" ? "AI 최초 생성" : "기본 문구로 생성").then(refreshMeta);
       setDocument(nextDocument);
       setGeneration(nextGeneration);
       setSelectedId(nextDocument.sections[0]?.id ?? null);
@@ -294,7 +340,13 @@ const DetailPageStudio = () => {
             },
       );
       setGenerating(false);
-      void generateImages(imageTypes, nextDocument.template);
+      // 하루 생성 한도를 넘는 요청은 보내지 않는다(남은 횟수만큼 우선순위 순서대로).
+      const remaining = quota ? Math.max(0, quota.imageLimit - quota.imageUsed) : imageTypes.length;
+      const allowedTypes = imageTypes.slice(0, remaining);
+      if (allowedTypes.length < imageTypes.length) {
+        toast({ title: `오늘 남은 AI 이미지 생성 횟수로 ${allowedTypes.length}장만 생성해요`, description: "나머지 이미지 칸은 원본 디자인으로 표시되고 내일 다시 생성할 수 있어요." });
+      }
+      void generateImages(allowedTypes, nextDocument.template);
     } catch (error) {
       setCopyStatus("idle");
       toast({ title: "상세페이지를 만들지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
@@ -327,6 +379,9 @@ const DetailPageStudio = () => {
       }));
       setJob(slot, { status: "completed", assetId: generated.assetId, url: generated.url, error: null });
       toast({ title: "이미지를 다시 생성했어요" });
+      window.setTimeout(() => {
+        void autosave.saveNow().catch(() => undefined).then(() => recordDetailPageVersion(page.id, "image_regenerated", getDetailImageSpec(slot).label)).then(refreshMeta);
+      }, 0);
     } catch (error) {
       toast({ title: "이미지를 다시 생성하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
     } finally {
@@ -334,12 +389,15 @@ const DetailPageStudio = () => {
     }
   };
 
-  const regenerateSection = async (section: DetailSection) => {
-    if (!source || !document) return;
+  const regenerateSection = async (section: DetailSection, tone?: DetailCopyTone) => {
+    if (!source || !document || !page) return;
     setRegeneratingId(section.id);
     try {
-      const result = await generateDetailCopy(source, document.template);
+      const result = await generateDetailCopy(source, document.template, { tone, detailPageId: page.id });
       updateSection(regenerateSectionText(section, source, result.copy));
+      window.setTimeout(() => {
+        void autosave.saveNow().catch(() => undefined).then(() => recordDetailPageVersion(page.id, "copy_regenerated", tone ? `톤: ${tone}` : undefined)).then(refreshMeta);
+      }, 0);
       if (result.provider === "fallback") {
         toast({ title: "AI 연결이 원활하지 않아 기본 문구로 채웠어요", description: result.fallbackReason ?? undefined });
       }
@@ -352,7 +410,7 @@ const DetailPageStudio = () => {
     if (!source || !document) return;
     setRegeneratingId("product");
     try {
-      const { copy, provider } = await generateDetailCopy(source, document.template);
+      const { copy, provider } = await generateDetailCopy(source, document.template, { detailPageId: page?.id });
       updateDocument((current) => ({
         ...current,
         productName: copy.productName,
@@ -417,12 +475,57 @@ const DetailPageStudio = () => {
     if (selectedId === id) setSelectedId(null);
   };
 
-  const handleManualSave = async (status: "draft" | "ready") => {
+  /** 임시저장: 초안을 저장하고 버전 이력에 남긴다. 고객 화면(적용본)은 바뀌지 않는다. */
+  const handleManualSave = async () => {
+    if (!page) return;
     try {
-      await autosave.saveNow(status);
-      toast({ title: status === "ready" ? "상세페이지를 저장했어요" : "임시저장했어요" });
+      await autosave.saveNow();
+      await recordDetailPageVersion(page.id, "manual_save", "임시저장");
+      refreshMeta();
+      toast({ title: "임시저장했어요", description: "고객에게 보이는 상세페이지는 ‘상세페이지 적용’을 눌러야 바뀝니다." });
     } catch (error) {
       toast({ title: "저장 실패", description: getDetailPageErrorMessage(error), variant: "destructive" });
+    }
+  };
+
+  /** 상세페이지 적용: 현재 편집본을 게시본으로 고정한다. 펀딩(가격·수량·참여자 등)은 건드리지 않는다. */
+  const handlePublish = async () => {
+    if (!page) return;
+    setConfirmPublish(false);
+    setPublishing(true);
+    try {
+      await autosave.saveNow();
+      const result = await publishDetailPage(page.id);
+      refreshMeta();
+      toast({
+        title: `상세페이지를 적용했어요 (v${result.published_version})`,
+        description: page.fundingId ? "펀딩 상세화면에 반영되었습니다." : "펀딩을 시작하면 이 상세페이지가 표시됩니다.",
+      });
+    } catch (error) {
+      toast({ title: "적용하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const leaveEditor = () => {
+    setConfirmCancel(false);
+    if (page?.fundingId) navigate(`/fundings/${page.fundingId}/edit`);
+    else navigate(-1);
+  };
+
+  const handleRestore = async (version: DetailPageVersion) => {
+    if (!page) return;
+    try {
+      await autosave.saveNow().catch(() => undefined);
+      await restoreDetailPageVersion(page.id, version.id);
+      toast({ title: `Version ${version.version}으로 되돌렸어요`, description: "복구 전 편집본은 자동 백업 버전으로 남아 있어요." });
+      setPage(null);
+      setDocument(null);
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      toast({ title: "복구하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
+      throw error;
     }
   };
 
@@ -432,6 +535,7 @@ const DetailPageStudio = () => {
     setConfirmFunding(false);
     try {
       await autosave.saveNow(page.fundingId ? undefined : "ready");
+      await recordDetailPageVersion(page.id, "manual_save", "펀딩 시작 전 저장");
       const { fundingId, linked } = await startFundingFromDetailPage({ ...page, document, source });
       if (!linked) {
         toast({
@@ -485,6 +589,39 @@ const DetailPageStudio = () => {
   }
 
   const templateMeta = getDetailTemplateMeta(document.template);
+
+  /* ───────── 관리자 열람 (읽기 전용) ───────── */
+  if (readOnly) {
+    return (
+      <div className="min-h-screen bg-[#ebe9e5] text-stone-900">
+        <Header />
+        <div className="pt-16 sm:pt-20">
+          <div className="border-b border-stone-300 bg-white">
+            <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">관리자 열람 · 읽기 전용</p>
+                <p className="truncate text-base font-bold">{document.productName || "상품명 없음"}</p>
+              </div>
+              <PublishStateBadge state={publishState} />
+              <div className="flex border border-stone-300" role="group" aria-label="미리보기 너비">
+                <button type="button" onClick={() => setPreviewWidth("mobile")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "mobile" && "bg-stone-900 text-white")} aria-label="모바일 미리보기"><Smartphone className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setPreviewWidth("desktop")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "desktop" && "bg-stone-900 text-white")} aria-label="PC 미리보기"><Monitor className="h-4 w-4" /></button>
+              </div>
+              <Button type="button" variant="outline" className="h-10 rounded-md" onClick={() => setVersionsOpen(true)}><History className="mr-1.5 h-4 w-4" />버전 이력</Button>
+            </div>
+          </div>
+          <div className="mx-auto max-w-[1200px] px-0 py-6 sm:px-6">
+            <p className="mb-3 px-4 text-xs text-stone-500 sm:px-0">제작자의 현재 편집본입니다. 관리자는 확인만 할 수 있으며 수정·생성·적용은 제작자 본인만 가능합니다.</p>
+            <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]", previewWidth === "mobile" ? "max-w-[390px]" : "max-w-none")}>
+              <DetailPageRenderer document={document} source={source} stats={stats} />
+            </div>
+          </div>
+        </div>
+        <VersionHistoryDialog pageId={page.id} open={versionsOpen} onOpenChange={setVersionsOpen} onRestore={async () => undefined} readOnly />
+      </div>
+    );
+  }
+
   const setTemplate = (template: DetailPageTemplateId) => updateDocument((current) => ({ ...current, template }));
 
   /* ───────── Setup (before first generation, or "전체 다시 생성") ───────── */
@@ -537,13 +674,29 @@ const DetailPageStudio = () => {
           </section>
 
           <section className="mt-10">
-            <h2 className="text-sm font-bold">4. AI가 생성할 상세페이지 이미지</h2>
+            <h2 className="text-sm font-bold">4. 제품 핵심 정보 · 강조할 요소 (선택)</h2>
+            <p className="mt-1 text-xs leading-5 text-stone-500">입력한 내용만 사실로 사용합니다. 비워두면 AI가 임의로 만들지 않아요.</p>
+            <div className="mt-3 max-w-2xl">
+              <CreatorBriefForm value={source.userProvided} onChange={(userProvided) => setSource({ ...source, userProvided })} />
+            </div>
+          </section>
+
+          <section className="mt-10">
+            <h2 className="text-sm font-bold">5. 참고자료 (선택)</h2>
+            <div className="mt-3">
+              <ReferenceUploader page={page} />
+            </div>
+          </section>
+
+          <section className="mt-10">
+            <h2 className="text-sm font-bold">6. AI가 생성할 상세페이지 이미지</h2>
             <p className="mt-1 text-xs leading-5 text-stone-500">
               선택한 스타일({templateMeta.name})의 촬영 무드로 생성됩니다. 스타일은 배경·조명·연출만 바꾸고 제품 디자인은 바꾸지 않습니다.
             </p>
             <div className="mt-3">
               <ImageTypeChecklist value={imageTypes} onChange={setImageTypes} />
             </div>
+            <div className="mt-2"><QuotaNote quota={quota} requested={imageTypes.length} /></div>
           </section>
         </main>
 
@@ -563,7 +716,7 @@ const DetailPageStudio = () => {
               className="h-12 w-full rounded-md bg-brand px-6 text-[15px] font-bold hover:bg-brand-dark sm:w-auto"
             >
               {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {generating ? "상세페이지 작성 중..." : hasContent ? "AI 상세페이지 다시 생성" : "✨ AI 상세페이지 생성"}
+              {generating ? "상세페이지 작성 중..." : hasContent ? "AI 상세페이지 다시 생성" : "✨ AI로 제작하기"}
             </Button>
           </div>
         </div>
@@ -656,7 +809,7 @@ const DetailPageStudio = () => {
               section={selectedSection}
               source={source}
               onChange={updateSection}
-              onRegenerate={() => void regenerateSection(selectedSection)}
+              onRegenerate={(tone) => void regenerateSection(selectedSection, tone)}
               regenerating={regeneratingId === selectedSection.id}
               onRegenerateImage={regenerateImage}
               regeneratingImageIds={regeneratingImageIds}
@@ -758,6 +911,14 @@ const DetailPageStudio = () => {
               <div className="mt-3">
                 <MissingInfoForm source={source} onChange={(userProvided) => setSource({ ...source, userProvided })} />
               </div>
+              <div className="mt-5">
+                <CreatorBriefForm value={source.userProvided} onChange={(userProvided) => setSource({ ...source, userProvided })} />
+              </div>
+            </div>
+
+            <div className="border-t border-stone-200 pt-5">
+              <p className="text-xs font-semibold">참고자료</p>
+              <div className="mt-3"><ReferenceUploader page={page} /></div>
             </div>
 
             <Button type="button" variant="ghost" onClick={() => setShowSetup(true)} className="h-11 w-full rounded-md text-stone-600">
@@ -785,6 +946,18 @@ const DetailPageStudio = () => {
         onSelectSection={selectFromPreview}
       />
     </div>
+  );
+
+  const publishButton = (
+    <Button
+      type="button"
+      onClick={() => setConfirmPublish(true)}
+      disabled={publishing}
+      className="h-12 min-w-0 flex-1 rounded-md bg-brand px-4 text-sm font-bold hover:bg-brand-dark md:h-10 md:flex-none"
+    >
+      {publishing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Eye className="mr-1.5 h-4 w-4" />}
+      상세페이지 적용
+    </Button>
   );
 
   const primaryAction = page.fundingId ? (
@@ -821,6 +994,7 @@ const DetailPageStudio = () => {
               <p className="truncate text-base font-bold">{document.productName || "상품명 없음"}</p>
             </div>
             <SaveStatusBadge status={autosave.status} lastSavedAt={autosave.lastSavedAt} error={autosave.error} />
+            <PublishStateBadge state={publishState} />
             <div className="hidden items-center gap-2 md:flex">
               <div className="flex border border-stone-300" role="group" aria-label="미리보기 너비">
                 <button type="button" onClick={() => setPreviewWidth("mobile")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "mobile" && "bg-stone-900 text-white")} aria-label="모바일 미리보기">
@@ -830,13 +1004,17 @@ const DetailPageStudio = () => {
                   <Monitor className="h-4 w-4" />
                 </button>
               </div>
-              <Button type="button" variant="outline" className="h-10 rounded-md" onClick={() => void handleManualSave("draft")}>
-                임시저장
+              <Button type="button" variant="ghost" className="h-10 rounded-md" onClick={() => setVersionsOpen(true)}>
+                <History className="mr-1.5 h-4 w-4" /> 버전 이력
               </Button>
-              <Button type="button" variant="outline" className="h-10 rounded-md" onClick={() => void handleManualSave("ready")}>
-                <Save className="mr-1.5 h-4 w-4" /> 저장
+              <Button type="button" variant="ghost" className="h-10 rounded-md" onClick={() => setConfirmCancel(true)}>
+                <X className="mr-1.5 h-4 w-4" /> 취소
               </Button>
-              {primaryAction}
+              <Button type="button" variant="outline" className="h-10 rounded-md" onClick={() => void handleManualSave()}>
+                <Save className="mr-1.5 h-4 w-4" /> 임시저장
+              </Button>
+              {publishButton}
+              {!page.fundingId && primaryAction}
             </div>
           </div>
           {/* Mobile: edit / preview switch */}
@@ -873,15 +1051,51 @@ const DetailPageStudio = () => {
         className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-3 py-2.5 backdrop-blur md:hidden"
       >
         <div className="mx-auto flex max-w-lg items-center gap-2">
-          <Button type="button" variant="outline" className="h-12 shrink-0 rounded-md px-3 text-sm" onClick={() => void handleManualSave("draft")}>
+          <Button type="button" variant="outline" className="h-12 shrink-0 rounded-md px-2.5 text-sm" onClick={() => setVersionsOpen(true)} aria-label="버전 이력">
+            <History className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="outline" className="h-12 shrink-0 rounded-md px-3 text-sm" onClick={() => void handleManualSave()}>
             임시저장
           </Button>
-          <Button type="button" variant="outline" className="h-12 shrink-0 rounded-md px-3 text-sm" onClick={() => void handleManualSave("ready")}>
-            저장
-          </Button>
-          {primaryAction}
+          {page.fundingId ? publishButton : primaryAction}
         </div>
       </div>
+
+      <AlertDialog open={confirmPublish} onOpenChange={setConfirmPublish}>
+        <AlertDialogContent className="rounded-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 상세페이지를 적용할까요?</AlertDialogTitle>
+            <AlertDialogDescription className="leading-6">
+              지금 편집한 내용이 {page.fundingId ? "펀딩 상세화면에 바로 표시" : "펀딩 시작 후 표시될 적용본으로 저장"}됩니다. 판매가·목표수량·참여자·주문·결제 등 펀딩 정보는 바뀌지 않으며, 이전 적용본은 버전 이력에서 복구할 수 있어요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-md">취소</AlertDialogCancel>
+            <AlertDialogAction className="rounded-md bg-brand hover:bg-brand-dark" onClick={() => void handlePublish()}>
+              상세페이지 적용
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent className="rounded-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>편집을 마칠까요?</AlertDialogTitle>
+            <AlertDialogDescription className="leading-6">
+              지금까지 편집한 내용은 임시저장되어 다음에 이어서 작업할 수 있어요. ‘상세페이지 적용’을 누르지 않았다면 고객에게 보이는 상세페이지는 바뀌지 않습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-md">계속 편집</AlertDialogCancel>
+            <AlertDialogAction className="rounded-md bg-stone-900 hover:bg-stone-700" onClick={leaveEditor}>
+              나가기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <VersionHistoryDialog pageId={page.id} open={versionsOpen} onOpenChange={setVersionsOpen} onRestore={handleRestore} />
 
       <AlertDialog open={confirmFunding} onOpenChange={setConfirmFunding}>
         <AlertDialogContent className="rounded-md">

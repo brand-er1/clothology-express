@@ -21,7 +21,8 @@ export type AdminPermission =
   | "analytics.view"
   | "admins.manage" | "audit.view"
   | "settings.view" | "settings.manage"
-  | "legacy.tools" | "legacy.settings";
+  | "legacy.tools" | "legacy.settings"
+  | "ai_usage.view";
 
 const OPERATIONS: AdminPermission[] = [
   "dashboard.view",
@@ -59,6 +60,7 @@ const SUPER: AdminPermission[] = [
   "admins.manage", "audit.view",
   "settings.view", "settings.manage",
   "legacy.settings",
+  "ai_usage.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {

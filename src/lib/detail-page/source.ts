@@ -19,6 +19,11 @@ export const EMPTY_USER_PROVIDED: DetailUserProvidedInfo = {
   careNote: "",
   colorName: "",
   fitNote: "",
+  oneLiner: "",
+  highlights: "",
+  details: "",
+  productionNote: "",
+  emphasis: [],
 };
 
 const decorationKind = (kind: DecorationAnalysisKind): DetailDecoration["kind"] => {

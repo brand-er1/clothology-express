@@ -6,7 +6,19 @@
  * so templates and the mobile layout can change without touching saved pages.
  */
 
-export type DetailPageTemplateId = "minimal" | "street" | "luxury" | "sports" | "casual";
+export type DetailPageTemplateId =
+  | "minimal"
+  | "street"
+  | "luxury"
+  | "sports"
+  | "casual"
+  | "vintage"
+  | "y2k"
+  | "emotional"
+  | "lookbook";
+
+/** The five renderer layouts. Newer styles reuse one of them with their own theme tokens. */
+export type DetailLayoutId = "minimal" | "street" | "luxury" | "sports" | "casual";
 
 export type DetailPageStatus = "draft" | "ready" | "linked";
 
@@ -58,9 +70,19 @@ export type DetailFact = {
   value: string;
 };
 
+export type DetailSectionBackground = "default" | "white" | "light" | "dark" | "brand";
+export type DetailSectionAlign = "default" | "left" | "center";
+
+/** Per-section display overrides chosen in the editor (배경 / 정렬 변경). */
+export type DetailSectionLayout = {
+  background?: DetailSectionBackground;
+  align?: DetailSectionAlign;
+};
+
 export type DetailSection = {
   id: string;
   type: DetailSectionType;
+  layout?: DetailSectionLayout;
   visible: boolean;
   eyebrow: string;
   title: string;
@@ -132,8 +154,20 @@ export type DetailPageSource = {
   userProvided: DetailUserProvidedInfo;
 };
 
+export type DetailEmphasis = "design" | "fit" | "fabric" | "detail" | "process" | "scarcity" | "price" | "brand_story";
+
 export type DetailUserProvidedInfo = {
   price: number | null;
+  /** 제품 한 줄 소개 (제작자 입력) */
+  oneLiner?: string;
+  /** 강조하고 싶은 특징 */
+  highlights?: string;
+  /** 디테일 (프린팅·자수·지퍼·포켓 등 실제 존재하는 것만) */
+  details?: string;
+  /** 제작 방식 메모 */
+  productionNote?: string;
+  /** 강조할 요소 (복수 선택) */
+  emphasis?: DetailEmphasis[];
   /** 원단 혼용률 — shown only when the creator typed it. */
   composition: string;
   /** 제작 배경 / 기획 의도 */
@@ -207,7 +241,52 @@ export type DetailImageType =
   | "editorial"
   | "lifestyle"
   | "fabric"
-  | "mood";
+  | "mood"
+  | "flat_lay";
+
+/** "AI 다시 작성" tone. Facts stay the same; only the voice changes. */
+export type DetailCopyTone = "concise" | "emotional" | "professional" | "street" | "luxury";
+
+export type DetailPageVersionKind =
+  | "ai_generated"
+  | "manual_save"
+  | "image_regenerated"
+  | "copy_regenerated"
+  | "published"
+  | "restore_backup"
+  | "migrated";
+
+export type DetailPageVersion = {
+  id: string;
+  version: number;
+  kind: DetailPageVersionKind;
+  note: string | null;
+  createdByName: string;
+  createdAt: string;
+  sectionCount: number;
+  isPublished: boolean;
+};
+
+export type DetailPagePublishState = {
+  publishedVersion: number;
+  publishedAt: string | null;
+  hasUnpublishedChanges: boolean;
+  latestVersion: number | null;
+  canEdit: boolean;
+};
+
+export type DetailReferenceKind = "sample" | "fabric" | "detail" | "wearing" | "reference" | "logo" | "brand";
+
+export type DetailReference = {
+  id: string;
+  kind: DetailReferenceKind;
+  url: string;
+  storagePath: string | null;
+  useForGeneration: boolean;
+  createdAt: string;
+};
+
+export type AiQuota = { imageUsed: number; imageLimit: number; copyUsed: number; copyLimit: number };
 
 export type DetailImageJobStatus = "pending" | "generating" | "completed" | "failed";
 

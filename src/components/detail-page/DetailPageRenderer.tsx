@@ -10,15 +10,19 @@ import type {
   DetailPageSource,
   DetailPageTemplateId,
   DetailSection,
+  DetailLayoutId,
+  DetailSectionLayout,
 } from "@/types/detailPage";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { DetailImageView } from "@/components/detail-page/DetailImageView";
 import { DETAIL_THEMES, type DetailTheme } from "@/components/detail-page/templateThemes";
 import { colorOptions } from "@/lib/customize-constants";
 import { cn } from "@/lib/utils";
+import { getLayoutTemplate } from "@/lib/detail-page/templates";
 
 type RenderContext = {
-  template: DetailPageTemplateId;
+  /** Base layout (vintage → luxury, y2k → street, emotional → casual, lookbook → minimal). */
+  template: DetailLayoutId;
   t: DetailTheme;
   document: DetailPageDocument;
   source: DetailPageSource;
@@ -789,6 +793,19 @@ const GallerySection = ({ section, index }: { section: DetailSection; index: num
 
 /* ───────────────────────────── ROOT ───────────────────────────── */
 
+const BACKGROUND_CLASS: Record<string, string> = {
+  white: "bg-white text-stone-900",
+  light: "bg-[#f4f2ee] text-stone-900",
+  dark: "bg-[#141414] text-[#f5f5f0]",
+  brand: "bg-brand text-white",
+};
+
+/** Editor overrides (배경 / 정렬). "default" keeps the template's own look. */
+const sectionLayoutClass = (layout?: DetailSectionLayout) => ({
+  background: layout?.background && layout.background !== "default" ? BACKGROUND_CLASS[layout.background] : "",
+  align: layout?.align === "center" ? "text-center [&_h2]:mx-auto [&_p]:mx-auto" : layout?.align === "left" ? "text-left" : "",
+});
+
 const renderSection = (section: DetailSection, index: number): ReactNode => {
   switch (section.type) {
     case "hero":
@@ -837,8 +854,8 @@ export const DetailPageRenderer = ({
   onSelectSection,
   className,
 }: DetailPageRendererProps) => {
-  const template = document.template;
-  const t = DETAIL_THEMES[template];
+  const template = getLayoutTemplate(document.template);
+  const t = DETAIL_THEMES[document.template] ?? DETAIL_THEMES[template];
   const visible = document.sections.filter((section) => section.visible);
   let contentIndex = -1;
 
@@ -846,17 +863,18 @@ export const DetailPageRenderer = ({
     <Ctx.Provider value={{ template, t, document, source, stats, watermark, imageStatus }}>
       <article
         className={cn("[container-name:detail-page] [container-type:inline-size] w-full overflow-hidden", t.root, className)}
-        data-template={template}
+        data-template={document.template}
       >
         {visible.map((section) => {
           const isHero = section.type === "hero";
           if (!isHero) contentIndex += 1;
-          const alt = !isHero && t.altSection && contentIndex % 2 === 0;
+          const override = sectionLayoutClass(section.layout);
+          const alt = !isHero && t.altSection && contentIndex % 2 === 0 && !override.background;
           const body = isHero ? (
             <Hero section={section} />
           ) : (
-            <section className={cn(t.section, alt && t.altSection)}>
-              <div className={t.inner}>{renderSection(section, contentIndex)}</div>
+            <section className={cn(t.section, alt && t.altSection, override.background)}>
+              <div className={cn(t.inner, override.align)}>{renderSection(section, contentIndex)}</div>
             </section>
           );
           if (!onSelectSection) return <div key={section.id}>{body}</div>;

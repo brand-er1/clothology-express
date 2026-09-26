@@ -27,3 +27,10 @@ insert into public.community_comments (id, post_id, user_id, content) values ('0
 insert into public.community_reports (reporter_id, target_type, target_id, reason) values ('00000000-0000-0000-0000-00000000b001','comment','00000000-0000-0000-0000-0000000cc001','욕설');
 insert into public.community_follows (follower_id, following_id) values ('00000000-0000-0000-0000-00000000b001','00000000-0000-0000-0000-00000000c001');
 insert into public.site_visit_sessions (session_id, visitor_id, user_id) values (gen_random_uuid(), gen_random_uuid(), '00000000-0000-0000-0000-00000000b001'), (gen_random_uuid(), gen_random_uuid(), null);
+
+-- Pre-existing AI detail page linked to the legacy funding (was publicly visible before publish/draft split)
+insert into public.product_detail_pages (id, user_id, funding_id, template, title, subtitle, main_copy, status, source)
+values ('00000000-0000-0000-0000-0000000d0001','00000000-0000-0000-0000-00000000c001','00000000-0000-0000-0000-0000000f0001','minimal','레거시 후드티','한 줄 소개','메인 카피','linked','{"imageUrl":"https://x/img.png","clothType":"hoodie"}');
+insert into public.detail_page_sections (id, detail_page_id, section_type, sort_order, content, images)
+values ('00000000-0000-0000-0000-0000000d5001','00000000-0000-0000-0000-0000000d0001','hero',0,'{"title":"레거시 후드티"}','[]'),
+       ('00000000-0000-0000-0000-0000000d5002','00000000-0000-0000-0000-0000000d0001','story',1,'{"title":"스토리","description":"기존 스토리"}','[]');

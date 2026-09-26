@@ -224,7 +224,11 @@ export const buildSectionFromCopy = (
       });
     case "color":
       if (!source.color && !source.userProvided.colorName) return null;
-      return section("color", { description: copy.colorDescription, facts });
+      return section("color", {
+        description: copy.colorDescription,
+        facts,
+        images: wants("flat_lay") ? slotImage(front, "flat_lay", `${name} 플랫레이`) : [],
+      });
     case "size":
       return section("size", { description: copy.sizeGuide, items: textItems(copy.care), facts });
     case "brand":
@@ -270,6 +274,12 @@ export const composeDetailDocument = (
   const sections = DEFAULT_SECTION_ORDER.map((type) => buildSectionFromCopy(type, source, copy, imageTypes)).filter(
     (value): value is DetailSection => value !== null,
   );
+  // FLAT LAY normally sits in COLOR; without color info it goes to DESIGN instead.
+  if (imageTypes.includes("flat_lay") && !sections.some((entry) => entry.images.some((image) => image.slot === "flat_lay"))) {
+    const design = sections.find((entry) => entry.type === "design");
+    const base = getDesignImages(source).front[0];
+    if (design && base) design.images = [...design.images, ...slotImage(base, "flat_lay", `${copy.productName} 플랫레이`)];
+  }
   if (imageTypes.includes("mood")) {
     const mood: DetailSection = {
       ...createCustomSection("custom_image"),
@@ -304,6 +314,8 @@ export const defaultSlotForSection = (type: DetailSectionType, crop: DetailImage
       return "detail";
     case "fabric":
       return "fabric";
+    case "color":
+      return "flat_lay";
     case "fit":
       return "lifestyle";
     case "custom_image":

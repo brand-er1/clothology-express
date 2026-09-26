@@ -10,23 +10,29 @@ export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 DB="${ADMIN_TEST_DB:-brander_admin_test}"
+# 검증 대상(신규) 마이그레이션. 나머지는 "운영에 이미 적용된 상태"로 간주해 먼저 적용한다.
+NEW_MIGRATIONS=(20260926000000 20260926010000 20260926020000 20260927000000)
+is_new() { local base; base="$(basename "$1")"; for v in "${NEW_MIGRATIONS[@]}"; do [[ "$base" == "$v"* ]] && return 0; done; return 1; }
 P=(psql -v ON_ERROR_STOP=1 -q -d "$DB")
 
 dropdb --if-exists "$DB"; createdb "$DB"
 "${P[@]}" -f "$HERE/00_supabase_stub.sql" >/dev/null
 for f in "$ROOT"/supabase/migrations/*.sql; do
-  case "$(basename "$f")" in 20260926*) continue;; esac
+  is_new "$f" && continue
   "${P[@]}" -f "$f" >/dev/null
 done
 "${P[@]}" -f "$HERE/10_seed_legacy.sql" >/dev/null
 "${P[@]}" -At -f "$HERE/snapshot.sql" > /tmp/admin_before.txt
 for pass in 1 2; do
-  for f in "$ROOT"/supabase/migrations/20260926*.sql; do "${P[@]}" -f "$f" >/dev/null 2>&1 || { echo "FAIL $f (pass $pass)"; exit 1; }; done
+  for f in "$ROOT"/supabase/migrations/*.sql; do
+    is_new "$f" || continue
+    "${P[@]}" -f "$f" >/dev/null 2>/tmp/admin_mig_err || { echo "FAIL $f (pass $pass)"; grep -v NOTICE /tmp/admin_mig_err | head; exit 1; }
+  done
 done
 "${P[@]}" -At -f "$HERE/snapshot.sql" > /tmp/admin_after.txt
 diff /tmp/admin_before.txt /tmp/admin_after.txt && echo "LEGACY_DATA_PRESERVED"
 
-for suite in 20_tests 30_flow; do
+for suite in 20_tests 30_flow 40_detail_pages; do
   "${P[@]}" -f "$HERE/$suite.sql" >/dev/null 2>&1
   "${P[@]}" -At -c "select '$suite', count(*) filter (where ok) as pass, count(*) filter (where not ok) as fail from _t"
   "${P[@]}" -At -c "select 'FAIL: ' || label || ' | ' || detail from _t where not ok"

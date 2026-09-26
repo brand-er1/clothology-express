@@ -29,10 +29,11 @@ export const DETAIL_IMAGE_SPECS: DetailImageSpec[] = [
   { type: "product_front", number: "02", label: "CLEAN PRODUCT", description: "앞면 제품 단독 컷", defaultOn: true },
   { type: "product_back", number: "03", label: "BACK PRODUCT", description: "뒷면 제품 단독 컷", defaultOn: true },
   { type: "detail", number: "04", label: "DETAIL", description: "프린트·자수·그래픽 클로즈업", defaultOn: true },
-  { type: "editorial", number: "05", label: "EDITORIAL", description: "룩북 에디토리얼 컷", defaultOn: true },
+  { type: "editorial", number: "05", label: "LOOKBOOK", description: "룩북 · 에디토리얼 컷", defaultOn: true },
   { type: "lifestyle", number: "06", label: "LIFESTYLE", description: "모델 착용 컷", defaultOn: true },
   { type: "mood", number: "07", label: "MOOD", description: "브랜드 무드 컷 (선택)", defaultOn: true },
-  { type: "fabric", number: "08", label: "FABRIC", description: "원단 텍스처 클로즈업 (선택)", defaultOn: false },
+  { type: "fabric", number: "08", label: "FABRIC", description: "원단 텍스처 클로즈업 (소재 정보가 있을 때)", defaultOn: false },
+  { type: "flat_lay", number: "09", label: "FLAT LAY", description: "바닥·스튜디오에 자연스럽게 놓인 제품 컷", defaultOn: true },
 ];
 
 export const getDetailImageSpec = (type: DetailImageType) =>
@@ -69,6 +70,7 @@ export const requestDetailImage = async (input: {
     },
   });
   if (error) throw new Error(await readFunctionError(error));
+  // (429: 하루/페이지 생성 한도 초과 메시지가 그대로 전달된다)
   if (!data?.url || !data?.assetId) throw new Error(data?.error || "이미지가 반환되지 않았습니다.");
   return { assetId: data.assetId, url: data.url, model: data.model };
 };

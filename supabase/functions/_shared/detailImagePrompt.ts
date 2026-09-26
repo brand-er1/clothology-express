@@ -16,9 +16,23 @@ export type DetailImageType =
   | "editorial"
   | "lifestyle"
   | "fabric"
-  | "mood";
+  | "mood"
+  | "flat_lay";
 
-export type DetailPageStyle = "minimal" | "street" | "luxury" | "sports" | "casual";
+export type DetailPageStyle =
+  | "minimal"
+  | "street"
+  | "luxury"
+  | "sports"
+  | "casual"
+  | "vintage"
+  | "y2k"
+  | "emotional"
+  | "lookbook";
+
+export const DETAIL_PAGE_STYLES: DetailPageStyle[] = [
+  "minimal", "street", "luxury", "sports", "casual", "vintage", "y2k", "emotional", "lookbook",
+];
 
 export const DETAIL_IMAGE_TYPES: DetailImageType[] = [
   "hero",
@@ -29,13 +43,14 @@ export const DETAIL_IMAGE_TYPES: DetailImageType[] = [
   "lifestyle",
   "fabric",
   "mood",
+  "flat_lay",
 ];
 
 export const isDetailImageType = (value: unknown): value is DetailImageType =>
   typeof value === "string" && (DETAIL_IMAGE_TYPES as string[]).includes(value);
 
 export const isDetailPageStyle = (value: unknown): value is DetailPageStyle =>
-  value === "minimal" || value === "street" || value === "luxury" || value === "sports" || value === "casual";
+  typeof value === "string" && (DETAIL_PAGE_STYLES as string[]).includes(value);
 
 /** Product facts the prompt may use (all creator-entered or measured). */
 export type PromptProduct = {
@@ -70,6 +85,14 @@ const STYLE_DIRECTION: Record<DetailPageStyle, string> = {
     "Visual direction: active technical sports campaign — dynamic angles, crisp high-shutter light, athletic movement and energy, clean graphic backgrounds.",
   casual:
     "Visual direction: natural daylight everyday lifestyle — warm soft tones, relaxed real-life settings, approachable warm editorial feel.",
+  vintage:
+    "Visual direction: vintage film photography — warm faded tones, subtle film grain, retro interiors or aged textures, nostalgic analog mood. Grade the scene, never the garment's own colors.",
+  y2k:
+    "Visual direction: Y2K fashion editorial — glossy early-2000s pop aesthetic, bold saturated backdrops, chrome/iridescent accents in props or set, playful flash photography.",
+  emotional:
+    "Visual direction: emotional, poetic mood — soft window light, gentle shadows, quiet intimate settings, muted pastel palette, calm and tender atmosphere.",
+  lookbook:
+    "Visual direction: seasonal brand lookbook — consistent editorial series look, clean location or studio sets, full-body styling focus, cohesive art direction like a brand campaign book.",
 };
 
 /** Aspect ratios supported by the Gemini image models. */
@@ -82,6 +105,7 @@ export const IMAGE_ASPECT_RATIO: Record<DetailImageType, string> = {
   lifestyle: "3:4",
   fabric: "1:1",
   mood: "16:9",
+  flat_lay: "4:5",
 };
 
 const view = (product: PromptProduct, side: "front" | "back") =>
@@ -104,6 +128,8 @@ const TYPE_TEMPLATE: Record<DetailImageType, (product: PromptProduct) => string>
     `Create a LIFESTYLE MODEL SHOT: a person naturally wearing this exact ${product.clothType || "garment"} in a real setting, ${product.fit ? `with a ${product.fit} fit, ` : ""}three-quarter or full-length framing so the whole garment is visible. The worn garment must be the same product, not a similar one: same color, graphics and their placement, logos, pockets, hood, zipper, sleeves and length. No visible brand names other than those in the reference. ${view(product, "front")}`,
   fabric: (product) =>
     `Create a FABRIC TEXTURE close-up of this garment's material${product.material ? ` (${product.material})` : ""}, filling the frame with the fabric surface in the garment's exact color, soft raking light to show texture. Show only texture plausible from the reference; do not depict technical features (coatings, membranes, perforations) that are not stated.`,
+  flat_lay: (product) =>
+    `Create a FLAT LAY image: this exact ${product.clothType || "garment"} laid flat and neatly arranged on a floor or studio surface, shot from directly above, whole garment visible with natural folds and a soft realistic shadow. Minimal styling props are allowed at the edges only; the garment stays the clear subject. ${view(product, "front")}`,
   mood: (product) =>
     `Create a BRAND MOOD image expressing the concept of this ${product.clothType || "garment"}: atmospheric, wide composition where the garment appears naturally (folded, hanging or worn) and stays recognizable. Evoke the product's attitude through setting, light and color, without adding text or logos. ${view(product, "front")}`,
 };
@@ -144,6 +170,9 @@ export const buildProductImagePrompt = ({
     TYPE_TEMPLATE[imageType](product),
     STYLE_DIRECTION[detailPageStyle],
     referenceImages.length ? `Attached reference images: ${referenceImages.join("; ")}.` : "",
+    referenceImages.length > 1
+      ? "Reference image 1 is the product design and always wins. Additional references are the creator's real photos (sample, fabric, details, worn shots, logo): use them only to match real texture, construction details, logo/print rendering and proportions of this same product — never copy other garments, people's faces or unrelated items from them."
+      : "",
     instruction
       ? `Creator's change request for this image (apply it only to background, setting, composition, lighting, model or mood — never to the garment design): "${instruction}"`
       : "",

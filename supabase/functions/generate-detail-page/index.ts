@@ -1,11 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
 
 /**
  * Writes product detail page (상세페이지) copy from the creator's verified product facts and
  * the generated design image. Returns structured JSON only — the frontend owns layout.
  *
  * Requires the GEMINI_API_KEY secret (already used by analyze-production-estimate).
+ * Login is required and each call is metered (ai_usage_precheck / log_ai_usage).
+ * Optional body.tone rewrites the same facts in a different voice (section "AI 다시 작성").
  * The client sanitizes the result again and falls back to a deterministic writer if this
  * function fails, so it is safe to deploy after the frontend.
  */
@@ -54,14 +58,32 @@ const TEMPLATE_TONE: Record<string, string> = {
   luxury: "고급 에디토리얼 톤. 여유 있고 우아한 문장, 과장 없이.",
   sports: "스포츠 브랜드 톤. 활동성과 움직임을 강조하되 기능성 수치나 성능을 단정하지 않음.",
   casual: "친근하고 밝은 데일리웨어 톤. 편하게 말하듯이.",
+  vintage: "빈티지 감성 톤. 시간이 쌓인 듯한 따뜻한 문장, 과장 없이.",
+  y2k: "Y2K 감성 톤. 경쾌하고 톡톡 튀는 짧은 문장.",
+  emotional: "감성적인 에세이 톤. 부드럽고 서정적인 문장.",
+  lookbook: "브랜드 룩북 톤. 시즌 컨셉을 설명하는 절제된 에디토리얼 문장.",
 };
 
-const buildPrompt = (source: Record<string, unknown>, template: string) => `
+const TONE_OVERRIDE: Record<string, string> = {
+  concise: "간결하게: 문장을 짧게, 핵심만.",
+  emotional: "감성적으로: 부드럽고 서정적인 표현.",
+  professional: "전문적으로: 정확하고 신뢰감 있는 설명 톤.",
+  street: "스트릿하게: 짧고 힘 있는 스트리트 브랜드 말투.",
+  luxury: "고급스럽게: 여유 있고 우아한 에디토리얼 문장.",
+};
+
+const EMPHASIS_LABEL: Record<string, string> = {
+  design: "디자인", fit: "핏", fabric: "소재", detail: "디테일", process: "제작과정",
+  scarcity: "희소성", price: "가격", brand_story: "브랜드 스토리",
+};
+
+const buildPrompt = (source: Record<string, unknown>, template: string, tone: string, emphasis: string[]) => `
 당신은 한국 패션 브랜드 쇼핑몰의 시니어 카피라이터입니다.
 아래 "확인된 제품 정보"와 첨부된 의류 디자인 이미지(왼쪽=앞면, 오른쪽=뒷면)만 근거로
 펀딩 상품 상세페이지 문구를 작성하세요.
 
-톤: ${TEMPLATE_TONE[template] ?? TEMPLATE_TONE.minimal}
+톤: ${TONE_OVERRIDE[tone] ?? TEMPLATE_TONE[template] ?? TEMPLATE_TONE.minimal}
+${emphasis.length ? `강조할 요소(이 순서로 비중을 높이세요, 단 사실 근거가 있는 범위에서만): ${emphasis.join(", ")}` : ""}
 
 절대 규칙:
 - 확인된 제품 정보나 이미지에서 확인할 수 없는 사실을 만들지 마세요.
@@ -112,11 +134,38 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "POST만 지원합니다." }, 405);
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  let userId: string | null = null;
+  let detailPageId: string | null = null;
+  const startedAt = Date.now();
+
   try {
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
     if (!geminiApiKey) return json({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }, 503);
 
-    const { source = {}, template = "minimal" } = await req.json();
+    // 로그인한 회원만 호출할 수 있다(anon 키만으로 AI 비용이 발생하지 않도록).
+    const authorization = req.headers.get("Authorization") ?? "";
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+      global: { headers: { Authorization: authorization } },
+    });
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    if (userError || !userData?.user) return json({ error: "로그인이 필요합니다." }, 401);
+    userId = userData.user.id;
+
+    const { source = {}, template = "minimal", tone = "", detailPageId: requestedPageId } = await req.json();
+    if (typeof requestedPageId === "string") {
+      const { data: page } = await admin.from("product_detail_pages").select("id, user_id").eq("id", requestedPageId).maybeSingle();
+      if (page && page.user_id === userId) detailPageId = page.id as string;
+    }
+
+    const quota = await precheckAiUsage(admin, userId, "detail_copy", detailPageId);
+    if (!quota.allowed) return json({ error: quota.reason ?? "AI 문구 생성 한도를 초과했습니다.", quotaExceeded: true }, 429);
+
+    const provided = source.userProvided ?? {};
+    const emphasis = (Array.isArray(provided.emphasis) ? provided.emphasis : [])
+      .map((key: string) => EMPHASIS_LABEL[key])
+      .filter(Boolean);
     const facts = {
       의류종류: source.clothType,
       원단: source.material,
@@ -133,13 +182,18 @@ serve(async (req) => {
       제작배경_작성자입력: source.userProvided?.background || undefined,
       추천대상_작성자입력: source.userProvided?.targetCustomer || undefined,
       관리메모_작성자입력: source.userProvided?.careNote || undefined,
+      한줄소개_작성자입력: provided.oneLiner || undefined,
+      강조특징_작성자입력: provided.highlights || undefined,
+      디테일_작성자입력: provided.details || undefined,
+      제작방식_작성자입력: provided.productionNote || undefined,
+      상세페이지무드_작성자선택: provided.mood || undefined,
       브랜드명: source.brandName,
       브랜드소개: source.brandShortDescription || source.brandDescription,
       제작자명: source.creatorName,
     };
 
     const image = typeof source.imageUrl === "string" ? await fetchImage(source.imageUrl) : null;
-    const parts: Array<Record<string, unknown>> = [{ text: buildPrompt(facts, String(template)) }];
+    const parts: Array<Record<string, unknown>> = [{ text: buildPrompt(facts, String(template), String(tone), emphasis) }];
     if (image) parts.push({ inlineData: image });
 
     const body = JSON.stringify({
@@ -169,14 +223,30 @@ serve(async (req) => {
         continue;
       }
       try {
-        return json({ copy: parseJson(text), model, usedImage: Boolean(image) });
+        const copy = parseJson(text);
+        await logAiUsage(admin, {
+          userId, feature: "detail_copy", status: "success", provider: "gemini", model, detailPageId,
+          latencyMs: Date.now() - startedAt, metadata: { tone: tone || null, template },
+        });
+        return json({ copy, model, usedImage: Boolean(image) });
       } catch {
         errors.push(`${model}: invalid json`);
       }
     }
-    return json({ error: `AI 문구 생성 실패 (${errors.join(", ")})` }, 502);
+    const failure = `AI 문구 생성 실패 (${errors.join(", ")})`;
+    await logAiUsage(admin, {
+      userId, feature: "detail_copy", status: "failed", provider: "gemini", detailPageId,
+      latencyMs: Date.now() - startedAt, error: failure,
+    });
+    return json({ error: failure }, 502);
   } catch (error) {
     console.error("generate-detail-page error:", error);
+    if (userId) {
+      await logAiUsage(admin, {
+        userId, feature: "detail_copy", status: "failed", provider: "gemini", detailPageId,
+        latencyMs: Date.now() - startedAt, error: error instanceof Error ? error.message : String(error),
+      });
+    }
     return json({ error: error instanceof Error ? error.message : "알 수 없는 오류" }, 500);
   }
 });

@@ -79,3 +79,19 @@ describe("AI detail page v2", () => {
     expect(sanitizeDetailCopy(raw, source).story).not.toContain("방수");
   });
 });
+
+describe("available colors section", () => {
+  it("builds AVAILABLE COLORS from the funding's registered colors", () => {
+    const withColors = { ...source, color: "", availableColors: ["BLACK", "BURGUNDY", "NAVY"] };
+    const document = composeDetailDocument(withColors, buildFallbackCopy(withColors), "minimal");
+    const color = document.sections.find((section) => section.type === "color");
+    expect(color?.title).toBe("AVAILABLE COLORS");
+    expect(color?.eyebrow).toBe("COLOR");
+    expect(color?.facts).toEqual([{ label: "컬러", value: "BLACK / BURGUNDY / NAVY" }]);
+  });
+
+  it("keeps the legacy single-color section when no colors are registered", () => {
+    const document = composeDetailDocument(source, buildFallbackCopy(source), "minimal");
+    expect(document.sections.find((section) => section.type === "color")?.title).toBe("COLOR");
+  });
+});

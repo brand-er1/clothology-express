@@ -19,6 +19,7 @@ import { DETAIL_THEMES, type DetailTheme } from "@/components/detail-page/templa
 import { colorOptions } from "@/lib/customize-constants";
 import { cn } from "@/lib/utils";
 import { getLayoutTemplate } from "@/lib/detail-page/templates";
+import { colorHexOf, type FundingColor } from "@/lib/funding-colors";
 
 type RenderContext = {
   /** Base layout (vintage → luxury, y2k → street, emotional → casual, lookbook → minimal). */
@@ -29,6 +30,8 @@ type RenderContext = {
   stats: DetailFundingStats;
   watermark: boolean;
   imageStatus?: Partial<Record<DetailImageType, DetailImageJobStatus>>;
+  /** 펀딩의 현재 컬러 옵션(실시간). 있으면 COLOR 섹션이 컬러별 이미지로 자동 구성된다. */
+  colors?: FundingColor[];
 };
 
 const Ctx = createContext<RenderContext | null>(null);
@@ -806,6 +809,62 @@ const sectionLayoutClass = (layout?: DetailSectionLayout) => ({
   align: layout?.align === "center" ? "text-center [&_h2]:mx-auto [&_p]:mx-auto" : layout?.align === "left" ? "text-left" : "",
 });
 
+/* ─────────────────────── COLOR / AVAILABLE COLORS ─────────────────────── */
+
+/**
+ * 펀딩 컬러 옵션과 실시간으로 연결된 컬러 섹션. 컬러를 추가/삭제/이름변경/순서변경하거나 컬러 이미지를
+ * 승인하면 상세페이지를 다시 적용하지 않아도 여기 바로 반영된다. 컬러 데이터가 없으면 기존 텍스트 섹션.
+ */
+const ColorSection = ({ section, index }: { section: DetailSection; index: number }) => {
+  const { t, template, colors } = useRender();
+  const list = colors ?? [];
+  if (!list.length) return <InfoSection section={section} index={index} />;
+  const centered = template === "luxury";
+  return (
+    <div className={cn(centered && "text-center")}>
+      <Heading section={section} index={index} align={centered ? "center" : "left"} />
+      <p className={cn("mt-4 text-sm font-bold uppercase tracking-[0.16em] text-wrap-anywhere")} data-testid="available-colors">
+        {list.map((color) => color.name).join(" / ")}
+      </p>
+      {section.description && <Paragraphs text={section.description} className={cn(t.body, "mt-5", centered && "mx-auto max-w-[560px]")} />}
+      <div className={cn("mt-8 grid gap-6", list.length > 1 ? "grid-cols-1 dp-sm:grid-cols-2" : "grid-cols-1")}>
+        {list.map((color) => {
+          const views = (["front", "back"] as const).filter((view) => color.approved[view]?.url);
+          return (
+            <figure key={color.id} className="min-w-0">
+              {views.length > 0 ? (
+                <div className={cn("grid gap-2", views.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+                  {views.map((view) => (
+                    <Img
+                      key={view}
+                      className="aspect-[4/5] w-full"
+                      fit="contain"
+                      image={{
+                        id: `${color.id}-${view}`,
+                        url: color.approved[view]!.url!,
+                        crop: "full",
+                        alt: `${color.name} ${view === "front" ? "앞면" : "뒷면"}`,
+                        source: color.approved[view]!.source === "original" ? "design" : "generated",
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className={cn("flex aspect-[4/5] w-full items-center justify-center", t.frame)} style={{ backgroundColor: colorHexOf(color) }} aria-hidden />
+              )}
+              <figcaption className={cn("mt-3 flex items-center gap-2 text-sm font-semibold", centered && "justify-center")}>
+                <span className="h-4 w-4 shrink-0 rounded-full border border-black/15" style={{ backgroundColor: colorHexOf(color) }} />
+                <span className="text-wrap-anywhere">{color.name}</span>
+                {views.length > 1 && <span className={cn("text-xs font-normal", t.muted)}>FRONT · BACK</span>}
+              </figcaption>
+            </figure>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const renderSection = (section: DetailSection, index: number): ReactNode => {
   switch (section.type) {
     case "hero":
@@ -826,6 +885,8 @@ const renderSection = (section: DetailSection, index: number): ReactNode => {
       return <NoticeSection section={section} index={index} />;
     case "custom_image":
       return <GallerySection section={section} index={index} />;
+    case "color":
+      return <ColorSection section={section} index={index} />;
     default:
       return <InfoSection section={section} index={index} />;
   }
@@ -839,6 +900,8 @@ export type DetailPageRendererProps = {
   watermark?: boolean;
   /** Editor only: generation status per AI image slot. */
   imageStatus?: Partial<Record<DetailImageType, DetailImageJobStatus>>;
+  /** 펀딩 컬러 옵션(실시간). COLOR 섹션이 컬러별 이미지로 자동 구성된다. */
+  colors?: FundingColor[];
   selectedSectionId?: string | null;
   onSelectSection?: (sectionId: string) => void;
   className?: string;
@@ -850,6 +913,7 @@ export const DetailPageRenderer = ({
   stats,
   watermark = false,
   imageStatus,
+  colors,
   selectedSectionId,
   onSelectSection,
   className,
@@ -860,7 +924,7 @@ export const DetailPageRenderer = ({
   let contentIndex = -1;
 
   return (
-    <Ctx.Provider value={{ template, t, document, source, stats, watermark, imageStatus }}>
+    <Ctx.Provider value={{ template, t, document, source, stats, watermark, imageStatus, colors }}>
       <article
         className={cn("[container-name:detail-page] [container-type:inline-size] w-full overflow-hidden", t.root, className)}
         data-template={document.template}

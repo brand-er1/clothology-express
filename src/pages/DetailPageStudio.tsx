@@ -33,6 +33,9 @@ import { toast } from "@/components/ui/use-toast";
 import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer";
 import { DetailSectionList } from "@/components/detail-page/DetailSectionList";
 import { DetailSectionEditor } from "@/components/detail-page/DetailSectionEditor";
+import { ColorOptionsPanel } from "@/components/funding/ColorOptionsPanel";
+import type { FundingColor } from "@/lib/funding-colors";
+import { fetchFundingColors } from "@/services/fundingColors";
 import {
   LoadedInfoSummary,
   MissingInfoForm,
@@ -136,6 +139,8 @@ const DetailPageStudio = () => {
   const [page, setPage] = useState<ProductDetailPage | null>(null);
   const [document, setDocument] = useState<DetailPageDocument | null>(null);
   const [source, setSource] = useState<DetailPageSource | null>(null);
+  // 펀딩 컬러 옵션(상품 데이터 공유). COLOR 섹션 생성과 미리보기에 사용한다.
+  const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
   const [generation, setGeneration] = useState<DetailPageGenerationMeta>({});
   const [funding, setFunding] = useState<Funding | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -189,7 +194,9 @@ const DetailPageStudio = () => {
         const brand = viewOnly ? null : await fetchMyBrand().catch(() => null);
         const linkedFunding = loaded.fundingId ? await fetchFunding(loaded.fundingId).catch(() => null) : null;
         const jobs = await fetchLatestImageJobs(loaded.id);
+        const colorRows = loaded.fundingId ? await fetchFundingColors(loaded.fundingId).catch(() => [] as FundingColor[]) : [];
         if (cancelled) return;
+        setFundingColors(colorRows);
         const serverSnapshot = {
           document: loaded.document,
           source: viewOnly ? loaded.source : refreshBrandInSource(loaded.source, brand),
@@ -219,7 +226,7 @@ const DetailPageStudio = () => {
         void fetchDetailPagePublishState(loaded.id).then((state) => { if (!cancelled) setPublishState(state); });
         if (!viewOnly) void fetchMyAiQuota().then((value) => { if (!cancelled) setQuota(value); });
         setDocument(initial.document);
-        setSource(initial.source);
+        setSource(colorRows.length ? { ...initial.source, availableColors: colorRows.map((color) => color.name) } : initial.source);
         setGeneration(initial.generation);
         setSelectedId(initial.document.sections[0]?.id ?? null);
       } catch (error) {
@@ -613,7 +620,7 @@ const DetailPageStudio = () => {
           <div className="mx-auto max-w-[1200px] px-0 py-6 sm:px-6">
             <p className="mb-3 px-4 text-xs text-stone-500 sm:px-0">제작자의 현재 편집본입니다. 관리자는 확인만 할 수 있으며 수정·생성·적용은 제작자 본인만 가능합니다.</p>
             <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]", previewWidth === "mobile" ? "max-w-[390px]" : "max-w-none")}>
-              <DetailPageRenderer document={document} source={source} stats={stats} />
+              <DetailPageRenderer document={document} source={source} stats={stats} colors={fundingColors} />
             </div>
           </div>
         </div>
@@ -783,6 +790,16 @@ const DetailPageStudio = () => {
             <p className="mb-3 text-xs leading-5 text-stone-500">
               <span className="hidden sm:inline">핸들을 끌어 순서를 바꾸거나 </span>↑↓ 버튼으로 이동하세요. 섹션을 누르면 편집할 수 있어요.
             </p>
+            {page.fundingId && (
+              <ColorOptionsPanel
+                fundingId={page.fundingId}
+                colors={fundingColors}
+                readOnly={readOnly}
+                hasColorSection={document.sections.some((section) => section.type === "color")}
+                onAddColorSection={() => addSection("color")}
+                returnTo={`/detail-pages/${page.id}`}
+              />
+            )}
             <DetailSectionList
               sections={document.sections}
               selectedId={selectedId}
@@ -942,6 +959,7 @@ const DetailPageStudio = () => {
         source={source}
         stats={stats}
         imageStatus={imageStatus}
+        colors={fundingColors}
         selectedSectionId={selectedId}
         onSelectSection={selectFromPreview}
       />

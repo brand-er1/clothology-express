@@ -71,3 +71,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.dispatch-notifications]
 verify_jwt = true
+[functions.generate-color-image]
+verify_jwt = true

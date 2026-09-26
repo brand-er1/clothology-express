@@ -13,6 +13,7 @@ import Fundings from './pages/Fundings';
 import FundingDetail from './pages/FundingDetail';
 import FundingEditor from './pages/FundingEditor';
 import FundingManager from './pages/FundingManager';
+import FundingColorStudio from './pages/FundingColorStudio';
 import MyFundings from './pages/MyFundings';
 import KakaoPayResult from './pages/KakaoPayResult';
 import FabricSwatch from './pages/FabricSwatch';
@@ -141,6 +142,7 @@ function App() {
             <Route path="/fundings/:id/detail-page" element={<AuthGuard requiredAccountType="seller"><FundingDetailPageLauncher /></AuthGuard>} />
             <Route path="/detail-pages/:pageId" element={<AuthGuard><DetailPageStudio /></AuthGuard>} />
             <Route path="/fundings/:id/manage" element={<AuthGuard requiredAccountType="seller"><FundingManager /></AuthGuard>} />
+            <Route path="/fundings/:id/colors" element={<AuthGuard><FundingColorStudio /></AuthGuard>} />
             <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
             <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
             <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />

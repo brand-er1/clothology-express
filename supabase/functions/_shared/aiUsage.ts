@@ -6,7 +6,7 @@
  * clients can neither skip nor forge usage. Failures to log never fail the user's request.
  */
 
-export type AiFeature = "detail_copy" | "detail_image";
+export type AiFeature = "detail_copy" | "detail_image" | "color_image";
 
 export const precheckAiUsage = async (
   admin: any,
@@ -36,6 +36,8 @@ export const logAiUsage = async (
     provider?: string | null;
     model?: string | null;
     detailPageId?: string | null;
+    /** 상세페이지 없이 펀딩에 직접 연결되는 사용량(예: 컬러 이미지) */
+    fundingId?: string | null;
     imageType?: string | null;
     latencyMs?: number | null;
     error?: string | null;
@@ -53,6 +55,7 @@ export const logAiUsage = async (
     p_latency_ms: entry.latencyMs ?? null,
     p_error: entry.error ?? null,
     p_metadata: entry.metadata ?? {},
+    p_funding_id: entry.fundingId ?? null,
   });
   if (error) console.error("log_ai_usage failed", error.message);
 };

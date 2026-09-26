@@ -24,6 +24,7 @@ const AdminsPage = lazy(() => import("./AdminsPage"));
 const AuditLogPage = lazy(() => import("./AuditLogPage"));
 const SettingsPage = lazy(() => import("./SettingsPage"));
 const LegacyToolsPage = lazy(() => import("./LegacyToolsPage"));
+const AiUsagePage = lazy(() => import("./AiUsagePage"));
 
 // 메뉴 가드는 UX 용이다. 실제 데이터 접근은 각 RPC 가 서버에서 다시 거부한다.
 const Guard = ({ anyOf, children }: { anyOf: AdminPermission[]; children: ReactNode }) => {
@@ -70,6 +71,7 @@ const AdminRoutes = () => {
           <Route path="notifications" element={<Guard anyOf={["notifications.send"]}><NotificationsPage /></Guard>} />
           <Route path="admins" element={<Guard anyOf={["admins.manage"]}><AdminsPage /></Guard>} />
           <Route path="audit" element={<Guard anyOf={["audit.view"]}><AuditLogPage /></Guard>} />
+          <Route path="ai-usage" element={<Guard anyOf={["ai_usage.view"]}><AiUsagePage /></Guard>} />
           <Route path="settings" element={<Guard anyOf={["settings.view"]}><SettingsPage /></Guard>} />
           <Route path="tools/*" element={<Guard anyOf={["legacy.tools"]}><LegacyToolsPage /></Guard>} />
           <Route path="*" element={<Forbidden permission="존재하지 않는 메뉴" />} />

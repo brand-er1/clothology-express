@@ -1,6 +1,6 @@
 import {
   BarChart3, Building2, ClipboardList, CreditCard, Factory, Flag, LayoutDashboard, Megaphone, Palette,
-  ReceiptText, RotateCcw, ScrollText, Settings, ShieldCheck, Truck, Users, WalletCards, Wrench,
+  ReceiptText, RotateCcw, ScrollText, Settings, ShieldCheck, Sparkles, Truck, Users, WalletCards, Wrench,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/admin/permissions";
 
@@ -40,6 +40,7 @@ export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
   { group: "시스템", items: [
     { path: "admins", label: "관리자 관리", icon: ShieldCheck, anyOf: ["admins.manage"] },
     { path: "audit", label: "Audit Log", icon: ScrollText, anyOf: ["audit.view"] },
+    { path: "ai-usage", label: "AI 사용량", icon: Sparkles, anyOf: ["ai_usage.view"] },
     { path: "settings", label: "시스템 설정", icon: Settings, anyOf: ["settings.view"] },
     { path: "tools", label: "기타 운영 도구", icon: Wrench, anyOf: ["legacy.tools"] },
   ] },

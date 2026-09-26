@@ -35,32 +35,44 @@ export const DetailGenerationProgress = ({
   if (!list.length && copyStatus !== "generating") return null;
   const completed = list.filter((entry) => entry.job?.status === "completed").length;
   const failed = list.filter((entry) => entry.job?.status === "failed").length;
+  const finished = completed + failed;
   const running = list.some((entry) => entry.job?.status === "generating" || entry.job?.status === "pending");
   const allDone = !running && copyStatus !== "generating" && list.length > 0;
+  // 분석·구성·카피 30%, 이미지 65%, 레이아웃 5%
+  const percent = allDone
+    ? 100
+    : copyStatus === "generating"
+      ? 15
+      : Math.min(99, Math.round(30 + (list.length ? (finished / list.length) * 65 : 65)));
 
   const steps: Array<[string, StepState]> = [
-    ["상품 분석 완료", "done"],
-    ["상품 설명 생성", copyStatus === "generating" ? "active" : "done"],
+    ["상품 정보 분석", "done"],
+    ["상세페이지 구성", copyStatus === "generating" ? "active" : "done"],
+    ["카피 작성", copyStatus === "generating" ? "active" : "done"],
+    [
+      list.length ? `제품 이미지 생성 (${completed}/${list.length}${failed ? ` · 실패 ${failed}` : ""})` : "제품 이미지 생성",
+      copyStatus === "generating" ? "waiting" : running ? "active" : failed && !completed ? "failed" : "done",
+    ],
   ];
 
   return (
     <section className="border border-stone-200 bg-white" aria-live="polite">
       <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-        <p className="text-sm font-bold">{allDone ? "AI 상세페이지 완성" : "AI 상세페이지 제작 중"}</p>
+        <p className="text-sm font-bold">{allDone ? "AI 상세페이지 완성" : `AI 상세페이지 생성 ${percent}%`}</p>
         {list.length > 0 && (
           <span className="shrink-0 text-xs font-semibold text-stone-500">
             이미지 {completed} / {list.length} 완료{failed ? ` · 실패 ${failed}` : ""}
           </span>
         )}
       </div>
-      <div className="h-0.5 bg-stone-100">
-        <div className="h-full bg-brand transition-all" style={{ width: `${list.length ? (completed / list.length) * 100 : 10}%` }} />
+      <div className="h-1 bg-stone-100" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="AI 상세페이지 생성 진행률">
+        <div className="h-full bg-brand transition-all duration-500" style={{ width: `${percent}%` }} />
       </div>
       <ol className="divide-y divide-stone-100 px-4 text-sm">
         {steps.map(([label, state]) => (
           <li key={label} className="flex items-center gap-2.5 py-2">
             <StepIcon state={state} />
-            <span className={cn(state === "active" && "font-semibold")}>{label}{state === "active" ? " 중..." : ""}</span>
+            <span className={cn(state === "active" && "font-semibold", state === "waiting" && "text-stone-400")}>{label}{state === "active" ? " 중..." : ""}</span>
           </li>
         ))}
         {list.map(({ spec, job }) => {
@@ -89,7 +101,7 @@ export const DetailGenerationProgress = ({
         {list.length > 0 && (
           <li className="flex items-center gap-2.5 py-2">
             <StepIcon state={allDone ? "done" : "waiting"} />
-            <span>{allDone ? "상세페이지 구성 완료" : "상세페이지 구성 (이미지가 완성되는 대로 자동 배치)"}</span>
+            <span>{allDone ? "레이아웃 구성 완료" : "레이아웃 구성 중 (이미지가 완성되는 대로 자동 배치)"}</span>
           </li>
         )}
       </ol>

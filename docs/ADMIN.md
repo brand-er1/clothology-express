@@ -17,7 +17,7 @@
 | 제작·배송 관리 | ✅ | ✅ | 배송 조회만 |
 | 콘텐츠 삭제·숨김 / 신고 처리 / CS 문의 | ✅ / ✅ / ✅ | ✅ / ✅ / 조회 | ❌ / ✅ / ✅ |
 | 공지·알림 발송, 통계 | ✅ | ✅ | ❌ |
-| 관리자 관리, Audit Log, 시스템 설정, AI 프롬프트 | ✅ | ❌ | ❌ |
+| 관리자 관리, Audit Log, 시스템 설정, AI 프롬프트, AI 사용량 | ✅ | ❌ | ❌ |
 
 권한 매트릭스의 원본은 `public.admin_role_permissions()` (SQL) 이며 `src/lib/admin/permissions.ts` 와 단위 테스트로 동기화를 검증한다.
 프런트 메뉴 숨김은 UX 용이고, 모든 `admin_*` RPC 가 서버에서 `_admin_require(권한)` 으로 다시 검증한다.

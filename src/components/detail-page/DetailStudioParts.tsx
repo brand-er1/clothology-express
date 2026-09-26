@@ -10,8 +10,10 @@ import { cn } from "@/lib/utils";
 
 /* ───────── Template picker: each card sketches that template's real layout ───────── */
 
-const TemplateSketch = ({ id }: { id: DetailPageTemplateId }) => {
-  const meta = DETAIL_TEMPLATES.find((template) => template.id === id)!;
+const TemplateSketch = ({ id: styleId }: { id: DetailPageTemplateId }) => {
+  const meta = DETAIL_TEMPLATES.find((template) => template.id === styleId)!;
+  // New styles are drawn with their base layout sketch in their own colors.
+  const id = meta.layout;
   const [bg, ink, accent] = meta.swatch;
   const block = (className: string, color = ink, opacity = 0.14) => (
     <span className={cn("block", className)} style={{ backgroundColor: color, opacity }} />
@@ -79,7 +81,7 @@ export const TemplatePicker = ({
   onChange: (template: DetailPageTemplateId) => void;
   compact?: boolean;
 }) => (
-  <div className={cn("grid gap-2", compact ? "grid-cols-5" : "grid-cols-2 sm:grid-cols-5")} role="radiogroup" aria-label="상세페이지 템플릿">
+  <div className={cn("grid gap-2", compact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-5")} role="radiogroup" aria-label="상세페이지 스타일">
     {DETAIL_TEMPLATES.map((template) => {
       const selected = template.id === value;
       return (

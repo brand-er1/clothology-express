@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { AiDetailPageEntry } from "@/components/detail-page/AiDetailPageEntry";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -361,18 +362,7 @@ const FundingEditor = () => {
           </div>
         )}
 
-        <div className="mb-6 flex flex-col gap-3 border border-stone-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand">AI Detail Page</p>
-            <p className="mt-1 text-base font-bold">AI 상세페이지</p>
-            <p className="mt-1 text-sm leading-6 text-gray-500">
-              AI가 만든 상세페이지 이미지와 문구를 수정하면 펀딩 상세화면에 바로 반영됩니다. 상세페이지가 없으면 기존 상품 화면이 그대로 표시됩니다.
-            </p>
-          </div>
-          <Button asChild className="h-11 shrink-0 rounded-md bg-brand hover:bg-brand-dark">
-            <Link to={`/fundings/${funding.id}/detail-page`}>상세페이지 만들기 · 편집</Link>
-          </Button>
-        </div>
+        <AiDetailPageEntry fundingId={funding.id} />
 
         <Card className="mb-6 rounded-3xl border-brand/15 bg-white">
           <CardHeader className="pb-3"><CardTitle className="text-lg">제작자 정보</CardTitle></CardHeader>

@@ -8,6 +8,13 @@ import { buildVerifiedCorpus, stripUnverifiedClaims } from "@/lib/detail-page/sa
 import { isDetailTemplateId } from "@/lib/detail-page/templates";
 import { EMPTY_USER_PROVIDED } from "@/lib/detail-page/source";
 import type {
+  AiQuota,
+  DetailCopyTone,
+  DetailPagePublishState,
+  DetailPageVersion,
+  DetailReference,
+  DetailReferenceKind,
+  DetailSectionLayout,
   DetailPageCopy,
   DetailPageDocument,
   DetailPageGenerationMeta,
@@ -42,7 +49,7 @@ type SectionRow = {
   section_type: DetailSectionType;
   sort_order: number;
   is_visible: boolean;
-  content: Partial<Pick<DetailSection, "eyebrow" | "title" | "description" | "items" | "facts">> | null;
+  content: (Partial<Pick<DetailSection, "eyebrow" | "title" | "description" | "items" | "facts">> & { layout?: DetailSectionLayout }) | null;
   images: DetailSection["images"] | null;
 };
 
@@ -76,6 +83,7 @@ const toSection = (row: SectionRow): DetailSection => ({
   items: Array.isArray(row.content?.items) ? row.content.items : [],
   facts: Array.isArray(row.content?.facts) ? row.content.facts : [],
   images: Array.isArray(row.images) ? row.images : [],
+  ...(row.content?.layout ? { layout: row.content.layout } : {}),
 });
 
 const toPage = (row: PageRow, sections: SectionRow[]): ProductDetailPage => ({
@@ -111,6 +119,7 @@ const toSectionPayload = (sections: DetailSection[]) =>
       description: section.description,
       items: section.items,
       facts: section.facts,
+      ...(section.layout ? { layout: section.layout } : {}),
     },
     images: section.images,
   }));
@@ -126,21 +135,44 @@ export const fetchDetailPage = async (id: string): Promise<ProductDetailPage> =>
   return readPage(data);
 };
 
+type PublishedSnapshot = {
+  page?: Partial<Pick<PageRow, "template" | "title" | "title_en" | "subtitle" | "main_copy" | "source" | "generation">>;
+  sections?: SectionRow[];
+};
+
 /**
- * Public read used by the funding page. Returns null on any failure (no page, not public
- * yet, or the migration not applied) so the funding page falls back to its existing UI.
+ * Public read used by the funding page: only the PUBLISHED snapshot ("상세페이지 적용"),
+ * never the draft being edited. Returns null on any failure (no page, not published, funding
+ * not public, or the migration not applied) so the funding page falls back to its existing UI.
  */
 export const fetchDetailPageForFunding = async (fundingId: string): Promise<ProductDetailPage | null> => {
   try {
-    const { data, error } = await db
-      .from("product_detail_pages")
-      .select(PAGE_SELECT)
-      .eq("funding_id", fundingId)
-      .maybeSingle();
-    if (error || !data) return null;
-    return readPage(data);
+    const { data, error } = await db.rpc("get_published_detail_page", { p_funding_id: fundingId });
+    if (error || !data?.document) return null;
+    const snapshot = data.document as PublishedSnapshot;
+    const page = snapshot.page ?? {};
+    return toPage(
+      {
+        id: data.id,
+        user_id: data.user_id,
+        funding_id: data.funding_id,
+        design_id: null,
+        brand_id: null,
+        template: page.template ?? "minimal",
+        title: page.title ?? "",
+        title_en: page.title_en ?? "",
+        subtitle: page.subtitle ?? "",
+        main_copy: page.main_copy ?? "",
+        status: "linked",
+        source: (page.source ?? {}) as DetailPageSource,
+        generation: page.generation ?? {},
+        created_at: data.published_at,
+        updated_at: data.published_at,
+      },
+      snapshot.sections ?? [],
+    );
   } catch (error) {
-    console.error("Detail page lookup failed:", error);
+    console.error("Published detail page lookup failed:", error);
     return null;
   }
 };
@@ -225,6 +257,10 @@ export const sanitizeDetailCopy = (raw: unknown, source: DetailPageSource): Deta
     source.userProvided.background,
     source.userProvided.fitNote,
     source.decorations.map((decoration) => decoration.label).join(" "),
+    source.userProvided.oneLiner ?? "",
+    source.userProvided.highlights ?? "",
+    source.userProvided.details ?? "",
+    source.userProvided.productionNote ?? "",
   );
   const clean = (input: string) => stripUnverifiedClaims(input, corpus);
   const pick = (key: keyof DetailPageCopy, max?: number) => clean(text(value[key], max)) || (fallback[key] as string);
@@ -275,12 +311,17 @@ export type DetailCopyResult = {
 export const generateDetailCopy = async (
   source: DetailPageSource,
   template: DetailPageTemplateId,
+  options: { tone?: DetailCopyTone; detailPageId?: string } = {},
 ): Promise<DetailCopyResult> => {
   try {
     const { data, error } = await supabase.functions.invoke("generate-detail-page", {
-      body: { source, template },
+      body: { source, template, tone: options.tone, detailPageId: options.detailPageId },
     });
-    if (error) throw error;
+    if (error) {
+      const context = (error as { context?: Response }).context;
+      const payload = context && typeof context.json === "function" ? await context.json().catch(() => null) : null;
+      throw new Error(payload?.error || error.message);
+    }
     if (!data?.copy) throw new Error(data?.error || "AI 응답이 비어 있습니다.");
     return { copy: sanitizeDetailCopy(data.copy, source), provider: "ai", fallbackReason: null };
   } catch (error) {
@@ -366,7 +407,14 @@ export const startFundingFromDetailPage = async (
       .from("product_detail_pages")
       .update({ funding_id: funding.id, brand_id: brand.id, status: "linked" })
       .eq("id", page.id);
-    if (!error) return { fundingId: funding.id, linked: true };
+    if (!error) {
+      // 펀딩 시작 = 이 상세페이지로 판매하겠다는 의사이므로 현재 내용을 게시본으로 적용한다.
+      // (펀딩은 관리자 승인 전까지 비공개이므로 고객 노출은 승인 이후)
+      await publishDetailPage(page.id, "펀딩 시작 시 자동 적용").catch((publishError) =>
+        console.error("Auto publish after funding link failed:", publishError),
+      );
+      return { fundingId: funding.id, linked: true };
+    }
     console.error("Failed to link detail page to funding:", error);
   }
   return { fundingId: funding.id, linked: false };
@@ -379,4 +427,164 @@ export const linkDetailPageToFunding = async (pageId: string, fundingId: string)
     .update({ funding_id: fundingId, status: "linked" })
     .eq("id", pageId);
   if (error) throw error;
+};
+
+/* ───────────── 게시 · 버전 관리 ───────────── */
+
+/** "상세페이지 적용": freezes the current draft as the customer-facing version. Funding rows are not touched. */
+export const publishDetailPage = async (pageId: string, note?: string) => {
+  const { data, error } = await db.rpc("publish_detail_page", { p_page_id: pageId, p_note: note ?? null });
+  if (error) throw error;
+  return data as { published_version: number; published_at: string };
+};
+
+export const createDetailPageVersion = async (
+  pageId: string,
+  kind: "ai_generated" | "manual_save" | "image_regenerated" | "copy_regenerated",
+  note?: string,
+) => {
+  const { data, error } = await db.rpc("create_detail_page_version", { p_page_id: pageId, p_kind: kind, p_note: note ?? null });
+  if (error) throw error;
+  return data as number;
+};
+
+/** Best-effort version snapshot (history must never block editing). */
+export const recordDetailPageVersion = (...args: Parameters<typeof createDetailPageVersion>) =>
+  createDetailPageVersion(...args).catch((error) => {
+    console.error("Version snapshot failed:", error);
+    return null;
+  });
+
+export const listDetailPageVersions = async (pageId: string): Promise<DetailPageVersion[]> => {
+  const { data, error } = await db.rpc("list_detail_page_versions", { p_page_id: pageId });
+  if (error) throw error;
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id),
+    version: Number(row.version),
+    kind: row.kind as DetailPageVersion["kind"],
+    note: (row.note as string | null) ?? null,
+    createdByName: String(row.created_by_name ?? ""),
+    createdAt: String(row.created_at),
+    sectionCount: Number(row.section_count ?? 0),
+    isPublished: Boolean(row.is_published),
+  }));
+};
+
+/** Restores a version into the draft (the current draft is backed up as a version first). */
+export const restoreDetailPageVersion = async (pageId: string, versionId: string) => {
+  const { data, error } = await db.rpc("restore_detail_page_version", { p_page_id: pageId, p_version_id: versionId });
+  if (error) throw error;
+  return data as number;
+};
+
+export const fetchDetailPagePublishState = async (pageId: string): Promise<DetailPagePublishState | null> => {
+  const { data, error } = await db.rpc("get_detail_page_publish_state", { p_page_id: pageId });
+  if (error || !data) return null;
+  return {
+    publishedVersion: Number(data.published_version ?? 0),
+    publishedAt: data.published_at ?? null,
+    hasUnpublishedChanges: Boolean(data.has_unpublished_changes),
+    latestVersion: data.latest_version ?? null,
+    canEdit: Boolean(data.can_edit),
+  };
+};
+
+/** FundingEditor card: my page for this funding (if any) and its publish state. */
+export const fetchMyDetailPageSummary = async (fundingId: string) => {
+  const pageId = await fetchMyDetailPageForFunding(fundingId);
+  if (!pageId) return null;
+  return { pageId, state: await fetchDetailPagePublishState(pageId) };
+};
+
+/* ───────────── 참고자료 업로드 ───────────── */
+
+type ReferenceRow = { id: string; kind: DetailReferenceKind; url: string; storage_path: string | null; use_for_generation: boolean; created_at: string };
+
+const toReference = (row: ReferenceRow): DetailReference => ({
+  id: row.id,
+  kind: row.kind,
+  url: row.url,
+  storagePath: row.storage_path,
+  useForGeneration: row.use_for_generation,
+  createdAt: row.created_at,
+});
+
+export const REFERENCE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+export const listDetailPageReferences = async (pageId: string): Promise<DetailReference[]> => {
+  const { data, error } = await db
+    .from("detail_page_references")
+    .select("id, kind, url, storage_path, use_for_generation, created_at")
+    .eq("detail_page_id", pageId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as ReferenceRow[]).map(toReference);
+};
+
+/**
+ * Uploads a reference photo (sample/fabric/detail/worn/reference/logo/brand) to the creator's own
+ * folder in `creator-assets` and links it to the page (and its funding).
+ * JPG/JPEG/PNG/WEBP only for now; PDFs need a bucket MIME change first.
+ */
+export const uploadDetailPageReference = async (
+  page: Pick<ProductDetailPage, "id" | "fundingId">,
+  file: File,
+  kind: DetailReferenceKind,
+): Promise<DetailReference> => {
+  if (!REFERENCE_MIME_TYPES.includes(file.type)) {
+    throw new Error("JPG, JPEG, PNG, WEBP 이미지만 업로드할 수 있어요. (PDF는 추후 지원 예정)");
+  }
+  const user = await requireUser();
+  const blob = await compressImage(file);
+  const path = `${user.id}/detail-pages/${page.id}/references/${crypto.randomUUID()}.webp`;
+  const { error: uploadError } = await supabase.storage
+    .from("creator-assets")
+    .upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
+  if (uploadError) throw uploadError;
+  const url = supabase.storage.from("creator-assets").getPublicUrl(path).data.publicUrl;
+  const { data, error } = await db
+    .from("detail_page_references")
+    .insert({
+      detail_page_id: page.id,
+      funding_id: page.fundingId,
+      user_id: user.id,
+      kind,
+      url,
+      storage_path: path,
+      mime_type: "image/webp",
+    })
+    .select("id, kind, url, storage_path, use_for_generation, created_at")
+    .single();
+  if (error) throw error;
+  return toReference(data as ReferenceRow);
+};
+
+export const updateDetailPageReference = async (id: string, patch: { kind?: DetailReferenceKind; useForGeneration?: boolean }) => {
+  const { error } = await db
+    .from("detail_page_references")
+    .update({
+      ...(patch.kind ? { kind: patch.kind } : {}),
+      ...(patch.useForGeneration !== undefined ? { use_for_generation: patch.useForGeneration } : {}),
+    })
+    .eq("id", id);
+  if (error) throw error;
+};
+
+/** Removes the link only; the uploaded file stays in the creator's folder. */
+export const removeDetailPageReference = async (id: string) => {
+  const { error } = await db.from("detail_page_references").delete().eq("id", id);
+  if (error) throw error;
+};
+
+/* ───────────── AI 사용량 ───────────── */
+
+export const fetchMyAiQuota = async (): Promise<AiQuota | null> => {
+  const { data, error } = await db.rpc("get_my_ai_quota");
+  if (error || !data) return null;
+  return {
+    imageUsed: Number(data.image_used ?? 0),
+    imageLimit: Number(data.image_limit ?? 0),
+    copyUsed: Number(data.copy_used ?? 0),
+    copyLimit: Number(data.copy_limit ?? 0),
+  };
 };

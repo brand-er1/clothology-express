@@ -30,6 +30,8 @@ import type {
   DetailImageType,
   DetailPageSource,
   DetailSection,
+  DetailCopyTone,
+  DetailSectionBackground,
 } from "@/types/detailPage";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,8 @@ type DetailSectionEditorProps = {
   section: DetailSection;
   source: DetailPageSource;
   onChange: (next: DetailSection) => void;
-  onRegenerate?: () => void;
+  /** Rewrites this section's copy with the same facts; `tone` only changes the voice. */
+  onRegenerate?: (tone?: DetailCopyTone) => void;
   regenerating?: boolean;
   /** Regenerates one image with the AI image API; resolves when done (the page updates itself). */
   onRegenerateImage?: (imageId: string, slot: DetailImageType, instruction: string) => Promise<void>;
@@ -50,6 +53,23 @@ const INSTRUCTION_EXAMPLES = [
   "모델 없이 제품만 보여줘",
   "좀 더 고급스럽게",
   "제품을 바닥에 자연스럽게 놓은 느낌",
+];
+
+const TONE_OPTIONS: Array<{ value: DetailCopyTone | ""; label: string }> = [
+  { value: "", label: "스타일 기본 톤" },
+  { value: "concise", label: "간결하게" },
+  { value: "emotional", label: "감성적으로" },
+  { value: "professional", label: "전문적으로" },
+  { value: "street", label: "스트릿하게" },
+  { value: "luxury", label: "고급스럽게" },
+];
+
+const BACKGROUND_OPTIONS: Array<{ value: DetailSectionBackground; label: string; swatch: string }> = [
+  { value: "default", label: "기본", swatch: "linear-gradient(135deg,#fff 50%,#e7e5e4 50%)" },
+  { value: "white", label: "화이트", swatch: "#ffffff" },
+  { value: "light", label: "라이트", swatch: "#f4f2ee" },
+  { value: "dark", label: "다크", swatch: "#141414" },
+  { value: "brand", label: "브랜드", swatch: "#741b2b" },
 ];
 
 const CROP_LABEL: Record<DetailImageCrop, string> = { full: "전체", left: "앞면", right: "뒷면" };
@@ -78,6 +98,7 @@ export const DetailSectionEditor = ({
   const fileInput = useRef<HTMLInputElement>(null);
   const replaceTarget = useRef<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [tone, setTone] = useState<DetailCopyTone | "">("");
   const meta = SECTION_META[section.type];
   const set = (patch: Partial<DetailSection>) => onChange({ ...section, ...patch });
   const designImages = getDesignImages(source);
@@ -126,12 +147,64 @@ export const DetailSectionEditor = ({
           <p className="mt-0.5 text-xs text-stone-500">{meta.hint}</p>
         </div>
         {canRegenerate && (
-          <Button type="button" variant="outline" size="sm" onClick={onRegenerate} disabled={regenerating} className="h-9 shrink-0 rounded-md">
-            {regenerating ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
-            AI 다시 쓰기
-          </Button>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <Button type="button" variant="outline" size="sm" onClick={() => onRegenerate?.(tone || undefined)} disabled={regenerating} className="h-9 rounded-md">
+              {regenerating ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
+              AI 다시 작성
+            </Button>
+            <select
+              aria-label="AI 다시 작성 톤"
+              value={tone}
+              onChange={(event) => setTone(event.target.value as DetailCopyTone | "")}
+              className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs"
+            >
+              {TONE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
         )}
       </div>
+      {canRegenerate && <p className="-mt-3 text-[11px] leading-4 text-stone-400">톤을 바꿔도 제품 사실(소재·사이즈·가격 등)은 그대로 유지하고 표현만 바뀝니다.</p>}
+
+      {section.type !== "hero" && (
+        <div className="grid gap-3 rounded-md border border-stone-200 p-3 sm:grid-cols-[1fr_auto]">
+          <div>
+            <p className="text-xs font-semibold text-stone-700">배경</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label="섹션 배경">
+              {BACKGROUND_OPTIONS.map((option) => {
+                const active = (section.layout?.background ?? "default") === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => set({ layout: { ...section.layout, background: option.value } })}
+                    className={cn("flex h-8 items-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold", active ? "border-brand text-brand" : "border-stone-300 text-stone-600")}
+                  >
+                    <span className="h-3.5 w-3.5 rounded-sm border border-black/10" style={{ background: option.swatch }} />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-stone-700">정렬</p>
+            <div className="mt-1.5 flex gap-1.5" role="radiogroup" aria-label="섹션 정렬">
+              {([["default", "기본"], ["left", "왼쪽"], ["center", "가운데"]] as const).map(([value, label]) => {
+                const active = (section.layout?.align ?? "default") === value;
+                return (
+                  <button key={value} type="button" role="radio" aria-checked={active}
+                    onClick={() => set({ layout: { ...section.layout, align: value } })}
+                    className={cn("h-8 rounded-md border px-2.5 text-[11px] font-semibold", active ? "border-brand text-brand" : "border-stone-300 text-stone-600")}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {section.type !== "hero" && (
         <div className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr]">

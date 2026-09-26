@@ -6,4 +6,6 @@ union all select 'brands', md5(string_agg(md5(row(id,owner_user_id,brand_name,st
 union all select 'comments', md5(string_agg(md5(row(id,content,is_deleted)::text), ',' order by id)) from public.community_comments
 union all select 'reports', md5(string_agg(md5(row(id,status,reason)::text), ',' order by id)) from public.community_reports
 union all select 'user_roles', md5(string_agg(md5(row(user_id,role)::text), ',' order by user_id)) from public.user_roles
+union all select 'detail_pages', md5(string_agg(md5(row(id,user_id,funding_id,template,title,subtitle,main_copy,status,source)::text), ',' order by id)) from public.product_detail_pages
+union all select 'detail_sections', md5(string_agg(md5(row(id,detail_page_id,section_type,sort_order,is_visible,content,images)::text), ',' order by id)) from public.detail_page_sections
 order by 1;

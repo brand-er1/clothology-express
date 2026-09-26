@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { adminRpc, totalOf, type FundingRow } from "@/services/adminApi";
+import { supabase } from "@/lib/supabase";
 import { dateOnly, dateTime, FUNDING_PHASE, num, pct, productionLabel, SETTLEMENT_STATUS, won } from "@/lib/admin/format";
 import {
   DataTable, DefinitionGrid, EmptyState, ErrorBanner, FilterChips, KpiCard, LoadingBlock, MappedBadge, Notice, PageHeader,
@@ -41,6 +42,17 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
   );
   const done = () => { void reload(); onChanged(); };
   const f = data?.funding;
+  // 제작자의 AI 상세페이지(있으면) — 관리자는 읽기 전용으로 열람
+  const detailPage = useAdminQuery(async () => {
+    if (!fundingId) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: row } = await (supabase as any)
+      .from("product_detail_pages")
+      .select("id, published_version, updated_at")
+      .eq("funding_id", fundingId)
+      .maybeSingle();
+    return (row ?? null) as { id: string; published_version: number; updated_at: string } | null;
+  }, [fundingId]);
 
   const openApprove = () => {
     if (!f) return;
@@ -147,6 +159,11 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
               <Link className="rounded-lg bg-stone-100 px-3 py-2" to={`/admin/orders?funding=${f.id}`}>참여자·주문 보기</Link>
               <Link className="rounded-lg bg-stone-100 px-3 py-2" to={`/admin/production?funding=${f.id}`}>제작 진행 관리</Link>
               <Link className="rounded-lg bg-stone-100 px-3 py-2" to={`/admin/shipping?funding=${f.id}`}>배송 관리</Link>
+              {detailPage.data && (
+                <Link className="rounded-lg bg-[#741b2b]/10 px-3 py-2 text-[#741b2b]" to={`/detail-pages/${detailPage.data.id}`} target="_blank">
+                  AI 상세페이지 보기 {detailPage.data.published_version ? `(적용본 v${detailPage.data.published_version})` : "(미적용)"} ↗
+                </Link>
+              )}
             </div>
             <Panel title="관리 이력" bodyClassName="p-0">
               {data.history.length === 0 ? <EmptyState title="관리 이력이 없습니다" /> : (

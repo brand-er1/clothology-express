@@ -326,7 +326,7 @@ const Customize = () => {
                     disabled={isSubmitting || imageModifying}
                     className={`h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark ${currentStep === 5 ? "col-span-2" : ""}`}
                   >
-                    {isSubmitting ? "준비 중..." : "✨ AI 상세페이지 만들기"}
+                    {isSubmitting ? "준비 중..." : "✨ AI 상세페이지 제작"}
                   </Button>
                 </div>
               </div>
@@ -374,7 +374,7 @@ const Customize = () => {
                     disabled={isSubmitting}
                     className="h-12 rounded-full bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark sm:px-7 sm:text-sm"
                   >
-                    {isSubmitting ? "처리 중..." : "✨ AI 상세페이지 만들기"}
+                    {isSubmitting ? "처리 중..." : "✨ AI 상세페이지 제작"}
                   </Button>
                   <Button
                     variant="outline"

@@ -125,7 +125,7 @@ export const buildSectionFacts = (type: DetailSectionType, source: DetailPageSou
     case "fit":
       return [...fact("핏", source.fit), ...fact("핏 메모", provided.fitNote)];
     case "color":
-      return fact("컬러", provided.colorName || source.color);
+      return fact("컬러", source.availableColors?.length ? source.availableColors.join(" / ") : provided.colorName || source.color);
     case "size":
       return fact("사이즈", source.sizeOptions.join(" / "));
     default:
@@ -223,8 +223,10 @@ export const buildSectionFromCopy = (
         images: wants("lifestyle") ? slotImage(front, "lifestyle", `${name} 착용 컷`) : images.front,
       });
     case "color":
-      if (!source.color && !source.userProvided.colorName) return null;
+      if (!source.color && !source.userProvided.colorName && !source.availableColors?.length) return null;
       return section("color", {
+        // 컬러 옵션이 등록된 펀딩은 AVAILABLE COLORS 섹션(컬러별 이미지는 렌더링 시 실시간 연결)
+        ...(source.availableColors?.length ? { eyebrow: "COLOR", title: "AVAILABLE COLORS" } : {}),
         description: copy.colorDescription,
         facts,
         images: wants("flat_lay") ? slotImage(front, "flat_lay", `${name} 플랫레이`) : [],

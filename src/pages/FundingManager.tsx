@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -497,6 +498,23 @@ const FundingManager = () => {
               <span className="text-sm text-gray-500">{funding.current_orders} / {funding.moq}장</span>
             </div>
             <Progress value={progress} className="h-3" />
+          </CardContent>
+        </Card>
+
+        <Card className="mt-5 rounded-2xl">
+          <CardContent className="grid gap-5 p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="min-w-0">
+              <p className="text-sm font-bold">컬러별 주문 수량</p>
+              <p className="mt-1 text-xs text-gray-500">결제 완료 기준 · 생산 발주 시 컬러별 수량으로 사용하세요.</p>
+              <ColorOrderSummary fundingId={funding.id} className="mt-3" />
+            </div>
+            <div className="min-w-0 rounded-xl bg-stone-50 p-4">
+              <p className="text-sm font-bold">컬러 옵션 · 컬러별 상품 이미지</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">진행 중인 펀딩에도 컬러를 추가하고 AI 로 컬러별 이미지(앞/뒤)를 만들 수 있어요. 승인한 이미지는 펀딩 상단 슬라이드와 상세페이지 컬러 섹션에 바로 반영됩니다.</p>
+              <Button asChild variant="outline" size="sm" className="mt-3 rounded-full bg-white">
+                <Link to={`/fundings/${funding.id}/colors?returnTo=${encodeURIComponent(`/fundings/${funding.id}/manage`)}`}>컬러 · AI 이미지 관리</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

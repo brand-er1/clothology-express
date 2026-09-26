@@ -26,6 +26,9 @@ import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer";
+import { FundingColorGallery } from "@/components/funding/FundingColorGallery";
+import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
+import { fetchFundingColors } from "@/services/fundingColors";
 import { fetchDetailPageForFunding } from "@/services/detailPage";
 import type { ProductDetailPage } from "@/types/detailPage";
 import {
@@ -77,6 +80,8 @@ const FundingDetail = () => {
   const latestDropId = useLatestDropFunding(approvedFundings)?.id ?? null;
   // AI detail page linked to this funding. null → the existing product UI below (fallback).
   const [detailPage, setDetailPage] = useState<ProductDetailPage | null>(null);
+  // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
+  const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -98,13 +103,18 @@ const FundingDetail = () => {
         const { data: sessionData } = await supabase.auth.getSession();
         // The approved list only decides whether this is the free-tee event drop; load it
         // alongside the product so the event notice doesn't shift the page after first paint.
-        const [fundingData, approvedList] = await Promise.all([
+        const [fundingData, approvedList, colorRows] = await Promise.all([
           fetchFunding(id),
           fetchApprovedFundings().catch((error) => {
             console.error("Failed to load latest drop for free tee event:", error);
             return [] as Funding[];
           }),
+          fetchFundingColors(id).catch((error) => {
+            console.error("Failed to load funding colors:", error);
+            return [] as FundingColor[];
+          }),
         ]);
+        setFundingColors(colorRows);
         const user = sessionData.session?.user || null;
         setCurrentUserId(user?.id || null);
         setFunding(fundingData);
@@ -126,9 +136,10 @@ const FundingDetail = () => {
           });
         }
 
-        const colors = fundingData.color_options?.length
-          ? fundingData.color_options
-          : [fundingData.color || "기본 색상"];
+        const colors = orderableColorNames(
+          colorRows,
+          fundingData.color_options?.length ? fundingData.color_options : [fundingData.color || "기본 색상"],
+        );
         const sizes = fundingData.size_options?.length
           ? fundingData.size_options
           : [fundingData.size || "FREE"];
@@ -152,8 +163,8 @@ const FundingDetail = () => {
 
   const colorOptions = useMemo(() => {
     if (!funding) return [];
-    return funding.color_options?.length ? funding.color_options : [funding.color || "기본 색상"];
-  }, [funding]);
+    return orderableColorNames(fundingColors, funding.color_options?.length ? funding.color_options : [funding.color || "기본 색상"]);
+  }, [funding, fundingColors]);
 
   const sizeOptions = useMemo(() => {
     if (!funding) return [];
@@ -298,15 +309,21 @@ const FundingDetail = () => {
         </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:gap-12 xl:gap-16">
-          <section className="overflow-hidden bg-[#e7e4df]" data-tutorial="funding-detail-image">
-            <div className="relative aspect-[4/5] sm:aspect-square lg:aspect-[4/5]">
-              <img src={funding.image_url} alt={funding.product_name} className="h-full w-full object-contain p-5 sm:p-10 lg:p-12" />
-              <WatermarkOverlay />
-              <span className="absolute left-4 top-4 bg-[#f3f1ed]/90 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-brand backdrop-blur-sm sm:left-6 sm:top-6">
-                Limited pre-order
-              </span>
-            </div>
-          </section>
+          <FundingColorGallery
+            colors={fundingColors}
+            fallbackImage={funding.image_url}
+            productName={funding.product_name}
+            selectedColor={selectedColor}
+            onSelectColor={setSelectedColor}
+            overlay={
+              <>
+                <WatermarkOverlay />
+                <span className="pointer-events-none absolute left-4 top-4 bg-[#f3f1ed]/90 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-brand backdrop-blur-sm sm:left-6 sm:top-6">
+                  Limited pre-order
+                </span>
+              </>
+            }
+          />
 
           <aside className="min-w-0 lg:sticky lg:top-28" data-mascot-safezone>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand">{funding.brand?.brand_name || "제작자 정보 확인 중"} / {funding.cloth_type}</p>
@@ -513,6 +530,7 @@ const FundingDetail = () => {
             <DetailPageRenderer
               document={detailPage.document}
               source={detailPage.source}
+              colors={fundingColors}
               watermark
               stats={{
                 targetQuantity: funding.moq,

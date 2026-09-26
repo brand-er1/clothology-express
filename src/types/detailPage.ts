@@ -152,6 +152,8 @@ export type DetailPageSource = {
   brandDescription: string;
   brandLogoUrl: string | null;
   userProvided: DetailUserProvidedInfo;
+  /** 펀딩에 등록된 컬러 옵션 이름(funding_colors). 있으면 AVAILABLE COLORS 섹션이 자동 생성된다. */
+  availableColors?: string[];
 };
 
 export type DetailEmphasis = "design" | "fit" | "fabric" | "detail" | "process" | "scarcity" | "price" | "brand_story";

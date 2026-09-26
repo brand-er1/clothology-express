@@ -363,6 +363,15 @@ const FundingEditor = () => {
         )}
 
         <AiDetailPageEntry fundingId={funding.id} />
+        <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-stone-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="font-bold">컬러별 상품 이미지</p>
+            <p className="mt-1 text-sm text-gray-500">컬러를 추가하면 디자인은 그대로, 컬러만 바꾼 AI 상품 이미지(앞/뒤)를 만들 수 있어요. 승인 후에도 컬러 추가가 가능합니다.</p>
+          </div>
+          <Button asChild variant="outline" className="shrink-0 rounded-full">
+            <Link to={`/fundings/${funding.id}/colors?returnTo=${encodeURIComponent(`/fundings/${funding.id}/edit`)}`}>컬러 · AI 이미지 관리</Link>
+          </Button>
+        </div>
 
         <Card className="mb-6 rounded-3xl border-brand/15 bg-white">
           <CardHeader className="pb-3"><CardTitle className="text-lg">제작자 정보</CardTitle></CardHeader>

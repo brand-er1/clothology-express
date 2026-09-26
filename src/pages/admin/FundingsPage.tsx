@@ -14,6 +14,7 @@ import {
 } from "@/components/admin/shell/ui";
 import { ReasonDialog, type ReasonDialogState } from "@/components/admin/shell/ReasonDialog";
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
+import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
 import { useAdminContext } from "@/components/admin/shell/AdminContext";
 
 const PAGE = 30;
@@ -154,11 +155,17 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
               { label: "정산", value: data.settlement ? <MappedBadge map={SETTLEMENT_STATUS} value={data.settlement.status} /> : "미생성" },
               { label: "관리자 코멘트", value: f.admin_comment },
             ]} />
+            <Panel title="컬러별 주문 수량" description="결제 완료 기준 · 생산 발주용">
+              <ColorOrderSummary fundingId={f.id} />
+            </Panel>
             {f.description && <Panel title="상세 설명"><p className="whitespace-pre-wrap text-sm text-stone-700">{f.description}</p></Panel>}
             <div className="flex flex-wrap gap-2 text-xs font-bold">
               <Link className="rounded-lg bg-stone-100 px-3 py-2" to={`/admin/orders?funding=${f.id}`}>참여자·주문 보기</Link>
               <Link className="rounded-lg bg-stone-100 px-3 py-2" to={`/admin/production?funding=${f.id}`}>제작 진행 관리</Link>
               <Link className="rounded-lg bg-stone-100 px-3 py-2" to={`/admin/shipping?funding=${f.id}`}>배송 관리</Link>
+              {can("fundings.manage") && (
+                <Link className="rounded-lg bg-stone-100 px-3 py-2" to={`/fundings/${f.id}/colors?returnTo=${encodeURIComponent(`/admin/fundings?q=${f.product_name}`)}`}>컬러 · AI 이미지 관리</Link>
+              )}
               {detailPage.data && (
                 <Link className="rounded-lg bg-[#741b2b]/10 px-3 py-2 text-[#741b2b]" to={`/detail-pages/${detailPage.data.id}`} target="_blank">
                   AI 상세페이지 보기 {detailPage.data.published_version ? `(적용본 v${detailPage.data.published_version})` : "(미적용)"} ↗

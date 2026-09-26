@@ -61,6 +61,7 @@ jobs:
           supabase functions deploy generate-detail-page --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy generate-detail-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy dispatch-notifications --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy generate-color-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy get-fashion-trends --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
 
       - name: Allow GitHub Pages auth callback

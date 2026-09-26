@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Ban, Flame, Heart, Loader2, MessageCircle, PackageCheck, PartyPopper, Rocket,
-  UserPlus, UserX, Vote,
+  UserPlus, UserX, Vote, Megaphone,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ const iconByType: Record<CommunityNotificationType, typeof Heart> = {
   funding_status_changed: PackageCheck,
   participation_cancelled: UserX,
   funding_cancelled: Ban,
+  admin_notice: Megaphone,
 };
 
 const CommunityNotifications = () => {

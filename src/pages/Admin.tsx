@@ -15,7 +15,6 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -40,24 +39,26 @@ import { fetchAllPortfolioProjectsForAdmin } from "@/services/portfolioProjects"
 import type { PortfolioProject } from "@/types/portfolio";
 import { CommunityAdminPanel } from "@/components/admin/CommunityAdminPanel";
 import { fetchAdminCommunityStats } from "@/services/community";
-import { BrandsAdminPanel } from "@/components/admin/BrandsAdminPanel";
+import { VisitorAnalyticsDashboard } from "@/components/admin/VisitorAnalyticsDashboard";
+import { useAdminContext } from "@/components/admin/shell/AdminContext";
 import { assignFundingBrand, fetchAdminBrands } from "@/services/brand";
 import type { AdminBrandSummary } from "@/types/brand";
 
 const DEFAULT_SYSTEM_PROMPT = `Produce one concise, production-ready prompt that captures garment type, material, color, fit, key design details, seasonality, and styling cues from the user request. Keep it ecommerce-focused, photorealistic, and avoid adding models, text overlays, or props. Keep language consistent with the user input.`;
 
+// 신규 관리자 콘솔(/admin)의 "기타 운영 도구"(/admin/tools/*)로 이동한 기존 관리 화면들.
+// 대시보드·브랜드는 신규 콘솔 메뉴로 대체되었고, 나머지 기능은 그대로 유지한다.
 const sectionMeta = {
-  dashboard: { label: "대시보드", description: "전체 운영 현황을 빠르게 확인합니다.", icon: BarChart3 },
-  customers: { label: "고객 관리", description: "회원 정보와 방문 활동을 확인합니다.", icon: Users },
-  brands: { label: "브랜드 관리", description: "제작자 계정, 브랜드 상태와 펀딩 연결 현황을 확인합니다.", icon: Building2 },
+  orders: { label: "제작 의뢰", description: "바로 제작 요청을 검토하고 상태를 변경합니다.", icon: PackageCheck },
+  fundings: { label: "펀딩 상세 검수", description: "상표 검수 결과와 브랜드 연결을 포함한 기존 펀딩 검토 화면입니다.", icon: WalletCards },
+  customers: { label: "고객·방문 분석", description: "회원 정보와 방문 활동을 확인합니다.", icon: Users },
+  visits: { label: "방문 통계", description: "기간별 방문 세션과 페이지뷰를 확인합니다.", icon: BarChart3 },
   images: { label: "이미지 생성", description: "고객이 생성한 AI 의류 이미지를 관리합니다.", icon: Image },
   closet: { label: "브랜더 옷장", description: "고객이 옷장에서 만들고 수정하고 입혀본 모든 활동을 확인합니다.", icon: Shirt },
-  orders: { label: "제작 의뢰", description: "바로 제작 요청을 검토하고 상태를 변경합니다.", icon: PackageCheck },
   portfolio: { label: "포트폴리오", description: "Selected Works에 노출되는 프로젝트를 관리합니다.", icon: GalleryHorizontalEnd },
   swatches: { label: "원단 스와치", description: "원단 추천 신청과 진행 상태를 관리합니다.", icon: FlaskConical },
-  fundings: { label: "펀딩 관리", description: "펀딩 승인 요청과 진행 상태를 확인합니다.", icon: WalletCards },
-  community: { label: "커뮤니티 관리", description: "게시물·댓글·신고와 구매의향/펀딩 전환 현황을 관리합니다.", icon: MessagesSquare },
-  settings: { label: "AI 설정", description: "이미지 생성용 시스템 프롬프트를 관리합니다.", icon: Settings },
+  community: { label: "커뮤니티 통계", description: "게시물·댓글·신고와 구매의향/펀딩 전환 현황을 관리합니다.", icon: MessagesSquare },
+  settings: { label: "AI 설정", description: "이미지 생성용 시스템 프롬프트를 관리합니다. (Super Admin)", icon: Settings },
 } as const;
 
 type AdminSection = keyof typeof sectionMeta;
@@ -85,10 +86,11 @@ const Admin = () => {
   const [isLoadingPortfolioProjects, setIsLoadingPortfolioProjects] = useState(true);
   const [communityPendingReports, setCommunityPendingReports] = useState(0);
   const [brands, setBrands] = useState<AdminBrandSummary[]>([]);
+  const { can } = useAdminContext();
 
   const section = useMemo<AdminSection>(() => {
-    const value = location.pathname.split("/").filter(Boolean)[1] as AdminSection | undefined;
-    return value && value in sectionMeta ? value : "dashboard";
+    const value = location.pathname.split("/").filter(Boolean)[2] as AdminSection | undefined;
+    return value && value in sectionMeta ? value : "orders";
   }, [location.pathname]);
 
   useEffect(() => {
@@ -288,13 +290,12 @@ const Admin = () => {
     } finally { setIsSaving(false); }
   };
 
-  if (isCheckingAdmin) return <div className="min-h-screen bg-gray-50"><Header /><main className="container mx-auto px-4 pb-12 pt-24"><p className="text-center text-gray-500">로딩 중...</p></main></div>;
+  if (isCheckingAdmin) return <p className="py-14 text-center text-sm text-stone-500">로딩 중...</p>;
   if (!isAdmin) return null;
 
   const counts: Record<AdminSection, number | null> = {
-    dashboard: null,
     customers: null,
-    brands: brands.length,
+    visits: null,
     images: generatedImages.length,
     closet: closetActivities.length,
     orders: orders.filter((order) => order.status === "pending").length,
@@ -305,80 +306,52 @@ const Admin = () => {
     settings: null,
   };
 
-  const dashboardCards = [
-    { section: "customers" as const, label: "고객 관리", value: "회원·방문", icon: Users },
-    { section: "brands" as const, label: "등록 브랜드", value: brands.length.toLocaleString(), icon: Building2 },
-    { section: "images" as const, label: "전체 이미지 생성", value: generatedImages.length.toLocaleString(), icon: FileImage },
-    { section: "closet" as const, label: "브랜더 옷장 활동", value: closetActivities.length.toLocaleString(), icon: Shirt },
-    { section: "orders" as const, label: "신규 제작 의뢰", value: counts.orders?.toLocaleString() || "0", icon: PackageCheck },
-    { section: "swatches" as const, label: "신규 스와치 신청", value: counts.swatches?.toLocaleString() || "0", icon: FlaskConical },
-    { section: "fundings" as const, label: "펀딩 승인 대기", value: counts.fundings?.toLocaleString() || "0", icon: WalletCards },
-    { section: "community" as const, label: "커뮤니티 미처리 신고", value: (counts.community || 0).toLocaleString(), icon: MessagesSquare },
-  ];
-
   const currentMeta = sectionMeta[section];
 
+  const visibleSections = (Object.keys(sectionMeta) as AdminSection[]).filter((key) => key !== "settings" || can("legacy.settings"));
+
   return (
-    <div className="min-h-screen bg-[#f4f0ea]">
-      <Header />
-      <main className="mx-auto max-w-[1500px] px-4 pb-16 pt-24 sm:px-6">
-        <div className="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
-          <aside className="h-fit rounded-3xl border border-stone-200 bg-stone-950 p-3 text-white shadow-xl lg:sticky lg:top-24">
-            <div className="px-3 pb-4 pt-3">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Brand-er operations</p>
-              <h1 className="mt-2 text-xl font-extrabold tracking-[-0.03em]">관리자 센터</h1>
-            </div>
-            <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1">
-              {(Object.keys(sectionMeta) as AdminSection[]).map((key) => {
-                const item = sectionMeta[key];
-                const Icon = item.icon;
-                return (
-                  <NavLink key={key} to={key === "dashboard" ? "/admin" : `/admin/${key}`} end={key === "dashboard"}
-                    className={({ isActive }) => `flex min-h-12 items-center justify-between rounded-2xl px-3 py-2 text-sm font-bold transition ${isActive ? "bg-white text-stone-950" : "text-stone-300 hover:bg-white/10 hover:text-white"}`}>
-                    <span className="flex items-center gap-2"><Icon className="h-4 w-4" />{item.label}</span>
-                    {counts[key] !== null && <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-white">{counts[key]?.toLocaleString()}</span>}
-                  </NavLink>
-                );
-              })}
-            </nav>
-          </aside>
-
-          <section className="min-w-0">
-            <div className="mb-6 rounded-3xl border border-stone-200 bg-white px-5 py-6 shadow-sm sm:px-7">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">Admin workspace</p>
-              <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.03em] text-stone-950">{currentMeta.label}</h2>
-              <p className="mt-2 text-sm text-stone-500">{currentMeta.description}</p>
-            </div>
-
-            {section === "dashboard" && (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {dashboardCards.map(({ section: target, label, value, icon: Icon }) => (
-                  <NavLink key={target} to={`/admin/${target}`} className="group rounded-3xl border border-stone-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-brand hover:shadow-lg">
-                    <div className="flex items-start justify-between"><div><p className="text-sm font-bold text-stone-500">{label}</p><p className="mt-3 text-3xl font-black text-stone-950">{value}</p></div><span className="rounded-2xl bg-stone-100 p-3 group-hover:bg-brand/10"><Icon className="h-6 w-6 text-brand" /></span></div>
-                    <p className="mt-5 text-sm font-bold text-brand">페이지 열기 →</p>
-                  </NavLink>
-                ))}
-              </div>
-            )}
-            {section === "customers" && <CustomerManagement />}
-            {section === "brands" && <BrandsAdminPanel brands={brands} />}
-            {section === "images" && <GeneratedImageList images={generatedImages} isLoading={isLoadingGeneratedImages} />}
-            {section === "closet" && <ClosetActivityList activities={closetActivities} isLoading={isLoadingClosetActivities} />}
-            {section === "orders" && <OrderList orders={orders} onReviewOrder={(order) => { setSelectedOrder(order); setIsReviewDialogOpen(true); }} />}
-            {section === "portfolio" && (
-              <PortfolioProjectList
-                projects={portfolioProjects}
-                isLoading={isLoadingPortfolioProjects}
-                onReload={loadPortfolioProjects}
-              />
-            )}
-            {section === "swatches" && <FabricSwatchList requests={fabricSwatchRequests} isSaving={isSaving} onUpdate={handleUpdateFabricSwatch} />}
-            {section === "fundings" && <FundingList fundings={fundings} onReview={(funding) => { setSelectedFunding(funding); setIsFundingReviewOpen(true); }} />}
-            {section === "community" && <CommunityAdminPanel />}
-            {section === "settings" && <SystemPromptEditor systemPrompt={systemPrompt} isLoading={isLoading} onSave={handleSaveSystemPrompt} />}
-          </section>
+    <div>
+      <div className="mb-5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#741b2b]">Operations tools</p>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-stone-950 sm:text-[28px]">기타 운영 도구</h1>
+        <p className="mt-1 text-sm text-stone-500">기존 관리자 화면(제작 의뢰, AI 이미지, 옷장, 포트폴리오, 스와치 등)을 그대로 제공합니다.</p>
+      </div>
+      <nav className="-mx-1 mb-5 flex gap-1 overflow-x-auto px-1 pb-1" aria-label="운영 도구">
+        {visibleSections.map((key) => {
+          const item = sectionMeta[key];
+          const Icon = item.icon;
+          return (
+            <NavLink key={key} to={`/admin/tools/${key}`}
+              className={() => `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${section === key ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-100"}`}>
+              <Icon className="h-3.5 w-3.5" />{item.label}
+              {counts[key] ? <span className="rounded-full bg-[#741b2b] px-1.5 text-[10px] text-white">{counts[key]?.toLocaleString()}</span> : null}
+            </NavLink>
+          );
+        })}
+      </nav>
+      <section className="min-w-0">
+        <div className="mb-4 rounded-2xl border border-stone-200/80 bg-white px-5 py-4">
+          <h2 className="text-lg font-extrabold text-stone-950">{currentMeta.label}</h2>
+          <p className="mt-0.5 text-sm text-stone-500">{currentMeta.description}</p>
         </div>
-      </main>
+        {section === "customers" && <CustomerManagement />}
+        {section === "visits" && <VisitorAnalyticsDashboard />}
+        {section === "images" && <GeneratedImageList images={generatedImages} isLoading={isLoadingGeneratedImages} />}
+        {section === "closet" && <ClosetActivityList activities={closetActivities} isLoading={isLoadingClosetActivities} />}
+        {section === "orders" && <OrderList orders={orders} onReviewOrder={(order) => { setSelectedOrder(order); setIsReviewDialogOpen(true); }} />}
+        {section === "portfolio" && (
+          <PortfolioProjectList
+            projects={portfolioProjects}
+            isLoading={isLoadingPortfolioProjects}
+            onReload={loadPortfolioProjects}
+          />
+        )}
+        {section === "swatches" && <FabricSwatchList requests={fabricSwatchRequests} isSaving={isSaving} onUpdate={handleUpdateFabricSwatch} />}
+        {section === "fundings" && <FundingList fundings={fundings} onReview={(funding) => { setSelectedFunding(funding); setIsFundingReviewOpen(true); }} />}
+        {section === "community" && <CommunityAdminPanel />}
+        {section === "settings" && can("legacy.settings") && <SystemPromptEditor systemPrompt={systemPrompt} isLoading={isLoading} onSave={handleSaveSystemPrompt} />}
+      </section>
 
       <OrderReviewDialog order={selectedOrder} isOpen={isReviewDialogOpen} isSaving={isSaving} onOpenChange={setIsReviewDialogOpen} onUpdateStatus={handleUpdateOrderStatus} />
       <FundingReviewDialog funding={selectedFunding} brands={brands} open={isFundingReviewOpen} saving={isSaving} onOpenChange={setIsFundingReviewOpen} onReview={handleReviewFunding} onAssignBrand={handleAssignFundingBrand} />

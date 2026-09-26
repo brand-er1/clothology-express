@@ -61,6 +61,8 @@ verify_jwt = true
 verify_jwt = true
 [functions.delete-funding]
 verify_jwt = true
+[functions.admin-manage-user]
+verify_jwt = true
 [functions.get-fashion-trends]
 verify_jwt = false
 [functions.generate-detail-page]

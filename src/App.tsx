@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
 import NotFound from './pages/NotFound';
@@ -9,7 +9,6 @@ import { AuthGuard } from './components/auth/AuthGuard';
 import AuthCallback from './pages/AuthCallback';
 import Customize from './pages/Customize';
 import Orders from './pages/Orders';
-import Admin from './pages/Admin';
 import Fundings from './pages/Fundings';
 import FundingDetail from './pages/FundingDetail';
 import FundingEditor from './pages/FundingEditor';
@@ -37,7 +36,6 @@ import { TutorialOverlay } from './components/guide/TutorialOverlay';
 import { SiteVisitTracker } from './components/SiteVisitTracker';
 import { VisitDataNotice } from './components/VisitDataNotice';
 import VisitDataPolicy from './pages/VisitDataPolicy';
-import { VisitorAnalyticsDashboard } from './components/admin/VisitorAnalyticsDashboard';
 import { BottomNav, BOTTOM_NAV_SPACER_CLASSNAME } from './components/BottomNav';
 import { KakaoCommunityWidget } from './components/KakaoCommunityWidget';
 import CommunityFeed from './pages/community/CommunityFeed';
@@ -49,6 +47,16 @@ import MyBrand from './pages/MyBrand';
 import BrandProfile from './pages/BrandProfile';
 import DetailPageStudio from './pages/DetailPageStudio';
 import FundingDetailPageLauncher from './pages/FundingDetailPageLauncher';
+
+// 관리자 콘솔은 별도 번들로 분리해 일반 사용자에게 내려가는 코드를 늘리지 않는다.
+const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
+
+// /admin 에서는 서비스용 푸터·하단 내비·가이드 위젯 등을 숨기고 관리자 레이아웃만 보여준다.
+const PublicChrome = ({ children }: { children: ReactNode }) => {
+  const { pathname } = useLocation();
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return null;
+  return <>{children}</>;
+};
 
 declare global {
   interface Window { Kakao?: { init: (key: string) => void; isInitialized: () => boolean; }; }
@@ -108,7 +116,7 @@ function App() {
     <div className={`${isMobile ? 'mobile-view' : 'desktop-view'} ${BOTTOM_NAV_SPACER_CLASSNAME}`}>
       <BrowserRouter basename={routerBasename}>
         <MascotProvider><TutorialProvider>
-          <SiteVisitTracker /><VisitDataNotice /><WelcomeNotification />
+          <SiteVisitTracker /><PublicChrome><VisitDataNotice /><WelcomeNotification /></PublicChrome>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/index.html" element={<Index />} />
@@ -143,11 +151,10 @@ function App() {
             <Route path="/community/profile/:userId" element={<CommunityProfile />} />
             <Route path="/community/:postId" element={<CommunityPostDetail />} />
             <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
-            <Route path="/admin" element={<AuthGuard><div className="bg-[#f4f0ea] px-4 pt-24 sm:px-6"><div className="mx-auto max-w-[1500px]"><VisitorAnalyticsDashboard /></div></div><Admin /></AuthGuard>} />
-            <Route path="/admin/*" element={<AuthGuard><Admin /></AuthGuard>} />
+            <Route path="/admin/*" element={<AuthGuard><Suspense fallback={<div className="min-h-screen bg-[#f6f3ef]" />}><AdminApp /></Suspense></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <Footer /><BrandGuide /><TutorialOverlay /><BottomNav /><KakaoCommunityWidget />
+          <PublicChrome><Footer /><BrandGuide /><TutorialOverlay /><BottomNav /><KakaoCommunityWidget /></PublicChrome>
         </TutorialProvider></MascotProvider>
       </BrowserRouter>
       <Toaster />

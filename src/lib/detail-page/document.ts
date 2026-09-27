@@ -37,7 +37,9 @@ export const SECTION_META: Record<DetailSectionType, DetailSectionMeta> = {
   production: { label: "제작 과정", eyebrow: "PRODUCTION", title: "PRODUCTION", hint: "펀딩 성공부터 배송까지" },
   notice: { label: "안내", eyebrow: "NOTICE", title: "NOTICE", hint: "배송·교환·환불·펀딩 안내" },
   custom_text: { label: "텍스트 섹션", eyebrow: "NOTE", title: "새 섹션", hint: "자유 텍스트" },
-  custom_image: { label: "이미지 섹션", eyebrow: "LOOKBOOK", title: "LOOKBOOK", hint: "이미지 갤러리" },
+  custom_image: { label: "이미지 섹션", eyebrow: "IMAGE", title: "", hint: "자유 이미지" },
+  lookbook: { label: "룩북", eyebrow: "LOOKBOOK", title: "LOOKBOOK", hint: "세로형 룩북 · 에디토리얼 컷" },
+  video: { label: "동영상", eyebrow: "FILM", title: "", hint: "YouTube · Vimeo · mp4 링크" },
 };
 
 export const DEFAULT_SECTION_ORDER: DetailSectionType[] = [
@@ -120,6 +122,10 @@ export const buildSectionFacts = (type: DetailSectionType, source: DetailPageSou
       return [
         ...fact("원단", source.material),
         ...fact("혼용률", provided.composition),
+        ...fact("중량", provided.fabricWeight),
+        ...fact("촉감", provided.fabricHand),
+        ...fact("신축성", provided.fabricStretch),
+        ...fact("두께", provided.fabricThickness),
         ...fact("제작 방식", source.productionMethod),
       ];
     case "fit":
@@ -140,7 +146,7 @@ const items = (entries: Array<{ title: string; text: string }>) =>
 
 const textItems = (lines: string[]) => items(lines.map((line) => ({ title: "", text: line })));
 
-const section = (
+export const section = (
   type: DetailSectionType,
   values: Partial<Omit<DetailSection, "id" | "type">>,
 ): DetailSection => ({
@@ -253,6 +259,8 @@ export const buildSectionFromCopy = (
       });
     case "custom_text":
     case "custom_image":
+    case "lookbook":
+    case "video":
       return createCustomSection(type);
   }
 };
@@ -322,6 +330,8 @@ export const defaultSlotForSection = (type: DetailSectionType, crop: DetailImage
       return "lifestyle";
     case "custom_image":
       return "mood";
+    case "lookbook":
+      return "editorial";
     default:
       return "editorial";
   }
@@ -331,14 +341,21 @@ export const defaultSlotForSection = (type: DetailSectionType, crop: DetailImage
 export const applyGeneratedImage = (
   document: DetailPageDocument,
   slot: DetailImageType,
-  generated: { url: string; assetId: string },
+  generated: { url: string; assetId: string; ratio?: string },
 ): DetailPageDocument => ({
   ...document,
   sections: document.sections.map((entry) => ({
     ...entry,
     images: entry.images.map((current) =>
       current.slot === slot
-        ? { ...current, url: generated.url, crop: "full", source: "generated", assetId: generated.assetId }
+        ? {
+            ...current,
+            url: generated.url,
+            crop: "full",
+            source: "generated",
+            assetId: generated.assetId,
+            ...(generated.ratio ? { ratio: generated.ratio } : {}),
+          }
         : current,
     ),
   })),
@@ -354,7 +371,7 @@ export const regenerateSectionText = (
   copy: DetailPageCopy,
 ): DetailSection => {
   const next = buildSectionFromCopy(current.type, source, copy);
-  if (!next || current.type === "custom_text" || current.type === "custom_image") return current;
+  if (!next || ["custom_text", "custom_image", "lookbook", "video"].includes(current.type)) return current;
   return {
     ...current,
     title: current.type === "hero" ? copy.productName : next.title,

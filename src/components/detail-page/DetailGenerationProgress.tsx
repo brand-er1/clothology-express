@@ -1,7 +1,7 @@
 import { Check, Loader2, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DETAIL_IMAGE_SPECS } from "@/lib/detail-page/imagePipeline";
+import { DETAIL_IMAGE_SPECS, getDetailImageSpec } from "@/lib/detail-page/imagePipeline";
 import type { DetailImageJob, DetailImageType } from "@/types/detailPage";
 import { cn } from "@/lib/utils";
 
@@ -147,3 +147,89 @@ export const ImageTypeChecklist = ({
     </p>
   </div>
 );
+
+/**
+ * Editorial engine progress: the six stages the creator sees while the page is being made.
+ * The preview behind it fills in as each stage finishes (copy → layout, then each photo).
+ */
+export const EditorialGenerationProgress = ({
+  copyStatus,
+  planned,
+  jobs,
+  onRetry,
+}: {
+  copyStatus: "idle" | "generating" | "done";
+  /** Planned photo types in shooting order. */
+  planned: DetailImageType[];
+  jobs: Partial<Record<DetailImageType, DetailImageJob>>;
+  onRetry: (type: DetailImageType) => void;
+}) => {
+  const list = planned.map((type) => ({ type, job: jobs[type] }));
+  const completed = list.filter((entry) => entry.job?.status === "completed").length;
+  const failed = list.filter((entry) => entry.job?.status === "failed").length;
+  const running = list.some((entry) => !entry.job || entry.job.status === "generating" || entry.job.status === "pending");
+  const copyDone = copyStatus === "done";
+  const allDone = copyDone && !running;
+  const imageShare = list.length ? (completed + failed) / list.length : 1;
+  const percent = allDone ? 100 : Math.min(99, Math.round(20 + imageShare * 60 + (copyDone ? 15 : 0)));
+
+  const steps: Array<[string, StepState]> = [
+    ["상품 분석", "done"],
+    ["디자인 콘셉트 구성", "done"],
+    [
+      `상세페이지 이미지 제작${list.length ? ` (${completed}/${list.length}${failed ? ` · 실패 ${failed}` : ""})` : ""}`,
+      running ? "active" : failed && !completed ? "failed" : "done",
+    ],
+    ["상품 설명 작성", copyDone ? "done" : "active"],
+    ["레이아웃 구성", copyDone ? "done" : "waiting"],
+    ["최종 디자인 정리", allDone ? "done" : copyDone ? "active" : "waiting"],
+  ];
+
+  return (
+    <section className="border border-stone-200 bg-white" aria-live="polite">
+      <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
+        <p className="text-sm font-bold">{allDone ? "상세페이지 완성" : `상세페이지 제작 중 ${percent}%`}</p>
+        {!allDone && <span className="shrink-0 text-xs text-stone-500">미리보기가 단계별로 채워져요</span>}
+      </div>
+      <div className="h-1 bg-stone-100" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="상세페이지 제작 진행률">
+        <div className="h-full bg-brand transition-all duration-500" style={{ width: `${percent}%` }} />
+      </div>
+      <ol className="divide-y divide-stone-100 px-4 text-sm">
+        {steps.map(([label, state], index) => (
+          <li key={label} className="flex items-center gap-2.5 py-2">
+            <StepIcon state={state} />
+            <span className={cn(state === "active" && "font-semibold", state === "waiting" && "text-stone-400")}>
+              <span className="mr-1.5 text-[11px] font-bold text-stone-400">{String(index + 1).padStart(2, "0")}</span>
+              {label}
+              {state === "active" ? " 중..." : ""}
+            </span>
+          </li>
+        ))}
+      </ol>
+      {list.length > 0 && (
+        <details className="border-t border-stone-200 px-4 py-2 text-sm" open={failed > 0}>
+          <summary className="flex min-h-9 cursor-pointer items-center text-xs font-semibold text-stone-600">촬영 컷 {list.length}장 상태 보기</summary>
+          <ul className="divide-y divide-stone-100">
+            {list.map(({ type, job }) => {
+              const state: StepState = !job || job.status === "pending" ? "waiting" : job.status === "completed" ? "done" : job.status === "failed" ? "failed" : "active";
+              return (
+                <li key={type} className="flex items-center gap-2.5 py-2">
+                  <StepIcon state={state} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate">{getDetailImageSpec(type).label} <span className="text-xs text-stone-500">{getDetailImageSpec(type).description}</span></p>
+                    {state === "failed" && job?.error && <p className="truncate text-[11px] text-red-600" title={job.error}>{job.error}</p>}
+                  </div>
+                  {state === "failed" && (
+                    <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 rounded-md px-2.5 text-xs" onClick={() => onRetry(type)}>
+                      <RotateCcw className="mr-1 h-3 w-3" /> 다시 생성
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+};

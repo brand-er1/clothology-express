@@ -49,7 +49,7 @@ const source: DetailPageSource = {
 
 describe("AI detail page v2", () => {
   it("every style maps to a base layout and has its own theme", () => {
-    expect(DETAIL_TEMPLATES).toHaveLength(9);
+    expect(DETAIL_TEMPLATES).toHaveLength(11);
     for (const template of DETAIL_TEMPLATES) {
       expect(["minimal", "street", "luxury", "sports", "casual"]).toContain(getLayoutTemplate(template.id));
       expect(DETAIL_THEMES[template.id]).toBeTruthy();

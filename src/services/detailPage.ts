@@ -4,11 +4,14 @@ import { createFundingDraft } from "@/services/funding";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { buildFallbackCopy } from "@/lib/detail-page/fallbackCopy";
 import { buildFundingDescription } from "@/lib/detail-page/document";
-import { buildVerifiedCorpus, stripUnverifiedClaims } from "@/lib/detail-page/safety";
+import { buildVerifiedCorpus, stripHype, stripUnverifiedClaims } from "@/lib/detail-page/safety";
+import { buildFallbackAnalysis, isDetailPart, sanitizeAnalysis } from "@/lib/detail-page/analysis";
+import { recommendConcepts } from "@/lib/detail-page/artDirection";
 import { isDetailTemplateId } from "@/lib/detail-page/templates";
 import { EMPTY_USER_PROVIDED } from "@/lib/detail-page/source";
 import type {
   AiQuota,
+  DetailArtDirection,
   DetailCopyTone,
   DetailPagePublishState,
   DetailPageVersion,
@@ -17,6 +20,9 @@ import type {
   DetailSectionLayout,
   DetailPageCopy,
   DetailPageDocument,
+  DetailPart,
+  DetailProductAnalysis,
+  DetailConceptRecommendation,
   DetailPageGenerationMeta,
   DetailPageSource,
   DetailPageStatus,
@@ -49,7 +55,9 @@ type SectionRow = {
   section_type: DetailSectionType;
   sort_order: number;
   is_visible: boolean;
-  content: (Partial<Pick<DetailSection, "eyebrow" | "title" | "description" | "items" | "facts">> & { layout?: DetailSectionLayout }) | null;
+  content: (Partial<Pick<DetailSection, "eyebrow" | "title" | "description" | "items" | "facts" | "videoUrl">> & {
+    layout?: DetailSectionLayout;
+  }) | null;
   images: DetailSection["images"] | null;
 };
 
@@ -84,6 +92,7 @@ const toSection = (row: SectionRow): DetailSection => ({
   facts: Array.isArray(row.content?.facts) ? row.content.facts : [],
   images: Array.isArray(row.images) ? row.images : [],
   ...(row.content?.layout ? { layout: row.content.layout } : {}),
+  ...(typeof row.content?.videoUrl === "string" && row.content.videoUrl ? { videoUrl: row.content.videoUrl } : {}),
 });
 
 const toPage = (row: PageRow, sections: SectionRow[]): ProductDetailPage => ({
@@ -97,6 +106,7 @@ const toPage = (row: PageRow, sections: SectionRow[]): ProductDetailPage => ({
   generation: row.generation ?? {},
   document: {
     template: isDetailTemplateId(row.template) ? row.template : "minimal",
+    ...(isArtDirection(row.generation?.direction) ? { direction: row.generation!.direction } : {}),
     productName: row.title,
     productNameEn: row.title_en,
     subtitle: row.subtitle,
@@ -120,9 +130,19 @@ const toSectionPayload = (sections: DetailSection[]) =>
       items: section.items,
       facts: section.facts,
       ...(section.layout ? { layout: section.layout } : {}),
+      ...(section.videoUrl ? { videoUrl: section.videoUrl } : {}),
     },
     images: section.images,
   }));
+
+const isArtDirection = (value: unknown): value is DetailArtDirection =>
+  Boolean(value && typeof value === "object" && "palette" in value && "typography" in value);
+
+const withDirection = (generation: DetailPageGenerationMeta, document: DetailPageDocument): DetailPageGenerationMeta => {
+  const { direction: _stale, ...rest } = generation;
+  void _stale;
+  return document.direction ? { ...rest, direction: document.direction } : rest;
+};
 
 const PAGE_SELECT = "*, sections:detail_page_sections(*)";
 
@@ -229,7 +249,8 @@ export const saveDetailPage = async (input: {
       subtitle: input.document.subtitle,
       main_copy: input.document.mainCopy,
       source: input.source,
-      generation: input.generation,
+      // The page art direction lives in generation.direction (document.direction in memory).
+      generation: withDirection(input.generation, input.document),
       ...(input.status ? { status: input.status } : {}),
     },
     p_sections: toSectionPayload(input.document.sections),
@@ -243,7 +264,7 @@ const list = (value: unknown, max = 8) =>
   Array.isArray(value) ? value.map((entry) => text(entry, 400)).filter(Boolean).slice(0, max) : [];
 
 /** Validates AI output and removes unverified claims (composition, weight, functions, certifications). */
-export const sanitizeDetailCopy = (raw: unknown, source: DetailPageSource): DetailPageCopy => {
+export const sanitizeDetailCopy = (raw: unknown, source: DetailPageSource, allowedParts?: DetailPart[]): DetailPageCopy => {
   const fallback = buildFallbackCopy(source);
   const value = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const corpus = buildVerifiedCorpus(
@@ -261,8 +282,12 @@ export const sanitizeDetailCopy = (raw: unknown, source: DetailPageSource): Deta
     source.userProvided.highlights ?? "",
     source.userProvided.details ?? "",
     source.userProvided.productionNote ?? "",
+    source.userProvided.fabricWeight ?? "",
+    source.userProvided.fabricHand ?? "",
+    source.userProvided.fabricStretch ?? "",
+    source.userProvided.fabricThickness ?? "",
   );
-  const clean = (input: string) => stripUnverifiedClaims(input, corpus);
+  const clean = (input: string) => stripHype(stripUnverifiedClaims(input, corpus));
   const pick = (key: keyof DetailPageCopy, max?: number) => clean(text(value[key], max)) || (fallback[key] as string);
   const points = Array.isArray(value.designPoints)
     ? value.designPoints
@@ -295,6 +320,21 @@ export const sanitizeDetailCopy = (raw: unknown, source: DetailPageSource): Deta
       ? list(value.notices, 6).map(clean).filter(Boolean)
       : fallback.notices,
     missingInfo: list(value.missingInfo, 6),
+    keyMessage: clean(text(value.keyMessage, 60)),
+    designHighlights: list(value.designHighlights, 3).map((line) => clean(line.slice(0, 90))).filter(Boolean),
+    detailCallouts: Array.isArray(value.detailCallouts)
+      ? value.detailCallouts
+          .map((entry) => {
+            const callout = (entry && typeof entry === "object" ? entry : {}) as Record<string, unknown>;
+            return { part: callout.part, text: clean(text(callout.text, 120)) };
+          })
+          // Only parts the analysis confirmed (the creator can switch parts off).
+          .filter((callout): callout is { part: DetailPart; text: string } =>
+            isDetailPart(callout.part) && Boolean(callout.text) && (!allowedParts || allowedParts.includes(callout.part)),
+          )
+          .slice(0, 6)
+      : [],
+    lookbookCaption: clean(text(value.lookbookCaption, 80)),
   };
 };
 
@@ -308,27 +348,67 @@ export type DetailCopyResult = {
  * Asks the `generate-detail-page` edge function (Gemini) for copy. Falls back to the
  * deterministic writer when the function is unavailable, so generation never hard-fails.
  */
+const invokeDetailFunction = async (body: Record<string, unknown>) => {
+  const { data, error } = await supabase.functions.invoke("generate-detail-page", { body });
+  if (error) {
+    const context = (error as { context?: Response }).context;
+    const payload = context && typeof context.json === "function" ? await context.json().catch(() => null) : null;
+    throw new Error(payload?.error || error.message);
+  }
+  return data as Record<string, unknown> | null;
+};
+
 export const generateDetailCopy = async (
   source: DetailPageSource,
   template: DetailPageTemplateId,
-  options: { tone?: DetailCopyTone; detailPageId?: string } = {},
+  options: { tone?: DetailCopyTone; detailPageId?: string; analysis?: DetailProductAnalysis } = {},
 ): Promise<DetailCopyResult> => {
   try {
-    const { data, error } = await supabase.functions.invoke("generate-detail-page", {
-      body: { source, template, tone: options.tone, detailPageId: options.detailPageId },
+    const data = await invokeDetailFunction({
+      source,
+      template,
+      tone: options.tone,
+      detailPageId: options.detailPageId,
+      analysis: options.analysis,
     });
-    if (error) {
-      const context = (error as { context?: Response }).context;
-      const payload = context && typeof context.json === "function" ? await context.json().catch(() => null) : null;
-      throw new Error(payload?.error || error.message);
-    }
-    if (!data?.copy) throw new Error(data?.error || "AI 응답이 비어 있습니다.");
-    return { copy: sanitizeDetailCopy(data.copy, source), provider: "ai", fallbackReason: null };
+    if (!data?.copy) throw new Error((data?.error as string) || "AI 응답이 비어 있습니다.");
+    return { copy: sanitizeDetailCopy(data.copy, source, options.analysis?.parts), provider: "ai", fallbackReason: null };
   } catch (error) {
     console.error("AI detail copy generation failed, using fallback writer:", error);
     return {
       copy: buildFallbackCopy(source),
       provider: "fallback",
+      fallbackReason: getDetailPageErrorMessage(error, "AI 연결 실패"),
+    };
+  }
+};
+
+export type DetailAnalysisResult = {
+  analysis: DetailProductAnalysis;
+  concepts: DetailConceptRecommendation[];
+  fallbackReason: string | null;
+};
+
+/**
+ * AI 상품 분석 + 콘셉트 3개 추천. The AI looks at the design image; its answer is validated
+ * (sanitizeAnalysis) and concepts are re-ranked against the catalog. Never fails: without the
+ * AI the analysis comes from the creator's data and the concepts from rule-based scoring.
+ */
+export const analyzeDetailProduct = async (
+  source: DetailPageSource,
+  detailPageId?: string,
+): Promise<DetailAnalysisResult> => {
+  try {
+    const data = await invokeDetailFunction({ mode: "analyze", source, detailPageId });
+    if (!data?.analysis) throw new Error((data?.error as string) || "AI 분석 응답이 비어 있습니다.");
+    const analysis = sanitizeAnalysis(data.analysis, source);
+    return { analysis, concepts: recommendConcepts(analysis, source, data.concepts), fallbackReason: null };
+  } catch (error) {
+    console.error("AI product analysis failed, using data-based analysis:", error);
+    const analysis = buildFallbackAnalysis(source);
+    return {
+      analysis,
+      concepts: recommendConcepts(analysis, source),
       fallbackReason: getDetailPageErrorMessage(error, "AI 연결 실패"),
     };
   }

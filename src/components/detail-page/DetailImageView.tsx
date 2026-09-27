@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ImageOff } from "lucide-react";
 import type { DetailImage } from "@/types/detailPage";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,7 @@ export const DetailImageView = ({ image, className, fit = "contain", padded = tr
   const needsCrop = image.crop !== "full";
   const { size, failed: probeFailed } = useNaturalSize(image.url, needsCrop);
   const [imgFailed, setImgFailed] = useState(false);
+  const clipId = `detail-crop-${useId().replace(/:/g, "")}`;
   const failed = probeFailed || imgFailed || !image.url;
   // Design renders sit on a white studio background; multiply lets the template's frame
   // colour show through instead of a white box.
@@ -80,7 +81,11 @@ export const DetailImageView = ({ image, className, fit = "contain", padded = tr
             preserveAspectRatio={fit === "cover" ? "xMidYMid slice" : "xMidYMid meet"}
             aria-hidden
           >
-            <image href={image.url} width={size.width} height={size.height} />
+            {/* Clip to the chosen half: in a frame wider than the crop, the other view must not show. */}
+            <clipPath id={clipId}>
+              <rect x={image.crop === "right" ? size.width * (1 - CROP_WIDTH) : 0} y={0} width={size.width * CROP_WIDTH} height={size.height} />
+            </clipPath>
+            <image href={image.url} width={size.width} height={size.height} clipPath={`url(#${clipId})`} />
           </svg>
         ) : (
           <div className="absolute inset-0 animate-pulse bg-black/5" />

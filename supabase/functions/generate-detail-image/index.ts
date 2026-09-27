@@ -5,6 +5,7 @@ import {
   buildProductImagePrompt,
   IMAGE_ASPECT_RATIO,
   isDetailImageType,
+  isSupportedAspectRatio,
   isDetailPageStyle,
   type DetailImageType,
   type PromptProduct,
@@ -23,7 +24,9 @@ import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
  * secrets), and results are always copied into the existing public `generated_images` bucket. The prompt and the reference image are resolved here from
  * the detail page row, so a client can only generate images of its own page's design.
  *
- * Body: { detailPageId, imageType, style?, userInstruction? }
+ * Body: { detailPageId, imageType, style?, userInstruction?, aspectRatio? }
+ * The confirmed product analysis (generation.analysis.parts) is added to the identity lock so
+ * close-ups only ever show parts that exist.
  */
 
 const corsHeaders = {
@@ -47,7 +50,10 @@ const extensionFor = (mimeType: string) =>
 const str = (value: unknown) => (typeof value === "string" ? value : "");
 const strList = (value: unknown) => (Array.isArray(value) ? value.map(str).filter(Boolean) : []);
 
-const toPromptProduct = (source: Record<string, unknown>): PromptProduct => {
+const PART_IDS = ["collar", "hood", "neckline", "print", "embroidery", "pocket", "zipper", "button", "stitch", "cuff", "hem", "drawstring", "label", "patch"];
+
+const toPromptProduct = (source: Record<string, unknown>, generation: Record<string, unknown>): PromptProduct => {
+  const analysis = (generation.analysis ?? {}) as Record<string, unknown>;
   const provided = (source.userProvided ?? {}) as Record<string, unknown>;
   return {
     clothType: str(source.clothType),
@@ -64,6 +70,7 @@ const toPromptProduct = (source: Record<string, unknown>): PromptProduct => {
     accessories: strList(source.accessories),
     constructionFeatures: strList(source.constructionFeatures),
     isFrontBackComposite: source.isFrontBackComposite !== false,
+    parts: strList(analysis.parts).filter((part) => PART_IDS.includes(part)),
   };
 };
 
@@ -78,6 +85,14 @@ const REFERENCE_KINDS: Record<DetailImageType, string[]> = {
   lifestyle: ["wearing", "sample"],
   mood: ["brand", "reference"],
   flat_lay: ["sample", "fabric"],
+  detail_print: ["detail", "logo", "sample"],
+  detail_embroidery: ["detail", "logo", "sample"],
+  detail_neck: ["detail", "sample"],
+  detail_cuff: ["detail", "sample"],
+  detail_stitch: ["detail", "sample"],
+  folded: ["sample", "fabric"],
+  mannequin: ["sample", "wearing"],
+  texture_wide: ["fabric", "sample"],
 };
 
 const REFERENCE_LABEL: Record<string, string> = {
@@ -120,7 +135,7 @@ serve(async (req) => {
     if (userError || !user) return json({ error: "로그인이 필요합니다." }, 401);
     userId = user.id;
 
-    const { detailPageId, imageType, style, userInstruction } = await req.json();
+    const { detailPageId, imageType, style, userInstruction, aspectRatio: requestedRatio } = await req.json();
     if (typeof detailPageId !== "string" || !isDetailImageType(imageType)) {
       return json({ error: "잘못된 요청입니다." }, 400);
     }
@@ -129,7 +144,7 @@ serve(async (req) => {
     // 본인 상세페이지만 생성 가능(다른 제작자의 펀딩/상세페이지 접근 차단)
     const { data: page, error: pageError } = await admin
       .from("product_detail_pages")
-      .select("id, user_id, template, source")
+      .select("id, user_id, template, source, generation")
       .eq("id", detailPageId)
       .maybeSingle();
     if (pageError) throw pageError;
@@ -144,7 +159,8 @@ serve(async (req) => {
     if (!/^https:\/\//.test(referenceUrl)) return json({ error: "참조할 디자인 이미지가 없습니다." }, 400);
 
     const detailPageStyle = isDetailPageStyle(style) ? style : isDetailPageStyle(page.template) ? page.template : "minimal";
-    const product = toPromptProduct(source);
+    const product = toPromptProduct(source, (page.generation ?? {}) as Record<string, unknown>);
+    const aspectRatio = isSupportedAspectRatio(requestedRatio) ? requestedRatio : IMAGE_ASPECT_RATIO[imageType as DetailImageType];
     const instruction = typeof userInstruction === "string" ? userInstruction.trim().slice(0, 500) : "";
 
     // 제작자가 올린 참고자료 중 이 이미지 유형에 도움이 되는 사진(최대 2장)
@@ -168,6 +184,7 @@ serve(async (req) => {
       imageType,
       detailPageStyle,
       userInstruction: instruction,
+      aspectRatio,
     });
 
     const { data: asset, error: assetError } = await admin
@@ -194,7 +211,7 @@ serve(async (req) => {
       if (extra) references.push(extra);
     }
 
-    const generated = await provider.generate({ prompt, references, aspectRatio: IMAGE_ASPECT_RATIO[imageType as DetailImageType] });
+    const generated = await provider.generate({ prompt, references, aspectRatio });
 
     // Persist in our own storage so the page never depends on a provider's temporary URL.
     const path = `detail-pages/${user.id}/${page.id}/${imageType}-${Date.now()}.${extensionFor(generated.mimeType)}`;
@@ -212,10 +229,10 @@ serve(async (req) => {
     await logAiUsage(admin, {
       userId: user.id, feature: "detail_image", status: "success", provider: generated.provider, model: generated.model,
       detailPageId: page.id, imageType, latencyMs: Date.now() - startedAt,
-      metadata: { references: references.length, style: detailPageStyle, instruction: Boolean(instruction) },
+      metadata: { references: references.length, style: detailPageStyle, instruction: Boolean(instruction), aspectRatio },
     });
 
-    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length });
+    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, aspectRatio });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("generate-detail-image error:", message);

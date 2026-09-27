@@ -20,6 +20,7 @@ import { colorOptions } from "@/lib/customize-constants";
 import { cn } from "@/lib/utils";
 import { getLayoutTemplate } from "@/lib/detail-page/templates";
 import { colorHexOf, type FundingColor } from "@/lib/funding-colors";
+import { EditorialRenderer } from "@/components/detail-page/editorial/EditorialRenderer";
 
 type RenderContext = {
   /** Base layout (vintage → luxury, y2k → street, emotional → casual, lookbook → minimal). */
@@ -904,10 +905,24 @@ export type DetailPageRendererProps = {
   colors?: FundingColor[];
   selectedSectionId?: string | null;
   onSelectSection?: (sectionId: string) => void;
+  /** Editor only (editorial pages): per-section toolbar. */
+  renderToolbar?: (section: DetailSection, index: number) => ReactNode;
   className?: string;
 };
 
-export const DetailPageRenderer = ({
+/**
+ * Pages made by the editorial engine (they carry an art direction) render with the editorial
+ * renderer; older pages keep the template renderer below, unchanged.
+ */
+export const DetailPageRenderer = (props: DetailPageRendererProps) => {
+  const { document } = props;
+  if (document.direction) {
+    return <EditorialRenderer {...props} document={{ ...document, direction: document.direction }} />;
+  }
+  return <LegacyDetailPageRenderer {...props} />;
+};
+
+const LegacyDetailPageRenderer = ({
   document,
   source,
   stats,

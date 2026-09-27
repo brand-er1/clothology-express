@@ -39,7 +39,7 @@ export const AiDetailPageEntry = ({ fundingId, to }: { fundingId?: string; to?: 
           {hasPage && <PublishStateBadge state={state} />}
         </div>
         <p className="mt-1 text-sm leading-6 text-gray-500">
-          등록된 상품 정보와 의류 이미지로 AI가 카피와 상세페이지용 이미지(대표컷·디테일·원단·룩북·플랫레이)를 만들고 섹션을 구성합니다.
+          AI가 의류 이미지를 분석해 어울리는 콘셉트 3개를 추천하고, 원본 디자인을 유지한 촬영 컷(히어로·디테일·원단·룩북 등)과 카피로 에디토리얼 상세페이지를 구성합니다.
           편집 내용은 ‘상세페이지 적용’을 눌러야 펀딩 화면에 반영되며, 가격·수량·참여자 정보는 바뀌지 않아요.
         </p>
       </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -11,6 +11,7 @@ import {
   Save,
   Smartphone,
   Sparkles,
+  Tablet,
   Wand2,
   X,
 } from "lucide-react";
@@ -37,7 +38,6 @@ import { ColorOptionsPanel } from "@/components/funding/ColorOptionsPanel";
 import type { FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
 import {
-  LoadedInfoSummary,
   MissingInfoForm,
   SaveStatusBadge,
   TemplatePicker,
@@ -45,7 +45,6 @@ import {
 import {
   CreatorBriefForm,
   PublishStateBadge,
-  QuotaNote,
   ReferenceUploader,
   VersionHistoryDialog,
 } from "@/components/detail-page/DetailStudioExtras";
@@ -60,13 +59,22 @@ import {
   regenerateSectionText,
 } from "@/lib/detail-page/document";
 import {
-  DETAIL_IMAGE_SPECS,
   fetchLatestImageJobs,
   getDetailImageSpec,
   requestDetailImage,
   runWithConcurrency,
 } from "@/lib/detail-page/imagePipeline";
-import { DetailGenerationProgress, ImageTypeChecklist } from "@/components/detail-page/DetailGenerationProgress";
+import { DetailGenerationProgress, EditorialGenerationProgress } from "@/components/detail-page/DetailGenerationProgress";
+import { ConceptStep, ProductInfoStep, SetupActions, missingRequired } from "@/components/detail-page/DetailSetupFlow";
+import { ConceptSwitcher } from "@/components/detail-page/ConceptPicker";
+import { ProductAnalysisPanel } from "@/components/detail-page/ProductAnalysisPanel";
+import { SectionToolbar } from "@/components/detail-page/SectionToolbar";
+import { AiImagePanel } from "@/components/detail-page/AiImagePanel";
+import { ImageRegenerateDialog } from "@/components/detail-page/ImageRegenerateDialog";
+import { buildFallbackAnalysis } from "@/lib/detail-page/analysis";
+import { buildDirection, getConcept, nextVariant, planImages, seedKeyFor, type PlannedImage } from "@/lib/detail-page/artDirection";
+import { applyConcept, composeEditorialDocument, createEditorialSection } from "@/lib/detail-page/editorialCompose";
+import { buildFallbackCopy } from "@/lib/detail-page/fallbackCopy";
 import { refreshBrandInSource } from "@/lib/detail-page/source";
 import { getDetailTemplateMeta } from "@/lib/detail-page/templates";
 import { fetchMyBrand } from "@/services/brand";
@@ -75,6 +83,7 @@ import {
   DetailPageBrandRequiredError,
   fetchDetailPage,
   fetchDetailPagePublishState,
+  analyzeDetailProduct,
   fetchMyAiQuota,
   generateDetailCopy,
   getDetailPageErrorMessage,
@@ -94,10 +103,13 @@ import type {
   DetailImageJobStatus,
   DetailImageType,
   DetailPageDocument,
+  DetailPageCopy,
   DetailPageGenerationMeta,
   DetailPageSource,
   DetailPageTemplateId,
+  DetailProductAnalysis,
   DetailSection,
+  DetailSectionBackground,
   DetailSectionType,
   ProductDetailPage,
 } from "@/types/detailPage";
@@ -105,7 +117,34 @@ import type { Funding } from "@/types/funding";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
-type EditorTab = "sections" | "section" | "product";
+type EditorTab = "sections" | "section" | "images" | "product";
+type SetupStep = "info" | "concept";
+type PreviewWidth = "mobile" | "tablet" | "desktop";
+
+const PREVIEW_MAX: Record<PreviewWidth, string> = { mobile: "max-w-[390px]", tablet: "max-w-[768px]", desktop: "max-w-none" };
+const BACKGROUND_CYCLE: DetailSectionBackground[] = ["default", "light", "dark", "white", "brand"];
+
+/** Sections a regeneration keeps: the creator's own text / image / video sections (not AI slots). */
+const keepCreatorSections = (document: DetailPageDocument) =>
+  document.sections.filter(
+    (section) =>
+      ["custom_text", "custom_image", "video"].includes(section.type) && !section.images.some((image) => image.slot),
+  );
+
+/** Fields filled from existing design / funding / brand data (marked "자동 불러옴"). */
+const autoLoadedKeys = (source: DetailPageSource, productName: string) => {
+  const keys = new Set<string>();
+  if (productName.trim()) keys.add("productName");
+  if (source.clothType) keys.add("clothType");
+  if (source.userProvided.price) keys.add("price");
+  if (source.designDescription) keys.add("designDescription");
+  if (source.material) keys.add("material");
+  if (source.fit) keys.add("fit");
+  for (const [key, value] of Object.entries(source.userProvided)) {
+    if (typeof value === "string" && value.trim()) keys.add(key);
+  }
+  return keys;
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -149,16 +188,23 @@ const DetailPageStudio = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editorTab, setEditorTab] = useState<EditorTab>("sections");
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
-  const [previewWidth, setPreviewWidth] = useState<"mobile" | "desktop">("desktop");
+  const [previewWidth, setPreviewWidth] = useState<PreviewWidth>("desktop");
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [confirmFunding, setConfirmFunding] = useState(false);
   const [startingFunding, setStartingFunding] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [imageJobs, setImageJobs] = useState<Partial<Record<DetailImageType, DetailImageJob>>>({});
   const [copyStatus, setCopyStatus] = useState<"idle" | "generating" | "done">("idle");
-  const [imageTypes, setImageTypes] = useState<DetailImageType[]>(
-    DETAIL_IMAGE_SPECS.filter((spec) => spec.defaultOn).map((spec) => spec.type),
-  );
+  const [setupStep, setSetupStep] = useState<SetupStep>("info");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [autoLoaded, setAutoLoaded] = useState<Set<string>>(new Set());
+  /** Photos planned by the last editorial generation (drives the 6-stage progress). */
+  const [plannedTypes, setPlannedTypes] = useState<DetailImageType[]>([]);
+  const [showProgress, setShowProgress] = useState(false);
+  const [busySlots, setBusySlots] = useState<DetailImageType[]>([]);
+  const [toolbarRegen, setToolbarRegen] = useState<{ imageId: string; slot: DetailImageType } | null>(null);
+  /** Photos finished during the current generation, re-applied when the copy re-composes the page. */
+  const completedRef = useRef(new Map<DetailImageType, { url: string; assetId: string; ratio?: string }>());
   const [regeneratingImageIds, setRegeneratingImageIds] = useState<string[]>([]);
   const [readOnly, setReadOnly] = useState(false);
   const [publishState, setPublishState] = useState<DetailPagePublishState | null>(null);
@@ -229,6 +275,8 @@ const DetailPageStudio = () => {
         setSource(colorRows.length ? { ...initial.source, availableColors: colorRows.map((color) => color.name) } : initial.source);
         setGeneration(initial.generation);
         setSelectedId(initial.document.sections[0]?.id ?? null);
+        setAutoLoaded(autoLoadedKeys(initial.source, initial.document.productName));
+        setSetupStep(initial.generation.analysis && initial.generation.concepts?.length && !initial.document.sections.length ? "concept" : "info");
       } catch (error) {
         if (!cancelled) setLoadError(getDetailPageErrorMessage(error, "상세페이지를 불러오지 못했습니다."));
       }
@@ -284,19 +332,34 @@ const DetailPageStudio = () => {
     }));
   }, []);
 
+  /** Ratio the page wants for a slot (set by the art direction when it was planned). */
+  const ratioForSlot = useCallback(
+    (type: DetailImageType) => {
+      for (const section of document?.sections ?? []) {
+        const image = section.images.find((entry) => entry.slot === type && entry.ratio);
+        if (image?.ratio) return image.ratio;
+      }
+      return undefined;
+    },
+    [document],
+  );
+
   /**
    * Generates the given AI images, two at a time. Each finished image is placed into its
-   * slots immediately; a failure only marks that image as failed (retry per image).
+   * slots immediately (the preview fills in progressively); a failure only marks that image as
+   * failed (retry per image).
    */
   const generateImages = useCallback(
-    async (types: DetailImageType[], template: DetailPageTemplateId) => {
-      if (!page || !types.length) return;
-      types.forEach((type) => setJob(type, { status: "pending", error: null }));
-      await runWithConcurrency(types, 2, async (imageType) => {
+    async (items: Array<Pick<PlannedImage, "type" | "ratio">>, template: DetailPageTemplateId) => {
+      if (!page || !items.length) return;
+      items.forEach((item) => setJob(item.type, { status: "pending", error: null }));
+      await runWithConcurrency(items, 2, async ({ type: imageType, ratio }) => {
         setJob(imageType, { status: "generating", error: null });
         try {
-          const generated = await requestDetailImage({ detailPageId: page.id, imageType, style: template });
-          setDocument((current) => (current ? applyGeneratedImage(current, imageType, generated) : current));
+          const generated = await requestDetailImage({ detailPageId: page.id, imageType, style: template, aspectRatio: ratio });
+          const placed = { url: generated.url, assetId: generated.assetId, ratio: generated.ratio ?? ratio };
+          completedRef.current.set(imageType, placed);
+          setDocument((current) => (current ? applyGeneratedImage(current, imageType, placed) : current));
           setJob(imageType, { status: "completed", assetId: generated.assetId, url: generated.url, error: null });
         } catch (error) {
           setJob(imageType, { status: "failed", error: getDetailPageErrorMessage(error, "이미지 생성 실패") });
@@ -307,59 +370,114 @@ const DetailPageStudio = () => {
     [page, setJob, refreshMeta],
   );
 
-  const runGeneration = async () => {
+  const validationError = source && document ? missingRequired(source, document.productName) : [];
+
+  /** 상품 분석 → 콘셉트 3개 추천. `autoPilot` continues straight into generation with the top concept. */
+  const handleAnalyze = async (autoPilot: boolean) => {
+    if (!page || !source || !document) return;
+    setAnalyzing(true);
+    try {
+      await autosave.saveNow().catch(() => undefined);
+      const result = await analyzeDetailProduct(source, page.id);
+      const conceptId = result.concepts[0]?.id ?? "minimal";
+      setGeneration((current) => ({ ...current, analysis: result.analysis, concepts: result.concepts, conceptId }));
+      if (result.fallbackReason) {
+        toast({ title: "입력한 정보로 상품을 분석했어요", description: "AI 이미지 분석 연결이 원활하지 않아 제작자 입력 정보만 사용했습니다." });
+      }
+      if (autoPilot) await runEditorialGeneration(conceptId, result.analysis, result.concepts);
+      else setSetupStep("concept");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  /**
+   * Builds the page for a concept. The layout (with the creator's design in every photo slot) is
+   * saved and shown right away; photos and copy are then produced in parallel and fill in as they
+   * finish.
+   */
+  const runEditorialGeneration = async (
+    conceptId: DetailPageTemplateId,
+    analysisInput?: DetailProductAnalysis,
+    conceptsInput?: DetailPageGenerationMeta["concepts"],
+  ) => {
     if (!document || !source || !page) return;
+    const analysis = analysisInput ?? generation.analysis ?? buildFallbackAnalysis(source);
+    const direction = buildDirection(conceptId, analysis, seedKeyFor(source));
+    const remaining = quota ? Math.max(0, quota.imageLimit - quota.imageUsed) : 10;
+    const fullPlan = planImages(direction, analysis, source);
+    const plan = fullPlan.slice(0, remaining);
+    const productName = document.productName.trim();
+    const kept = keepCreatorSections(document);
+    const compose = (copy: DetailPageCopy) => {
+      const composed = composeEditorialDocument({ source, copy: { ...copy, productName: productName || copy.productName }, direction, analysis, plan });
+      return { ...composed, sections: [...composed.sections, ...kept] };
+    };
+
     setGenerating(true);
     setConfirmRegenerate(false);
+    completedRef.current.clear();
+    setImageJobs({});
+    setPlannedTypes(plan.map((item) => item.type));
+    setShowProgress(true);
     setCopyStatus("generating");
     try {
-      const result = await generateDetailCopy(source, document.template, { detailPageId: page.id });
-      const composed = composeDetailDocument(source, result.copy, document.template, imageTypes);
-      // Keep sections the creator added by hand (not the auto MOOD section, which is rebuilt).
-      const keptCustom = document.sections.filter(
-        (section) =>
-          (section.type === "custom_text" || section.type === "custom_image") && !section.images.some((image) => image.slot),
-      );
-      const nextDocument = { ...composed, sections: [...composed.sections, ...keptCustom] };
-      const nextGeneration: DetailPageGenerationMeta = {
+      const draft = compose(buildFallbackCopy(source));
+      const draftGeneration: DetailPageGenerationMeta = {
+        ...generation,
+        analysis,
+        concepts: conceptsInput ?? generation.concepts,
+        conceptId,
+      };
+      // Persist first: the image function reads the page's design, concept and analysis from the database.
+      await saveDetailPage({ id: page.id, document: draft, source, generation: draftGeneration });
+      resetBaseline({ document: draft, source, generation: draftGeneration });
+      setDocument(draft);
+      setGeneration(draftGeneration);
+      setSelectedId(draft.sections[0]?.id ?? null);
+      setShowSetup(false);
+      setEditorTab("sections");
+      setMobileView("preview");
+      if (plan.length < fullPlan.length) {
+        toast({ title: `오늘 남은 AI 이미지 생성 횟수로 ${plan.length}컷만 촬영해요`, description: "나머지 칸은 원본 디자인으로 표시되고 ‘AI 이미지’ 탭에서 나중에 만들 수 있어요." });
+      }
+    } catch (error) {
+      setCopyStatus("idle");
+      setShowProgress(false);
+      setGenerating(false);
+      toast({ title: "상세페이지를 만들지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
+      return;
+    }
+    setGenerating(false);
+
+    const images = generateImages(plan, conceptId);
+    const copy = (async () => {
+      const result = await generateDetailCopy(source, conceptId, { detailPageId: page.id, analysis });
+      const composed = compose(result.copy);
+      setDocument(() => {
+        let next = composed;
+        for (const [type, placed] of completedRef.current) next = applyGeneratedImage(next, type, placed);
+        return next;
+      });
+      setGeneration((current) => ({
+        ...current,
         provider: result.provider,
         generatedAt: new Date().toISOString(),
         fallbackReason: result.fallbackReason,
-      };
+      }));
       setCopyStatus("done");
-
-      // Persist first: the image function reads the page's design/source from the database.
-      await saveDetailPage({ id: page.id, document: nextDocument, source, generation: nextGeneration });
-      resetBaseline({ document: nextDocument, source, generation: nextGeneration });
-      void recordDetailPageVersion(page.id, "ai_generated", result.provider === "ai" ? "AI 최초 생성" : "기본 문구로 생성").then(refreshMeta);
-      setDocument(nextDocument);
-      setGeneration(nextGeneration);
-      setSelectedId(nextDocument.sections[0]?.id ?? null);
-      setShowSetup(false);
-      setEditorTab("sections");
-      setImageJobs({});
-      toast(
-        result.provider === "ai"
-          ? { title: "상세페이지 문구와 구성을 완성했어요", description: `AI 이미지 ${imageTypes.length}장을 생성하는 동안 미리보기를 확인할 수 있어요.` }
-          : {
-              title: "기본 문구로 상세페이지를 구성했어요",
-              description: "AI 문구 연결이 원활하지 않아 입력한 정보만으로 작성했습니다. 이미지는 계속 생성합니다.",
-            },
-      );
-      setGenerating(false);
-      // 하루 생성 한도를 넘는 요청은 보내지 않는다(남은 횟수만큼 우선순위 순서대로).
-      const remaining = quota ? Math.max(0, quota.imageLimit - quota.imageUsed) : imageTypes.length;
-      const allowedTypes = imageTypes.slice(0, remaining);
-      if (allowedTypes.length < imageTypes.length) {
-        toast({ title: `오늘 남은 AI 이미지 생성 횟수로 ${allowedTypes.length}장만 생성해요`, description: "나머지 이미지 칸은 원본 디자인으로 표시되고 내일 다시 생성할 수 있어요." });
+      if (result.provider === "fallback") {
+        toast({ title: "입력한 정보로 문구를 작성했어요", description: "AI 문구 연결이 원활하지 않아 확인된 정보만으로 작성했습니다. 섹션별로 다시 작성할 수 있어요." });
       }
-      void generateImages(allowedTypes, nextDocument.template);
-    } catch (error) {
-      setCopyStatus("idle");
-      toast({ title: "상세페이지를 만들지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
-    } finally {
-      setGenerating(false);
-    }
+    })();
+    await Promise.allSettled([images, copy]);
+    window.setTimeout(() => {
+      void autosave
+        .saveNow()
+        .catch(() => undefined)
+        .then(() => recordDetailPageVersion(page.id, "ai_generated", `AI 생성 · ${getConcept(conceptId).name}`))
+        .then(refreshMeta);
+    }, 0);
   };
 
   const regenerateImage = async (imageId: string, slot: DetailImageType, instruction: string) => {
@@ -367,11 +485,14 @@ const DetailPageStudio = () => {
     setRegeneratingImageIds((current) => [...current, imageId]);
     try {
       await autosave.saveNow().catch(() => undefined);
+      const currentImage = document.sections.flatMap((section) => section.images).find((image) => image.id === imageId);
+      const ratio = currentImage?.ratio ?? ratioForSlot(slot);
       const generated = await requestDetailImage({
         detailPageId: page.id,
         imageType: slot,
         style: document.template,
         userInstruction: instruction,
+        aspectRatio: ratio,
       });
       updateDocument((current) => ({
         ...current,
@@ -379,7 +500,15 @@ const DetailPageStudio = () => {
           ...section,
           images: section.images.map((image) =>
             image.id === imageId
-              ? { ...image, url: generated.url, crop: "full", source: "generated", slot, assetId: generated.assetId }
+              ? {
+                  ...image,
+                  url: generated.url,
+                  crop: "full",
+                  source: "generated",
+                  slot,
+                  assetId: generated.assetId,
+                  ...((generated.ratio ?? ratio) ? { ratio: generated.ratio ?? ratio } : {}),
+                }
               : image,
           ),
         })),
@@ -396,12 +525,46 @@ const DetailPageStudio = () => {
     }
   };
 
+  /** "이 컷만 다시 촬영" from the AI 이미지 panel: every slot of that shot type gets the new photo. */
+  const regenerateSlot = async (slot: DetailImageType, instruction: string) => {
+    if (!page || !document) return;
+    setBusySlots((current) => [...current, slot]);
+    setJob(slot, { status: "generating", error: null });
+    try {
+      await autosave.saveNow().catch(() => undefined);
+      const ratio = ratioForSlot(slot);
+      const generated = await requestDetailImage({ detailPageId: page.id, imageType: slot, style: document.template, userInstruction: instruction, aspectRatio: ratio });
+      updateDocument((current) => applyGeneratedImage(current, slot, { url: generated.url, assetId: generated.assetId, ratio: generated.ratio ?? ratio }));
+      setJob(slot, { status: "completed", assetId: generated.assetId, url: generated.url, error: null });
+      toast({ title: `${getDetailImageSpec(slot).label} 이미지를 다시 만들었어요` });
+      window.setTimeout(() => {
+        void autosave.saveNow().catch(() => undefined).then(() => recordDetailPageVersion(page.id, "image_regenerated", getDetailImageSpec(slot).label)).then(refreshMeta);
+      }, 0);
+    } catch (error) {
+      setJob(slot, { status: "failed", error: getDetailPageErrorMessage(error, "이미지 생성 실패") });
+      toast({ title: "이미지를 다시 생성하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
+    } finally {
+      setBusySlots((current) => current.filter((entry) => entry !== slot));
+    }
+  };
+
+  /** Editorial pages: the section's text comes from a re-composition with the new copy (same facts). */
+  const rewriteEditorialSection = (section: DetailSection, copy: DetailPageCopy): DetailSection => {
+    if (!document?.direction || !source) return section;
+    const analysis = generation.analysis ?? buildFallbackAnalysis(source);
+    const composed = composeEditorialDocument({ source, copy, direction: document.direction, analysis, plan: [] });
+    const match = composed.sections.find((entry) => entry.type === section.type);
+    if (!match) return section;
+    if (section.type === "hero") return { ...section, description: match.description };
+    return { ...section, title: match.title || section.title, description: match.description, items: match.items.length ? match.items : section.items };
+  };
+
   const regenerateSection = async (section: DetailSection, tone?: DetailCopyTone) => {
     if (!source || !document || !page) return;
     setRegeneratingId(section.id);
     try {
-      const result = await generateDetailCopy(source, document.template, { tone, detailPageId: page.id });
-      updateSection(regenerateSectionText(section, source, result.copy));
+      const result = await generateDetailCopy(source, document.template, { tone, detailPageId: page.id, analysis: generation.analysis });
+      updateSection(document.direction ? rewriteEditorialSection(section, result.copy) : regenerateSectionText(section, source, result.copy));
       window.setTimeout(() => {
         void autosave.saveNow().catch(() => undefined).then(() => recordDetailPageVersion(page.id, "copy_regenerated", tone ? `톤: ${tone}` : undefined)).then(refreshMeta);
       }, 0);
@@ -451,8 +614,9 @@ const DetailPageStudio = () => {
       oneLiner: document.subtitle,
       mainCopy: document.mainCopy,
     };
-    const created =
-      type === "custom_text" || type === "custom_image"
+    const created = document.direction
+      ? createEditorialSection(type, source, document)
+      : type === "custom_text" || type === "custom_image"
         ? createCustomSection(type)
         : buildSectionFromCopy(type, source, {
             ...fallbackCopy,
@@ -472,7 +636,10 @@ const DetailPageStudio = () => {
             notices: [],
             missingInfo: [],
           }) ?? { ...createCustomSection("custom_text"), type, id: createDetailId() };
-    updateDocument((current) => ({ ...current, sections: [...current.sections, created] }));
+    updateDocument((current) => ({
+      ...current,
+      sections: type === "hero" ? [created, ...current.sections] : [...current.sections, created],
+    }));
     setSelectedId(created.id);
     setEditorTab("section");
   };
@@ -569,8 +736,20 @@ const DetailPageStudio = () => {
   const selectFromPreview = (id: string) => {
     setSelectedId(id);
     setEditorTab("section");
-    setMobileView("edit");
+    // Editorial pages show a toolbar on the tapped section, so phones stay on the preview.
+    if (!document?.direction) setMobileView("edit");
   };
+
+  const moveSectionById = (id: string, delta: -1 | 1) => {
+    const index = document?.sections.findIndex((section) => section.id === id) ?? -1;
+    if (index >= 0) moveSection(index, index + 1 * delta);
+  };
+
+  const patchSectionLayout = (id: string, patch: (section: DetailSection) => DetailSection["layout"]) =>
+    updateDocument((current) => ({
+      ...current,
+      sections: current.sections.map((section) => (section.id === id ? { ...section, layout: patch(section) } : section)),
+    }));
 
   if (loadError) {
     return (
@@ -619,7 +798,7 @@ const DetailPageStudio = () => {
           </div>
           <div className="mx-auto max-w-[1200px] px-0 py-6 sm:px-6">
             <p className="mb-3 px-4 text-xs text-stone-500 sm:px-0">제작자의 현재 편집본입니다. 관리자는 확인만 할 수 있으며 수정·생성·적용은 제작자 본인만 가능합니다.</p>
-            <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]", previewWidth === "mobile" ? "max-w-[390px]" : "max-w-none")}>
+            <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]", PREVIEW_MAX[previewWidth])}>
               <DetailPageRenderer document={document} source={source} stats={stats} colors={fundingColors} />
             </div>
           </div>
@@ -631,80 +810,83 @@ const DetailPageStudio = () => {
 
   const setTemplate = (template: DetailPageTemplateId) => updateDocument((current) => ({ ...current, template }));
 
-  /* ───────── Setup (before first generation, or "전체 다시 생성") ───────── */
+  /* ───────── Setup: 상품 정보 → AI 분석 · 콘셉트 선택 (before first generation, or "전체 다시 생성") ───────── */
   if (inSetup) {
+    const analysis = generation.analysis;
+    const concepts = generation.concepts ?? [];
+    const onConceptStep = setupStep === "concept" && analysis && concepts.length > 0;
+    const conceptId = generation.conceptId ?? concepts[0]?.id ?? null;
+    const plannedShots = analysis && conceptId ? planImages(buildDirection(conceptId, analysis, seedKeyFor(source)), analysis, source).length : 0;
+    const blockedReason = validationError.length ? `${validationError.join(", ")}을(를) 입력해주세요` : null;
+    const start = (id: DetailPageTemplateId | null) => {
+      if (!id) return;
+      if (hasContent) {
+        setGeneration((current) => ({ ...current, conceptId: id }));
+        setConfirmRegenerate(true);
+      } else void runEditorialGeneration(id);
+    };
+    const steps: Array<[SetupStep | "make", string]> = [["info", "상품 정보"], ["concept", "분석 · 콘셉트"], ["make", "제작 · 편집"]];
     return (
       <div className="min-h-screen bg-[#f3f1ed] text-stone-900">
         <Header />
-        <main className="mx-auto max-w-[960px] px-4 pb-40 pt-20 sm:px-6 sm:pt-24 md:pb-24">
+        <main className="mx-auto max-w-[1080px] px-4 pb-44 pt-20 sm:px-6 sm:pt-24 md:pb-28">
           <button
             type="button"
-            onClick={() => (hasContent ? setShowSetup(false) : navigate(-1))}
-            className="inline-flex items-center text-xs font-bold uppercase tracking-[0.14em] text-stone-500 hover:text-brand"
+            onClick={() => (onConceptStep ? setSetupStep("info") : hasContent ? setShowSetup(false) : navigate(-1))}
+            className="inline-flex min-h-10 items-center text-xs font-bold uppercase tracking-[0.14em] text-stone-500 hover:text-brand"
           >
-            <ArrowLeft className="mr-1.5 h-4 w-4" /> {hasContent ? "편집으로 돌아가기" : "이전"}
+            <ArrowLeft className="mr-1.5 h-4 w-4" /> {onConceptStep ? "상품 정보" : hasContent ? "편집으로 돌아가기" : "이전"}
           </button>
           <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.18em] text-brand">AI Detail Page</p>
-          <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-[-0.03em] sm:text-4xl">AI 상세페이지 만들기</h1>
+          <h1 className="mt-2 text-[26px] font-extrabold leading-tight tracking-[-0.03em] sm:text-[34px]">
+            {onConceptStep ? "콘셉트를 골라주세요" : "AI 상세페이지 만들기"}
+          </h1>
           <p className="mt-3 max-w-xl text-[15px] leading-6 text-stone-600">
-            디자인 단계에서 입력한 정보는 자동으로 불러왔어요. 스타일을 고르고 빠진 정보만 채우면 쇼핑몰 수준의 상세페이지가 완성됩니다.
+            {onConceptStep
+              ? "상품을 분석해 어울리는 콘셉트 3개를 골랐어요. 하나를 선택하면 촬영 컷·카피·레이아웃을 만들어요."
+              : "이미 입력한 디자인·펀딩·브랜드 정보는 자동으로 불러왔어요. 필수 정보만 확인하면 됩니다."}
           </p>
+          <ol className="mt-6 flex gap-4 border-b border-stone-300 text-xs font-semibold" aria-label="진행 단계">
+            {steps.map(([key, label], index) => {
+              const active = key === (onConceptStep ? "concept" : "info");
+              return (
+                <li key={key} className={cn("-mb-px border-b-2 pb-2.5", active ? "border-brand text-brand" : "border-transparent text-stone-400")}>
+                  {String(index + 1).padStart(2, "0")} {label}
+                </li>
+              );
+            })}
+          </ol>
 
-          <section className="mt-10">
-            <h2 className="text-sm font-bold">1. 상세페이지 스타일</h2>
-            <div className="mt-3">
-              <TemplatePicker value={document.template} onChange={setTemplate} />
-            </div>
-          </section>
-
-          <section className="mt-10 grid gap-8 md:grid-cols-[1.1fr_0.9fr] md:gap-10">
-            <div>
-              <h2 className="text-sm font-bold">2. 자동으로 불러온 정보</h2>
-              <div className="mt-3 flex gap-3">
-                {source.imageUrl && (
-                  <img src={source.imageUrl} alt="디자인 이미지" className="h-28 w-36 shrink-0 bg-white object-contain" />
-                )}
-                <p className="text-xs leading-5 text-stone-500">
-                  앞면·뒷면이 함께 있는 디자인 이미지를 섹션마다 앞면/뒷면으로 나눠 사용합니다. 기존 이미지 생성 결과는 그대로 유지됩니다.
-                </p>
-              </div>
-              <div className="mt-4">
-                <LoadedInfoSummary source={source} />
-              </div>
-            </div>
-            <div>
-              <h2 className="text-sm font-bold">3. 추가 정보 (선택)</h2>
-              <div className="mt-3">
-                <MissingInfoForm source={source} onChange={(userProvided) => setSource({ ...source, userProvided })} />
-              </div>
-            </div>
-          </section>
-
-          <section className="mt-10">
-            <h2 className="text-sm font-bold">4. 제품 핵심 정보 · 강조할 요소 (선택)</h2>
-            <p className="mt-1 text-xs leading-5 text-stone-500">입력한 내용만 사실로 사용합니다. 비워두면 AI가 임의로 만들지 않아요.</p>
-            <div className="mt-3 max-w-2xl">
-              <CreatorBriefForm value={source.userProvided} onChange={(userProvided) => setSource({ ...source, userProvided })} />
-            </div>
-          </section>
-
-          <section className="mt-10">
-            <h2 className="text-sm font-bold">5. 참고자료 (선택)</h2>
-            <div className="mt-3">
-              <ReferenceUploader page={page} />
-            </div>
-          </section>
-
-          <section className="mt-10">
-            <h2 className="text-sm font-bold">6. AI가 생성할 상세페이지 이미지</h2>
-            <p className="mt-1 text-xs leading-5 text-stone-500">
-              선택한 스타일({templateMeta.name})의 촬영 무드로 생성됩니다. 스타일은 배경·조명·연출만 바꾸고 제품 디자인은 바꾸지 않습니다.
-            </p>
-            <div className="mt-3">
-              <ImageTypeChecklist value={imageTypes} onChange={setImageTypes} />
-            </div>
-            <div className="mt-2"><QuotaNote quota={quota} requested={imageTypes.length} /></div>
-          </section>
+          <div className="mt-8">
+            {onConceptStep ? (
+              <ConceptStep
+                analysis={analysis}
+                concepts={concepts}
+                conceptId={conceptId}
+                source={source}
+                productName={document.productName}
+                stats={stats}
+                onAnalysisChange={(next) => setGeneration((current) => ({ ...current, analysis: next }))}
+                onConceptChange={(id) => setGeneration((current) => ({ ...current, conceptId: id }))}
+                onEditInfo={() => setSetupStep("info")}
+              />
+            ) : (
+              <ProductInfoStep
+                page={page}
+                source={source}
+                productName={document.productName}
+                autoLoaded={autoLoaded}
+                onSourceChange={setSource}
+                onProductNameChange={(productName) =>
+                  updateDocument((current) => ({
+                    ...current,
+                    productName,
+                    sections: current.sections.map((section) => (section.type === "hero" ? { ...section, title: productName } : section)),
+                  }))
+                }
+              />
+            )}
+          </div>
         </main>
 
         <div
@@ -712,34 +894,38 @@ const DetailPageStudio = () => {
           data-mascot-safezone
           className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0"
         >
-          <div className="mx-auto flex max-w-[960px] items-center gap-3">
-            <p className="hidden min-w-0 flex-1 truncate text-sm text-stone-500 sm:block">
-              {templateMeta.number} {templateMeta.name} 스타일로 생성합니다
-            </p>
-            <Button
-              type="button"
-              onClick={() => (hasContent ? setConfirmRegenerate(true) : void runGeneration())}
-              disabled={generating}
-              className="h-12 w-full rounded-md bg-brand px-6 text-[15px] font-bold hover:bg-brand-dark sm:w-auto"
-            >
-              {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {generating ? "상세페이지 작성 중..." : hasContent ? "AI 상세페이지 다시 생성" : "✨ AI로 제작하기"}
-            </Button>
-          </div>
+          <SetupActions
+            step={onConceptStep ? "concept" : "info"}
+            busy={analyzing || generating}
+            busyLabel={analyzing ? "상품 분석 중..." : "구성 중..."}
+            blockedReason={blockedReason}
+            quota={quota}
+            plannedShots={plannedShots}
+            onAutoPilot={() => (onConceptStep ? start(concepts[0]?.id ?? null) : void handleAnalyze(!hasContent))}
+            onNext={() => (onConceptStep ? start(conceptId) : void handleAnalyze(false))}
+          />
         </div>
 
         <AlertDialog open={confirmRegenerate} onOpenChange={setConfirmRegenerate}>
           <AlertDialogContent className="rounded-md">
             <AlertDialogHeader>
-              <AlertDialogTitle>상세페이지를 다시 생성할까요?</AlertDialogTitle>
+              <AlertDialogTitle>상세페이지를 새로 만들까요?</AlertDialogTitle>
               <AlertDialogDescription>
-                기본 섹션의 문구와 이미지가 새로 작성됩니다. 직접 추가한 텍스트·이미지 섹션은 유지됩니다.
+                AI가 만든 섹션의 문구와 이미지가 새로 만들어집니다. 직접 추가한 텍스트·이미지·동영상 섹션은 유지되고, 지금 편집본은 버전 이력에서 복구할 수 있어요.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel className="rounded-md">취소</AlertDialogCancel>
-              <AlertDialogAction className="rounded-md bg-brand hover:bg-brand-dark" onClick={() => void runGeneration()}>
-                다시 생성
+              <AlertDialogAction
+                className="rounded-md bg-brand hover:bg-brand-dark"
+                onClick={() => {
+                  void (async () => {
+                    await recordDetailPageVersion(page.id, "manual_save", "새로 만들기 전 자동 백업");
+                    await runEditorialGeneration(generation.conceptId ?? concepts[0]?.id ?? "minimal");
+                  })();
+                }}
+              >
+                새로 만들기
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -749,23 +935,36 @@ const DetailPageStudio = () => {
   }
 
   /* ───────── Editor + preview ───────── */
-  const retryImage = (type: DetailImageType) => void generateImages([type], document.template);
+  const retryImage = (type: DetailImageType) => void generateImages([{ type, ratio: ratioForSlot(type) ?? "" }], document.template);
   const slotTypesInPage = Array.from(
     new Set(document.sections.flatMap((section) => section.images.map((image) => image.slot).filter(Boolean))),
   ) as DetailImageType[];
 
   const editorPanel = (
     <div className="bg-white">
-      {(Object.keys(imageJobs).length > 0 || copyStatus === "generating") && (
-        <div className="border-b border-stone-200 p-3">
-          <DetailGenerationProgress copyStatus={copyStatus} jobs={imageJobs} onRetry={retryImage} />
+      {showProgress && plannedTypes.length > 0 ? (
+        <div className="relative border-b border-stone-200 p-3">
+          <EditorialGenerationProgress copyStatus={copyStatus} planned={plannedTypes} jobs={imageJobs} onRetry={retryImage} />
+          {copyStatus === "done" && !Object.values(imageJobs).some((job) => job?.status === "generating" || job?.status === "pending") && (
+            <button type="button" onClick={() => setShowProgress(false)} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center text-stone-400 hover:text-stone-900" aria-label="진행 상황 닫기">
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
+      ) : (
+        !document.direction &&
+        (Object.keys(imageJobs).length > 0 || copyStatus === "generating") && (
+          <div className="border-b border-stone-200 p-3">
+            <DetailGenerationProgress copyStatus={copyStatus} jobs={imageJobs} onRetry={retryImage} />
+          </div>
+        )
       )}
-      <div className="grid grid-cols-3 border-b border-stone-200" role="tablist">
+      <div className="grid grid-cols-4 border-b border-stone-200" role="tablist">
         {(
           [
             ["sections", "섹션 구성"],
             ["section", "섹션 편집"],
+            ["images", "AI 이미지"],
             ["product", "상품 정보"],
           ] as Array<[EditorTab, string]>
         ).map(([tab, label]) => (
@@ -816,6 +1015,7 @@ const DetailPageStudio = () => {
               }
               onRemove={removeSection}
               onAdd={addSection}
+              editorial={Boolean(document.direction)}
             />
           </>
         )}
@@ -831,10 +1031,14 @@ const DetailPageStudio = () => {
               onRegenerateImage={regenerateImage}
               regeneratingImageIds={regeneratingImageIds}
               imageStatus={imageStatus}
+              direction={document.direction}
             />
           ) : (
             <p className="py-10 text-center text-sm text-stone-500">‘섹션 구성’ 또는 미리보기에서 편집할 섹션을 선택하세요.</p>
           ))}
+        {editorTab === "images" && (
+          <AiImagePanel document={document} imageStatus={imageStatus} busyTypes={busySlots} onRegenerate={(type, instruction) => void regenerateSlot(type, instruction)} />
+        )}
         {editorTab === "product" && (
           <div className="space-y-5">
             <div className="space-y-1.5">
@@ -902,6 +1106,44 @@ const DetailPageStudio = () => {
               상품명 · 카피 AI 다시 쓰기
             </Button>
 
+            {document.direction ? (
+              <div className="border-t border-stone-200 pt-5">
+                <p className="text-xs font-semibold">콘셉트</p>
+                <p className="mt-1 text-[11px] leading-4 text-stone-500">바꾸면 팔레트·타이포·섹션 순서·레이아웃이 즉시 바뀌고 내용은 유지돼요.</p>
+                <div className="mt-2">
+                  <ConceptSwitcher
+                    value={document.template}
+                    onChange={(id) => {
+                      updateDocument((current) => applyConcept(current, id, generation.analysis, seedKeyFor(source)));
+                      setGeneration((current) => ({ ...current, conceptId: id }));
+                    }}
+                  />
+                </div>
+                {slotTypesInPage.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 h-11 w-full rounded-md"
+                    disabled={Object.values(imageJobs).some((job) => job?.status === "generating" || job?.status === "pending")}
+                    onClick={() => {
+                      void autosave.saveNow().catch(() => undefined).then(() =>
+                        generateImages(slotTypesInPage.map((type) => ({ type, ratio: ratioForSlot(type) ?? "" })), document.template),
+                      );
+                    }}
+                  >
+                    <Sparkles className="mr-1.5 h-4 w-4" /> {getConcept(document.template).name} 무드로 AI 이미지 {slotTypesInPage.length}컷 다시 촬영
+                  </Button>
+                )}
+                {generation.analysis && (
+                  <details className="mt-5 border-t border-stone-200 pt-4">
+                    <summary className="flex min-h-10 cursor-pointer items-center text-xs font-semibold">AI 상품 분석 결과 · 디테일 확인</summary>
+                    <div className="mt-3">
+                      <ProductAnalysisPanel analysis={generation.analysis} onChange={(next) => setGeneration((current) => ({ ...current, analysis: next }))} />
+                    </div>
+                  </details>
+                )}
+              </div>
+            ) : (
             <div className="border-t border-stone-200 pt-5">
               <p className="text-xs font-semibold">템플릿</p>
               <div className="mt-2">
@@ -914,7 +1156,7 @@ const DetailPageStudio = () => {
                   className="mt-3 h-11 w-full rounded-md"
                   disabled={Object.values(imageJobs).some((job) => job?.status === "generating" || job?.status === "pending")}
                   onClick={() => {
-                    void autosave.saveNow().catch(() => undefined).then(() => generateImages(slotTypesInPage, document.template));
+                    void autosave.saveNow().catch(() => undefined).then(() => generateImages(slotTypesInPage.map((type) => ({ type, ratio: "" })), document.template));
                   }}
                 >
                   <Sparkles className="mr-1.5 h-4 w-4" /> {templateMeta.name} 스타일로 AI 이미지 {slotTypesInPage.length}장 다시 생성
@@ -923,6 +1165,7 @@ const DetailPageStudio = () => {
               <p className="mt-2 text-[11px] leading-4 text-stone-500">템플릿을 바꾸면 레이아웃은 즉시 바뀌고, 이미지 무드는 위 버튼으로 새 스타일에 맞춰 다시 생성할 수 있어요.</p>
             </div>
 
+            )}
             <div className="border-t border-stone-200 pt-5">
               <p className="text-xs font-semibold">추가 정보</p>
               <div className="mt-3">
@@ -952,8 +1195,43 @@ const DetailPageStudio = () => {
     </div>
   );
 
+  const renderToolbar = (section: DetailSection) => {
+    const index = document.sections.findIndex((entry) => entry.id === section.id);
+    const slotImage = section.images.find((image) => image.slot);
+    return (
+      <SectionToolbar
+        section={section}
+        isFirst={index === 0}
+        isLast={index === document.sections.length - 1}
+        busy={regeneratingId === section.id || Boolean(slotImage && regeneratingImageIds.includes(slotImage.id))}
+        actions={{
+          onEdit: () => {
+            setSelectedId(section.id);
+            setEditorTab("section");
+            setMobileView("edit");
+          },
+          onMove: (delta) => moveSectionById(section.id, delta),
+          onCycleLayout: () => patchSectionLayout(section.id, (entry) => ({ ...entry.layout, variant: nextVariant(entry.type, entry.layout?.variant) })),
+          onCycleBackground: () =>
+            patchSectionLayout(section.id, (entry) => {
+              const current = BACKGROUND_CYCLE.indexOf(entry.layout?.background ?? "default");
+              return { ...entry.layout, background: BACKGROUND_CYCLE[(current + 1) % BACKGROUND_CYCLE.length] };
+            }),
+          onChangeImage: () => {
+            setSelectedId(section.id);
+            setEditorTab("section");
+            setMobileView("edit");
+          },
+          onRegenerateImage: () => slotImage?.slot && setToolbarRegen({ imageId: slotImage.id, slot: slotImage.slot }),
+          onRewrite: () => void regenerateSection(section),
+          onRemove: () => removeSection(section.id),
+        }}
+      />
+    );
+  };
+
   const preview = (
-    <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]", previewWidth === "mobile" ? "max-w-[390px]" : "max-w-none")}>
+    <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)] transition-[max-width]", PREVIEW_MAX[previewWidth])}>
       <DetailPageRenderer
         document={document}
         source={source}
@@ -962,7 +1240,31 @@ const DetailPageStudio = () => {
         colors={fundingColors}
         selectedSectionId={selectedId}
         onSelectSection={selectFromPreview}
+        renderToolbar={document.direction ? renderToolbar : undefined}
       />
+    </div>
+  );
+
+  const widthSwitch = (
+    <div className="flex border border-stone-300" role="group" aria-label="미리보기 너비">
+      {(
+        [
+          ["mobile", Smartphone, "모바일 미리보기"],
+          ["tablet", Tablet, "태블릿 미리보기"],
+          ["desktop", Monitor, "데스크톱 미리보기"],
+        ] as const
+      ).map(([value, Icon, label]) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => setPreviewWidth(value)}
+          className={cn("flex h-10 w-10 items-center justify-center", previewWidth === value && "bg-stone-900 text-white")}
+          aria-label={label}
+          aria-pressed={previewWidth === value}
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      ))}
     </div>
   );
 
@@ -992,8 +1294,8 @@ const DetailPageStudio = () => {
       className="h-12 min-w-0 flex-1 rounded-md bg-brand px-4 text-sm font-bold hover:bg-brand-dark md:h-10 md:flex-none"
     >
       {startingFunding ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Rocket className="mr-1.5 h-4 w-4" />}
-      <span className="truncate md:hidden">펀딩 시작하기</span>
-      <span className="hidden md:inline">이 상세페이지로 펀딩 시작하기</span>
+      <span className="truncate md:hidden">펀딩 등록하기</span>
+      <span className="hidden md:inline">이 상세페이지로 펀딩 등록하기</span>
     </Button>
   );
 
@@ -1014,14 +1316,7 @@ const DetailPageStudio = () => {
             <SaveStatusBadge status={autosave.status} lastSavedAt={autosave.lastSavedAt} error={autosave.error} />
             <PublishStateBadge state={publishState} />
             <div className="hidden items-center gap-2 md:flex">
-              <div className="flex border border-stone-300" role="group" aria-label="미리보기 너비">
-                <button type="button" onClick={() => setPreviewWidth("mobile")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "mobile" && "bg-stone-900 text-white")} aria-label="모바일 미리보기">
-                  <Smartphone className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => setPreviewWidth("desktop")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "desktop" && "bg-stone-900 text-white")} aria-label="데스크톱 미리보기">
-                  <Monitor className="h-4 w-4" />
-                </button>
-              </div>
+              {widthSwitch}
               <Button type="button" variant="ghost" className="h-10 rounded-md" onClick={() => setVersionsOpen(true)}>
                 <History className="mr-1.5 h-4 w-4" /> 버전 이력
               </Button>
@@ -1057,6 +1352,19 @@ const DetailPageStudio = () => {
             {editorPanel}
           </aside>
           <section className={cn("min-w-0 md:block", mobileView === "preview" ? "block" : "hidden")} aria-label="상세페이지 미리보기">
+            {showProgress && plannedTypes.length > 0 && (() => {
+              const done = plannedTypes.filter((type) => imageJobs[type]?.status === "completed" || imageJobs[type]?.status === "failed").length;
+              if (copyStatus === "done" && done === plannedTypes.length) return null;
+              return (
+                <button type="button" onClick={() => setMobileView("edit")} className="flex min-h-11 w-full items-center gap-2 border-b border-stone-200 bg-white px-4 text-left text-xs font-semibold md:hidden" aria-live="polite">
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {copyStatus !== "done" ? "상품 설명 작성 중" : "상세페이지 이미지 제작 중"} · 촬영 {done}/{plannedTypes.length}
+                  </span>
+                  <span className="shrink-0 text-stone-400">자세히</span>
+                </button>
+              );
+            })()}
             {preview}
           </section>
         </div>
@@ -1115,11 +1423,19 @@ const DetailPageStudio = () => {
 
       <VersionHistoryDialog pageId={page.id} open={versionsOpen} onOpenChange={setVersionsOpen} onRestore={handleRestore} />
 
+      <ImageRegenerateDialog
+        open={toolbarRegen !== null}
+        label={toolbarRegen ? getDetailImageSpec(toolbarRegen.slot).label : undefined}
+        onOpenChange={(open) => !open && setToolbarRegen(null)}
+        onSubmit={(instruction) => toolbarRegen && void regenerateImage(toolbarRegen.imageId, toolbarRegen.slot, instruction)}
+      />
+
       <AlertDialog open={confirmFunding} onOpenChange={setConfirmFunding}>
         <AlertDialogContent className="rounded-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>이 상세페이지로 펀딩을 시작할까요?</AlertDialogTitle>
+            <AlertDialogTitle>이 상세페이지로 펀딩을 등록할까요?</AlertDialogTitle>
             <AlertDialogDescription className="leading-6">
+              상품명·대표 이미지·판매가·설명·사이즈·브랜드 정보가 펀딩 등록 화면에 그대로 전달돼 다시 입력할 필요가 없어요.
               상표 검수 후 펀딩 초안이 만들어지고 상세페이지가 연결됩니다. 다음 화면에서 판매가·수량·기간을 확인하고 승인 요청을 보내면 관리자 승인 후 펀딩이 시작됩니다.
               연결 후에도 상세페이지는 계속 수정할 수 있어요.
             </AlertDialogDescription>
@@ -1127,7 +1443,7 @@ const DetailPageStudio = () => {
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-md">취소</AlertDialogCancel>
             <AlertDialogAction className="rounded-md bg-brand hover:bg-brand-dark" onClick={() => void handleStartFunding()}>
-              펀딩 시작하기
+              펀딩 등록하기
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

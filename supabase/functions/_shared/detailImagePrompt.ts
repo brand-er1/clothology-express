@@ -17,7 +17,15 @@ export type DetailImageType =
   | "lifestyle"
   | "fabric"
   | "mood"
-  | "flat_lay";
+  | "flat_lay"
+  | "detail_print"
+  | "detail_embroidery"
+  | "detail_neck"
+  | "detail_cuff"
+  | "detail_stitch"
+  | "folded"
+  | "mannequin"
+  | "texture_wide";
 
 export type DetailPageStyle =
   | "minimal"
@@ -28,10 +36,12 @@ export type DetailPageStyle =
   | "vintage"
   | "y2k"
   | "emotional"
-  | "lookbook";
+  | "lookbook"
+  | "editorial"
+  | "outdoor";
 
 export const DETAIL_PAGE_STYLES: DetailPageStyle[] = [
-  "minimal", "street", "luxury", "sports", "casual", "vintage", "y2k", "emotional", "lookbook",
+  "minimal", "street", "luxury", "sports", "casual", "vintage", "y2k", "emotional", "lookbook", "editorial", "outdoor",
 ];
 
 export const DETAIL_IMAGE_TYPES: DetailImageType[] = [
@@ -44,7 +54,21 @@ export const DETAIL_IMAGE_TYPES: DetailImageType[] = [
   "fabric",
   "mood",
   "flat_lay",
+  "detail_print",
+  "detail_embroidery",
+  "detail_neck",
+  "detail_cuff",
+  "detail_stitch",
+  "folded",
+  "mannequin",
+  "texture_wide",
 ];
+
+/** Aspect ratios the image models accept; the client may request one per shot (art direction). */
+export const SUPPORTED_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+
+export const isSupportedAspectRatio = (value: unknown): value is string =>
+  typeof value === "string" && SUPPORTED_ASPECT_RATIOS.includes(value);
 
 export const isDetailImageType = (value: unknown): value is DetailImageType =>
   typeof value === "string" && (DETAIL_IMAGE_TYPES as string[]).includes(value);
@@ -63,6 +87,8 @@ export type PromptProduct = {
   accessories: string[];
   constructionFeatures: string[];
   isFrontBackComposite: boolean;
+  /** Parts confirmed by the creator in the product analysis (collar, hood, print...). */
+  parts: string[];
 };
 
 export type BuildProductImagePromptInput = {
@@ -72,6 +98,7 @@ export type BuildProductImagePromptInput = {
   imageType: DetailImageType;
   detailPageStyle: DetailPageStyle;
   userInstruction?: string | null;
+  aspectRatio?: string;
 };
 
 const STYLE_DIRECTION: Record<DetailPageStyle, string> = {
@@ -93,6 +120,10 @@ const STYLE_DIRECTION: Record<DetailPageStyle, string> = {
     "Visual direction: emotional, poetic mood — soft window light, gentle shadows, quiet intimate settings, muted pastel palette, calm and tender atmosphere.",
   lookbook:
     "Visual direction: seasonal brand lookbook — consistent editorial series look, clean location or studio sets, full-body styling focus, cohesive art direction like a brand campaign book.",
+  editorial:
+    "Visual direction: independent fashion magazine editorial — considered asymmetric composition, natural window or single-source studio light, muted warm neutrals, quiet confident mood.",
+  outdoor:
+    "Visual direction: outdoor field campaign — overcast natural daylight, rock, grass, gravel or forest-edge settings, earthy muted palette, honest documentary feel.",
 };
 
 /** Aspect ratios supported by the Gemini image models. */
@@ -106,12 +137,27 @@ export const IMAGE_ASPECT_RATIO: Record<DetailImageType, string> = {
   fabric: "1:1",
   mood: "16:9",
   flat_lay: "4:5",
+  detail_print: "1:1",
+  detail_embroidery: "1:1",
+  detail_neck: "1:1",
+  detail_cuff: "1:1",
+  detail_stitch: "1:1",
+  folded: "4:5",
+  mannequin: "3:4",
+  texture_wide: "21:9",
 };
 
 const view = (product: PromptProduct, side: "front" | "back") =>
   product.isFrontBackComposite
     ? `The reference is ONE image showing the garment ${side === "front" ? "FRONT on the LEFT half" : "BACK on the RIGHT half"} (the other half shows the ${side === "front" ? "back" : "front"}).`
     : "The reference shows the garment.";
+
+const decorationText = (product: PromptProduct, pattern: RegExp) => {
+  const matches = product.decorations.filter((decoration) => pattern.test(`${decoration.kind} ${decoration.label}`));
+  return matches.length
+    ? ` (${matches.map((decoration) => [decoration.location, decoration.label].filter(Boolean).join(" ")).join(", ")})`
+    : "";
+};
 
 const TYPE_TEMPLATE: Record<DetailImageType, (product: PromptProduct) => string> = {
   hero: (product) =>
@@ -130,9 +176,40 @@ const TYPE_TEMPLATE: Record<DetailImageType, (product: PromptProduct) => string>
     `Create a FABRIC TEXTURE close-up of this garment's material${product.material ? ` (${product.material})` : ""}, filling the frame with the fabric surface in the garment's exact color, soft raking light to show texture. Show only texture plausible from the reference; do not depict technical features (coatings, membranes, perforations) that are not stated.`,
   flat_lay: (product) =>
     `Create a FLAT LAY image: this exact ${product.clothType || "garment"} laid flat and neatly arranged on a floor or studio surface, shot from directly above, whole garment visible with natural folds and a soft realistic shadow. Minimal styling props are allowed at the edges only; the garment stays the clear subject. ${view(product, "front")}`,
+  detail_print: (product) =>
+    `Create a MACRO CLOSE-UP of the PRINTED GRAPHIC on this garment${decorationText(product, /print|프린/i)}: fill most of the frame with the print, shot at a slight angle so the ink sits naturally on the knit/weave with visible fabric texture through and around it. Reproduce the artwork exactly (shapes, colors, text) — do not redraw, restyle or add graphics. ${view(product, "front")}`,
+  detail_embroidery: (product) =>
+    `Create a MACRO CLOSE-UP of the EMBROIDERY on this garment${decorationText(product, /embroider|자수/i)}: raking side light showing raised thread texture and individual stitches, fabric weave around it. Reproduce the embroidered design exactly; do not add or change any stitched element. ${view(product, "front")}`,
+  detail_neck: (product) =>
+    `Create a CLOSE-UP of the ${product.parts.includes("hood") ? "HOOD opening and neckline" : product.parts.includes("collar") ? "COLLAR" : "NECKLINE"} of this garment, cropped tightly around that area with natural folds, showing its real construction as it appears in the reference (rib, binding, drawcords only if visible). ${view(product, "front")}`,
+  detail_cuff: (product) =>
+    `Create a CLOSE-UP of the ${product.parts.includes("cuff") ? "SLEEVE CUFF" : "HEM"} of this garment, laid naturally with a soft fold, showing the real edge finish and fabric texture as it appears in the reference. ${view(product, "front")}`,
+  detail_stitch: (product) =>
+    `Create a MACRO CLOSE-UP of a SEAM of this garment (e.g. shoulder or side seam) showing realistic, slightly imperfect stitching and fabric grain. Show only seam types visible in the reference — no decorative topstitching, piping or contrast thread that is not there. ${view(product, "front")}`,
+  folded: (product) =>
+    `Create a FOLDED PRODUCT image: this exact ${product.clothType || "garment"} neatly folded in a retail fold on a clean surface, front graphic or key design element visible on the top panel, soft natural shadow, slight top-down angle. ${view(product, "front")}`,
+  mannequin: (product) =>
+    `Create a MANNEQUIN SHOT: this exact ${product.clothType || "garment"} on a plain matte dress form / headless mannequin in a studio, full garment visible from shoulders to hem, ${product.fit ? `showing a ${product.fit} fit, ` : ""}natural drape and gravity folds. No person, no face. ${view(product, "front")}`,
+  texture_wide: (product) =>
+    `Create a WIDE FABRIC TEXTURE crop: a panoramic close-up across the surface of this garment's fabric${product.material ? ` (${product.material})` : ""} in its exact color, gentle folds and raking light revealing the weave or knit, shallow depth of field at the edges. Only texture plausible from the reference; no coatings, membranes or technical features.`,
   mood: (product) =>
     `Create a BRAND MOOD image expressing the concept of this ${product.clothType || "garment"}: atmospheric, wide composition where the garment appears naturally (folded, hanging or worn) and stays recognizable. Evoke the product's attitude through setting, light and color, without adding text or logos. ${view(product, "front")}`,
 };
+
+/**
+ * Real-photography rules: what separates a brand's product shoot from a typical AI render.
+ * Applied to every shot.
+ */
+export const PHOTO_REALISM = [
+  "PHOTOGRAPHIC REALISM (must look like a real fashion brand photo shoot, not a 3D or AI render):",
+  "- natural fabric behaviour: real gravity folds and soft wrinkles where fabric bends, no vacuum-smooth surfaces",
+  "- true fabric texture: visible knit or weave, slight fibre fuzz on cotton/fleece, matte finish",
+  "- realistic seams: straight but human stitching, seam allowances and rib transitions that match the reference",
+  "- real studio or daylight lighting with soft natural shadows and a believable contact shadow",
+  "- subtle natural film/sensor grain, true-to-life color, moderate contrast",
+  "- NO HDR look, NO glossy or plastic-looking fabric, NO waxy sheen, NO over-sharpening, NO CGI perfection",
+  "- minimal props; nothing that competes with the garment; no text overlays",
+].join("\n");
 
 const identityLock = (product: PromptProduct) => {
   const facts = [
@@ -151,6 +228,8 @@ const identityLock = (product: PromptProduct) => {
     "The reference image is the immutable product. Reproduce the EXACT SAME garment — do not redesign it.",
     "Keep identical: garment color and color blocking, silhouette and proportions, every graphic/print/embroidery/logo and its exact position and scale, pocket positions, zipper, buttons, hood, collar, sleeve length and shape, cuffs, hem and overall length, and the front vs. back design.",
     "Do not add, remove, move or recolor any design element. Do not add text, watermarks, extra logos or brand names. Do not change the garment type.",
+    "NEVER invent construction that is not in the reference: no extra zippers, pockets, buttons, drawcords, seams, panels, embroidery, patches or labels.",
+    product.parts.length ? `Details confirmed to exist on this garment: ${product.parts.join(", ")}. Anything else must not appear.` : "",
     "Photorealistic, high-resolution, professional fashion photography.",
     facts.length ? `Known product facts: ${facts.join(" | ")}.` : "",
   ]
@@ -164,6 +243,7 @@ export const buildProductImagePrompt = ({
   imageType,
   detailPageStyle,
   userInstruction,
+  aspectRatio,
 }: BuildProductImagePromptInput) => {
   const instruction = userInstruction?.trim().slice(0, 500);
   return [
@@ -176,8 +256,9 @@ export const buildProductImagePrompt = ({
     instruction
       ? `Creator's change request for this image (apply it only to background, setting, composition, lighting, model or mood — never to the garment design): "${instruction}"`
       : "",
+    PHOTO_REALISM,
     identityLock(product),
-    `Output exactly one image, aspect ratio ${IMAGE_ASPECT_RATIO[imageType]}.`,
+    `Output exactly one image, aspect ratio ${aspectRatio && isSupportedAspectRatio(aspectRatio) ? aspectRatio : IMAGE_ASPECT_RATIO[imageType]}. Keep the whole garment (or the chosen detail) inside the frame with breathing room at the edges so it is never cut off.`,
   ]
     .filter(Boolean)
     .join("\n\n");

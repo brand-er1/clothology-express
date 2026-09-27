@@ -52,3 +52,36 @@ export const stripUnverifiedClaims = (text: string, corpus: string): string => {
 
 export const hasUnverifiedClaim = (text: string, corpus: string) =>
   stripUnverifiedClaims(text, corpus) !== text.trim();
+
+/**
+ * Empty shopping-mall superlatives ("최고의 품질", "완벽한 핏", "당신만을 위한 특별한"...). Editorial
+ * copy states what the product is; sentences built on these claims are dropped.
+ */
+const HYPE_PATTERNS: RegExp[] = [
+  /최고의?\s*(?:품질|퀄리티|소재|핏|제품|선택)/,
+  /완벽한?\s*(?:핏|품질|마감|착용감|디자인|스타일|선택)/,
+  /당신만을\s*위한|오직\s*당신/,
+  /특별한\s*당신|당신을\s*위한\s*특별한/,
+  /압도적인?|역대급|끝판왕|인생\s*(?:템|아이템|후드|티)/,
+  /놓치지\s*마세요|지금\s*바로\s*(?:구매|참여)|품절\s*임박|한정\s*특가/,
+  /누구나\s*(?:반할|만족)|모두가\s*(?:반한|찾는)/,
+  /100%\s*만족|만족\s*보장/,
+];
+
+export const hasHype = (text: string) => HYPE_PATTERNS.some((pattern) => pattern.test(text));
+
+/** Removes sentences that lean on unsupported superlatives. */
+export const stripHype = (text: string): string => {
+  if (!text) return "";
+  return text
+    .split("\n")
+    .map((line) =>
+      splitSentences(line)
+        .filter((sentence) => !hasHype(sentence))
+        .join("")
+        .trim(),
+    )
+    .filter((line, index, lines) => line || (index > 0 && lines[index - 1]))
+    .join("\n")
+    .trim();
+};

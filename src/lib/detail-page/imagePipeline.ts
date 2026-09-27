@@ -34,7 +34,18 @@ export const DETAIL_IMAGE_SPECS: DetailImageSpec[] = [
   { type: "mood", number: "07", label: "MOOD", description: "브랜드 무드 컷 (선택)", defaultOn: true },
   { type: "fabric", number: "08", label: "FABRIC", description: "원단 텍스처 클로즈업 (소재 정보가 있을 때)", defaultOn: false },
   { type: "flat_lay", number: "09", label: "FLAT LAY", description: "바닥·스튜디오에 자연스럽게 놓인 제품 컷", defaultOn: true },
+  { type: "detail_print", number: "10", label: "PRINT DETAIL", description: "프린팅 클로즈업 (프린트가 있을 때)", defaultOn: false },
+  { type: "detail_embroidery", number: "11", label: "EMBROIDERY", description: "자수 클로즈업 (자수가 있을 때)", defaultOn: false },
+  { type: "detail_neck", number: "12", label: "COLLAR / HOOD", description: "카라·후드·넥라인 클로즈업", defaultOn: false },
+  { type: "detail_cuff", number: "13", label: "SLEEVE / HEM", description: "소매·커프스·밑단 클로즈업", defaultOn: false },
+  { type: "detail_stitch", number: "14", label: "STITCH", description: "봉제선 클로즈업", defaultOn: false },
+  { type: "folded", number: "15", label: "FOLDED", description: "자연스럽게 접힌 제품 컷", defaultOn: false },
+  { type: "mannequin", number: "16", label: "MANNEQUIN", description: "마네킹 착용 컷 (핏 확인)", defaultOn: false },
+  { type: "texture_wide", number: "17", label: "TEXTURE", description: "원단 텍스처 와이드 크롭", defaultOn: false },
 ];
+
+/** Aspect ratios accepted by generate-detail-image (Gemini image models). */
+export const DETAIL_IMAGE_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"] as const;
 
 export const getDetailImageSpec = (type: DetailImageType) =>
   DETAIL_IMAGE_SPECS.find((spec) => spec.type === type) ?? DETAIL_IMAGE_SPECS[0];
@@ -52,7 +63,7 @@ const readFunctionError = async (error: unknown) => {
   return functionError?.message || "이미지 생성에 실패했습니다.";
 };
 
-export type GeneratedDetailImage = { assetId: string; url: string; model: string };
+export type GeneratedDetailImage = { assetId: string; url: string; model: string; ratio?: string };
 
 /** Generates one image. Throws with a readable message on failure. */
 export const requestDetailImage = async (input: {
@@ -60,6 +71,8 @@ export const requestDetailImage = async (input: {
   imageType: DetailImageType;
   style: DetailPageTemplateId;
   userInstruction?: string;
+  /** Override the type's default ratio (art direction). Must be one of DETAIL_IMAGE_RATIOS. */
+  aspectRatio?: string;
 }): Promise<GeneratedDetailImage> => {
   const { data, error } = await supabase.functions.invoke("generate-detail-image", {
     body: {
@@ -67,12 +80,13 @@ export const requestDetailImage = async (input: {
       imageType: input.imageType,
       style: input.style,
       userInstruction: input.userInstruction || undefined,
+      aspectRatio: input.aspectRatio || undefined,
     },
   });
   if (error) throw new Error(await readFunctionError(error));
   // (429: 하루/페이지 생성 한도 초과 메시지가 그대로 전달된다)
   if (!data?.url || !data?.assetId) throw new Error(data?.error || "이미지가 반환되지 않았습니다.");
-  return { assetId: data.assetId, url: data.url, model: data.model };
+  return { assetId: data.assetId, url: data.url, model: data.model, ratio: typeof data.aspectRatio === "string" ? data.aspectRatio : input.aspectRatio };
 };
 
 /** Runs `worker` over `items` with at most `limit` in flight. */

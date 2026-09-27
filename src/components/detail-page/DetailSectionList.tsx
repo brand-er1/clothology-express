@@ -21,13 +21,37 @@ type DetailSectionListProps = {
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
   onAdd: (type: DetailSectionType) => void;
+  /** Editorial pages offer the full section catalog (sections may repeat, e.g. two lookbooks). */
+  editorial?: boolean;
 };
+
+const EDITORIAL_CATALOG: Array<{ type: DetailSectionType; label: string; eyebrow: string }> = [
+  { type: "hero", label: "히어로", eyebrow: "HERO" },
+  { type: "story", label: "스토리", eyebrow: "STORY" },
+  { type: "design", label: "제품", eyebrow: "PRODUCT" },
+  { type: "lookbook", label: "룩북", eyebrow: "LOOKBOOK" },
+  { type: "detail", label: "디테일", eyebrow: "DETAIL" },
+  { type: "fabric", label: "원단", eyebrow: "FABRIC" },
+  { type: "fit", label: "핏", eyebrow: "FIT" },
+  { type: "size", label: "사이즈", eyebrow: "SIZE" },
+  { type: "color", label: "컬러", eyebrow: "COLOR" },
+  { type: "video", label: "동영상", eyebrow: "VIDEO" },
+  { type: "custom_image", label: "이미지", eyebrow: "CUSTOM IMAGE" },
+  { type: "custom_text", label: "텍스트", eyebrow: "CUSTOM TEXT" },
+  { type: "production", label: "제작 과정", eyebrow: "PRODUCTION" },
+  { type: "funding", label: "펀딩 정보", eyebrow: "FUNDING" },
+  { type: "brand", label: "브랜드", eyebrow: "BRAND" },
+  { type: "notice", label: "안내", eyebrow: "NOTICE" },
+];
+
+/** Types that make sense only once per page. */
+const SINGLE: DetailSectionType[] = ["hero", "size", "funding", "production", "brand", "notice", "color"];
 
 /**
  * Section order editor. Desktop: drag the handle. Touch devices: the ↑/↓ buttons (HTML5
  * drag & drop does not fire on most mobile browsers).
  */
-export const DetailSectionList = ({ sections, selectedId, onSelect, onMove, onToggle, onRemove, onAdd }: DetailSectionListProps) => {
+export const DetailSectionList = ({ sections, selectedId, onSelect, onMove, onToggle, onRemove, onAdd, editorial }: DetailSectionListProps) => {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const missingStandard = DEFAULT_SECTION_ORDER.filter((type) => !sections.some((section) => section.type === type));
@@ -78,7 +102,7 @@ export const DetailSectionList = ({ sections, selectedId, onSelect, onMove, onTo
                 className="min-w-0 flex-1 py-3 pl-3 text-left sm:pl-0"
               >
                 <span className="block text-[10px] font-bold tracking-[0.14em] text-stone-400">
-                  {String(index + 1).padStart(2, "0")} · {meta.eyebrow}
+                  {String(index + 1).padStart(2, "0")} · {(editorial && section.eyebrow) || meta.eyebrow}
                 </span>
                 <span className={cn("block truncate text-sm font-semibold", !section.visible && "text-stone-400 line-through", selected && "text-brand")}>
                   {section.type === "hero" ? meta.label : section.title || meta.label}
@@ -113,7 +137,15 @@ export const DetailSectionList = ({ sections, selectedId, onSelect, onMove, onTo
             <Plus className="mr-1.5 h-4 w-4" /> 섹션 추가
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64">
+        <DropdownMenuContent align="start" className="max-h-[60vh] w-64 overflow-y-auto">
+          {editorial ? (
+            EDITORIAL_CATALOG.filter((entry) => !SINGLE.includes(entry.type) || !sections.some((section) => section.type === entry.type)).map((entry) => (
+              <DropdownMenuItem key={entry.type} className="min-h-10" onSelect={() => onAdd(entry.type)}>
+                <span className="font-medium">{entry.label}</span>
+                <span className="ml-auto text-[11px] text-stone-400">{entry.eyebrow}</span>
+              </DropdownMenuItem>
+            ))
+          ) : (<>
           {missingStandard.length > 0 && (
             <>
               <DropdownMenuLabel className="text-xs text-stone-500">기본 섹션</DropdownMenuLabel>
@@ -128,7 +160,9 @@ export const DetailSectionList = ({ sections, selectedId, onSelect, onMove, onTo
           )}
           <DropdownMenuLabel className="text-xs text-stone-500">자유 섹션</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => onAdd("custom_text")}>텍스트 섹션</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onAdd("custom_image")}>이미지 섹션 (룩북)</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onAdd("custom_image")}>이미지 섹션</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onAdd("lookbook")}>룩북 섹션</DropdownMenuItem>
+          </>)}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

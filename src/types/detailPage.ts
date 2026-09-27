@@ -15,7 +15,9 @@ export type DetailPageTemplateId =
   | "vintage"
   | "y2k"
   | "emotional"
-  | "lookbook";
+  | "lookbook"
+  | "editorial"
+  | "outdoor";
 
 /** The five renderer layouts. Newer styles reuse one of them with their own theme tokens. */
 export type DetailLayoutId = "minimal" | "street" | "luxury" | "sports" | "casual";
@@ -36,7 +38,9 @@ export type DetailSectionType =
   | "production"
   | "notice"
   | "custom_text"
-  | "custom_image";
+  | "custom_image"
+  | "lookbook"
+  | "video";
 
 /** Which part of the source image to show. Design images are one frame: left = front, right = back. */
 export type DetailImageCrop = "full" | "left" | "right";
@@ -56,6 +60,10 @@ export type DetailImage = {
   slot?: DetailImageType;
   /** generated_assets row of an AI-generated image. */
   assetId?: string;
+  /** Native aspect ratio of a generated image ("4:5", "16:9"...). The editorial renderer shows it uncropped. */
+  ratio?: string;
+  /** Short caption (e.g. "COLLAR", "PRINT") shown by editorial layouts. */
+  caption?: string;
 };
 
 export type DetailItem = {
@@ -73,10 +81,15 @@ export type DetailFact = {
 export type DetailSectionBackground = "default" | "white" | "light" | "dark" | "brand";
 export type DetailSectionAlign = "default" | "left" | "center";
 
-/** Per-section display overrides chosen in the editor (배경 / 정렬 변경). */
+/** Per-section display overrides chosen in the editor (배경 / 정렬 / 레이아웃 변경). */
 export type DetailSectionLayout = {
   background?: DetailSectionBackground;
   align?: DetailSectionAlign;
+  /**
+   * Editorial layout variant of this section (see EDITORIAL_VARIANTS). Chosen by the art
+   * director per product/concept; the creator can switch it. Ignored by legacy pages.
+   */
+  variant?: string;
 };
 
 export type DetailSection = {
@@ -90,10 +103,18 @@ export type DetailSection = {
   items: DetailItem[];
   facts: DetailFact[];
   images: DetailImage[];
+  /** VIDEO section: YouTube / Vimeo / mp4 URL (https only). */
+  videoUrl?: string;
 };
 
 export type DetailPageDocument = {
   template: DetailPageTemplateId;
+  /**
+   * Page-level art direction (palette, typography, spacing, rhythm). Present on pages made
+   * with the editorial engine; persisted in `product_detail_pages.generation.direction`.
+   * Pages without it keep rendering with the legacy template renderer.
+   */
+  direction?: DetailArtDirection;
   productName: string;
   productNameEn: string;
   /** 한 줄 소개 */
@@ -178,12 +199,118 @@ export type DetailUserProvidedInfo = {
   careNote: string;
   colorName: string;
   fitNote: string;
+  /** 원하는 분위기 (자유 입력) */
+  mood?: string;
+  /** 원단 정보 — 제작자가 입력한 경우에만 FABRIC 섹션에 표시 */
+  fabricWeight?: string;
+  fabricHand?: string;
+  fabricStretch?: string;
+  fabricThickness?: string;
 };
 
 export type DetailPageGenerationMeta = {
   provider?: "ai" | "fallback";
   generatedAt?: string;
   fallbackReason?: string | null;
+  /** AI 상품 분석 결과 (제작자가 확인/수정한 값). */
+  analysis?: DetailProductAnalysis;
+  /** 추천된 콘셉트 3개(순서 = 추천 순). */
+  concepts?: DetailConceptRecommendation[];
+  /** 선택된 콘셉트. */
+  conceptId?: DetailPageTemplateId;
+  /** Stored page art direction (mirrors document.direction). */
+  direction?: DetailArtDirection;
+};
+
+/* ───────────── AI 상품 분석 · 콘셉트 · 아트 디렉션 ───────────── */
+
+/** Garment parts a DETAIL close-up can show. Only parts that really exist are ever used. */
+export type DetailPart =
+  | "collar"
+  | "hood"
+  | "neckline"
+  | "print"
+  | "embroidery"
+  | "pocket"
+  | "zipper"
+  | "button"
+  | "stitch"
+  | "cuff"
+  | "hem"
+  | "drawstring"
+  | "label"
+  | "patch";
+
+export type DetailColorInfo = { name: string; hex?: string };
+
+export type DetailProductAnalysis = {
+  category: string;
+  mainColor: DetailColorInfo;
+  subColors: DetailColorInfo[];
+  /** 이미지 기반 추정 소재. 상세페이지 사양으로는 절대 표시하지 않는다(제작자 확인 필요). */
+  materialGuess: string;
+  silhouette: string;
+  fit: string;
+  designFeatures: string[];
+  hasPrint: boolean;
+  hasEmbroidery: boolean;
+  /** 실제 존재하는 디테일 부위(제작자가 끌 수 있음). */
+  parts: DetailPart[];
+  target: string;
+  mood: string[];
+  brandMoods: string[];
+  /** 상세페이지에서 강조할 특징 */
+  emphasis: string[];
+  /** 이미지로 확인할 수 없어 제작자 입력이 필요한 항목 */
+  unknowns: string[];
+  provider: "ai" | "fallback";
+  analyzedAt: string;
+};
+
+export type DetailConceptRecommendation = {
+  id: DetailPageTemplateId;
+  reason: string;
+};
+
+export type DetailTypeFace = "grotesk" | "serif" | "condensed" | "rounded";
+
+export type DetailPalette = {
+  /** page background */
+  bg: string;
+  /** body ink */
+  ink: string;
+  /** secondary text */
+  muted: string;
+  /** hairlines */
+  rule: string;
+  /** alternate surface (fabric, size...) */
+  alt: string;
+  /** inverse surface (dark band) */
+  inverse: string;
+  inverseInk: string;
+  /** small accents (progress bar, index numbers) — derived from the product color */
+  accent: string;
+};
+
+export type DetailArtDirection = {
+  concept: DetailPageTemplateId;
+  palette: DetailPalette;
+  typography: {
+    display: DetailTypeFace;
+    /** English display words in uppercase */
+    uppercase: boolean;
+    /** heading size step: compact keeps mobile titles small */
+    scale: "compact" | "regular";
+    italic?: boolean;
+  };
+  /** section vertical rhythm */
+  spacing: "airy" | "regular" | "tight";
+  /** default text alignment */
+  align: "left" | "center";
+  /** subtle film grain over generated photos */
+  grain: boolean;
+  /** Variation seed (derived from the product) so two products of one concept differ. */
+  seed: number;
 };
 
 export type ProductDetailPage = {
@@ -209,6 +336,8 @@ export type DetailFundingStats = {
   fundingDays: number | null;
   sizeOptions: string[];
   measurements: Record<string, unknown> | null;
+  /** 예상 제작 기간 — shown only when the funding actually has this data. */
+  productionPeriod?: string | null;
 };
 
 /** Copy returned by the AI (edge function) or the deterministic fallback writer. */
@@ -233,6 +362,14 @@ export type DetailPageCopy = {
   notices: string[];
   /** Questions the AI could not answer from verified facts. */
   missingInfo: string[];
+  /** Short editorial key message for the HERO (editorial engine). */
+  keyMessage?: string;
+  /** 1~3 short design lines for the DESIGN section. */
+  designHighlights?: string[];
+  /** Captions for detail close-ups, only for parts that exist. */
+  detailCallouts?: Array<{ part: DetailPart; text: string }>;
+  /** Short lookbook caption. */
+  lookbookCaption?: string;
 };
 
 export type DetailImageType =
@@ -244,7 +381,15 @@ export type DetailImageType =
   | "lifestyle"
   | "fabric"
   | "mood"
-  | "flat_lay";
+  | "flat_lay"
+  | "detail_print"
+  | "detail_embroidery"
+  | "detail_neck"
+  | "detail_cuff"
+  | "detail_stitch"
+  | "folded"
+  | "mannequin"
+  | "texture_wide";
 
 /** "AI 다시 작성" tone. Facts stay the same; only the voice changes. */
 export type DetailCopyTone = "concise" | "emotional" | "professional" | "street" | "luxury";

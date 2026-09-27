@@ -12,14 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/use-toast";
 import { DetailImageView } from "@/components/detail-page/DetailImageView";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ImageRegenerateDialog } from "@/components/detail-page/ImageRegenerateDialog";
+import { EDITORIAL_VARIANTS } from "@/lib/detail-page/artDirection";
 import { SECTION_META, createDetailId, defaultSlotForSection, getDesignImages } from "@/lib/detail-page/document";
 import { getDetailImageSpec } from "@/lib/detail-page/imagePipeline";
 import { getDetailPageErrorMessage, uploadDetailPageImage } from "@/services/detailPage";
@@ -32,6 +26,7 @@ import type {
   DetailSection,
   DetailCopyTone,
   DetailSectionBackground,
+  DetailArtDirection,
 } from "@/types/detailPage";
 import { cn } from "@/lib/utils";
 
@@ -46,13 +41,16 @@ type DetailSectionEditorProps = {
   onRegenerateImage?: (imageId: string, slot: DetailImageType, instruction: string) => Promise<void>;
   regeneratingImageIds?: string[];
   imageStatus?: Partial<Record<DetailImageType, DetailImageJobStatus>>;
+  /** Editorial pages: page palette, used for the background swatches and the layout picker. */
+  direction?: DetailArtDirection;
 };
 
-const INSTRUCTION_EXAMPLES = [
-  "배경을 어두운 콘크리트 바닥으로 변경",
-  "모델 없이 제품만 보여줘",
-  "좀 더 고급스럽게",
-  "제품을 바닥에 자연스럽게 놓은 느낌",
+const EDITORIAL_BACKGROUNDS: Array<{ value: DetailSectionBackground; label: string; color: (d: DetailArtDirection) => string }> = [
+  { value: "default", label: "기본", color: (d) => d.palette.bg },
+  { value: "light", label: "보조", color: (d) => d.palette.alt },
+  { value: "dark", label: "반전", color: (d) => d.palette.inverse },
+  { value: "white", label: "화이트", color: () => "#ffffff" },
+  { value: "brand", label: "제품 컬러", color: (d) => d.palette.accent },
 ];
 
 const TONE_OPTIONS: Array<{ value: DetailCopyTone | ""; label: string }> = [
@@ -92,9 +90,9 @@ export const DetailSectionEditor = ({
   onRegenerateImage,
   regeneratingImageIds = [],
   imageStatus,
+  direction,
 }: DetailSectionEditorProps) => {
   const [regenTarget, setRegenTarget] = useState<DetailImage | null>(null);
-  const [instruction, setInstruction] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const replaceTarget = useRef<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -104,8 +102,12 @@ export const DetailSectionEditor = ({
   const designImages = getDesignImages(source);
   const designChoices: DetailImage[] = source.isFrontBackComposite ? [...designImages.pair, ...designImages.full] : designImages.full;
   const maxImages = section.type === "hero" ? 1 : 6;
-  const showsImages = !["funding", "production", "notice", "brand", "size"].includes(section.type);
-  const canRegenerate = !["custom_text", "custom_image", "brand"].includes(section.type) && onRegenerate;
+  const showsImages = !["funding", "production", "notice", "brand", "size", "video"].includes(section.type);
+  const canRegenerate = !["custom_text", "custom_image", "brand", "lookbook", "video"].includes(section.type) && onRegenerate;
+  const variants = direction ? EDITORIAL_VARIANTS[section.type] : undefined;
+  const backgroundOptions = direction
+    ? EDITORIAL_BACKGROUNDS.map((option) => ({ value: option.value, label: option.label, swatch: option.color(direction) }))
+    : BACKGROUND_OPTIONS;
 
   const addOrReplaceImage = (image: DetailImage, replaceId: string | null) => {
     if (replaceId) {
@@ -170,7 +172,7 @@ export const DetailSectionEditor = ({
           <div>
             <p className="text-xs font-semibold text-stone-700">배경</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label="섹션 배경">
-              {BACKGROUND_OPTIONS.map((option) => {
+              {backgroundOptions.map((option) => {
                 const active = (section.layout?.background ?? "default") === option.value;
                 return (
                   <button
@@ -203,6 +205,45 @@ export const DetailSectionEditor = ({
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {variants && variants.length > 1 && (
+        <div>
+          <p className="text-xs font-semibold text-stone-700">레이아웃</p>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="섹션 레이아웃">
+            {variants.map((variant) => {
+              const active = section.layout?.variant === variant.id;
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => set({ layout: { ...section.layout, variant: variant.id } })}
+                  className={cn("min-h-10 rounded-md border px-2.5 text-left text-xs font-semibold", active ? "border-brand bg-brand/5 text-brand" : "border-stone-300 text-stone-600")}
+                >
+                  {variant.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {section.type === "video" && (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor={`video-${section.id}`}>동영상 링크</FieldLabel>
+          <Input
+            id={`video-${section.id}`}
+            value={section.videoUrl ?? ""}
+            inputMode="url"
+            placeholder="https://www.youtube.com/watch?v=… / Vimeo / .mp4"
+            maxLength={400}
+            onChange={(event) => set({ videoUrl: event.target.value.trim() })}
+            className={inputClass}
+          />
+          <p className="text-[11px] leading-4 text-stone-500">YouTube · Vimeo 링크 또는 https mp4 파일 주소를 지원합니다. 비어 있으면 고객 화면에 표시되지 않아요.</p>
         </div>
       )}
 
@@ -378,10 +419,7 @@ export const DetailSectionEditor = ({
                       size="sm"
                       className="h-8 w-full rounded-md bg-stone-900 px-1 text-[11px] text-white hover:bg-stone-800"
                       disabled={regeneratingImageIds.includes(image.id)}
-                      onClick={() => {
-                        setInstruction("");
-                        setRegenTarget(image);
-                      }}
+                      onClick={() => setRegenTarget(image)}
                     >
                       {regeneratingImageIds.includes(image.id) ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
                       AI 다시 생성
@@ -439,52 +477,15 @@ export const DetailSectionEditor = ({
         </div>
       )}
 
-      <Dialog open={regenTarget !== null} onOpenChange={(open) => !open && setRegenTarget(null)}>
-        <DialogContent className="max-w-md rounded-md">
-          <DialogHeader>
-            <DialogTitle>어떻게 변경할까요?</DialogTitle>
-            <DialogDescription>
-              원본 디자인을 기준으로 이 이미지만 다시 생성합니다. 옷의 디자인·색상·그래픽은 그대로 유지돼요.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={instruction}
-            maxLength={300}
-            placeholder="비워두면 같은 스타일로 새로 생성합니다."
-            onChange={(event) => setInstruction(event.target.value)}
-            className={cn(textareaClass, "min-h-[96px]")}
-          />
-          <div className="flex flex-wrap gap-1.5">
-            {INSTRUCTION_EXAMPLES.map((example) => (
-              <button
-                key={example}
-                type="button"
-                onClick={() => setInstruction(example)}
-                className="border border-stone-200 px-2.5 py-1.5 text-xs text-stone-600 hover:border-stone-400"
-              >
-                {example}
-              </button>
-            ))}
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" className="h-11 rounded-md" onClick={() => setRegenTarget(null)}>
-              취소
-            </Button>
-            <Button
-              type="button"
-              className="h-11 rounded-md bg-brand hover:bg-brand-dark"
-              onClick={() => {
-                if (!regenTarget || !onRegenerateImage) return;
-                const target = regenTarget;
-                setRegenTarget(null);
-                void onRegenerateImage(target.id, target.slot ?? defaultSlotForSection(section.type, target.crop), instruction);
-              }}
-            >
-              <Sparkles className="mr-1.5 h-4 w-4" /> 이 이미지 다시 생성
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ImageRegenerateDialog
+        open={regenTarget !== null}
+        label={regenTarget ? getDetailImageSpec(regenTarget.slot ?? defaultSlotForSection(section.type, regenTarget.crop)).label : undefined}
+        onOpenChange={(open) => !open && setRegenTarget(null)}
+        onSubmit={(instruction) => {
+          if (!regenTarget || !onRegenerateImage) return;
+          void onRegenerateImage(regenTarget.id, regenTarget.slot ?? defaultSlotForSection(section.type, regenTarget.crop), instruction);
+        }}
+      />
     </div>
   );
 };

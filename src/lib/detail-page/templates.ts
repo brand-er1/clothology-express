@@ -94,6 +94,24 @@ export const DETAIL_TEMPLATES: DetailTemplateMeta[] = [
     description: "시즌 룩북처럼 큰 이미지 중심, 절제된 캡션과 에디토리얼 그리드.",
     swatch: ["#f2f1ee", "#141414", "#741b2b"],
   },
+  {
+    id: "editorial",
+    layout: "minimal",
+    number: "10",
+    name: "EDITORIAL",
+    label: "에디토리얼",
+    description: "패션 매거진처럼 이미지 중심. 세리프 헤드라인과 비대칭 그리드, 세로형 룩북 컷.",
+    swatch: ["#f1ede6", "#1d1b18", "#8c6f55"],
+  },
+  {
+    id: "outdoor",
+    layout: "sports",
+    number: "11",
+    name: "OUTDOOR",
+    label: "아웃도어",
+    description: "자연광 필드 무드, 스펙을 정리한 기술 문서형 구성과 와이드 컷.",
+    swatch: ["#e9e8e1", "#1f2420", "#5d6b4f"],
+  },
 ];
 
 /** Renderer layout for a style (new styles reuse one of the five base layouts). */

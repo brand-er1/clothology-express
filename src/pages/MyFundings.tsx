@@ -327,7 +327,7 @@ const MyFundings = () => {
 
       <AlertDialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
         <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>펀딩 참여를 취소할까요?</AlertDialogTitle>
-          <AlertDialogDescription>{selectedItem?.payment_status === "paid" ? (selectedItem.payment_type === "MOCK" ? `${selectedItem.total_amount.toLocaleString("ko-KR")}원 상당의 모의결제 참여가 취소됩니다. (실제 환불 없음)` : `${selectedItem.total_amount.toLocaleString("ko-KR")}원이 카카오페이로 전액 취소됩니다.`) : "진행 중인 참여 내역이 취소됩니다."}</AlertDialogDescription>
+          <AlertDialogDescription>{selectedItem?.payment_status === "paid" ? (selectedItem.payment_type === "MOCK" ? `${selectedItem.total_amount.toLocaleString("ko-KR")}원 상당의 모의결제 참여가 취소됩니다. (실제 환불 없음)` : `${selectedItem.total_amount.toLocaleString("ko-KR")}원이 ${selectedItem.payment_provider === "kakaopay" ? "카카오페이로 " : ""}전액 취소됩니다.`) : "진행 중인 참여 내역이 취소됩니다."}</AlertDialogDescription>
         </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>계속 참여하기</AlertDialogCancel><AlertDialogAction onClick={cancelParticipation} className="bg-red-600 hover:bg-red-700">{selectedItem?.payment_status === "paid" ? "취소 및 환불" : "참여 취소"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
 

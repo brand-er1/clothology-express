@@ -73,6 +73,21 @@ The funding flow uses KakaoPay checkout.
 5. Only paid quantities count toward the funding goal. Participants can cancel and refund eligible payments from `/my-fundings`.
 6. Only the funding creator and admins can view participant contact and shipping information.
 
+### Funding participation and KSNET (active)
+
+`ACTIVE_PAYMENT_PROVIDER` in `src/services/payment/index.ts` is `ksnet`. The checkout opens the KSPay card window; `ksnet-return` confirms the approval with KSNET using the **amount stored in the DB** and only then marks the participation paid.
+
+1. Apply `20261001000000_enable_ksnet_funding_payment.sql`.
+2. Deploy `ksnet-ready` (JWT verification on) and `ksnet-return` (**JWT verification off** — KSPay posts back from the browser). Redeploy `kakaopay-cancel` and `creator-cancel-participation`; they now refund KSNET payments.
+3. Configure the Edge Function secrets:
+   - `KSNET_MID` — 10-digit store ID for card (인증결제) payments.
+   - `KSNET_AUTH_HEADER` — refund API key from KStA → PG 상점정보 → pgapi (`base64(MID:key)`, the `pgapi ` prefix is optional). Without it refunds fail instead of being marked refunded.
+   - `APP_URL` — site origin the buyer returns to (`/payments/ksnet/result`).
+   - Optional: `KSNET_RETURN_URL` (defaults to `${SUPABASE_URL}/functions/v1/ksnet-return`, must stay ≤ 100 chars with its query) and `KSNET_API_BASE` (refund API host, defaults to production `https://pay.ksnet.co.kr`).
+4. The minimum KSPay amount is 1,000원.
+
+Local test setup uses KSNET's sample store ID `2999199999` with `KSNET_API_BASE=https://paydev.ksnet.co.kr`. Never deploy with the sample ID.
+
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)

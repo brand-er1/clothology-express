@@ -30,6 +30,7 @@ import { FundingColorGallery } from "@/components/funding/FundingColorGallery";
 import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
 import { fetchDetailPageForFunding } from "@/services/detailPage";
+import { ACTIVE_PAYMENT_PROVIDER } from "@/services/payment";
 import type { ProductDetailPage } from "@/types/detailPage";
 import {
   ArrowLeft,
@@ -473,7 +474,9 @@ const FundingDetail = () => {
                 </AlertDialogContent>
               </AlertDialog>
 
-              <p className="text-center text-[11px] font-medium text-amber-700">현재 모의결제 모드이며 실제 금액은 청구되지 않습니다.</p>
+              {ACTIVE_PAYMENT_PROVIDER === "mock" && (
+                <p className="text-center text-[11px] font-medium text-amber-700">현재 모의결제 모드이며 실제 금액은 청구되지 않습니다.</p>
+              )}
               <p className="flex items-center justify-center text-[11px] text-stone-400">
                 <ShieldCheck className="mr-1 h-3.5 w-3.5" /> 결제 완료 수량만 반영되며 주문 내역에서 취소·환불할 수 있습니다.
               </p>

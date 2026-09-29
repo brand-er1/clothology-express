@@ -6,6 +6,7 @@ import {
   getSupabaseClients,
   jsonResponse,
 } from "../_shared/kakaopay.ts";
+import { cancelKsnetPayment } from "../_shared/ksnet.ts";
 
 type CancelParticipationRequest = {
   participationId?: string;
@@ -80,15 +81,16 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true, already_cancelled: true, refunded: false });
     }
 
+    const needsKakaoPayRefund =
+      participation.payment_provider === "kakaopay" && participation.payment_status === "paid";
+    const needsKsnetRefund =
+      participation.payment_provider === "ksnet" && participation.payment_status === "paid";
+
     let paymentPayload: Record<string, unknown> = {
       reason,
       cancelled_by: isAdmin === true && funding.creator_id !== user.id ? "admin" : "creator",
-      cancelled_without_external_refund:
-        participation.payment_provider !== "kakaopay" || participation.payment_status !== "paid",
+      cancelled_without_external_refund: !needsKakaoPayRefund && !needsKsnetRefund,
     };
-
-    const needsKakaoPayRefund =
-      participation.payment_provider === "kakaopay" && participation.payment_status === "paid";
 
     if (needsKakaoPayRefund) {
       if (!participation.payment_tid) {
@@ -111,6 +113,19 @@ Deno.serve(async (req) => {
       };
     }
 
+    if (needsKsnetRefund) {
+      if (!participation.payment_tid) {
+        throw new Error("KSNET 거래번호를 찾을 수 없습니다.");
+      }
+      await cancelKsnetPayment(participation.payment_tid);
+      paymentPayload = {
+        tid: participation.payment_tid,
+        canceled_amount: participation.total_amount,
+        reason,
+        cancelled_by: isAdmin === true && funding.creator_id !== user.id ? "admin" : "creator",
+      };
+    }
+
     const { error: finalizeError } = await serviceClient.rpc(
       "finalize_creator_funding_cancellation",
       {
@@ -124,7 +139,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       success: true,
-      refunded: needsKakaoPayRefund,
+      refunded: needsKakaoPayRefund || needsKsnetRefund,
       payment_provider: participation.payment_provider,
       funding_id: participation.funding_id,
     });

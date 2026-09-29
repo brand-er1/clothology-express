@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
-import { PaymentService } from "@/services/payment";
+import { ACTIVE_PAYMENT_PROVIDER, PaymentService } from "@/services/payment";
+import { clearKspayLayer, openKspayWindow, watchKspayWindow } from "@/services/payment/kspay";
 import { getFundingErrorMessage } from "@/services/funding";
 import type { Funding, ShippingDetails } from "@/types/funding";
 import { FreeTeeEventNotice } from "@/components/funding/FreeTeeEvent";
@@ -39,9 +40,12 @@ const emptyShipping: ShippingDetails = {
   agreePrivacy: false,
 };
 
+const IS_MOCK_PAYMENT = ACTIVE_PAYMENT_PROVIDER === "mock";
+const PAYMENT_LABEL = IS_MOCK_PAYMENT ? "모의결제" : "결제";
+
 const STEPS: { key: Step; label: string }[] = [
   { key: "shipping", label: "배송정보" },
-  { key: "payment", label: "모의결제" },
+  { key: "payment", label: PAYMENT_LABEL },
   { key: "complete", label: "완료" },
 ];
 
@@ -203,6 +207,18 @@ export const FundingCheckoutDialog = ({
         return;
       }
 
+      // 결제에 성공하면 결제창이 이 창을 결과 화면으로 보낸다. 여기로 돌아왔다면 결제 없이 닫힌 것이다.
+      if (result.kspayForm) {
+        await openKspayWindow(result.kspayForm);
+        await watchKspayWindow();
+        clearKspayLayer();
+        toast({
+          title: "결제가 완료되지 않았습니다",
+          description: "결제창이 닫혔습니다. 팝업이 차단되지 않았는지 확인하고 다시 시도해주세요.",
+        });
+        return;
+      }
+
       setCompleted({
         orderNumber: result.orderNumber,
         totalAmount: result.totalAmount,
@@ -260,7 +276,7 @@ export const FundingCheckoutDialog = ({
           </ol>
           <DialogTitle className="text-lg font-bold leading-snug">
             {step === "shipping" && "주문자 및 배송정보 입력"}
-            {step === "payment" && "모의결제"}
+            {step === "payment" && PAYMENT_LABEL}
             {step === "complete" && "펀딩 참여가 완료되었습니다"}
           </DialogTitle>
           <DialogDescription className="text-wrap-anywhere mt-0.5 line-clamp-2 text-xs text-stone-500">
@@ -402,13 +418,13 @@ export const FundingCheckoutDialog = ({
                 </div>
               </section>
 
-              <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              {IS_MOCK_PAYMENT && <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="flex items-center gap-2 text-sm font-bold text-amber-900"><ShieldAlert className="h-4 w-4 shrink-0" /> 모의결제</p>
                 <p className="mt-2 text-xs leading-5 text-amber-800">
                   현재 테스트 운영 중으로 실제 금액은 결제되지 않습니다. 입력하신 주문 및 배송정보는 펀딩 참여
                   확인과 향후 주문 처리를 위해 저장됩니다.
                 </p>
-              </section>
+              </section>}
 
               <section className="space-y-2 rounded-xl bg-stone-50 p-4 text-xs leading-5">
                 <SummaryRow label="배송지">{addressLine}</SummaryRow>
@@ -449,7 +465,7 @@ export const FundingCheckoutDialog = ({
                 onClick={handleNextToPayment}
                 className="h-12 w-full rounded-none bg-brand text-base font-bold hover:bg-brand-dark"
               >
-                다음: 모의결제
+                다음: {PAYMENT_LABEL}
               </Button>
             </>
           )}
@@ -466,7 +482,7 @@ export const FundingCheckoutDialog = ({
                 className="h-12 min-w-0 flex-1 rounded-none bg-brand px-3 text-base font-bold hover:bg-brand-dark"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                모의결제 후 펀딩 참여
+                {IS_MOCK_PAYMENT ? "모의결제 후 펀딩 참여" : "결제하고 펀딩 참여"}
               </Button>
             </div>
           )}

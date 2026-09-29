@@ -3,6 +3,7 @@ import type {
   CreateFundingInput,
   Funding,
   KakaoPayReadyResult,
+  KsnetReadyResult,
   MyFundingParticipation,
   FundingParticipation,
   FundingParticipationStatus,
@@ -353,6 +354,19 @@ export const startKakaoPayFunding = async (
     returnUrl: getAppUrl(),
   }, "결제 처리 중 오류가 발생했습니다.");
 };
+
+export const startKsnetFunding = async (
+  fundingId: string,
+  color: string,
+  size: string,
+  quantity: number,
+  shipping: ShippingDetails
+): Promise<KsnetReadyResult> =>
+  invokeAuthenticatedFunction<KsnetReadyResult>(
+    "ksnet-ready",
+    { fundingId, color, size, quantity, shipping },
+    "결제 처리 중 오류가 발생했습니다.",
+  );
 
 export const approveKakaoPayFunding = async (
   participationId: string,

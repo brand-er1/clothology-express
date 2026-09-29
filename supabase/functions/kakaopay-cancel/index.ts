@@ -6,6 +6,7 @@ import {
   getSupabaseClients,
   jsonResponse,
 } from "../_shared/kakaopay.ts";
+import { cancelKsnetPayment } from "../_shared/ksnet.ts";
 
 type CancelRequest = {
   participationId?: string;
@@ -57,6 +58,16 @@ Deno.serve(async (req) => {
         status: cancellation.status,
         canceled_at: cancellation.canceled_at,
         canceled_amount: cancellation.canceled_amount,
+      };
+    }
+
+    if (participation.payment_provider === "ksnet" && participation.payment_status === "paid") {
+      if (!participation.payment_tid) throw new Error("KSNET 거래번호를 찾을 수 없습니다.");
+      await cancelKsnetPayment(participation.payment_tid);
+      kakaoPayload = {
+        tid: participation.payment_tid,
+        canceled_amount: participation.total_amount,
+        reason: body.reason || "사용자 펀딩 참여 취소",
       };
     }
 

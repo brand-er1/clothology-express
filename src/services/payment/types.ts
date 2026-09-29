@@ -1,6 +1,7 @@
 import type { ShippingDetails } from "@/types/funding";
+import type { KspayForm } from "./kspay";
 
-export type PaymentProviderType = "mock" | "kakaopay";
+export type PaymentProviderType = "mock" | "kakaopay" | "ksnet";
 
 export type FundingPaymentRequest = {
   fundingId: string;
@@ -16,6 +17,8 @@ export type FundingPaymentResult = {
   totalAmount: number;
   /** Set when the buyer must be redirected to an external PG checkout page. */
   redirectUrl?: string;
+  /** Set when the buyer must go through the KSPay checkout window (form POST, not a URL). */
+  kspayForm?: KspayForm;
   /** True when the order is already finalized (no external redirect needed). */
   immediate: boolean;
 };

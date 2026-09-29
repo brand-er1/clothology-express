@@ -16,6 +16,7 @@ import FundingManager from './pages/FundingManager';
 import FundingColorStudio from './pages/FundingColorStudio';
 import MyFundings from './pages/MyFundings';
 import KakaoPayResult from './pages/KakaoPayResult';
+import KsnetPayResult from './pages/KsnetPayResult';
 import FabricSwatch from './pages/FabricSwatch';
 import DesignQuote from './pages/DesignQuote';
 import Closet from './pages/Closet';
@@ -145,6 +146,7 @@ function App() {
             <Route path="/fundings/:id/colors" element={<AuthGuard><FundingColorStudio /></AuthGuard>} />
             <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
             <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />
+            <Route path="/payments/ksnet/result" element={<KsnetPayResult />} />
             <Route path="/orders" element={<AuthGuard requiredAccountType="seller"><Orders /></AuthGuard>} />
             <Route path="/fabric-swatch" element={<AuthGuard><FabricSwatch /></AuthGuard>} />
             <Route path="/community" element={<CommunityFeed />} />

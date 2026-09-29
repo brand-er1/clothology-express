@@ -21,13 +21,13 @@ const PaymentsPage = () => {
 
   return (
     <div>
-      <PageHeader eyebrow="Payments" title="결제 관리" description="모의결제와 실결제(카카오페이)를 구분하고, 플랫폼 결제 상태와 PG 상태를 분리해 보여줍니다." />
+      <PageHeader eyebrow="Payments" title="결제 관리" description="모의결제와 실결제(카카오페이·KSNET)를 구분하고, 플랫폼 결제 상태와 PG 상태를 분리해 보여줍니다." />
       <div className="mb-3"><Notice>관리자 화면에서는 PG 결제 취소/환불 API 를 호출하지 않습니다. 환불은 <b>환불 관리</b>에서 요청·승인 절차를 거치며, 실결제는 PG 관리자 콘솔에서 직접 환불 후 확인 처리합니다.</Notice></div>
       <Panel bodyClassName="p-0" title={
         <div className="flex flex-col gap-2">
           <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="결제번호(TID), 주문번호, 사용자, 펀딩" />
           <div className="flex flex-wrap gap-3">
-            <FilterChips value={provider} onChange={(v) => { setProvider(v); setPage(0); }} options={[{ value: "all", label: "전체 수단" }, { value: "mock", label: "모의결제" }, { value: "kakaopay", label: "카카오페이" }]} />
+            <FilterChips value={provider} onChange={(v) => { setProvider(v); setPage(0); }} options={[{ value: "all", label: "전체 수단" }, { value: "mock", label: "모의결제" }, { value: "kakaopay", label: "카카오페이" }, { value: "ksnet", label: "KSNET" }]} />
             <FilterChips value={status} onChange={(v) => { setStatus(v); setPage(0); }} options={[{ value: "all", label: "전체 상태" }, { value: "paid", label: "결제완료" }, { value: "ready", label: "대기" }, { value: "cancelled", label: "취소" }, { value: "failed", label: "실패" }]} />
           </div>
         </div>

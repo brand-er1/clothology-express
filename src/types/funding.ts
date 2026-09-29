@@ -1,10 +1,11 @@
 import type { TrademarkScreening } from "@/types/trademark";
 import type { BrandWithCreator } from "@/types/brand";
+import type { KspayForm } from "@/services/payment/kspay";
 
 export type FundingStatus = "draft" | "pending" | "approved" | "rejected" | "closed";
 export type FundingParticipationStatus = "pledged" | "confirmed" | "cancelled" | "fulfilled";
 export type FundingPaymentStatus = "unpaid" | "ready" | "paid" | "cancelled" | "failed";
-export type FundingPaymentProvider = "none" | "kakaopay" | "mock";
+export type FundingPaymentProvider = "none" | "kakaopay" | "mock" | "ksnet";
 export type FundingPaymentType = "MOCK" | "REAL";
 export type FundingMeasurements = Record<string, unknown>;
 
@@ -234,4 +235,11 @@ export type KakaoPayReadyResult = {
   next_redirect_pc_url: string | null;
   next_redirect_mobile_url: string | null;
   next_redirect_app_url: string | null;
+};
+
+export type KsnetReadyResult = {
+  participation_id: string;
+  partner_order_id: string;
+  total_amount: number;
+  kspay_form: KspayForm;
 };

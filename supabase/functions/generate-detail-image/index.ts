@@ -6,12 +6,14 @@ import {
   IMAGE_ASPECT_RATIO,
   isDetailImageType,
   isDetailPageStyle,
+  PEOPLE_MODE,
   type DetailImageType,
   type PromptProduct,
 } from "../_shared/detailImagePrompt.ts";
 import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ReferenceImage } from "../_shared/imageProviders.ts";
 import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
 import { CREATOR_LOGO_REFERENCE_LABEL, findCreatorLogo, parseBrandLogoMode } from "../_shared/brandingPolicy.ts";
+import { inspectGeneratedImage, REFRAME_ON_RETRY, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
 
 /**
  * Generates ONE AI detail-page image from the creator's design (reference image).
@@ -212,7 +214,25 @@ serve(async (req) => {
       references.push(logo);
     }
 
-    const generated = await provider.generate({ prompt, references, aspectRatio: IMAGE_ASPECT_RATIO[imageType as DetailImageType] });
+    // 생성 → 자동 검수(얼굴·사람·글자/로고·원본 일치). 얼굴/머리가 보이거나 사람이 없어야 하는 컷에 사람이 있으면
+    // 흐림·가림 처리 대신 더 엄격한 구도로 한 번 다시 생성한다.
+    const peopleMode = PEOPLE_MODE[imageType as DetailImageType];
+    const aspectRatio = IMAGE_ASPECT_RATIO[imageType as DetailImageType];
+    const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
+    let generated = await provider.generate({ prompt, references, aspectRatio });
+    let qa: ImageQaResult | null = await inspectGeneratedImage(geminiKey, { data: generated.base64, mimeType: generated.mimeType }, references[0]);
+    let attempts = 1;
+    if (violatesPeoplePolicy(qa, peopleMode)) {
+      const firstQa = qa;
+      const retry = await provider.generate({ prompt: `${prompt}\n\n${REFRAME_ON_RETRY}`, references, aspectRatio });
+      const retryQa = await inspectGeneratedImage(geminiKey, { data: retry.base64, mimeType: retry.mimeType }, references[0]);
+      attempts = 2;
+      // 재생성 결과가 더 낫거나(정책 통과) 검수 불가일 때만 교체
+      if (!violatesPeoplePolicy(retryQa, peopleMode) || !firstQa) {
+        generated = retry;
+        qa = retryQa;
+      }
+    }
 
     // Persist in our own storage so the page never depends on a provider's temporary URL.
     const path = `detail-pages/${user.id}/${page.id}/${imageType}-${Date.now()}.${extensionFor(generated.mimeType)}`;
@@ -230,10 +250,13 @@ serve(async (req) => {
     await logAiUsage(admin, {
       userId: user.id, feature: "detail_image", status: "success", provider: generated.provider, model: generated.model,
       detailPageId: page.id, imageType, latencyMs: Date.now() - startedAt,
-      metadata: { references: references.length, style: detailPageStyle, instruction: Boolean(instruction), brandLogo: brandLogoMode },
+      metadata: {
+        references: references.length, style: detailPageStyle, instruction: Boolean(instruction), brandLogo: brandLogoMode,
+        peopleMode, attempts, qa,
+      },
     });
 
-    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length });
+    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, qa });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("generate-detail-image error:", message);

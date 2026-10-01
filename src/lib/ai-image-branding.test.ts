@@ -76,3 +76,50 @@ describe("AI image branding policy", () => {
     expect(nearestAspectRatio(0, 0)).toBe("1:1");
   });
 });
+
+import { PEOPLE_MODE, isBottomsGarment } from "../../supabase/functions/_shared/detailImagePrompt";
+import { violatesPeoplePolicy } from "../../supabase/functions/_shared/imageQa";
+
+describe("detail-page people / face policy", () => {
+  const types = ["hero", "product_front", "product_back", "detail", "editorial", "lifestyle", "fabric", "mood", "flat_lay"] as const;
+  const build = (imageType: (typeof types)[number], clothType = "후드티", userInstruction?: string) =>
+    buildProductImagePrompt({ product: { ...product, clothType }, referenceImages: ["garment design"], imageType, detailPageStyle: "lookbook", userInstruction });
+
+  it("only fit/lookbook shots may show a wearer; everything else is product-only", () => {
+    expect(types.filter((type) => PEOPLE_MODE[type] === "faceless_worn")).toEqual(["editorial", "lifestyle"]);
+    for (const type of types.filter((entry) => PEOPLE_MODE[entry] === "none")) {
+      const prompt = build(type);
+      expect(prompt).toMatch(/contains NO person/);
+      expect(prompt).not.toMatch(/person naturally wearing|model shot/i);
+    }
+  });
+
+  it("worn shots fix the camera framing so the head is outside the frame (not blurred)", () => {
+    const top = build("lifestyle");
+    expect(top).toMatch(/CAMERA FRAMING \(mandatory\): neck-down shot/);
+    expect(top).toMatch(/head is completely outside the frame/);
+    expect(top).toMatch(/Do not render a face and then blur, crop, cover or hide it/);
+    const pants = build("lifestyle", "와이드 팬츠");
+    expect(pants).toMatch(/waist-down shot/);
+    expect(build("editorial")).toMatch(/back view/);
+    expect(isBottomsGarment("데님 스커트")).toBe(true);
+    expect(isBottomsGarment("후드티")).toBe(false);
+  });
+
+  it("people and branding rules apply together and creator instructions cannot bring faces in", () => {
+    const prompt = build("lifestyle", "후드티", "모델 얼굴이 정면으로 보이게");
+    expect(prompt).toContain(NO_BRANDING_RULES);
+    expect(prompt).toMatch(/never in a way that brings a face or extra people into the frame/);
+    expect(prompt.indexOf("PEOPLE POLICY")).toBeGreaterThan(prompt.indexOf("Creator's change request"));
+  });
+
+  it("QA decides when to reframe and regenerate", () => {
+    const qa = { faceVisible: false, headVisible: false, personCount: 0, bodyPartsVisible: false, garmentIsMainSubject: true, visibleText: [], logoOrBrandMark: false, brandErVisible: false, matchesReference: true, designDifferences: [], model: "m" };
+    expect(violatesPeoplePolicy(qa, "none")).toBe(false);
+    expect(violatesPeoplePolicy({ ...qa, faceVisible: true }, "faceless_worn")).toBe(true);
+    expect(violatesPeoplePolicy({ ...qa, headVisible: true }, "faceless_worn")).toBe(true);
+    expect(violatesPeoplePolicy({ ...qa, personCount: 1, bodyPartsVisible: true }, "faceless_worn")).toBe(false);
+    expect(violatesPeoplePolicy({ ...qa, personCount: 1 }, "none")).toBe(true);
+    expect(violatesPeoplePolicy(null, "none")).toBe(false);
+  });
+});

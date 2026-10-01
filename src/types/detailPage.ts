@@ -252,8 +252,11 @@ export type DetailImageType =
   | "mood"
   | "flat_lay";
 
-/** 부분 재작성 지시: 이 문구만 다시 / 더 고급스럽게 / 더 짧게 / 패션 브랜드 스타일 / 더 풍부하게 */
-export type DetailRewriteInstruction = "rewrite" | "luxury" | "shorter" | "fashion" | "longer";
+/**
+ * 부분 재작성 지시: 이 문구만 다시 / 더 고급스럽게 / 더 짧게 / 패션 브랜드 스타일 / 더 자세하게 /
+ * 자연스럽게 수정 / custom(제작자가 직접 입력한 요청)
+ */
+export type DetailRewriteInstruction = "rewrite" | "luxury" | "shorter" | "fashion" | "longer" | "natural" | "custom";
 
 /** 인라인 편집·부분 재작성 대상 필드 */
 export type DetailTextField =

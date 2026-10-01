@@ -462,4 +462,10 @@ export const REWRITE_OPTIONS: Array<{ value: DetailRewriteInstruction; label: st
   { value: "luxury", label: "더 고급스럽게" },
   { value: "shorter", label: "더 짧게" },
   { value: "fashion", label: "패션 브랜드 스타일로" },
+  { value: "longer", label: "더 자세하게" },
+  { value: "natural", label: "자연스럽게 수정" },
+  { value: "custom", label: "직접 요청하기…" },
 ];
+
+/** 직접 요청(custom) 프롬프트 최대 길이. Edge Function 도 같은 값으로 자른다. */
+export const REWRITE_PROMPT_MAX = 300;

@@ -362,10 +362,14 @@ export const rewriteDetailText = async (input: {
   template: DetailPageTemplateId;
   text: string;
   instruction: DetailRewriteInstruction;
+  /** instruction === "custom" 일 때 제작자가 입력한 요청 */
+  prompt?: string;
   field: string;
   sectionType: string;
   detailPageId?: string;
 }): Promise<{ text: string; provider: "ai" | "fallback" }> => {
+  const prompt = (input.prompt ?? "").trim().slice(0, 300);
+  if (input.instruction === "custom" && !prompt) throw new Error("어떻게 바꿀지 요청 내용을 입력해주세요.");
   const corpus = buildVerifiedCorpus(
     input.text,
     input.source.material,
@@ -385,6 +389,7 @@ export const rewriteDetailText = async (input: {
         template: input.template,
         text: input.text,
         instruction: input.instruction,
+        prompt: input.instruction === "custom" ? prompt : undefined,
         field: input.field,
         sectionType: input.sectionType,
         detailPageId: input.detailPageId,

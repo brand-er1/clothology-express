@@ -53,6 +53,7 @@ export const useDetailPageAutosave = (pageId: string | null, snapshot: Snapshot 
   const [status, setStatus] = useState<AutosaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [failures, setFailures] = useState(0);
   const latest = useRef<Snapshot | null>(snapshot);
   const baseline = useRef<string | null>(null);
   const timer = useRef<number | null>(null);
@@ -69,7 +70,11 @@ export const useDetailPageAutosave = (pageId: string | null, snapshot: Snapshot 
         if (!pageId || !latest.current) return;
         const current = latest.current;
         const currentSerialized = JSON.stringify(current);
-        if (!nextStatus && currentSerialized === baseline.current) return;
+        // 저장할 변경이 없다(실패 뒤 사용자가 원래대로 되돌린 경우 포함): 오류 표시도 해제한다.
+        if (!nextStatus && currentSerialized === baseline.current) {
+          setStatus((value) => (value === "error" ? "saved" : value));
+          return;
+        }
         setStatus("saving");
         setError(null);
         try {
@@ -79,10 +84,12 @@ export const useDetailPageAutosave = (pageId: string | null, snapshot: Snapshot 
           writeBackup(pageId, { ...current, editedAt: Date.now(), synced: true });
           const changedDuringSave = latest.current && JSON.stringify(latest.current) !== currentSerialized;
           setStatus(changedDuringSave ? "dirty" : "saved");
+          setFailures(0);
         } catch (saveError) {
           console.error("Detail page autosave failed:", saveError);
           setError(getDetailPageErrorMessage(saveError, "저장하지 못했습니다."));
           setStatus("error");
+          setFailures((count) => count + 1);
           throw saveError;
         }
       });
@@ -110,6 +117,20 @@ export const useDetailPageAutosave = (pageId: string | null, snapshot: Snapshot 
       if (timer.current) window.clearTimeout(timer.current);
     };
   }, [pageId, persist, serialized]);
+
+  // A failed save stays visible as an error and is retried (5s → 15s → 30s, and whenever the
+  // browser comes back online), so an unsaved edit is never shown as "저장 완료".
+  useEffect(() => {
+    if (failures === 0) return;
+    const delay = [5000, 15000, 30000][Math.min(failures - 1, 2)];
+    const retry = () => void persist().catch(() => undefined);
+    const handle = window.setTimeout(retry, delay);
+    window.addEventListener("online", retry);
+    return () => {
+      window.clearTimeout(handle);
+      window.removeEventListener("online", retry);
+    };
+  }, [failures, persist]);
 
   // Warn before leaving with unsaved edits (they are still backed up locally).
   useEffect(() => {

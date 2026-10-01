@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,6 +80,7 @@ import {
   getTextField,
   regenerateSectionText,
   REWRITE_OPTIONS,
+  REWRITE_PROMPT_MAX,
   SECTION_META,
   setTextField,
 } from "@/lib/detail-page/document";
@@ -206,6 +208,7 @@ const DetailPageStudio = () => {
   const [rewritingKey, setRewritingKey] = useState<string | null>(null);
   const [missingItems, setMissingItems] = useState<DetailPublishMissingItem[] | null>(null);
   const [publishDone, setPublishDone] = useState<{ first: boolean; version: number } | null>(null);
+  const [customRewrite, setCustomRewrite] = useState<{ target: DetailTextField; prompt: string } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -480,7 +483,7 @@ const DetailPageStudio = () => {
    * 부분 재작성: 선택한 문구 하나만 AI로 다시 쓴다. 요청 중 사용자가 그 문구를 직접 고쳤다면
    * 결과를 버려서 사용자의 수정을 덮어쓰지 않는다. 다른 필드/섹션은 절대 바뀌지 않는다.
    */
-  const rewriteField = async (target: DetailTextField, instruction: DetailRewriteInstruction) => {
+  const rewriteField = async (target: DetailTextField, instruction: DetailRewriteInstruction, prompt?: string) => {
     if (!page || !source || !documentRef.current) return;
     const original = getTextField(documentRef.current, target);
     if (!original.trim()) {
@@ -498,6 +501,7 @@ const DetailPageStudio = () => {
         template: documentRef.current.template,
         text: original,
         instruction,
+        prompt,
         field,
         sectionType,
         detailPageId: page.id,
@@ -507,7 +511,8 @@ const DetailPageStudio = () => {
         return;
       }
       updateDocument((current) => setTextField(current, target, result.text));
-      const label = REWRITE_OPTIONS.find((option) => option.value === instruction)?.label ?? "부분 재작성";
+      const label =
+        instruction === "custom" ? "직접 요청" : REWRITE_OPTIONS.find((option) => option.value === instruction)?.label ?? "부분 재작성";
       toast({
         title: result.provider === "ai" ? `‘${label}’ 적용했어요` : "AI 연결이 원활하지 않아 문장을 줄였어요",
         description: "다른 섹션과 직접 수정한 내용은 그대로입니다.",
@@ -584,6 +589,15 @@ const DetailPageStudio = () => {
     updateDocument((current) => ({ ...current, sections: [...current.sections, created] }));
     setSelectedId(created.id);
     setEditorTab("section");
+  };
+
+  /** 재작성 메뉴 진입점: "직접 요청하기…" 는 요청 입력창을 먼저 연다. */
+  const requestRewrite = (target: DetailTextField, instruction: DetailRewriteInstruction) => {
+    if (instruction === "custom") {
+      setCustomRewrite({ target, prompt: "" });
+      return;
+    }
+    void rewriteField(target, instruction);
   };
 
   const handleDuplicate = (id: string) => {
@@ -1019,7 +1033,7 @@ const DetailPageStudio = () => {
               hasFundingColors={fundingColors.length > 0}
               rewriting={rewritingKey === JSON.stringify({ scope: "section", sectionId: selectedSection.id, field: "description" })}
               onRewriteDescription={(instruction) =>
-                void rewriteField({ scope: "section", sectionId: selectedSection.id, field: "description" }, instruction)
+                requestRewrite({ scope: "section", sectionId: selectedSection.id, field: "description" }, instruction)
               }
             />
           ) : (
@@ -1161,7 +1175,7 @@ const DetailPageStudio = () => {
             key={option.value}
             type="button"
             disabled={rewritingKey !== null}
-            onClick={() => void rewriteField(activeField, option.value)}
+            onClick={() => requestRewrite(activeField, option.value)}
             className="h-8 shrink-0 border border-stone-300 bg-white px-2.5 text-[11px] font-semibold text-stone-700 hover:border-brand hover:text-brand disabled:opacity-50"
           >
             {rewritingKey === activeKey ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
@@ -1258,7 +1272,7 @@ const DetailPageStudio = () => {
           <>
             <DropdownMenuLabel className="text-xs text-stone-500">선택한 문구 · {fieldLabel(activeField)}</DropdownMenuLabel>
             {REWRITE_OPTIONS.map((option) => (
-              <DropdownMenuItem key={option.value} onSelect={() => void rewriteField(activeField, option.value)}>
+              <DropdownMenuItem key={option.value} onSelect={() => requestRewrite(activeField, option.value)}>
                 {option.label}
               </DropdownMenuItem>
             ))}
@@ -1296,7 +1310,12 @@ const DetailPageStudio = () => {
               <p className="truncate text-base font-bold">{document.productName || "상품명 없음"}</p>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <SaveStatusBadge status={autosave.status} lastSavedAt={autosave.lastSavedAt} error={autosave.error} />
+              <SaveStatusBadge
+                status={autosave.status}
+                lastSavedAt={autosave.lastSavedAt}
+                error={autosave.error}
+                onRetry={() => void autosave.saveNow().catch(() => undefined)}
+              />
               <PublishStateBadge state={publishState} />
               <Button type="button" variant="ghost" size="icon" className="ml-auto h-10 w-10 md:hidden" onClick={() => setVersionsOpen(true)} aria-label="버전 이력">
                 <History className="h-4 w-4" />
@@ -1488,6 +1507,44 @@ const DetailPageStudio = () => {
       </AlertDialog>
 
       <VersionHistoryDialog pageId={page.id} open={versionsOpen} onOpenChange={setVersionsOpen} onRestore={handleRestore} />
+
+      {/* AI 부분 재작성: 직접 요청 */}
+      <Dialog open={customRewrite !== null} onOpenChange={(open) => !open && setCustomRewrite(null)}>
+        <DialogContent className="max-w-md rounded-md">
+          <DialogHeader>
+            <DialogTitle>어떻게 바꿀까요?</DialogTitle>
+            <DialogDescription>
+              {customRewrite ? `선택한 ${fieldLabel(customRewrite.target)}만 AI가 다시 씁니다.` : ""} 다른 섹션과 직접 수정한 내용은 바뀌지 않아요.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={customRewrite?.prompt ?? ""}
+            maxLength={REWRITE_PROMPT_MAX}
+            placeholder="예: 20대 직장인이 출근룩으로 입는 느낌으로, 두 문장 이내로"
+            aria-label="재작성 요청"
+            onChange={(event) => setCustomRewrite((current) => (current ? { ...current, prompt: event.target.value } : current))}
+            className="min-h-[96px] rounded-md text-base sm:text-sm"
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" className="h-11 rounded-md" onClick={() => setCustomRewrite(null)}>
+              취소
+            </Button>
+            <Button
+              type="button"
+              className="h-11 rounded-md bg-brand hover:bg-brand-dark"
+              disabled={!customRewrite?.prompt.trim()}
+              onClick={() => {
+                if (!customRewrite) return;
+                const { target, prompt } = customRewrite;
+                setCustomRewrite(null);
+                void rewriteField(target, "custom", prompt);
+              }}
+            >
+              <Sparkles className="mr-1.5 h-4 w-4" /> 이 요청으로 다시 쓰기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirmFunding} onOpenChange={setConfirmFunding}>
         <AlertDialogContent className="rounded-md">

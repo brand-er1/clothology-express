@@ -115,10 +115,13 @@ export const SaveStatusBadge = ({
   status,
   lastSavedAt,
   error,
+  onRetry,
 }: {
   status: AutosaveStatus;
   lastSavedAt: Date | null;
   error: string | null;
+  /** 저장 실패 시 "다시 시도" */
+  onRetry?: () => void;
 }) => {
   const time = lastSavedAt?.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   const content =
@@ -127,7 +130,14 @@ export const SaveStatusBadge = ({
     ) : status === "saved" ? (
       <><Check className="h-3.5 w-3.5 text-emerald-600" /> 저장 완료{time ? ` · 마지막 저장 ${time}` : ""}</>
     ) : status === "error" ? (
-      <><CloudOff className="h-3.5 w-3.5 text-red-600" /> 저장 실패</>
+      <>
+        <CloudOff className="h-3.5 w-3.5 text-red-600" /> 저장 실패 · 서버에 저장되지 않았어요
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="ml-1 font-bold underline underline-offset-2">
+            다시 시도
+          </button>
+        )}
+      </>
     ) : status === "dirty" ? (
       <><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> 변경사항 있음</>
     ) : (
@@ -138,6 +148,8 @@ export const SaveStatusBadge = ({
       className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium", status === "error" ? "text-red-600" : "text-stone-500")}
       role="status"
       aria-live="polite"
+      data-testid="save-status"
+      data-state={status}
       title={status === "error" ? error ?? undefined : undefined}
     >
       {content}

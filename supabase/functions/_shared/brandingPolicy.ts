@@ -96,6 +96,7 @@ export const buildImageEditPrompt = (preset: ImageEditPreset, userPrompt?: strin
     `EDIT: ${spec.instruction}${spec.needsPrompt && request ? ` "${request}"` : ""}`,
     "KEEP EXACTLY THE SAME everywhere else: garment type, silhouette, fit, proportions, length, color (unless the edit is a color change), fabric and texture, seams, pockets, zippers, buttons, trims, every other detail, background, lighting, camera angle, crop and composition. If the image shows several views (e.g. front and back), keep the same layout and edit each view consistently.",
     removal ? "" : "Do not add any new logo, brand name or text unless the edit request explicitly asks for that exact text.",
+    "Do not add any person, face or head that is not already in REFERENCE IMAGE 1, and never make an existing face more visible.",
     NO_BRANDING_RULES,
     "Output exactly one edited image with the same aspect ratio and framing as REFERENCE IMAGE 1.",
   ]

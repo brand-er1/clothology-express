@@ -24,16 +24,20 @@ export type DetailImageSpec = {
   defaultOn: boolean;
 };
 
+/**
+ * 순서 = 생성 우선순위(하루 한도가 모자라면 앞에서부터 생성):
+ * 제품 단독 → 디테일 → 원단/텍스처 → 얼굴 없는 착용. 사람은 핏·기장감이 필요한 착용 컷에만, 얼굴은 프레임 밖.
+ */
 export const DETAIL_IMAGE_SPECS: DetailImageSpec[] = [
-  { type: "hero", number: "01", label: "HERO", description: "대표 이미지 · 메인 비주얼", defaultOn: true },
+  { type: "hero", number: "01", label: "HERO", description: "대표 이미지 · 제품 단독 키 비주얼", defaultOn: true },
   { type: "product_front", number: "02", label: "CLEAN PRODUCT", description: "앞면 제품 단독 컷", defaultOn: true },
   { type: "product_back", number: "03", label: "BACK PRODUCT", description: "뒷면 제품 단독 컷", defaultOn: true },
   { type: "detail", number: "04", label: "DETAIL", description: "프린트·자수·그래픽 클로즈업", defaultOn: true },
-  { type: "editorial", number: "05", label: "LOOKBOOK", description: "룩북 · 에디토리얼 컷", defaultOn: true },
-  { type: "lifestyle", number: "06", label: "LIFESTYLE", description: "모델 착용 컷", defaultOn: true },
-  { type: "mood", number: "07", label: "MOOD", description: "브랜드 무드 컷 (선택)", defaultOn: true },
-  { type: "fabric", number: "08", label: "FABRIC", description: "원단 텍스처 클로즈업 (소재 정보가 있을 때)", defaultOn: false },
-  { type: "flat_lay", number: "09", label: "FLAT LAY", description: "바닥·스튜디오에 자연스럽게 놓인 제품 컷", defaultOn: true },
+  { type: "fabric", number: "05", label: "FABRIC", description: "원단 텍스처 클로즈업", defaultOn: true },
+  { type: "flat_lay", number: "06", label: "FLAT LAY", description: "바닥·스튜디오에 놓인 제품 컷", defaultOn: true },
+  { type: "lifestyle", number: "07", label: "WORN FIT", description: "얼굴 없는 착용 컷 · 핏/기장감 (목 아래 구도)", defaultOn: true },
+  { type: "mood", number: "08", label: "MOOD", description: "제품 무드 컷 · 사람 없음 (선택)", defaultOn: false },
+  { type: "editorial", number: "09", label: "LOOKBOOK", description: "얼굴 없는 착용 룩북 컷 (선택)", defaultOn: false },
 ];
 
 export const getDetailImageSpec = (type: DetailImageType) =>

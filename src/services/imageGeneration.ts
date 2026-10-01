@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 import { clothTypes } from "@/lib/customize-constants";
 import { Material } from "@/types/customize";
 import { createDraftOrder } from "./orderCreation";
+import type { BrandLogoMode } from "./aiImageEdit";
 
 export const generateImage = async (
   selectedType: string,
@@ -20,6 +21,8 @@ export const generateImage = async (
   selectedThickness: string = "",
   selectedSeason: string = "",
   saveAsDraft: boolean = false,
+  /** 브랜드 로고 적용: 기본 "none"(로고·글자 없음). "creator" 일 때만 내 브랜드 로고를 서버가 적용한다. */
+  brandLogo: BrandLogoMode = "none",
 ) => {
   try {
     const { data } = await supabase.auth.getSession();
@@ -55,15 +58,17 @@ export const generateImage = async (
     const { data: generationData, error: generationError } = await supabase.functions.invoke(
       'generate-optimized-image',
       {
-        body: { prompt }
+        body: { prompt, brandLogo }
       }
     );
 
     if (generationError) {
       console.error("Image generation error:", generationError);
+      const context = (generationError as { context?: Response }).context;
+      const payload = context && typeof context.json === "function" ? await context.json().catch(() => null) : null;
       toast({
         title: "이미지 생성 실패",
-        description: "이미지를 생성하는 중 오류가 발생했습니다.",
+        description: typeof payload?.error === "string" ? payload.error : "이미지를 생성하는 중 오류가 발생했습니다.",
         variant: "destructive",
       });
       return null;

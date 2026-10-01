@@ -3,6 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 import { tryRemoveGarmentBackground } from "../_shared/removeGarmentBackground.ts";
+import { NO_BRANDING_RULES } from "../_shared/brandingPolicy.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -492,6 +493,8 @@ ${isKnit
     contact shadows. Keep the large front and back garment views on a clean
     white background. Generate a high-resolution ecommerce product image of the
     modified design, not a flat illustration.
+
+    ${NO_BRANDING_RULES}
     `;
     
     console.log("Sending prompt to Gemini:", fullPrompt);

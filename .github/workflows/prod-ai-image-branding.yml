@@ -1,0 +1,44 @@
+name: Prod E2E - AI image branding
+
+# 운영 Edge Function 으로 의류/컬러/상세페이지 이미지를 실제 생성하고, 이미지 속 글자·로고가 없는지(BRAND-ER 포함)
+# 상표 검수 AI 로 판정한다. 로고 제거 편집과 "내 브랜드 로고 적용"도 확인한다. E2E_CREATOR_EMAIL / E2E_CREATOR_PASSWORD 필요.
+# 실제 AI 비용이 들고 운영 데이터를 잠시 만들므로 수동 실행만: Actions 탭 → "Prod E2E - AI image branding" → Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-e2e-ai-image-branding
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run production E2E
+        env:
+          E2E_CREATOR_EMAIL: ${{ secrets.E2E_CREATOR_EMAIL }}
+          E2E_CREATOR_PASSWORD: ${{ secrets.E2E_CREATOR_PASSWORD }}
+          E2E_SHOTS: e2e-shots
+        run: node scripts/e2e/prod-ai-image-branding.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-e2e-ai-image-branding
+          path: e2e-shots
+          if-no-files-found: ignore

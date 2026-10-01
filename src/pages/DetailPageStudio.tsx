@@ -44,6 +44,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DetailPreviewOverlay } from "@/components/detail-page/DetailPreviewOverlay";
+import { BrandLogoOption } from "@/components/ai-image/BrandLogoOption";
+import { editAiImage, type AiImageEditPreset } from "@/services/aiImageEdit";
 import {
   parseMissingItemsError,
   validateDetailPageForPublish,
@@ -343,7 +345,7 @@ const DetailPageStudio = () => {
       await runWithConcurrency(types, 2, async (imageType) => {
         setJob(imageType, { status: "generating", error: null });
         try {
-          const generated = await requestDetailImage({ detailPageId: page.id, imageType, style: template });
+          const generated = await requestDetailImage({ detailPageId: page.id, imageType, style: template, brandLogo: source?.brandLogoMode ?? "none" });
           setDocument((current) => (current ? applyGeneratedImage(current, imageType, generated) : current));
           setJob(imageType, { status: "completed", assetId: generated.assetId, url: generated.url, error: null });
         } catch (error) {
@@ -352,7 +354,7 @@ const DetailPageStudio = () => {
       });
       refreshMeta();
     },
-    [page, setJob, refreshMeta],
+    [page, source, setJob, refreshMeta],
   );
 
   const runGeneration = async () => {
@@ -425,6 +427,7 @@ const DetailPageStudio = () => {
         imageType: slot,
         style: document.template,
         userInstruction: instruction,
+        brandLogo: source?.brandLogoMode ?? "none",
       });
       updateDocument((current) => ({
         ...current,
@@ -444,6 +447,34 @@ const DetailPageStudio = () => {
       }, 0);
     } catch (error) {
       toast({ title: "이미지를 다시 생성하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
+    } finally {
+      setRegeneratingImageIds((current) => current.filter((id) => id !== imageId));
+    }
+  };
+
+  /** AI 이미지 수정(로고 제거·글자 제거·디자인·컬러·직접 요청): 그 이미지 칸만 새 결과로 바꾼다. */
+  const editImage = async (imageId: string, preset: AiImageEditPreset, prompt?: string) => {
+    if (!page || !documentRef.current) return;
+    const target = documentRef.current.sections.flatMap((section) => section.images).find((image) => image.id === imageId);
+    if (!target) return;
+    setRegeneratingImageIds((current) => [...current, imageId]);
+    try {
+      const edited = await editAiImage({ imageUrl: target.url, preset, prompt, detailPageId: page.id });
+      updateDocument((current) => ({
+        ...current,
+        sections: current.sections.map((section) => ({
+          ...section,
+          images: section.images.map((image) =>
+            image.id === imageId ? { ...image, url: edited.url, source: "generated", crop: image.source === "design" ? image.crop : "full" } : image,
+          ),
+        })),
+      }));
+      toast({ title: "이미지를 수정했어요", description: "원본은 ‘이미지 불러오기’에서 다시 넣을 수 있어요." });
+      window.setTimeout(() => {
+        void autosave.saveNow().catch(() => undefined).then(() => recordDetailPageVersion(page.id, "image_regenerated", `AI 이미지 수정 · ${preset}`)).then(refreshMeta);
+      }, 0);
+    } catch (error) {
+      toast({ title: "이미지를 수정하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
     } finally {
       setRegeneratingImageIds((current) => current.filter((id) => id !== imageId));
     }
@@ -900,6 +931,13 @@ const DetailPageStudio = () => {
               <ImageTypeChecklist value={imageTypes} onChange={setImageTypes} />
             </div>
             <div className="mt-2"><QuotaNote quota={quota} requested={imageTypes.length} /></div>
+            <div className="mt-5 max-w-2xl">
+              <BrandLogoOption
+                value={source.brandLogoMode ?? "none"}
+                onChange={(brandLogoMode) => setSource((current) => (current ? { ...current, brandLogoMode } : current))}
+                returnTo={`/detail-pages/${page.id}`}
+              />
+            </div>
           </section>
         </main>
 
@@ -1027,6 +1065,7 @@ const DetailPageStudio = () => {
               onRegenerate={(tone) => void regenerateSection(selectedSection, tone)}
               regenerating={regeneratingId === selectedSection.id}
               onRegenerateImage={regenerateImage}
+              onEditImage={editImage}
               regeneratingImageIds={regeneratingImageIds}
               imageStatus={imageStatus}
               loadLibrary={loadLibrary}
@@ -1125,6 +1164,13 @@ const DetailPageStudio = () => {
                 </Button>
               )}
               <p className="mt-2 text-[11px] leading-4 text-stone-500">템플릿을 바꾸면 레이아웃은 즉시 바뀌고, 이미지 무드는 위 버튼으로 새 스타일에 맞춰 다시 생성할 수 있어요.</p>
+              <div className="mt-4">
+                <BrandLogoOption
+                  value={source.brandLogoMode ?? "none"}
+                  onChange={(brandLogoMode) => setSource((current) => (current ? { ...current, brandLogoMode } : current))}
+                  returnTo={`/detail-pages/${page.id}`}
+                />
+              </div>
             </div>
 
             <div className="border-t border-stone-200 pt-5">

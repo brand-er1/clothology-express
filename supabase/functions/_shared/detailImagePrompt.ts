@@ -8,6 +8,8 @@
  * and instruction, never a prompt string.
  */
 
+import { NO_BRANDING_RULES, creatorLogoRules } from "./brandingPolicy.ts";
+
 export type DetailImageType =
   | "hero"
   | "product_front"
@@ -72,6 +74,8 @@ export type BuildProductImagePromptInput = {
   imageType: DetailImageType;
   detailPageStyle: DetailPageStyle;
   userInstruction?: string | null;
+  /** "내 브랜드 로고 적용" 일 때만: 제작자 브랜드명(로고 이미지는 참조로 함께 첨부). */
+  creatorLogo?: { brandName: string } | null;
 };
 
 const STYLE_DIRECTION: Record<DetailPageStyle, string> = {
@@ -151,6 +155,7 @@ const identityLock = (product: PromptProduct) => {
     "The reference image is the immutable product. Reproduce the EXACT SAME garment — do not redesign it.",
     "Keep identical: garment color and color blocking, silhouette and proportions, every graphic/print/embroidery/logo and its exact position and scale, pocket positions, zipper, buttons, hood, collar, sleeve length and shape, cuffs, hem and overall length, and the front vs. back design.",
     "Do not add, remove, move or recolor any design element. Do not add text, watermarks, extra logos or brand names. Do not change the garment type.",
+    NO_BRANDING_RULES,
     "Photorealistic, high-resolution, professional fashion photography.",
     facts.length ? `Known product facts: ${facts.join(" | ")}.` : "",
   ]
@@ -164,6 +169,7 @@ export const buildProductImagePrompt = ({
   imageType,
   detailPageStyle,
   userInstruction,
+  creatorLogo,
 }: BuildProductImagePromptInput) => {
   const instruction = userInstruction?.trim().slice(0, 500);
   return [
@@ -171,8 +177,9 @@ export const buildProductImagePrompt = ({
     STYLE_DIRECTION[detailPageStyle],
     referenceImages.length ? `Attached reference images: ${referenceImages.join("; ")}.` : "",
     referenceImages.length > 1
-      ? "Reference image 1 is the product design and always wins. Additional references are the creator's real photos (sample, fabric, details, worn shots, logo): use them only to match real texture, construction details, logo/print rendering and proportions of this same product — never copy other garments, people's faces or unrelated items from them."
+      ? "Reference image 1 is the product design and always wins. Additional references are the creator's real photos (sample, fabric, details, worn shots): use them only to match real texture, construction details, print rendering and proportions of this same product — never copy other garments, people's faces, logos or text from them."
       : "",
+    creatorLogo ? creatorLogoRules(creatorLogo.brandName) : "",
     instruction
       ? `Creator's change request for this image (apply it only to background, setting, composition, lighting, model or mood — never to the garment design): "${instruction}"`
       : "",

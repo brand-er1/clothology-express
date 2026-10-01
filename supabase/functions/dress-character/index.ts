@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { NO_BRANDING_RULES } from "../_shared/brandingPolicy.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -405,6 +406,10 @@ Clothing identity lock — for every garment reference image, preserve exactly:
 Preserve the exact design identity of every provided garment. Do not change its color, logo, graphics, silhouette, proportions, material details, or construction.
 
 Do not invent new design details that are not present in the garment reference image (for example: do not add a zipper if there isn't one, do not add graphics that aren't there, do not change a plain garment into a patterned one).
+
+PLATFORM BRANDING: The character reference may wear BRAND-ER branded clothing because BRAND-ER is the platform mascot. Never copy "BRAND-ER" text or the BRAND-ER logo from the character reference onto the supplied garments; the garments keep only their own design.
+
+${NO_BRANDING_RULES}
 
 OUTPUT: Return exactly ONE edited full-body image. No before/after split, comparison layout, caption, watermark, extra person, prop, or text overlay. The result must show the same face identity as Reference Image 1, VISIBLY AND ACTUALLY wearing the exact referenced garments — not the old outfit, not no outfit, not the garments floating beside the character. The body, pose, and silhouette should look however is natural for that outfit. Returning Reference Image 1 unchanged, or with the garment missing/only partially applied, is not an acceptable output.
 `.trim();

@@ -69,6 +69,8 @@ const Customize = () => {
     setProductionCountry,
     handleAddMaterial,
     handleGenerateImage,
+    brandLogoMode,
+    setBrandLogoMode,
     handleNext,
     handleBack,
     handleCreateFunding,
@@ -274,6 +276,8 @@ const Customize = () => {
                 selectedFit={selectedFit}
                 selectedDetail={selectedDetail}
                 onGenerateImage={handleGenerateImage}
+                brandLogoMode={brandLogoMode}
+                onBrandLogoModeChange={setBrandLogoMode}
               />
             )}
 

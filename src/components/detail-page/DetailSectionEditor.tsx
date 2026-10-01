@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { REWRITE_OPTIONS, SECTION_META, createDetailId, defaultSlotForSection, getDesignImages, moveItem } from "@/lib/detail-page/document";
 import { DetailImageLibraryDialog } from "@/components/detail-page/DetailImageLibraryDialog";
+import { AiImageEditMenu } from "@/components/ai-image/AiImageEditMenu";
+import type { AiImageEditPreset } from "@/services/aiImageEdit";
 import type { DetailLibraryImage } from "@/services/detailPage";
 import { getDetailImageSpec } from "@/lib/detail-page/imagePipeline";
 import { getDetailPageErrorMessage, uploadDetailPageImage } from "@/services/detailPage";
@@ -49,6 +51,8 @@ type DetailSectionEditorProps = {
   onRegenerateImage?: (imageId: string, slot: DetailImageType, instruction: string) => Promise<void>;
   regeneratingImageIds?: string[];
   imageStatus?: Partial<Record<DetailImageType, DetailImageJobStatus>>;
+  /** AI 이미지 수정(로고 제거 등): 이 이미지만 편집해 교체한다. */
+  onEditImage?: (imageId: string, preset: AiImageEditPreset, prompt?: string) => Promise<void>;
   /** 이미지 라이브러리(AI 생성 · 업로드 · 컬러별 · 원본) */
   loadLibrary?: () => Promise<DetailLibraryImage[]>;
   /** 본문만 부분 재작성(이 섹션의 다른 내용과 다른 섹션은 유지) */
@@ -104,6 +108,7 @@ export const DetailSectionEditor = ({
   regeneratingImageIds = [],
   imageStatus,
   loadLibrary,
+  onEditImage,
   onRewriteDescription,
   rewriting,
   hasFundingColors,
@@ -455,6 +460,13 @@ export const DetailSectionEditor = ({
                       {regeneratingImageIds.includes(image.id) ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
                       AI 다시 생성
                     </Button>
+                  )}
+                  {onEditImage && (
+                    <AiImageEditMenu
+                      className="w-full"
+                      busy={regeneratingImageIds.includes(image.id)}
+                      onEdit={(preset, prompt) => onEditImage(image.id, preset, prompt)}
+                    />
                   )}
                   <div className="grid grid-cols-2 gap-1">
                     <DropdownMenu>

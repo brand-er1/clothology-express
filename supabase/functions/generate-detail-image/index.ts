@@ -11,6 +11,7 @@ import {
 } from "../_shared/detailImagePrompt.ts";
 import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ReferenceImage } from "../_shared/imageProviders.ts";
 import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
+import { CREATOR_LOGO_REFERENCE_LABEL, findCreatorLogo, parseBrandLogoMode } from "../_shared/brandingPolicy.ts";
 
 /**
  * Generates ONE AI detail-page image from the creator's design (reference image).
@@ -120,7 +121,7 @@ serve(async (req) => {
     if (userError || !user) return json({ error: "로그인이 필요합니다." }, 401);
     userId = user.id;
 
-    const { detailPageId, imageType, style, userInstruction } = await req.json();
+    const { detailPageId, imageType, style, userInstruction, brandLogo } = await req.json();
     if (typeof detailPageId !== "string" || !isDetailImageType(imageType)) {
       return json({ error: "잘못된 요청입니다." }, 400);
     }
@@ -146,9 +147,16 @@ serve(async (req) => {
     const detailPageStyle = isDetailPageStyle(style) ? style : isDetailPageStyle(page.template) ? page.template : "minimal";
     const product = toPromptProduct(source);
     const instruction = typeof userInstruction === "string" ? userInstruction.trim().slice(0, 500) : "";
+    // 브랜드 로고는 제작자가 "내 브랜드 로고 적용"을 고른 경우에만(요청값 또는 상세페이지 설정). 기본은 로고 없음.
+    const brandLogoMode = parseBrandLogoMode(brandLogo ?? source.brandLogoMode);
+    const creatorLogo = brandLogoMode === "creator" ? await findCreatorLogo(admin, user.id) : null;
+    if (brandLogoMode === "creator" && !creatorLogo) {
+      return json({ error: "내 브랜드에 등록된 로고가 없습니다. 마이페이지 > 내 브랜드에서 로고를 등록해주세요." }, 400);
+    }
 
     // 제작자가 올린 참고자료 중 이 이미지 유형에 도움이 되는 사진(최대 2장)
-    const wantedKinds = REFERENCE_KINDS[imageType as DetailImageType];
+    // 로고 참고자료는 로고 적용을 고른 경우에만 쓴다(그 외에는 로고가 복제되지 않도록 제외).
+    const wantedKinds = REFERENCE_KINDS[imageType as DetailImageType].filter((kind) => kind !== "logo" || creatorLogo);
     const { data: referenceRows } = await admin
       .from("detail_page_references")
       .select("kind, url, mime_type")
@@ -164,10 +172,15 @@ serve(async (req) => {
     const designLabel = product.isFrontBackComposite ? "garment design, front (left) and back (right)" : "garment design";
     const prompt = buildProductImagePrompt({
       product,
-      referenceImages: [designLabel, ...orderedRefs.map((ref) => REFERENCE_LABEL[ref.kind] ?? ref.kind)],
+      referenceImages: [
+        designLabel,
+        ...orderedRefs.map((ref) => REFERENCE_LABEL[ref.kind] ?? ref.kind),
+        ...(creatorLogo ? [CREATOR_LOGO_REFERENCE_LABEL] : []),
+      ],
       imageType,
       detailPageStyle,
       userInstruction: instruction,
+      creatorLogo: creatorLogo ? { brandName: creatorLogo.brandName } : null,
     });
 
     const { data: asset, error: assetError } = await admin
@@ -193,6 +206,11 @@ serve(async (req) => {
       const extra = await fetchReferenceImage(ref.url, REFERENCE_LABEL[ref.kind] ?? ref.kind).catch(() => null);
       if (extra) references.push(extra);
     }
+    if (creatorLogo) {
+      const logo = await fetchReferenceImage(creatorLogo.url, CREATOR_LOGO_REFERENCE_LABEL).catch(() => null);
+      if (!logo) throw new Error("내 브랜드 로고 이미지를 불러오지 못했습니다.");
+      references.push(logo);
+    }
 
     const generated = await provider.generate({ prompt, references, aspectRatio: IMAGE_ASPECT_RATIO[imageType as DetailImageType] });
 
@@ -212,7 +230,7 @@ serve(async (req) => {
     await logAiUsage(admin, {
       userId: user.id, feature: "detail_image", status: "success", provider: generated.provider, model: generated.model,
       detailPageId: page.id, imageType, latencyMs: Date.now() - startedAt,
-      metadata: { references: references.length, style: detailPageStyle, instruction: Boolean(instruction) },
+      metadata: { references: references.length, style: detailPageStyle, instruction: Boolean(instruction), brandLogo: brandLogoMode },
     });
 
     return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length });

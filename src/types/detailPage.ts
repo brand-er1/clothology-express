@@ -156,6 +156,8 @@ export type DetailPageSource = {
   availableColors?: string[];
   /** 펀딩 기간(일). 연결된 펀딩에서 읽어온다. */
   fundingDays?: number | null;
+  /** 상세페이지 AI 이미지의 브랜드 로고 적용. 기본 "none"(로고 없음), "creator" 면 내 브랜드 로고만. */
+  brandLogoMode?: "none" | "creator";
 };
 
 export type DetailEmphasis = "design" | "fit" | "fabric" | "detail" | "process" | "scarcity" | "price" | "brand_story";

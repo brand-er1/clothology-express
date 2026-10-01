@@ -3,13 +3,9 @@ name: Prod E2E - AI detail page
 # 운영 사이트/운영 Supabase 를 대상으로 AI 상세페이지 흐름과 서버 차단을 검증한다.
 # Part A(비로그인 서버 차단)는 항상 실행되고, Part B(제작자 전체 흐름 · 실제 AI)는
 # E2E_CREATOR_EMAIL / E2E_CREATOR_PASSWORD 시크릿이 있을 때만 실행된다. 만든 테스트 데이터는 마지막에 삭제한다.
+# 운영 데이터를 건드리므로 자동 실행하지 않는다: Actions 탭 → "Prod E2E - AI detail page" → Run workflow.
 on:
   workflow_dispatch:
-  push:
-    branches: [claude/wizardly-knuth-yxpnwp]
-    paths:
-      - scripts/e2e/prod-detail-page.mjs
-      - .github/workflows/prod-detail-page-e2e.yml
 
 permissions:
   contents: read

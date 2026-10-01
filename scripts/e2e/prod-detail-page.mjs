@@ -21,6 +21,9 @@ fs.mkdirSync(SHOTS, { recursive: true });
 
 const results = [];
 let failed = false;
+/** 실패 시 현재 화면 스크린샷 + 화면 토스트/오류 문구를 남긴다(Part B 에서 설정). */
+let onFailure = async () => "";
+let failureCount = 0;
 const step = async (name, fn) => {
   const started = Date.now();
   try {
@@ -28,7 +31,9 @@ const step = async (name, fn) => {
     results.push(`PASS  ${name}${note ? ` — ${note}` : ""} (${((Date.now() - started) / 1000).toFixed(1)}s)`);
   } catch (error) {
     failed = true;
-    results.push(`FAIL  ${name} — ${String(error?.message ?? error).split("\n")[0]}`);
+    failureCount += 1;
+    const context = await onFailure(`fail-${String(failureCount).padStart(2, "0")}`).catch(() => "");
+    results.push(`FAIL  ${name} — ${String(error?.message ?? error).split("\n")[0]}${context ? ` | 화면: ${context}` : ""}`);
   }
   console.log(results.at(-1));
 };
@@ -150,6 +155,11 @@ if (!EMAIL || !PASSWORD) {
     const page = await context.newPage();
     page.setDefaultTimeout(30000);
     const shot = (name) => page.screenshot({ path: `${SHOTS}/${name}.png` }).catch(() => undefined);
+    onFailure = async (name) => {
+      await shot(name);
+      const toasts = await page.locator("li[role=status], [data-sonner-toast], [role=alert]").allInnerTexts().catch(() => []);
+      return [`url=${page.url().replace(SITE, "")}`, ...toasts.map((text) => text.replace(/\s+/g, " ").trim()).filter(Boolean)].join(" / ").slice(0, 400);
+    };
     const inline = (label) => page.locator(`[data-inline-edit][aria-label="${label}"]`).first();
     const body = () => page.locator("[data-inline-edit][aria-label='본문을 입력하세요']").first();
     const typeInto = async (locator, text) => {
@@ -295,7 +305,14 @@ if (!EMAIL || !PASSWORD) {
     await step("B9 펀딩 시작(상표 검수 → 펀딩 초안 생성 → 연결 → 자동 등록)", async () => {
       await page.getByRole("button", { name: /이 상세페이지로 펀딩 시작하기/ }).click();
       await page.getByRole("alertdialog").getByRole("button", { name: "펀딩 시작하기" }).click();
-      await page.waitForURL(/\/fundings\/[0-9a-f-]+\/edit/, { timeout: 180000 });
+      const outcome = await Promise.race([
+        page.waitForURL(/\/fundings\/[0-9a-f-]+\/edit/, { timeout: 180000 }).then(() => "ok"),
+        page.getByText(/펀딩을 시작하지 못했어요|내 브랜드를 먼저 등록해주세요|상세페이지 연결에 실패/).first().waitFor({ timeout: 180000 }).then(() => "error"),
+      ]);
+      if (outcome === "error") {
+        const toasts = await page.locator("li[role=status], [data-sonner-toast]").allInnerTexts().catch(() => []);
+        throw new Error(`펀딩 시작 오류: ${toasts.join(" / ").replace(/\s+/g, " ").slice(0, 300)}`);
+      }
       fundingId = page.url().match(/fundings\/([0-9a-f-]+)\/edit/)[1];
       cleanup.fundingId = fundingId;
       const row = await db();
@@ -360,6 +377,18 @@ if (!EMAIL || !PASSWORD) {
     // 정리: 테스트 펀딩 삭제(→ 상세페이지 funding_id null) 후 상세페이지 삭제
     await step("B13 테스트 데이터 정리", async () => {
       const notes = [];
+      // 중간 실패로 연결 전에 만들어진 테스트 펀딩도 찾아서 정리한다(이 계정 + 테스트 상품명 접두어만).
+      const { data: leftovers } = await owner
+        .from("fundings")
+        .select("id, product_name")
+        .eq("creator_id", session?.user?.id ?? "00000000-0000-0000-0000-000000000000")
+        .like("product_name", "E2E 테스트 후디%");
+      for (const row of leftovers ?? []) {
+        if (row.id !== cleanup.fundingId) {
+          const { error } = await owner.functions.invoke("delete-funding", { body: { fundingId: row.id, reason: "운영 E2E 테스트 데이터 정리" } });
+          notes.push(error ? `남은 펀딩 ${row.id.slice(0, 8)} 삭제 실패: ${error.message}` : `남은 펀딩 ${row.id.slice(0, 8)} 삭제`);
+        }
+      }
       if (cleanup.fundingId) {
         const { data, error } = await owner.functions.invoke("delete-funding", { body: { fundingId: cleanup.fundingId, reason: "운영 E2E 테스트 데이터 정리" } });
         notes.push(error ? `펀딩 삭제 실패: ${error.message}` : `펀딩 삭제 ${data?.success ? "완료" : JSON.stringify(data)}`);

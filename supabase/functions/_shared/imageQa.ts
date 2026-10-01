@@ -17,8 +17,13 @@ export type ImageQaResult = {
   brandErVisible: boolean;
   matchesReference: boolean;
   designDifferences: string[];
+  /** 머리/얼굴이 보일 때 그 영역 [ymin, xmin, ymax, xmax] (0~1000). 재구도(크롭) 판단에 쓴다. */
+  headBox: [number, number, number, number] | null;
   model: string;
 };
+
+/** full: 의류 전체가 보이는 컷, partial: 디테일 · 원단 클로즈업(전체 디자인 비교 대신 색 · 소재 일관성만). */
+export type QaScope = "full" | "partial";
 
 type InlineImage = { data: string; mimeType: string };
 
@@ -38,8 +43,12 @@ Return JSON only:
   "logoOrBrandMark": false,      // any logo, emblem, monogram or brand mark visible in A
   "brandErVisible": false,       // the text "BRAND-ER"/"BRANDER" or a similar platform mark visible in A
   "matchesReference": true,      // the garment in A is the same design as B: same garment type, colors, graphics/prints and their placement, pockets, hood, collar, sleeves and length
-  "designDifferences": []        // short list of design differences between the garment in A and B (empty if none)
+  "designDifferences": [],       // short list of design differences between the garment in A and B (empty if none)
+  "headBox": null                // if any head/face/hair is visible in A: its box [ymin, xmin, ymax, xmax] on a 0-1000 scale (covering every visible head part incl. chin); otherwise null
 }`;
+
+const PARTIAL_NOTE = `NOTE: IMAGE A is intentionally a close-up (detail or fabric texture) of the garment, not the whole garment.
+For "matchesReference" only check that what A shows is consistent with B (same color and plausible same material/construction); do not report "only a close-up" or texture rendering style as a difference.`;
 
 const parse = (text: string) => {
   const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
@@ -51,14 +60,23 @@ const parse = (text: string) => {
 const strList = (value: unknown) =>
   Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean).slice(0, 20) : [];
 
+const parseBox = (value: unknown): [number, number, number, number] | null => {
+  if (!Array.isArray(value) || value.length !== 4) return null;
+  const box = value.map(Number);
+  if (box.some((entry) => !Number.isFinite(entry))) return null;
+  const [ymin, xmin, ymax, xmax] = box.map((entry) => Math.min(1000, Math.max(0, entry)));
+  return ymax > ymin && xmax > xmin ? [ymin, xmin, ymax, xmax] : null;
+};
+
 export const inspectGeneratedImage = async (
   apiKey: string,
   generated: InlineImage,
   reference: InlineImage | null,
+  scope: QaScope = "full",
 ): Promise<ImageQaResult | null> => {
   if (!apiKey) return null;
   const parts: Array<Record<string, unknown>> = [
-    { text: QA_PROMPT },
+    { text: scope === "partial" ? `${QA_PROMPT}\n\n${PARTIAL_NOTE}` : QA_PROMPT },
     { text: "IMAGE A (generated):" },
     { inlineData: { data: generated.data, mimeType: generated.mimeType } },
   ];
@@ -90,6 +108,7 @@ export const inspectGeneratedImage = async (
         brandErVisible: value.brandErVisible === true || visibleText.some((entry) => /brand\s*-?\s*er/i.test(entry)),
         matchesReference: value.matchesReference !== false,
         designDifferences: strList(value.designDifferences),
+        headBox: parseBox(value.headBox),
         model,
       };
     } catch {
@@ -105,6 +124,28 @@ export const violatesPeoplePolicy = (qa: ImageQaResult | null, peopleMode: "none
   if (qa.faceVisible || qa.headVisible) return true;
   if (peopleMode === "none" && (qa.personCount > 0 || qa.bodyPartsVisible)) return true;
   return qa.personCount > 1;
+};
+
+/**
+ * 착용 컷 재구도: 머리가 화면 위쪽에 걸쳐 들어온 경우, 카메라 프레임을 머리 아래(어깨선)로 내린 크롭 영역을 계산한다.
+ * 같은 화면비를 유지하고 착용자 중심(머리 x 중심)으로 맞춘다. 머리가 위쪽이 아니거나 남는 영역이 너무 작으면 null.
+ */
+export const reframeBelowHead = (
+  width: number,
+  height: number,
+  headBox: [number, number, number, number] | null,
+  minKeep = 0.6,
+): { x: number; y: number; width: number; height: number } | null => {
+  if (!headBox || width <= 0 || height <= 0) return null;
+  const [ymin, xmin, ymax, xmax] = headBox;
+  if (ymin > 350) return null; // 머리가 위쪽에 있지 않음(앉은 자세 · 반사 등) → 크롭으로 해결하지 않는다
+  const top = Math.ceil((ymax / 1000) * height + height * 0.04);
+  const keptHeight = height - top;
+  if (keptHeight < height * minKeep) return null;
+  const keptWidth = Math.min(width, Math.round((keptHeight * width) / height));
+  const centerX = ((xmin + xmax) / 2000) * width;
+  const x = Math.round(Math.min(width - keptWidth, Math.max(0, centerX - keptWidth / 2)));
+  return { x, y: top, width: keptWidth, height: keptHeight };
 };
 
 export const REFRAME_ON_RETRY = [

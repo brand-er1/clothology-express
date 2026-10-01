@@ -34,6 +34,7 @@ import { PRODUCTION_STAGE_LABEL, PRODUCTION_STAGE_ORDER, SHIPPING_STATUS_LABEL }
 import {
   ArrowLeft, Clock3, Download, ImagePlus, Loader2, PackageCheck, Search, ShoppingBag,
   Trash2, Truck, Users, WalletCards,
+  Sparkles,
 } from "lucide-react";
 
 const statusLabel: Record<FundingParticipationStatus, string> = {
@@ -443,9 +444,14 @@ const FundingManager = () => {
             <h1 className="mt-3 text-2xl font-bold tracking-[-0.03em] md:text-4xl">{funding.product_name}</h1>
             <p className="mt-2 text-gray-500">펀딩 참여자 관리</p>
           </div>
-          <Button asChild variant="outline" className="self-start rounded-full bg-white md:self-auto">
-            <Link to={`/fundings/${funding.id}/edit`}>펀딩 정보 수정</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2 self-start md:self-auto">
+            <Button asChild variant="outline" className="rounded-full bg-white">
+              <Link to={`/fundings/${funding.id}/edit`}>펀딩 정보 수정</Link>
+            </Button>
+            <Button asChild className="rounded-full bg-brand hover:bg-brand-dark">
+              <Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-1.5 h-4 w-4" />상세페이지 수정</Link>
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

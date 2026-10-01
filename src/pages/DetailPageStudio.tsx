@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  AlertCircle,
   ArrowLeft,
+  ChevronDown,
   ExternalLink,
   Eye,
   History,
   Loader2,
+  LogOut,
   Monitor,
   Rocket,
   Save,
+  SlidersHorizontal,
   Smartphone,
   Sparkles,
   Wand2,
@@ -30,6 +34,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DetailPreviewOverlay } from "@/components/detail-page/DetailPreviewOverlay";
+import {
+  parseMissingItemsError,
+  validateDetailPageForPublish,
+  type DetailPublishMissingItem,
+} from "@/lib/detail-page/validation";
 import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer";
 import { DetailSectionList } from "@/components/detail-page/DetailSectionList";
 import { DetailSectionEditor } from "@/components/detail-page/DetailSectionEditor";
@@ -57,7 +75,12 @@ import {
   composeDetailDocument,
   createCustomSection,
   createDetailId,
+  duplicateSection,
+  getTextField,
   regenerateSectionText,
+  REWRITE_OPTIONS,
+  SECTION_META,
+  setTextField,
 } from "@/lib/detail-page/document";
 import {
   DETAIL_IMAGE_SPECS,
@@ -67,12 +90,13 @@ import {
   runWithConcurrency,
 } from "@/lib/detail-page/imagePipeline";
 import { DetailGenerationProgress, ImageTypeChecklist } from "@/components/detail-page/DetailGenerationProgress";
-import { refreshBrandInSource } from "@/lib/detail-page/source";
+import { refreshBrandInSource, refreshFundingInSource } from "@/lib/detail-page/source";
 import { getDetailTemplateMeta } from "@/lib/detail-page/templates";
 import { fetchMyBrand } from "@/services/brand";
 import { fetchFunding } from "@/services/funding";
 import {
   DetailPageBrandRequiredError,
+  fetchDetailImageLibrary,
   fetchDetailPage,
   fetchDetailPagePublishState,
   fetchMyAiQuota,
@@ -81,6 +105,7 @@ import {
   publishDetailPage,
   recordDetailPageVersion,
   restoreDetailPageVersion,
+  rewriteDetailText,
   saveDetailPage,
   startFundingFromDetailPage,
 } from "@/services/detailPage";
@@ -99,6 +124,8 @@ import type {
   DetailPageTemplateId,
   DetailSection,
   DetailSectionType,
+  DetailRewriteInstruction,
+  DetailTextField,
   ProductDetailPage,
 } from "@/types/detailPage";
 import type { Funding } from "@/types/funding";
@@ -108,6 +135,15 @@ import { supabase } from "@/lib/supabase";
 type EditorTab = "sections" | "section" | "product";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const FULL_REGENERATE_MESSAGE = "현재 수정한 상세페이지 내용이 변경될 수 있습니다. 전체 상세페이지를 다시 생성하시겠습니까?";
+
+const fieldLabel = (target: DetailTextField) => {
+  if (target.scope === "document") return { productName: "상품명", productNameEn: "영문 상품명", subtitle: "한 줄 소개", mainCopy: "메인 카피" }[target.field];
+  if (target.scope === "section") return { eyebrow: "라벨", title: "제목", description: "본문" }[target.field];
+  if (target.scope === "item") return target.field === "title" ? "항목 제목" : "항목 내용";
+  return target.field === "label" ? "정보 항목명" : "정보 값";
+};
 
 const statsFrom = (source: DetailPageSource, funding: Funding | null): DetailFundingStats => {
   if (funding) {
@@ -148,7 +184,8 @@ const DetailPageStudio = () => {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editorTab, setEditorTab] = useState<EditorTab>("sections");
-  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
+  // 모바일: "preview" = 페이지(인라인 편집 캔버스), "edit" = 섹션 설정 패널
+  const [mobileView, setMobileView] = useState<"edit" | "preview">("preview");
   const [previewWidth, setPreviewWidth] = useState<"mobile" | "desktop">("desktop");
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [confirmFunding, setConfirmFunding] = useState(false);
@@ -164,7 +201,11 @@ const DetailPageStudio = () => {
   const [publishState, setPublishState] = useState<DetailPagePublishState | null>(null);
   const [quota, setQuota] = useState<AiQuota | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
-  const [confirmPublish, setConfirmPublish] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [activeField, setActiveField] = useState<DetailTextField | null>(null);
+  const [rewritingKey, setRewritingKey] = useState<string | null>(null);
+  const [missingItems, setMissingItems] = useState<DetailPublishMissingItem[] | null>(null);
+  const [publishDone, setPublishDone] = useState<{ first: boolean; version: number } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -176,6 +217,9 @@ const DetailPageStudio = () => {
   // 관리자 열람(read-only)에서는 자동저장을 끈다.
   const autosave = useDetailPageAutosave(readOnly ? null : page?.id ?? null, readOnly ? null : snapshot);
   const { resetBaseline } = autosave;
+  // 비동기 작업(AI 재작성 등)이 끝난 시점의 최신 문서를 읽기 위한 참조
+  const documentRef = useRef<DetailPageDocument | null>(null);
+  documentRef.current = document;
 
   useEffect(() => {
     if (!pageId) return;
@@ -199,10 +243,11 @@ const DetailPageStudio = () => {
         setFundingColors(colorRows);
         const serverSnapshot = {
           document: loaded.document,
-          source: viewOnly ? loaded.source : refreshBrandInSource(loaded.source, brand),
+          // 브랜드 · 펀딩(가격/사이즈/MOQ/기간) 최신 값을 사실 데이터에 반영한다(다음 저장 때 함께 저장).
+          source: viewOnly ? loaded.source : refreshFundingInSource(refreshBrandInSource(loaded.source, brand), linkedFunding),
           generation: loaded.generation,
         };
-        resetBaseline(serverSnapshot);
+        resetBaseline(serverSnapshot, loaded.updatedAt);
         const backup = viewOnly ? null : readUnsyncedBackup(loaded.id, loaded.updatedAt);
         const restored = backup ?? serverSnapshot;
         // Images that finished after the creator left the page are placed now.
@@ -313,6 +358,11 @@ const DetailPageStudio = () => {
     setConfirmRegenerate(false);
     setCopyStatus("generating");
     try {
+      if (hasContent) {
+        // 전체 재생성 전 현재 편집본을 버전으로 남긴다(버전 이력에서 되돌릴 수 있음).
+        await autosave.saveNow().catch(() => undefined);
+        await recordDetailPageVersion(page.id, "manual_save", "전체 재생성 전 자동 백업");
+      }
       const result = await generateDetailCopy(source, document.template, { detailPageId: page.id });
       const composed = composeDetailDocument(source, result.copy, document.template, imageTypes);
       // Keep sections the creator added by hand (not the auto MOOD section, which is rebuilt).
@@ -396,20 +446,79 @@ const DetailPageStudio = () => {
     }
   };
 
+  /** 섹션 전체 재생성: 이 섹션의 문구만 바꾸고(이미지·순서·표시 여부 유지) 다른 섹션은 건드리지 않는다. */
   const regenerateSection = async (section: DetailSection, tone?: DetailCopyTone) => {
     if (!source || !document || !page) return;
     setRegeneratingId(section.id);
     try {
       const result = await generateDetailCopy(source, document.template, { tone, detailPageId: page.id });
-      updateSection(regenerateSectionText(section, source, result.copy));
+      updateDocument((current) => {
+        const target = current.sections.find((entry) => entry.id === section.id);
+        if (!target) return current;
+        const next = regenerateSectionText(target, source, result.copy);
+        let updated = { ...current, sections: current.sections.map((entry) => (entry.id === section.id ? next : entry)) };
+        if (target.type === "hero") {
+          updated = setTextField(updated, { scope: "section", sectionId: section.id, field: "title" }, result.copy.productName);
+          updated = setTextField(updated, { scope: "section", sectionId: section.id, field: "description" }, result.copy.oneLiner);
+        }
+        return updated;
+      });
       window.setTimeout(() => {
         void autosave.saveNow().catch(() => undefined).then(() => recordDetailPageVersion(page.id, "copy_regenerated", tone ? `톤: ${tone}` : undefined)).then(refreshMeta);
       }, 0);
       if (result.provider === "fallback") {
         toast({ title: "AI 연결이 원활하지 않아 기본 문구로 채웠어요", description: result.fallbackReason ?? undefined });
       }
+    } catch (error) {
+      toast({ title: "섹션을 다시 생성하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
     } finally {
       setRegeneratingId(null);
+    }
+  };
+
+  /**
+   * 부분 재작성: 선택한 문구 하나만 AI로 다시 쓴다. 요청 중 사용자가 그 문구를 직접 고쳤다면
+   * 결과를 버려서 사용자의 수정을 덮어쓰지 않는다. 다른 필드/섹션은 절대 바뀌지 않는다.
+   */
+  const rewriteField = async (target: DetailTextField, instruction: DetailRewriteInstruction) => {
+    if (!page || !source || !documentRef.current) return;
+    const original = getTextField(documentRef.current, target);
+    if (!original.trim()) {
+      toast({ title: "다시 작성할 문구가 비어 있어요", description: "문구를 먼저 입력하거나 ‘섹션 전체 재생성’을 사용하세요." });
+      return;
+    }
+    const key = JSON.stringify(target);
+    setRewritingKey(key);
+    try {
+      const sectionType =
+        target.scope === "document" ? "hero" : documentRef.current.sections.find((entry) => entry.id === target.sectionId)?.type ?? "";
+      const field = target.scope === "item" ? (target.field === "title" ? "itemTitle" : "itemText") : target.field;
+      const result = await rewriteDetailText({
+        source,
+        template: documentRef.current.template,
+        text: original,
+        instruction,
+        field,
+        sectionType,
+        detailPageId: page.id,
+      });
+      if (!documentRef.current || getTextField(documentRef.current, target) !== original) {
+        toast({ title: "AI 결과를 적용하지 않았어요", description: "요청하는 동안 문구가 직접 수정되어 수정한 내용을 유지합니다." });
+        return;
+      }
+      updateDocument((current) => setTextField(current, target, result.text));
+      const label = REWRITE_OPTIONS.find((option) => option.value === instruction)?.label ?? "부분 재작성";
+      toast({
+        title: result.provider === "ai" ? `‘${label}’ 적용했어요` : "AI 연결이 원활하지 않아 문장을 줄였어요",
+        description: "다른 섹션과 직접 수정한 내용은 그대로입니다.",
+      });
+      window.setTimeout(() => {
+        void autosave.saveNow().catch(() => undefined).then(() => recordDetailPageVersion(page.id, "copy_regenerated", label)).then(refreshMeta);
+      }, 0);
+    } catch (error) {
+      toast({ title: "다시 작성하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
+    } finally {
+      setRewritingKey(null);
     }
   };
 
@@ -477,6 +586,34 @@ const DetailPageStudio = () => {
     setEditorTab("section");
   };
 
+  const handleDuplicate = (id: string) => {
+    if (!documentRef.current) return;
+    const result = duplicateSection(documentRef.current, id);
+    if (!result.id) return;
+    setDocument(result.document);
+    setSelectedId(result.id);
+    toast({ title: "섹션을 복제했어요", description: "바로 아래에 추가되었습니다." });
+  };
+
+  const loadLibrary = useCallback(
+    () =>
+      page && source && documentRef.current
+        ? fetchDetailImageLibrary({ pageId: page.id, document: documentRef.current, source, colors: fundingColors })
+        : Promise.resolve([]),
+    [page, source, fundingColors],
+  );
+
+  const inlineEdit = useMemo(
+    () => ({
+      onChange: (target: DetailTextField, value: string) => updateDocument((current) => setTextField(current, target, value)),
+      onFocusField: (target: DetailTextField) => {
+        setActiveField(target);
+        if (target.scope !== "document") setSelectedId(target.sectionId);
+      },
+    }),
+    [updateDocument],
+  );
+
   const removeSection = (id: string) => {
     updateDocument((current) => ({ ...current, sections: current.sections.filter((section) => section.id !== id) }));
     if (selectedId === id) setSelectedId(null);
@@ -489,30 +626,75 @@ const DetailPageStudio = () => {
       await autosave.saveNow();
       await recordDetailPageVersion(page.id, "manual_save", "임시저장");
       refreshMeta();
-      toast({ title: "임시저장했어요", description: "고객에게 보이는 상세페이지는 ‘상세페이지 적용’을 눌러야 바뀝니다." });
+      toast({
+        title: "임시저장했어요",
+        description: (publishState ? publishState.publishedVersion : page.publishedVersion)
+          ? "실제 펀딩 상세페이지에는 ‘변경사항 저장’을 눌러야 반영됩니다."
+          : "실제 펀딩 상세페이지에는 ‘상세페이지 등록’을 눌러야 표시됩니다.",
+      });
     } catch (error) {
       toast({ title: "저장 실패", description: getDetailPageErrorMessage(error), variant: "destructive" });
     }
   };
 
-  /** 상세페이지 적용: 현재 편집본을 게시본으로 고정한다. 펀딩(가격·수량·참여자 등)은 건드리지 않는다. */
+  /**
+   * 상세페이지 등록 / 변경사항 저장: 저장 → 필수 항목 검증(화면 + 서버) → 게시본 고정.
+   * 펀딩(가격·수량·참여자 등)은 읽기만 하고 바꾸지 않는다.
+   */
   const handlePublish = async () => {
-    if (!page) return;
-    setConfirmPublish(false);
+    if (!page || !source) return;
     setPublishing(true);
     try {
       await autosave.saveNow();
-      const result = await publishDetailPage(page.id);
-      refreshMeta();
-      toast({
-        title: `상세페이지를 적용했어요 (v${result.published_version})`,
-        description: page.fundingId ? "펀딩 상세화면에 반영되었습니다." : "펀딩을 시작하면 이 상세페이지가 표시됩니다.",
+      const freshFunding = page.fundingId ? await fetchFunding(page.fundingId).catch(() => funding) : null;
+      if (freshFunding) setFunding(freshFunding);
+      const colorRows = page.fundingId ? await fetchFundingColors(page.fundingId).catch(() => fundingColors) : [];
+      const missing = validateDetailPageForPublish({
+        document: documentRef.current ?? page.document,
+        source,
+        funding: freshFunding,
+        fundingColorCount: colorRows.length,
       });
+      if (missing.length) {
+        setMissingItems(missing);
+        return;
+      }
+      const first = !(publishState ? publishState.publishedVersion : page.publishedVersion);
+      const result = await publishDetailPage(page.id, first ? "상세페이지 등록" : "변경사항 저장");
+      refreshMeta();
+      setPublishDone({ first, version: result.published_version });
+      toast({ title: first ? "상세페이지 등록이 완료되었습니다." : "변경사항이 실제 펀딩 상세페이지에 반영되었습니다." });
     } catch (error) {
-      toast({ title: "적용하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
+      const missing = parseMissingItemsError(error);
+      if (missing?.length) setMissingItems(missing);
+      else toast({ title: "등록하지 못했어요", description: getDetailPageErrorMessage(error), variant: "destructive" });
     } finally {
       setPublishing(false);
     }
+  };
+
+  const openPreview = () => {
+    void autosave.saveNow().catch(() => undefined);
+    setActiveField(null);
+    setPreviewOpen(true);
+  };
+
+  /** 등록 검증에서 빠진 항목을 고치는 곳으로 이동 */
+  const fixMissing = (item: DetailPublishMissingItem) => {
+    setMissingItems(null);
+    if (item.target === "funding") {
+      if (page?.fundingId) navigate(`/fundings/${page.fundingId}/edit`);
+      else setConfirmFunding(true);
+      return;
+    }
+    const hero = documentRef.current?.sections.find((section) => section.type === "hero");
+    if (item.key === "hero_image" && hero) {
+      setSelectedId(hero.id);
+      setEditorTab("section");
+    } else {
+      setEditorTab("product");
+    }
+    setMobileView("edit");
   };
 
   const leaveEditor = () => {
@@ -566,10 +748,10 @@ const DetailPageStudio = () => {
     }
   };
 
+  // 미리보기(캔버스)에서 섹션을 누르면 선택만 한다. 모바일에서는 캔버스에 머물러 인라인 편집을 계속할 수 있다.
   const selectFromPreview = (id: string) => {
     setSelectedId(id);
     setEditorTab("section");
-    setMobileView("edit");
   };
 
   if (loadError) {
@@ -731,9 +913,10 @@ const DetailPageStudio = () => {
         <AlertDialog open={confirmRegenerate} onOpenChange={setConfirmRegenerate}>
           <AlertDialogContent className="rounded-md">
             <AlertDialogHeader>
-              <AlertDialogTitle>상세페이지를 다시 생성할까요?</AlertDialogTitle>
-              <AlertDialogDescription>
-                기본 섹션의 문구와 이미지가 새로 작성됩니다. 직접 추가한 텍스트·이미지 섹션은 유지됩니다.
+              <AlertDialogTitle>전체 상세페이지 다시 생성</AlertDialogTitle>
+              <AlertDialogDescription className="leading-6">
+                {FULL_REGENERATE_MESSAGE}
+                <span className="mt-2 block text-xs text-stone-500">현재 편집본은 버전 이력에 자동 백업되고, 직접 추가한 텍스트·이미지 섹션은 유지됩니다.</span>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -788,7 +971,7 @@ const DetailPageStudio = () => {
         {editorTab === "sections" && (
           <>
             <p className="mb-3 text-xs leading-5 text-stone-500">
-              <span className="hidden sm:inline">핸들을 끌어 순서를 바꾸거나 </span>↑↓ 버튼으로 이동하세요. 섹션을 누르면 편집할 수 있어요.
+              ⋮⋮ 핸들을 끌어(모바일은 길게 눌러 끌기) 순서를 바꾸거나 ↑↓ 버튼으로 이동하세요. ⋯ 에서 복제·삭제할 수 있어요.
             </p>
             {page.fundingId && (
               <ColorOptionsPanel
@@ -815,6 +998,7 @@ const DetailPageStudio = () => {
                 }))
               }
               onRemove={removeSection}
+              onDuplicate={handleDuplicate}
               onAdd={addSection}
             />
           </>
@@ -831,6 +1015,12 @@ const DetailPageStudio = () => {
               onRegenerateImage={regenerateImage}
               regeneratingImageIds={regeneratingImageIds}
               imageStatus={imageStatus}
+              loadLibrary={loadLibrary}
+              hasFundingColors={fundingColors.length > 0}
+              rewriting={rewritingKey === JSON.stringify({ scope: "section", sectionId: selectedSection.id, field: "description" })}
+              onRewriteDescription={(instruction) =>
+                void rewriteField({ scope: "section", sectionId: selectedSection.id, field: "description" }, instruction)
+              }
             />
           ) : (
             <p className="py-10 text-center text-sm text-stone-500">‘섹션 구성’ 또는 미리보기에서 편집할 섹션을 선택하세요.</p>
@@ -938,8 +1128,11 @@ const DetailPageStudio = () => {
               <div className="mt-3"><ReferenceUploader page={page} /></div>
             </div>
 
-            <Button type="button" variant="ghost" onClick={() => setShowSetup(true)} className="h-11 w-full rounded-md text-stone-600">
-              <Wand2 className="mr-1.5 h-4 w-4" /> 전체 AI 다시 생성
+            <Button type="button" variant="outline" onClick={() => setConfirmRegenerate(true)} disabled={generating} className="h-11 w-full rounded-md">
+              <Wand2 className="mr-1.5 h-4 w-4" /> 전체 상세페이지 다시 생성
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setShowSetup(true)} className="h-10 w-full rounded-md text-xs text-stone-500">
+              스타일 · 생성 이미지 설정 바꿔서 다시 생성
             </Button>
             {generation.provider === "fallback" && (
               <p className="text-[11px] leading-4 text-amber-700">
@@ -952,39 +1145,85 @@ const DetailPageStudio = () => {
     </div>
   );
 
-  const preview = (
-    <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]", previewWidth === "mobile" ? "max-w-[390px]" : "max-w-none")}>
-      <DetailPageRenderer
-        document={document}
-        source={source}
-        stats={stats}
-        imageStatus={imageStatus}
-        colors={fundingColors}
-        selectedSectionId={selectedId}
-        onSelectSection={selectFromPreview}
-      />
+  const activeKey = activeField ? JSON.stringify(activeField) : null;
+  const rewriteBar = activeField && (
+    <div
+      className="sticky top-16 z-20 border-b border-stone-200 bg-white/95 px-3 py-2 backdrop-blur sm:top-20"
+      data-testid="rewrite-toolbar"
+    >
+      <div className="flex items-center gap-1.5 overflow-x-auto">
+        <span className="shrink-0 pr-1 text-[11px] font-bold text-brand">
+          <Sparkles className="mr-1 inline h-3 w-3" />
+          {fieldLabel(activeField)}
+        </span>
+        {REWRITE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            disabled={rewritingKey !== null}
+            onClick={() => void rewriteField(activeField, option.value)}
+            className="h-8 shrink-0 border border-stone-300 bg-white px-2.5 text-[11px] font-semibold text-stone-700 hover:border-brand hover:text-brand disabled:opacity-50"
+          >
+            {rewritingKey === activeKey ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
+            {option.label}
+          </button>
+        ))}
+        {activeField.scope !== "document" && selectedSection && !["custom_text", "custom_image", "brand"].includes(selectedSection.type) && (
+          <button
+            type="button"
+            disabled={regeneratingId === selectedSection.id}
+            onClick={() => void regenerateSection(selectedSection)}
+            className="h-8 shrink-0 border border-brand bg-brand/5 px-2.5 text-[11px] font-semibold text-brand disabled:opacity-50"
+          >
+            {regeneratingId === selectedSection.id ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
+            이 섹션 전체 재생성
+          </button>
+        )}
+        <button type="button" onClick={() => setActiveField(null)} className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center text-stone-400" aria-label="AI 도구 닫기">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 
+  const preview = (
+    <div>
+      {rewriteBar}
+      <p className="hidden px-1 pb-2 pt-1 text-[11px] text-stone-500 md:block">
+        글자를 눌러 바로 수정하세요. 이미지·섹션 구성은 왼쪽 패널에서 바꿀 수 있어요.
+      </p>
+      <div className={cn("mx-auto bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]", previewWidth === "mobile" ? "max-w-[390px]" : "max-w-none")}>
+        <DetailPageRenderer
+          document={document}
+          source={source}
+          stats={stats}
+          imageStatus={imageStatus}
+          colors={fundingColors}
+          selectedSectionId={selectedId}
+          onSelectSection={selectFromPreview}
+          edit={inlineEdit}
+        />
+      </div>
+    </div>
+  );
+
+  // 상태 RPC 응답 전에도 페이지 row 의 등록 버전으로 바로 올바른 버튼 이름을 보여준다.
+  const isPublished = Boolean(publishState ? publishState.publishedVersion : page.publishedVersion);
+  const publishLabel = isPublished ? "변경사항 저장" : "상세페이지 등록";
   const publishButton = (
     <Button
       type="button"
-      onClick={() => setConfirmPublish(true)}
+      onClick={() => void handlePublish()}
       disabled={publishing}
+      data-testid="publish-button"
       className="h-12 min-w-0 flex-1 rounded-md bg-brand px-4 text-sm font-bold hover:bg-brand-dark md:h-10 md:flex-none"
     >
-      {publishing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Eye className="mr-1.5 h-4 w-4" />}
-      상세페이지 적용
+      {publishing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Rocket className="mr-1.5 h-4 w-4" />}
+      <span className="truncate">{publishLabel}</span>
     </Button>
   );
 
-  const primaryAction = page.fundingId ? (
-    <Button asChild className="h-12 min-w-0 flex-1 rounded-md bg-brand px-4 text-sm font-bold hover:bg-brand-dark md:h-10 md:flex-none">
-      <Link to={`/fundings/${page.fundingId}/edit`}>
-        <ExternalLink className="mr-1.5 h-4 w-4" /> 연결된 펀딩 보기
-      </Link>
-    </Button>
-  ) : (
+  const startFundingButton = (
     <Button
       type="button"
       onClick={() => setConfirmFunding(true)}
@@ -996,14 +1235,59 @@ const DetailPageStudio = () => {
       <span className="hidden md:inline">이 상세페이지로 펀딩 시작하기</span>
     </Button>
   );
+  // 펀딩에 연결된 상세페이지만 "등록"할 수 있다. 연결 전에는 펀딩 시작(=생성 후 자동 등록)이 다음 단계.
+  const primaryAction = page.fundingId ? publishButton : startFundingButton;
+
+  const aiMenu = (compact: boolean) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={generating}
+          className={cn("rounded-md", compact ? "h-12 w-14 shrink-0 flex-col gap-0.5 px-0 text-[10px] font-semibold" : "h-10")}
+          aria-label="AI 재생성"
+        >
+          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          <span className={cn(!compact && "ml-1.5")}>AI 재생성</span>
+          {!compact && <ChevronDown className="ml-1 h-3.5 w-3.5" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        {activeField && (
+          <>
+            <DropdownMenuLabel className="text-xs text-stone-500">선택한 문구 · {fieldLabel(activeField)}</DropdownMenuLabel>
+            {REWRITE_OPTIONS.map((option) => (
+              <DropdownMenuItem key={option.value} onSelect={() => void rewriteField(activeField, option.value)}>
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {selectedSection && !["custom_text", "custom_image", "brand"].includes(selectedSection.type) && (
+          <>
+            <DropdownMenuItem onSelect={() => void regenerateSection(selectedSection)}>
+              선택한 섹션 전체 재생성 · {SECTION_META[selectedSection.type].label}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {!activeField && <DropdownMenuLabel className="text-[11px] font-normal leading-4 text-stone-500">문구 하나만 바꾸려면 페이지에서 글자를 먼저 누르세요.</DropdownMenuLabel>}
+        <DropdownMenuItem className="font-semibold text-brand focus:text-brand" onSelect={() => setConfirmRegenerate(true)}>
+          <Wand2 className="mr-2 h-4 w-4" /> 전체 상세페이지 다시 생성
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div className="min-h-screen bg-[#ebe9e5] text-stone-900">
       <Header />
       <div className="pt-16 sm:pt-20">
-        {/* Toolbar */}
+        {/* Toolbar: [임시저장] [미리보기] [AI 재생성] [상세페이지 등록] */}
         <div className="border-b border-stone-300 bg-white">
-          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
                 AI 상세페이지 · {templateMeta.number} {templateMeta.name}
@@ -1011,33 +1295,44 @@ const DetailPageStudio = () => {
               </p>
               <p className="truncate text-base font-bold">{document.productName || "상품명 없음"}</p>
             </div>
-            <SaveStatusBadge status={autosave.status} lastSavedAt={autosave.lastSavedAt} error={autosave.error} />
-            <PublishStateBadge state={publishState} />
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <SaveStatusBadge status={autosave.status} lastSavedAt={autosave.lastSavedAt} error={autosave.error} />
+              <PublishStateBadge state={publishState} />
+              <Button type="button" variant="ghost" size="icon" className="ml-auto h-10 w-10 md:hidden" onClick={() => setVersionsOpen(true)} aria-label="버전 이력">
+                <History className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 md:hidden" onClick={() => setConfirmCancel(true)} aria-label="나가기">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
             <div className="hidden items-center gap-2 md:flex">
-              <div className="flex border border-stone-300" role="group" aria-label="미리보기 너비">
-                <button type="button" onClick={() => setPreviewWidth("mobile")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "mobile" && "bg-stone-900 text-white")} aria-label="모바일 미리보기">
+              <div className="flex border border-stone-300" role="group" aria-label="편집 화면 너비">
+                <button type="button" onClick={() => setPreviewWidth("mobile")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "mobile" && "bg-stone-900 text-white")} aria-label="모바일 너비로 편집">
                   <Smartphone className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => setPreviewWidth("desktop")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "desktop" && "bg-stone-900 text-white")} aria-label="데스크톱 미리보기">
+                <button type="button" onClick={() => setPreviewWidth("desktop")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "desktop" && "bg-stone-900 text-white")} aria-label="데스크톱 너비로 편집">
                   <Monitor className="h-4 w-4" />
                 </button>
               </div>
-              <Button type="button" variant="ghost" className="h-10 rounded-md" onClick={() => setVersionsOpen(true)}>
-                <History className="mr-1.5 h-4 w-4" /> 버전 이력
+              <Button type="button" variant="ghost" className="h-10 rounded-md px-2.5" onClick={() => setVersionsOpen(true)}>
+                <History className="mr-1.5 h-4 w-4" /> 버전
               </Button>
-              <Button type="button" variant="ghost" className="h-10 rounded-md" onClick={() => setConfirmCancel(true)}>
-                <X className="mr-1.5 h-4 w-4" /> 취소
+              <Button type="button" variant="ghost" className="h-10 rounded-md px-2.5" onClick={() => setConfirmCancel(true)}>
+                <LogOut className="mr-1.5 h-4 w-4" /> 나가기
               </Button>
-              <Button type="button" variant="outline" className="h-10 rounded-md" onClick={() => void handleManualSave()}>
+              <Button type="button" variant="outline" className="h-10 rounded-md" onClick={() => void handleManualSave()} data-testid="manual-save">
                 <Save className="mr-1.5 h-4 w-4" /> 임시저장
               </Button>
-              {publishButton}
-              {!page.fundingId && primaryAction}
+              <Button type="button" variant="outline" className="h-10 rounded-md" onClick={openPreview} data-testid="open-preview">
+                <Eye className="mr-1.5 h-4 w-4" /> 미리보기
+              </Button>
+              {aiMenu(false)}
+              {primaryAction}
             </div>
           </div>
-          {/* Mobile: edit / preview switch */}
+          {/* Mobile: 페이지(인라인 편집) / 섹션 설정 */}
           <div className="grid grid-cols-2 border-t border-stone-200 md:hidden" role="tablist">
-            {(["edit", "preview"] as const).map((view) => (
+            {(["preview", "edit"] as const).map((view) => (
               <button
                 key={view}
                 type="button"
@@ -1046,7 +1341,7 @@ const DetailPageStudio = () => {
                 onClick={() => setMobileView(view)}
                 className={cn("h-11 border-b-2 text-sm font-semibold", mobileView === view ? "border-brand text-brand" : "border-transparent text-stone-500")}
               >
-                {view === "edit" ? "편집" : "미리보기"}
+                {view === "preview" ? "페이지 편집" : "섹션 · 이미지 설정"}
               </button>
             ))}
           </div>
@@ -1056,11 +1351,25 @@ const DetailPageStudio = () => {
           <aside className={cn("md:sticky md:top-24 md:block md:max-h-[calc(100vh-7rem)] md:self-start md:overflow-y-auto md:border md:border-stone-300", mobileView === "edit" ? "block" : "hidden")}>
             {editorPanel}
           </aside>
-          <section className={cn("min-w-0 md:block", mobileView === "preview" ? "block" : "hidden")} aria-label="상세페이지 미리보기">
+          <section className={cn("min-w-0 md:block", mobileView === "preview" ? "block" : "hidden")} aria-label="상세페이지 편집 캔버스">
             {preview}
           </section>
         </div>
       </div>
+
+      {/* Mobile: 선택한 섹션의 이미지·구성 편집으로 이동 */}
+      {mobileView === "preview" && selectedSection && (
+        <button
+          type="button"
+          onClick={() => {
+            setEditorTab("section");
+            setMobileView("edit");
+          }}
+          className="fixed bottom-[calc(132px+env(safe-area-inset-bottom))] right-4 z-40 inline-flex h-11 items-center gap-1.5 rounded-full bg-stone-900 px-4 text-xs font-bold text-white shadow-lg md:hidden"
+        >
+          <SlidersHorizontal className="h-4 w-4" /> {SECTION_META[selectedSection.type].label} 섹션 설정
+        </button>
+      )}
 
       {/* Mobile action bar: above the bottom tab bar, never covering content (page has pb-40). */}
       <div
@@ -1068,30 +1377,95 @@ const DetailPageStudio = () => {
         data-mascot-safezone
         className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-3 py-2.5 backdrop-blur md:hidden"
       >
-        <div className="mx-auto flex max-w-lg items-center gap-2">
-          <Button type="button" variant="outline" className="h-12 shrink-0 rounded-md px-2.5 text-sm" onClick={() => setVersionsOpen(true)} aria-label="버전 이력">
-            <History className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="outline" className="h-12 shrink-0 rounded-md px-3 text-sm" onClick={() => void handleManualSave()}>
-            임시저장
-          </Button>
-          {page.fundingId ? publishButton : primaryAction}
+        <div className="mx-auto flex max-w-lg items-center gap-1.5">
+          <button type="button" className="flex h-12 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-stone-300 text-[10px] font-semibold text-stone-700" onClick={() => void handleManualSave()}>
+            <Save className="h-4 w-4" />임시저장
+          </button>
+          <button type="button" className="flex h-12 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-stone-300 text-[10px] font-semibold text-stone-700" onClick={openPreview}>
+            <Eye className="h-4 w-4" />미리보기
+          </button>
+          {aiMenu(true)}
+          {primaryAction}
         </div>
       </div>
 
-      <AlertDialog open={confirmPublish} onOpenChange={setConfirmPublish}>
+      <DetailPreviewOverlay
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        document={document}
+        source={source}
+        stats={stats}
+        colors={fundingColors}
+        fundingId={page.fundingId}
+      />
+
+      <AlertDialog open={confirmRegenerate} onOpenChange={setConfirmRegenerate}>
         <AlertDialogContent className="rounded-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>이 상세페이지를 적용할까요?</AlertDialogTitle>
+            <AlertDialogTitle>전체 상세페이지 다시 생성</AlertDialogTitle>
             <AlertDialogDescription className="leading-6">
-              지금 편집한 내용이 {page.fundingId ? "펀딩 상세화면에 바로 표시" : "펀딩 시작 후 표시될 적용본으로 저장"}됩니다. 판매가·목표수량·참여자·주문·결제 등 펀딩 정보는 바뀌지 않으며, 이전 적용본은 버전 이력에서 복구할 수 있어요.
+              {FULL_REGENERATE_MESSAGE}
+              <span className="mt-2 block text-xs text-stone-500">현재 편집본은 버전 이력에 자동 백업되고, 직접 추가한 텍스트·이미지 섹션은 유지됩니다.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-md">취소</AlertDialogCancel>
-            <AlertDialogAction className="rounded-md bg-brand hover:bg-brand-dark" onClick={() => void handlePublish()}>
-              상세페이지 적용
+            <AlertDialogAction className="rounded-md bg-brand hover:bg-brand-dark" onClick={() => void runGeneration()}>
+              다시 생성
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 등록 전 필수 항목 누락 */}
+      <AlertDialog open={missingItems !== null} onOpenChange={(open) => !open && setMissingItems(null)}>
+        <AlertDialogContent className="rounded-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-brand" /> 입력이 필요한 항목이 있어요
+            </AlertDialogTitle>
+            <AlertDialogDescription>아래 항목을 채운 뒤 다시 {publishLabel}을 눌러주세요.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="divide-y divide-stone-200 border-y border-stone-200" data-testid="missing-items">
+            {(missingItems ?? []).map((item) => (
+              <li key={item.key} className="flex items-center gap-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold">{item.label}</p>
+                  <p className="text-xs leading-5 text-stone-500">{item.message}</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 rounded-md" onClick={() => fixMissing(item)}>
+                  {item.target === "funding" ? (page.fundingId ? "펀딩 정보 수정" : "펀딩 시작하기") : "바로 입력"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-md">닫기</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 등록 완료 */}
+      <AlertDialog open={publishDone !== null} onOpenChange={(open) => !open && setPublishDone(null)}>
+        <AlertDialogContent className="rounded-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{publishDone?.first ? "상세페이지 등록이 완료되었습니다." : "변경사항이 저장되었습니다."}</AlertDialogTitle>
+            <AlertDialogDescription className="leading-6">
+              {publishDone?.first
+                ? "지금 편집한 내용이 펀딩 상세페이지에 표시됩니다. 등록 후에도 마이페이지 → 내가 만든 펀딩 → 펀딩 관리 → 상세페이지 수정에서 언제든 고칠 수 있어요."
+                : "실제 펀딩 상세페이지에 반영되었습니다. 이전 버전은 버전 이력에서 되돌릴 수 있어요."}
+              {publishDone && <span className="mt-1 block text-xs text-stone-500">등록 버전 v{publishDone.version}</span>}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-md">계속 수정하기</AlertDialogCancel>
+            {page.fundingId && (
+              <AlertDialogAction asChild className="rounded-md bg-brand hover:bg-brand-dark">
+                <Link to={`/fundings/${page.fundingId}`}>
+                  <ExternalLink className="mr-1.5 h-4 w-4" /> 실제 펀딩 상세페이지 보기
+                </Link>
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1101,7 +1475,7 @@ const DetailPageStudio = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>편집을 마칠까요?</AlertDialogTitle>
             <AlertDialogDescription className="leading-6">
-              지금까지 편집한 내용은 임시저장되어 다음에 이어서 작업할 수 있어요. ‘상세페이지 적용’을 누르지 않았다면 고객에게 보이는 상세페이지는 바뀌지 않습니다.
+              지금까지 편집한 내용은 자동 저장되어 다음에 이어서 작업할 수 있어요. ‘{publishLabel}’을 누르지 않았다면 고객에게 보이는 상세페이지는 바뀌지 않습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1120,7 +1494,7 @@ const DetailPageStudio = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>이 상세페이지로 펀딩을 시작할까요?</AlertDialogTitle>
             <AlertDialogDescription className="leading-6">
-              상표 검수 후 펀딩 초안이 만들어지고 상세페이지가 연결됩니다. 다음 화면에서 판매가·수량·기간을 확인하고 승인 요청을 보내면 관리자 승인 후 펀딩이 시작됩니다.
+              상표 검수 후 펀딩 초안이 만들어지고 상세페이지가 연결·등록됩니다. 다음 화면에서 판매가·수량·기간을 확인하고 승인 요청을 보내면 관리자 승인 후 펀딩이 시작됩니다.
               연결 후에도 상세페이지는 계속 수정할 수 있어요.
             </AlertDialogDescription>
           </AlertDialogHeader>

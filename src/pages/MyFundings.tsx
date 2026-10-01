@@ -29,6 +29,7 @@ import { PRODUCTION_STAGE_LABEL } from "@/types/funding";
 import {
   ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, RotateCcw, Settings2,
   ShoppingBag, SquarePen, Trash2, TrendingUp, Truck, Users, WalletCards,
+  Sparkles,
 } from "lucide-react";
 
 const EMPTY_SELLER_TOTALS: SellerDashboardTotals = {
@@ -270,7 +271,8 @@ const MyFundings = () => {
                         )}
                         <div className="mt-5 grid grid-cols-2 gap-2">
                           <Button asChild variant="outline"><Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-2 h-4 w-4" />정보 수정</Link></Button>
-                          <Button asChild className="bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />참여자 관리</Link></Button>
+                          <Button asChild className="bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />펀딩 관리</Link></Button>
+                          <Button asChild variant="outline" className="col-span-2"><Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-2 h-4 w-4" />상세페이지 수정</Link></Button>
                           <Button
                             type="button"
                             variant="ghost"

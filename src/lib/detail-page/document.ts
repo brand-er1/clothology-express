@@ -9,6 +9,8 @@ import type {
   DetailPageTemplateId,
   DetailSection,
   DetailSectionType,
+  DetailRewriteInstruction,
+  DetailTextField,
 } from "@/types/detailPage";
 
 export const createDetailId = () =>
@@ -35,7 +37,7 @@ export const SECTION_META: Record<DetailSectionType, DetailSectionMeta> = {
   brand: { label: "제작자 / 브랜드", eyebrow: "MAKER / BRAND", title: "MAKER", hint: "제작자 프로필과 브랜드 소개" },
   funding: { label: "펀딩", eyebrow: "FUNDING", title: "FUNDING", hint: "목표·참여 수량, 진행률, 가격, 종료일" },
   production: { label: "제작 과정", eyebrow: "PRODUCTION", title: "PRODUCTION", hint: "펀딩 성공부터 배송까지" },
-  notice: { label: "안내", eyebrow: "NOTICE", title: "NOTICE", hint: "배송·교환·환불·펀딩 안내" },
+  notice: { label: "배송 · 안내", eyebrow: "SHIPPING & NOTICE", title: "SHIPPING & NOTICE", hint: "배송·교환·환불·펀딩 안내" },
   custom_text: { label: "텍스트 섹션", eyebrow: "NOTE", title: "새 섹션", hint: "자유 텍스트" },
   custom_image: { label: "이미지 섹션", eyebrow: "LOOKBOOK", title: "LOOKBOOK", hint: "이미지 갤러리" },
 };
@@ -377,3 +379,87 @@ export const buildFundingDescription = (document: DetailPageDocument) => {
     .join("\n\n")
     .slice(0, 4000);
 };
+
+/* ───────────── 필드 단위 편집 (인라인 편집 · 부분 재작성) ───────────── */
+
+/** 필드 하나의 현재 값. 히어로 제목/소개는 비어 있으면 상품명/한 줄 소개를 보여주므로 같은 규칙을 따른다. */
+export const getTextField = (document: DetailPageDocument, target: DetailTextField): string => {
+  if (target.scope === "document") return document[target.field] ?? "";
+  const section = document.sections.find((entry) => entry.id === target.sectionId);
+  if (!section) return "";
+  if (target.scope === "section") {
+    if (section.type === "hero" && target.field === "title") return section.title || document.productName;
+    if (section.type === "hero" && target.field === "description") return section.description || document.subtitle;
+    return section[target.field] ?? "";
+  }
+  if (target.scope === "item") return section.items.find((item) => item.id === target.itemId)?.[target.field] ?? "";
+  return section.facts[target.index]?.[target.field] ?? "";
+};
+
+/**
+ * 필드 하나만 바꾼 새 문서를 돌려준다. 다른 섹션/필드는 그대로(참조도 유지)라서
+ * AI 부분 재작성이 사용자가 직접 수정한 다른 내용을 덮어쓰지 않는다.
+ * 히어로 제목·소개와 상품명·한 줄 소개는 한 쌍으로 함께 바뀐다(상품 정보 탭과 같은 동작).
+ */
+export const setTextField = (document: DetailPageDocument, target: DetailTextField, value: string): DetailPageDocument => {
+  if (target.scope === "document") {
+    const next = { ...document, [target.field]: value };
+    if (target.field === "productName" || target.field === "subtitle") {
+      const key = target.field === "productName" ? "title" : "description";
+      next.sections = document.sections.map((section) => (section.type === "hero" ? { ...section, [key]: value } : section));
+    }
+    return next;
+  }
+  const section = document.sections.find((entry) => entry.id === target.sectionId);
+  if (!section) return document;
+  let nextSection: DetailSection = section;
+  if (target.scope === "section") {
+    nextSection = { ...section, [target.field]: value };
+  } else if (target.scope === "item") {
+    nextSection = { ...section, items: section.items.map((item) => (item.id === target.itemId ? { ...item, [target.field]: value } : item)) };
+  } else {
+    nextSection = { ...section, facts: section.facts.map((fact, index) => (index === target.index ? { ...fact, [target.field]: value } : fact)) };
+  }
+  const next: DetailPageDocument = {
+    ...document,
+    sections: document.sections.map((entry) => (entry.id === section.id ? nextSection : entry)),
+  };
+  if (section.type === "hero" && target.scope === "section" && target.field === "title") next.productName = value;
+  if (section.type === "hero" && target.scope === "section" && target.field === "description") next.subtitle = value;
+  return next;
+};
+
+/** 섹션 복제: 새 id(섹션·항목·이미지)로 바로 아래에 넣는다. */
+export const duplicateSection = (document: DetailPageDocument, sectionId: string): { document: DetailPageDocument; id: string | null } => {
+  const index = document.sections.findIndex((section) => section.id === sectionId);
+  if (index < 0) return { document, id: null };
+  const original = document.sections[index];
+  const copy: DetailSection = {
+    ...original,
+    id: createDetailId(),
+    items: original.items.map((item) => ({ ...item, id: createDetailId() })),
+    facts: original.facts.map((fact) => ({ ...fact })),
+    // 복제본 이미지는 AI 슬롯과 분리한다(자동 이미지 교체 대상이 되지 않도록).
+    images: original.images.map((image) => ({ ...image, id: createDetailId(), slot: undefined })),
+  };
+  const sections = [...document.sections];
+  sections.splice(index + 1, 0, copy);
+  return { document: { ...document, sections }, id: copy.id };
+};
+
+/** 배열 안에서 한 항목을 옮긴다(범위를 벗어나면 그대로). */
+export const moveItem = <T,>(list: T[], from: number, to: number): T[] => {
+  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+};
+
+/** 부분 재작성 메뉴 */
+export const REWRITE_OPTIONS: Array<{ value: DetailRewriteInstruction; label: string }> = [
+  { value: "rewrite", label: "이 문구만 다시 작성" },
+  { value: "luxury", label: "더 고급스럽게" },
+  { value: "shorter", label: "더 짧게" },
+  { value: "fashion", label: "패션 브랜드 스타일로" },
+];

@@ -1,4 +1,7 @@
 
+import { AiImageEditMenu } from "@/components/ai-image/AiImageEditMenu";
+import type { AiImageEditPreset } from "@/services/aiImageEdit";
+
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -52,6 +55,23 @@ import { screenTrademarkImage } from "@/services/trademarkScreening";
 import type { TrademarkScreeningResult } from "@/types/trademark";
 import type { ProductionCountry } from "@/lib/production-country";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
+
+/** 디자인 이미지용 "AI 이미지 수정" 요청 문구(기존 디자인 수정 기능 modify-generated-image 로 전달). */
+const buildDesignEditRequest = (preset: AiImageEditPreset, prompt?: string) => {
+  const keep = "핏·실루엣·색상·원단·디테일·배경·구도·앞뒤 배치는 그대로 유지하세요.";
+  switch (preset) {
+    case "remove_logo":
+      return `의류에 있는 모든 로고·브랜드 마크·엠블럼(BRAND-ER 로고와 글자 포함)만 자연스럽게 지우고, 그 자리는 주변 원단의 색상·질감·주름이 이어지도록 채워주세요. ${keep}`;
+    case "remove_text":
+      return `의류와 이미지에 있는 모든 글자·숫자·문구·워터마크만 자연스럽게 지우고, 그 자리는 주변 원단의 색상·질감·주름이 이어지도록 채워주세요. ${keep}`;
+    case "color":
+      return `컬러만 수정: ${prompt ?? ""}. 원단 질감·주름·음영과 다른 디테일은 그대로 유지하세요.`;
+    case "design":
+      return `디자인 수정: ${prompt ?? ""}. 요청한 부분 외에는 ${keep}`;
+    default:
+      return `${prompt ?? ""}. 요청한 부분 외에는 ${keep}`;
+  }
+};
 
 const placementExamples = [
   "앞면 왼쪽 가슴에 작게 넣어줘",
@@ -1383,6 +1403,21 @@ export const ModifyImageStep = ({
               />
             )}
             
+            <div className="flex w-full flex-wrap items-center gap-2 border border-stone-200 bg-white p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold">AI 이미지 수정</p>
+                <p className="text-xs text-stone-500">로고·글자 제거, 디자인·컬러 수정. 핏·색상·원단·구도는 그대로 유지해요.</p>
+              </div>
+              <AiImageEditMenu
+                size="md"
+                busy={isLoading}
+                disabled={!selectedImageUrl}
+                onEdit={async (preset, prompt) => {
+                  await onModifyImage(buildDesignEditRequest(preset, prompt));
+                }}
+              />
+            </div>
+
             <form onSubmit={handleSubmit} className="w-full space-y-4">
               <Textarea
                 placeholder="이미지를 어떻게 수정할지 설명해주세요. (예: '소매를 짧게 만들어주세요', '색상을 파란색으로 변경해주세요')"

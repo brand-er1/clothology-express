@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { NO_BRANDING_RULES } from "../_shared/brandingPolicy.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
 const corsHeaders = {
@@ -212,7 +213,7 @@ serve(async (req) => {
       return `Garment ${index + 1}: slot=${garment.slot}, label=${garment.label || "garment"}, fit=${fitType}, measurements=${measurements}. ${slotDescriptions[garment.slot]}.`;
     }).join("\n");
 
-    const prompt = `AI VIRTUAL FITTING IMAGE EDIT. Start from Reference Image 1 and keep the mannequin identity and scene fixed.\n\nHARD LOCKS:\n- Exact face, hair, skin tone and identity from Reference Image 2.\n- Exact ${bodyDescription} body shape, height, pose, camera angle, framing, background and lighting from Reference Image 1.\n- Apply every supplied garment to its declared anatomical slot. TOP/OUTER must never appear on legs. BOTTOM/SKIRT must never appear on torso.\n- Preserve garment color, silhouette, logo, print, pattern, seams, pockets, zippers, buttons, collar, hood and material.\n- Do not invent garments in empty slots. OUTER may layer over TOP. DRESS replaces TOP/BOTTOM/SKIRT.\n- Show realistic drape/tension for the selected mannequin size without scaling or distorting the body.\n- Return exactly one clean 3:4 full-body image with head, hands and feet visible; no caption, watermark, split view or extra person.\n\nChanged slots: ${changedSlots.join(", ") || garments.map(g => g.slot).join(", ")}\n${garmentText}`;
+    const prompt = `AI VIRTUAL FITTING IMAGE EDIT. Start from Reference Image 1 and keep the mannequin identity and scene fixed.\n\nHARD LOCKS:\n- Exact face, hair, skin tone and identity from Reference Image 2.\n- Exact ${bodyDescription} body shape, height, pose, camera angle, framing, background and lighting from Reference Image 1.\n- Apply every supplied garment to its declared anatomical slot. TOP/OUTER must never appear on legs. BOTTOM/SKIRT must never appear on torso.\n- Preserve garment color, silhouette, logo, print, pattern, seams, pockets, zippers, buttons, collar, hood and material.\n- Do not invent garments in empty slots. OUTER may layer over TOP. DRESS replaces TOP/BOTTOM/SKIRT.\n- Show realistic drape/tension for the selected mannequin size without scaling or distorting the body.\n- Return exactly one clean 3:4 full-body image with head, hands and feet visible; no caption, watermark, split view or extra person.\n\nChanged slots: ${changedSlots.join(", ") || garments.map(g => g.slot).join(", ")}\n${garmentText}\n\n${NO_BRANDING_RULES}`;
 
     const parts: Array<Record<string, unknown>> = [
       { text: prompt },

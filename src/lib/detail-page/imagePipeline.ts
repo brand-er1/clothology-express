@@ -60,6 +60,7 @@ export const requestDetailImage = async (input: {
   imageType: DetailImageType;
   style: DetailPageTemplateId;
   userInstruction?: string;
+  brandLogo?: "none" | "creator";
 }): Promise<GeneratedDetailImage> => {
   const { data, error } = await supabase.functions.invoke("generate-detail-image", {
     body: {
@@ -67,6 +68,7 @@ export const requestDetailImage = async (input: {
       imageType: input.imageType,
       style: input.style,
       userInstruction: input.userInstruction || undefined,
+      brandLogo: input.brandLogo ?? "none",
     },
   });
   if (error) throw new Error(await readFunctionError(error));

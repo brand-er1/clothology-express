@@ -35,6 +35,7 @@ import { trackSiteEvent } from "@/lib/site-analytics";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
 import { getRecommendedFabrics } from "@/lib/fabric-recommendations";
 import { fetchMyBrand } from "@/services/brand";
+import type { BrandLogoMode } from "@/services/aiImageEdit";
 import {
   calculateEstimateByCountry,
   getProductionCountryMoq,
@@ -86,6 +87,8 @@ export const useCustomizeForm = () => {
   const [selectedTransparency, setSelectedTransparency] = useState("");
   const [selectedThickness, setSelectedThickness] = useState("");
   const [selectedSeason, setSelectedSeason] = useState("");
+  // 브랜드 로고 적용(기본: 적용 안 함). BRAND-ER 플랫폼 로고는 어떤 경우에도 넣지 않는다.
+  const [brandLogoMode, setBrandLogoMode] = useState<BrandLogoMode>("none");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrls, setGeneratedImageUrls] = useState<string[] | null>(null);
   const [storedImageUrls, setStoredImageUrls] = useState<string[] | null>(null);
@@ -247,7 +250,8 @@ export const useCustomizeForm = () => {
         selectedTransparency,
         selectedThickness,
         selectedSeason,
-        false
+        false,
+        brandLogoMode,
       );
       
       if (result) {
@@ -1182,6 +1186,8 @@ export const useCustomizeForm = () => {
     currentProductionEstimate,
     setCurrentProductionEstimate,
     handleModifyImage,
+    brandLogoMode,
+    setBrandLogoMode,
     handleResetModifications,
     handleSelectHistoryImage,
     designId,

@@ -1,3 +1,5 @@
+import { BrandLogoOption } from "@/components/ai-image/BrandLogoOption";
+import type { BrandLogoMode } from "@/services/aiImageEdit";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -22,6 +24,8 @@ interface ImageStepProps {
   selectedPocket?: string;
   selectedFit?: string;
   onGenerateImage: () => void;
+  brandLogoMode?: BrandLogoMode;
+  onBrandLogoModeChange?: (value: BrandLogoMode) => void;
 }
 
 export const ImageStep = ({
@@ -37,7 +41,12 @@ export const ImageStep = ({
   selectedPocket,
   selectedFit,
   onGenerateImage,
+  brandLogoMode = "none",
+  onBrandLogoModeChange,
 }: ImageStepProps) => {
+  const logoOption = onBrandLogoModeChange ? (
+    <BrandLogoOption value={brandLogoMode} onChange={onBrandLogoModeChange} returnTo="/customize" className="w-full text-left" />
+  ) : null;
   const [imageErrors, setImageErrors] = useState<boolean[]>([]);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
@@ -144,6 +153,7 @@ export const ImageStep = ({
                 이미지를 누르면 화면 전체로 더 크게 확인할 수 있어요.
               </p>
 
+              {logoOption}
               <Button
                 onClick={onGenerateImage}
                 variant="outline"
@@ -161,7 +171,8 @@ export const ImageStep = ({
             </div>
           ) : (
             <div className="flex min-h-[520px] w-full items-center justify-center rounded-lg bg-gray-100 sm:min-h-[660px]">
-              <div className="flex flex-col items-center">
+              <div className="flex w-full max-w-md flex-col items-center gap-5 px-4">
+                {logoOption}
                 <Button
                   onClick={onGenerateImage}
                   className="h-12 rounded-[3px] bg-brand px-7 hover:bg-brand-dark"

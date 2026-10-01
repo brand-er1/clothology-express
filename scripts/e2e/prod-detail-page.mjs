@@ -101,7 +101,7 @@ if (!EMAIL || !PASSWORD) {
   console.log(results.at(-1));
 } else {
   const owner = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-  const cleanup = { fundingId: null, pageIds: [] };
+  const cleanup = { fundingId: null, pageIds: [], storagePaths: [] };
   let session;
   let pageId;
   let fundingId;
@@ -118,9 +118,19 @@ if (!EMAIL || !PASSWORD) {
       return brand.brand_name;
     });
 
-    await step("B1 상세페이지 초안 생성(DB insert, RLS 경유)", async () => {
+    await step("B1 상세페이지 초안 생성(디자인 이미지 업로드 + DB insert, RLS 경유)", async () => {
+      // 상표 검수는 프로젝트 Storage 이미지만 받으므로 실제 업로드처럼 제작자 폴더에 올린다.
+      const template = await fetch(`${SITE}/clothing-templates/hoodie-white.png.png`);
+      expect(template.ok, `템플릿 이미지 다운로드 실패 ${template.status}`);
+      const storagePath = `${session.user.id}/e2e/${randomId()}.png`;
+      const { error: uploadError } = await owner.storage
+        .from("creator-assets")
+        .upload(storagePath, Buffer.from(await template.arrayBuffer()), { contentType: "image/png" });
+      expect(!uploadError, `이미지 업로드 실패: ${uploadError?.message}`);
+      cleanup.storagePaths.push(storagePath);
+      const imageUrl = owner.storage.from("creator-assets").getPublicUrl(storagePath).data.publicUrl;
       const source = {
-        imageUrl: `${SITE}/clothing-templates/hoodie-white.png.png`,
+        imageUrl,
         imagePath: null,
         isFrontBackComposite: false,
         clothTypeId: "hoodie", clothType: "후드티", materialId: "cotton", material: "코튼 기모",
@@ -396,6 +406,10 @@ if (!EMAIL || !PASSWORD) {
       for (const id of cleanup.pageIds) {
         const { error } = await owner.from("product_detail_pages").delete().eq("id", id);
         notes.push(error ? `페이지 ${id.slice(0, 8)} 삭제 실패: ${error.message}` : `페이지 ${id.slice(0, 8)} 삭제`);
+      }
+      if (cleanup.storagePaths.length) {
+        const { error } = await owner.storage.from("creator-assets").remove(cleanup.storagePaths);
+        notes.push(error ? `업로드 이미지 삭제 실패: ${error.message}` : `업로드 이미지 ${cleanup.storagePaths.length}개 삭제`);
       }
       expect(!notes.some((note) => note.includes("실패")), notes.join(", "));
       return notes.join(", ");

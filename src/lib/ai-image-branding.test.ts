@@ -78,7 +78,7 @@ describe("AI image branding policy", () => {
 });
 
 import { PEOPLE_MODE, isBottomsGarment } from "../../supabase/functions/_shared/detailImagePrompt";
-import { violatesPeoplePolicy } from "../../supabase/functions/_shared/imageQa";
+import { reframeBelowHead, violatesPeoplePolicy } from "../../supabase/functions/_shared/imageQa";
 
 describe("detail-page people / face policy", () => {
   const types = ["hero", "product_front", "product_back", "detail", "editorial", "lifestyle", "fabric", "mood", "flat_lay"] as const;
@@ -96,7 +96,9 @@ describe("detail-page people / face policy", () => {
 
   it("worn shots fix the camera framing so the head is outside the frame (not blurred)", () => {
     const top = build("lifestyle");
-    expect(top).toMatch(/CAMERA FRAMING \(mandatory\): neck-down shot/);
+    expect(top).toMatch(/CAMERA FRAMING \(mandatory, decide it before anything else\): TORSO CROP/);
+    expect(top.startsWith("CAMERA FRAMING")).toBe(true);
+    expect(build("hero").startsWith("CAMERA FRAMING")).toBe(false);
     expect(top).toMatch(/head is completely outside the frame/);
     expect(top).toMatch(/Do not render a face and then blur, crop, cover or hide it/);
     const pants = build("lifestyle", "와이드 팬츠");
@@ -114,12 +116,24 @@ describe("detail-page people / face policy", () => {
   });
 
   it("QA decides when to reframe and regenerate", () => {
-    const qa = { faceVisible: false, headVisible: false, personCount: 0, bodyPartsVisible: false, garmentIsMainSubject: true, visibleText: [], logoOrBrandMark: false, brandErVisible: false, matchesReference: true, designDifferences: [], model: "m" };
+    const qa = { faceVisible: false, headVisible: false, personCount: 0, bodyPartsVisible: false, garmentIsMainSubject: true, visibleText: [], logoOrBrandMark: false, brandErVisible: false, matchesReference: true, designDifferences: [], headBox: null, model: "m" };
     expect(violatesPeoplePolicy(qa, "none")).toBe(false);
     expect(violatesPeoplePolicy({ ...qa, faceVisible: true }, "faceless_worn")).toBe(true);
     expect(violatesPeoplePolicy({ ...qa, headVisible: true }, "faceless_worn")).toBe(true);
     expect(violatesPeoplePolicy({ ...qa, personCount: 1, bodyPartsVisible: true }, "faceless_worn")).toBe(false);
     expect(violatesPeoplePolicy({ ...qa, personCount: 1 }, "none")).toBe(true);
     expect(violatesPeoplePolicy(null, "none")).toBe(false);
+  });
+
+  it("reframes a worn shot below the head keeping the aspect ratio, or refuses", () => {
+    const box = reframeBelowHead(900, 1200, [0, 400, 200, 600])!;
+    expect(box.y).toBeGreaterThanOrEqual(240);
+    expect(box.y + box.height).toBe(1200);
+    expect(box.width / box.height).toBeCloseTo(900 / 1200, 2);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(900);
+    expect(reframeBelowHead(900, 1200, [0, 400, 500, 600])).toBeNull(); // too little garment left
+    expect(reframeBelowHead(900, 1200, [600, 400, 700, 600])).toBeNull(); // head not at the top
+    expect(reframeBelowHead(900, 1200, null)).toBeNull();
   });
 });

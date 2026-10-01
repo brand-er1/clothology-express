@@ -10,10 +10,11 @@ import {
   type DetailImageType,
   type PromptProduct,
 } from "../_shared/detailImagePrompt.ts";
-import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ReferenceImage } from "../_shared/imageProviders.ts";
+import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ImageGenerationResult, type ReferenceImage } from "../_shared/imageProviders.ts";
 import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
 import { CREATOR_LOGO_REFERENCE_LABEL, findCreatorLogo, parseBrandLogoMode } from "../_shared/brandingPolicy.ts";
 import { inspectGeneratedImage, REFRAME_ON_RETRY, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
+import { cropBelowHead } from "../_shared/reframeCrop.ts";
 
 /**
  * Generates ONE AI detail-page image from the creator's design (reference image).
@@ -214,25 +215,42 @@ serve(async (req) => {
       references.push(logo);
     }
 
-    // 생성 → 자동 검수(얼굴·사람·글자/로고·원본 일치). 얼굴/머리가 보이거나 사람이 없어야 하는 컷에 사람이 있으면
-    // 흐림·가림 처리 대신 더 엄격한 구도로 한 번 다시 생성한다.
+    // 생성 → 자동 검수(얼굴·사람·글자/로고·원본 일치).
+    // 착용 컷에 머리가 위쪽에 걸쳐 들어오면 카메라 프레임을 어깨선 아래로 다시 잡고(재구도) 재검수,
+    // 그래도 안 되면 더 엄격한 구도로 한 번 다시 생성한다. 흐림·가림 처리는 하지 않으며,
+    // 끝까지 얼굴/머리가 보이는 결과는 저장하지 않는다.
     const peopleMode = PEOPLE_MODE[imageType as DetailImageType];
     const aspectRatio = IMAGE_ASPECT_RATIO[imageType as DetailImageType];
     const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
-    let generated = await provider.generate({ prompt, references, aspectRatio });
-    let qa: ImageQaResult | null = await inspectGeneratedImage(geminiKey, { data: generated.base64, mimeType: generated.mimeType }, references[0]);
-    let attempts = 1;
-    if (violatesPeoplePolicy(qa, peopleMode)) {
-      const firstQa = qa;
-      const retry = await provider.generate({ prompt: `${prompt}\n\n${REFRAME_ON_RETRY}`, references, aspectRatio });
-      const retryQa = await inspectGeneratedImage(geminiKey, { data: retry.base64, mimeType: retry.mimeType }, references[0]);
-      attempts = 2;
-      // 재생성 결과가 더 낫거나(정책 통과) 검수 불가일 때만 교체
-      if (!violatesPeoplePolicy(retryQa, peopleMode) || !firstQa) {
-        generated = retry;
-        qa = retryQa;
+    const qaScope = imageType === "detail" || imageType === "fabric" ? "partial" : "full";
+    const inspect = (image: ImageGenerationResult) =>
+      inspectGeneratedImage(geminiKey, { data: image.base64, mimeType: image.mimeType }, references[0], qaScope);
+    const settle = async (image: ImageGenerationResult) => {
+      const firstQa = await inspect(image);
+      if (!violatesPeoplePolicy(firstQa, peopleMode)) return { image, qa: firstQa, reframed: false, ok: true };
+      if (peopleMode === "faceless_worn" && firstQa && firstQa.personCount <= 1) {
+        const cropped = await cropBelowHead(image.base64, firstQa.headBox);
+        if (cropped) {
+          const reframedImage = { ...image, ...cropped };
+          const croppedQa = await inspect(reframedImage);
+          if (croppedQa && !violatesPeoplePolicy(croppedQa, peopleMode)) return { image: reframedImage, qa: croppedQa, reframed: true, ok: true };
+        }
       }
+      return { image, qa: firstQa, reframed: false, ok: false };
+    };
+
+    let attempts = 1;
+    let result = await settle(await provider.generate({ prompt, references, aspectRatio }));
+    if (!result.ok) {
+      attempts = 2;
+      result = await settle(await provider.generate({ prompt: `${prompt}\n\n${REFRAME_ON_RETRY}`, references, aspectRatio }));
     }
+    if (!result.ok) {
+      throw new Error("얼굴이 보이지 않는 구도로 이미지를 만들지 못했습니다. 다시 생성해 주세요.");
+    }
+    const generated = result.image;
+    const qa: ImageQaResult | null = result.qa;
+    const reframed = result.reframed;
 
     // Persist in our own storage so the page never depends on a provider's temporary URL.
     const path = `detail-pages/${user.id}/${page.id}/${imageType}-${Date.now()}.${extensionFor(generated.mimeType)}`;
@@ -252,11 +270,11 @@ serve(async (req) => {
       detailPageId: page.id, imageType, latencyMs: Date.now() - startedAt,
       metadata: {
         references: references.length, style: detailPageStyle, instruction: Boolean(instruction), brandLogo: brandLogoMode,
-        peopleMode, attempts, qa,
+        peopleMode, attempts, reframed, qa,
       },
     });
 
-    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, qa });
+    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, reframed, qa });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("generate-detail-image error:", message);

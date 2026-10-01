@@ -143,12 +143,12 @@ export const isBottomsGarment = (clothType: string | null | undefined) => BOTTOM
 export const facelessFraming = (product: PromptProduct, variant: "fit" | "editorial") => {
   if (isBottomsGarment(product.clothType)) {
     return variant === "fit"
-      ? "CAMERA FRAMING (mandatory): waist-down shot. The top edge of the frame sits at the waist/lower ribs and the bottom edge just below the feet, camera at hip height, front or three-quarter angle, so the full length, fit and silhouette of the garment are visible. The upper body and head are completely outside the frame."
-      : "CAMERA FRAMING (mandatory): waist-down editorial crop or a back view from the waist down, the garment filling most of the frame. The upper body and head are completely outside the frame.";
+      ? "CAMERA FRAMING (mandatory, decide it before anything else): waist-down shot. The top edge of the frame sits at the waist/lower ribs and the bottom edge just below the feet, camera at hip height, front or three-quarter angle, so the full length, fit and silhouette of the garment are visible. The upper body and head are completely outside the frame."
+      : "CAMERA FRAMING (mandatory, decide it before anything else): waist-down editorial crop or a back view from the waist down, the garment filling most of the frame. The upper body and head are completely outside the frame.";
   }
   return variant === "fit"
-    ? "CAMERA FRAMING (mandatory): neck-down shot. The top edge of the frame cuts across the base of the neck / collarbones, just below the chin, and the bottom edge is at mid-thigh to knee (or lower for long garments), camera at chest height, front or three-quarter angle, so the shoulder line, sleeve length, body width, hem and overall fit are clearly visible. The head is completely outside the frame."
-    : "CAMERA FRAMING (mandatory): choose ONE — (a) neck-down crop with the top edge just below the chin, or (b) a back view where the wearer faces away and the frame starts at the shoulders, or (c) a close upper-body or lower-body crop on the garment. The head is completely outside the frame in every option.";
+    ? "CAMERA FRAMING (mandatory, decide it before anything else): TORSO CROP (on-body e-commerce crop). The top edge of the image cuts straight across the shoulders and collarbones, so at most the base of the neck shows and the chin, mouth, face, ears and hair never enter the image. The bottom edge is at mid-thigh (lower for long garments), camera at chest height, front or three-quarter angle, so the shoulder line, sleeve length, body width, hem and overall fit are clearly visible. A hood, if any, lies down on the shoulders/back and is cut by the top edge. The head is completely outside the frame."
+    : "CAMERA FRAMING (mandatory, decide it before anything else): choose ONE — (a) TORSO CROP: the top edge cuts straight across the shoulders/collarbones so the chin and face never enter the image, or (b) a back view where the wearer faces away and the top edge is at the shoulder blades (no hair or back of head), or (c) a close upper-body or lower-body crop on the garment. The head is completely outside the frame in every option.";
 };
 
 /** 모든 상세페이지 이미지에 붙는 사람 규칙(유형별). */
@@ -220,6 +220,8 @@ export const buildProductImagePrompt = ({
 }: BuildProductImagePromptInput) => {
   const instruction = userInstruction?.trim().slice(0, 500);
   return [
+    // 착용 컷은 구도를 맨 앞에 둔다(모델이 전신 인물 사진으로 흐르지 않도록).
+    PEOPLE_MODE[imageType] === "faceless_worn" ? facelessFraming(product, imageType === "editorial" ? "editorial" : "fit") : "",
     TYPE_TEMPLATE[imageType](product),
     STYLE_DIRECTION[detailPageStyle],
     referenceImages.length ? `Attached reference images: ${referenceImages.join("; ")}.` : "",

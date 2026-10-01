@@ -43,8 +43,12 @@ if (signInError) {
 }
 const userId = signIn.session.user.id;
 
-const invoke = async (name, body) => {
-  const { data, error } = await client.functions.invoke(name, { body });
+const invoke = async (name, body, retried = false) => {
+  const { data, error } = await client.functions.invoke(name, { body }).catch((cause) => ({ data: null, error: cause }));
+  // 게이트웨이가 일시적으로 HTML 오류 페이지를 돌려준 경우 한 번만 다시 호출
+  if (error && !retried && /DOCTYPE|not valid JSON|FunctionsFetchError|FunctionsRelayError/i.test(`${error.name} ${error.message}`)) {
+    return invoke(name, body, true);
+  }
   if (error) {
     const payload = error.context && typeof error.context.json === "function" ? await error.context.json().catch(() => null) : null;
     throw new Error(payload?.error || error.message);
@@ -86,7 +90,7 @@ const inspectText = async (url) => {
   return { texts, regions };
 };
 
-const summary = { total: 0, faces: 0, retries: 0, worn: 0, people: 0 };
+const summary = { total: 0, faces: 0, retries: 0, worn: 0, people: 0, reframed: 0 };
 const PLAN = [
   ["lifestyle", 3], // 착용 컷(핏) — 여러 번
   ["editorial", 2], // 착용 룩북 컷
@@ -106,6 +110,7 @@ for (const [imageType, times] of PLAN) {
       const data = await invoke("generate-detail-image", { detailPageId: page.id, imageType, style: "lookbook" });
       summary.total += 1;
       if (data.attempts > 1) summary.retries += 1;
+      if (data.reframed) summary.reframed += 1;
       const image = await fetch(data.url);
       fs.writeFileSync(`${OUT}/${imageType}-${round}.png`, Buffer.from(await image.arrayBuffer()));
       const qa = data.qa;
@@ -122,7 +127,7 @@ for (const [imageType, times] of PLAN) {
       expect(qa.matchesReference, `7 원본 디자인과 다름: ${qa.designDifferences.join("; ")}`);
       const second = await inspectText(data.url);
       expect(second.texts.length === 0 && second.regions.length === 0, `6 (2차 확인) 글자[${second.texts.join(", ")}] 로고형영역 ${second.regions.length}`);
-      return `사람 ${qa.personCount} · 얼굴 없음 · 생성 ${data.attempts}회${qa.designDifferences.length ? ` · 참고: ${qa.designDifferences.join("; ")}` : ""}`;
+      return `사람 ${qa.personCount} · 얼굴 없음 · 생성 ${data.attempts}회${data.reframed ? " · 재구도" : ""}${qa.designDifferences.length ? ` · 참고: ${qa.designDifferences.join("; ")}` : ""}`;
     });
   }
 }
@@ -137,7 +142,7 @@ await step("정리: 테스트 상세페이지 · 업로드 이미지 삭제", as
 });
 
 results.push(
-  `SUMMARY 이미지 ${summary.total}장 · 얼굴/머리 노출 ${summary.faces}장 · 착용 컷 ${summary.worn}장 · 사람 포함 ${summary.people}장 · 얼굴 감지로 재구도 재생성 ${summary.retries}회`,
+  `SUMMARY 이미지 ${summary.total}장 · 얼굴/머리 노출 ${summary.faces}장 · 착용 컷 ${summary.worn}장 · 사람 포함 ${summary.people}장 · 재생성 ${summary.retries}회 · 재구도(프레임 재설정) ${summary.reframed}회`,
 );
 fs.writeFileSync(`${OUT}/results.txt`, results.join("\n") + "\n");
 console.log("\n" + results.join("\n"));

@@ -7,12 +7,14 @@ import { buildFundingDescription } from "@/lib/detail-page/document";
 import { buildVerifiedCorpus, stripUnverifiedClaims } from "@/lib/detail-page/safety";
 import { isDetailTemplateId } from "@/lib/detail-page/templates";
 import { EMPTY_USER_PROVIDED } from "@/lib/detail-page/source";
+import type { DetailPublishMissingItem } from "@/lib/detail-page/validation";
 import type {
   AiQuota,
   DetailCopyTone,
   DetailPagePublishState,
   DetailPageVersion,
   DetailReference,
+  DetailRewriteInstruction,
   DetailReferenceKind,
   DetailSectionLayout,
   DetailPageCopy,
@@ -40,6 +42,7 @@ type PageRow = {
   status: DetailPageStatus;
   source: DetailPageSource;
   generation: DetailPageGenerationMeta | null;
+  published_version?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -103,6 +106,7 @@ const toPage = (row: PageRow, sections: SectionRow[]): ProductDetailPage => ({
     mainCopy: row.main_copy,
     sections: [...sections].sort((a, b) => a.sort_order - b.sort_order).map(toSection),
   },
+  publishedVersion: Number(row.published_version ?? 0),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -261,6 +265,7 @@ export const sanitizeDetailCopy = (raw: unknown, source: DetailPageSource): Deta
     source.userProvided.highlights ?? "",
     source.userProvided.details ?? "",
     source.userProvided.productionNote ?? "",
+    source.userProvided.shippingNote ?? "",
   );
   const clean = (input: string) => stripUnverifiedClaims(input, corpus);
   const pick = (key: keyof DetailPageCopy, max?: number) => clean(text(value[key], max)) || (fallback[key] as string);
@@ -331,6 +336,71 @@ export const generateDetailCopy = async (
       provider: "fallback",
       fallbackReason: getDetailPageErrorMessage(error, "AI 연결 실패"),
     };
+  }
+};
+
+/** 더 짧게: AI 연결이 안 될 때 쓰는 결정적 축약(첫 문장들만 남김). */
+export const shortenText = (text: string) => {
+  const trimmed = text.trim();
+  if (trimmed.length <= 24) return trimmed;
+  const sentences = trimmed.match(/[^.!?。\n]+[.!?。]?/g)?.map((value) => value.trim()).filter(Boolean) ?? [trimmed];
+  let result = "";
+  for (const sentence of sentences) {
+    if (result && (result + " " + sentence).length > Math.max(24, trimmed.length / 2)) break;
+    result = result ? `${result} ${sentence}` : sentence;
+  }
+  return result.length < trimmed.length ? result : trimmed.slice(0, Math.ceil(trimmed.length / 2)).trim();
+};
+
+/**
+ * 부분 재작성: 문구 하나만 AI로 다시 쓴다. 다른 섹션/필드는 호출부가 건드리지 않는다.
+ * 확인되지 않은 사양(혼용률·기능성 등)은 다시 걸러낸다. AI 연결 실패 시 "더 짧게"만 로컬로
+ * 처리하고, 나머지는 원문을 지키기 위해 에러를 던진다(원문을 엉뚱한 기본 문구로 덮지 않음).
+ */
+export const rewriteDetailText = async (input: {
+  source: DetailPageSource;
+  template: DetailPageTemplateId;
+  text: string;
+  instruction: DetailRewriteInstruction;
+  field: string;
+  sectionType: string;
+  detailPageId?: string;
+}): Promise<{ text: string; provider: "ai" | "fallback" }> => {
+  const corpus = buildVerifiedCorpus(
+    input.text,
+    input.source.material,
+    input.source.designDescription,
+    input.source.clothType,
+    input.source.productionMethod,
+    input.source.userProvided.composition,
+    input.source.userProvided.careNote,
+    input.source.userProvided.details ?? "",
+    input.source.userProvided.highlights ?? "",
+  );
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-detail-page", {
+      body: {
+        mode: "rewrite",
+        source: input.source,
+        template: input.template,
+        text: input.text,
+        instruction: input.instruction,
+        field: input.field,
+        sectionType: input.sectionType,
+        detailPageId: input.detailPageId,
+      },
+    });
+    if (error) {
+      const context = (error as { context?: Response }).context;
+      const payload = context && typeof context.json === "function" ? await context.json().catch(() => null) : null;
+      throw new Error(payload?.error || error.message);
+    }
+    const next = stripUnverifiedClaims(typeof data?.text === "string" ? data.text.trim() : "", corpus);
+    if (!next) throw new Error(data?.error || "AI 응답이 비어 있습니다.");
+    return { text: next, provider: "ai" };
+  } catch (error) {
+    if (input.instruction === "shorter") return { text: shortenText(input.text), provider: "fallback" };
+    throw new Error(`AI 문구를 다시 작성하지 못했어요. 원문은 그대로 유지됩니다. (${getDetailPageErrorMessage(error, "AI 연결 실패")})`);
   }
 };
 
@@ -436,6 +506,13 @@ export const publishDetailPage = async (pageId: string, note?: string) => {
   const { data, error } = await db.rpc("publish_detail_page", { p_page_id: pageId, p_note: note ?? null });
   if (error) throw error;
   return data as { published_version: number; published_at: string };
+};
+
+/** 등록 전 서버 검증(validate_detail_page_for_publish). 마이그레이션 미적용 등 오류 시 null. */
+export const validateDetailPageOnServer = async (pageId: string): Promise<DetailPublishMissingItem[] | null> => {
+  const { data, error } = await db.rpc("validate_detail_page_for_publish", { p_page_id: pageId });
+  if (error || !Array.isArray(data)) return null;
+  return data as DetailPublishMissingItem[];
 };
 
 export const createDetailPageVersion = async (
@@ -587,4 +664,85 @@ export const fetchMyAiQuota = async (): Promise<AiQuota | null> => {
     copyUsed: Number(data.copy_used ?? 0),
     copyLimit: Number(data.copy_limit ?? 0),
   };
+};
+
+/* ───────────── 이미지 라이브러리 ───────────── */
+
+export type DetailLibraryImage = {
+  key: string;
+  url: string;
+  label: string;
+  group: "generated" | "upload" | "color" | "design";
+  source: DetailSection["images"][number]["source"];
+  slot?: DetailSection["images"][number]["slot"];
+  assetId?: string;
+};
+
+/**
+ * 상세페이지에 불러올 수 있는 이미지 모음: 이 페이지의 AI 생성 이미지(generated_assets),
+ * 업로드한 참고자료/섹션 이미지, 펀딩 컬러별 승인 이미지, 원본 디자인. 중복 URL 은 하나만.
+ */
+export const fetchDetailImageLibrary = async (input: {
+  pageId: string;
+  document: DetailPageDocument;
+  source: DetailPageSource;
+  colors?: Array<{ name: string; approved: Partial<Record<"front" | "back", { url?: string | null; source?: string }>> }>;
+}): Promise<DetailLibraryImage[]> => {
+  const result: DetailLibraryImage[] = [];
+  const seen = new Set<string>();
+  const push = (image: DetailLibraryImage) => {
+    if (!image.url || seen.has(image.url)) return;
+    seen.add(image.url);
+    result.push(image);
+  };
+
+  const [{ data: assets }, references] = await Promise.all([
+    db
+      .from("generated_assets")
+      .select("id, image_type, generated_image, created_at")
+      .eq("detail_page_id", input.pageId)
+      .eq("generation_status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(60),
+    listDetailPageReferences(input.pageId).catch(() => [] as DetailReference[]),
+  ]);
+  for (const asset of (assets ?? []) as Array<{ id: string; image_type: string; generated_image: string | null }>) {
+    if (asset.generated_image) {
+      push({
+        key: `asset-${asset.id}`,
+        url: asset.generated_image,
+        label: `AI · ${asset.image_type.toUpperCase().replace("_", " ")}`,
+        group: "generated",
+        source: "generated",
+        slot: asset.image_type as DetailLibraryImage["slot"],
+        assetId: asset.id,
+      });
+    }
+  }
+  for (const section of input.document.sections) {
+    for (const image of section.images) {
+      if (image.source === "upload") push({ key: `img-${image.id}`, url: image.url, label: "업로드 이미지", group: "upload", source: "upload" });
+    }
+  }
+  for (const reference of references) {
+    push({ key: `ref-${reference.id}`, url: reference.url, label: "참고자료", group: "upload", source: "upload" });
+  }
+  for (const color of input.colors ?? []) {
+    for (const view of ["front", "back"] as const) {
+      const approved = color.approved[view];
+      if (approved?.url) {
+        push({
+          key: `color-${color.name}-${view}`,
+          url: approved.url,
+          label: `${color.name} ${view === "front" ? "앞면" : "뒷면"}`,
+          group: "color",
+          source: approved.source === "original" ? "design" : "generated",
+        });
+      }
+    }
+  }
+  if (input.source.imageUrl) {
+    push({ key: "design", url: input.source.imageUrl, label: "원본 디자인", group: "design", source: "design" });
+  }
+  return result;
 };

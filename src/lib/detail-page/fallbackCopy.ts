@@ -102,9 +102,13 @@ export const buildFallbackCopy = (source: DetailPageSource): DetailPageCopy => {
       source.userProvided.careNote,
       "세탁 전 제품에 부착된 케어라벨을 확인해주세요.",
     ].filter(Boolean),
-    fundingGuide: "목표 수량이 모이면 제작이 확정됩니다. 펀딩 결과와 이후 진행 상황은 주문 내역에서 안내드립니다.",
+    fundingGuide: [
+      source.fundingDays ? `승인 후 ${source.fundingDays}일 동안 펀딩이 진행됩니다.` : "",
+      source.targetQuantity ? `목표 수량 ${source.targetQuantity.toLocaleString("ko-KR")}장이 모이면 제작이 확정됩니다.` : "목표 수량이 모이면 제작이 확정됩니다.",
+      "펀딩 결과와 이후 진행 상황은 주문 내역에서 안내드립니다.",
+    ].filter(Boolean).join(" "),
     productionSchedule: "펀딩 종료 후 원단 컨택, 샘플 제작, 본생산, 검수/포장을 거쳐 배송됩니다. 상세 일정은 진행 상황에 따라 안내드립니다.",
-    shippingGuide: "생산과 검수가 끝난 뒤 순차적으로 발송됩니다.",
+    shippingGuide: source.userProvided.shippingNote?.trim() || "생산과 검수가 끝난 뒤 순차적으로 발송됩니다.",
     notices: [
       "주문 제작 상품으로, 제작이 시작된 이후에는 단순 변심에 의한 취소가 어려울 수 있습니다.",
       "제품 하자 또는 오배송의 경우 교환·환불을 요청할 수 있습니다. 자세한 기준은 판매자 안내를 따릅니다.",

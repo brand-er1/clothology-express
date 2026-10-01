@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ImagePlus, Loader2, Plus, RefreshCw, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, ImagePlus, Loader2, Plus, RefreshCw, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SECTION_META, createDetailId, defaultSlotForSection, getDesignImages } from "@/lib/detail-page/document";
+import { REWRITE_OPTIONS, SECTION_META, createDetailId, defaultSlotForSection, getDesignImages, moveItem } from "@/lib/detail-page/document";
+import { DetailImageLibraryDialog } from "@/components/detail-page/DetailImageLibraryDialog";
+import type { DetailLibraryImage } from "@/services/detailPage";
 import { getDetailImageSpec } from "@/lib/detail-page/imagePipeline";
 import { getDetailPageErrorMessage, uploadDetailPageImage } from "@/services/detailPage";
 import type {
@@ -31,6 +33,7 @@ import type {
   DetailPageSource,
   DetailSection,
   DetailCopyTone,
+  DetailRewriteInstruction,
   DetailSectionBackground,
 } from "@/types/detailPage";
 import { cn } from "@/lib/utils";
@@ -46,7 +49,15 @@ type DetailSectionEditorProps = {
   onRegenerateImage?: (imageId: string, slot: DetailImageType, instruction: string) => Promise<void>;
   regeneratingImageIds?: string[];
   imageStatus?: Partial<Record<DetailImageType, DetailImageJobStatus>>;
+  /** 이미지 라이브러리(AI 생성 · 업로드 · 컬러별 · 원본) */
+  loadLibrary?: () => Promise<DetailLibraryImage[]>;
+  /** 본문만 부분 재작성(이 섹션의 다른 내용과 다른 섹션은 유지) */
+  onRewriteDescription?: (instruction: DetailRewriteInstruction) => void;
+  rewriting?: boolean;
+  /** 펀딩에 컬러 옵션이 있으면 COLOR 섹션은 컬러별 이미지를 자동으로 보여준다. */
+  hasFundingColors?: boolean;
 };
+
 
 const INSTRUCTION_EXAMPLES = [
   "배경을 어두운 콘크리트 바닥으로 변경",
@@ -92,7 +103,12 @@ export const DetailSectionEditor = ({
   onRegenerateImage,
   regeneratingImageIds = [],
   imageStatus,
+  loadLibrary,
+  onRewriteDescription,
+  rewriting,
+  hasFundingColors,
 }: DetailSectionEditorProps) => {
+  const [library, setLibrary] = useState<{ replaceId: string | null } | null>(null);
   const [regenTarget, setRegenTarget] = useState<DetailImage | null>(null);
   const [instruction, setInstruction] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -150,7 +166,7 @@ export const DetailSectionEditor = ({
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <Button type="button" variant="outline" size="sm" onClick={() => onRegenerate?.(tone || undefined)} disabled={regenerating} className="h-9 rounded-md">
               {regenerating ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
-              AI 다시 작성
+              섹션 전체 재생성
             </Button>
             <select
               aria-label="AI 다시 작성 톤"
@@ -241,6 +257,22 @@ export const DetailSectionEditor = ({
           {section.type === "funding" && (
             <p className="text-[11px] leading-4 text-stone-500">목표·참여 수량, 진행률, 가격, 종료일은 실제 펀딩 데이터로 자동 표시됩니다.</p>
           )}
+          {onRewriteDescription && section.description.trim() && (
+            <div className="flex flex-wrap gap-1.5 pt-1" aria-label="본문 AI 부분 재작성">
+              {REWRITE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={rewriting}
+                  onClick={() => onRewriteDescription(option.value)}
+                  className="inline-flex h-8 items-center gap-1 border border-stone-300 px-2.5 text-[11px] font-semibold text-stone-700 hover:border-brand hover:text-brand disabled:opacity-50"
+                >
+                  {rewriting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -330,12 +362,49 @@ export const DetailSectionEditor = ({
 
       {showsImages && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-stone-700">이미지 {section.type === "hero" && "(1장)"}</p>
+          <p className="text-xs font-semibold text-stone-700">이미지 {section.type === "hero" ? "(대표 이미지 1장)" : `(${section.images.length}/${maxImages})`}</p>
+          {section.type === "color" && hasFundingColors && (
+            <p className="text-[11px] leading-4 text-stone-500">
+              펀딩에 등록된 컬러별 상품 이미지는 이 섹션에 자동으로 표시됩니다. 다른 섹션에도 넣으려면 ‘불러오기 → 컬러별’을 사용하세요.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
-            {section.images.map((image) => (
-              <div key={image.id} className="border border-stone-200 bg-white">
-                <DetailImageView image={image} className="aspect-square w-full bg-stone-100" fit={image.source === "design" ? "contain" : "cover"} />
+            {section.images.map((image, imageIndex) => (
+              <div key={image.id} className="border border-stone-200 bg-white" data-testid="section-image">
+                <div className="relative">
+                  <DetailImageView image={image} className="aspect-square w-full bg-stone-100" fit={image.source === "design" ? "contain" : "cover"} />
+                  {section.images.length > 1 && (
+                    <div className="absolute inset-x-1 bottom-1 flex justify-between">
+                      <button
+                        type="button"
+                        aria-label="이미지 앞으로"
+                        disabled={imageIndex === 0}
+                        onClick={() => set({ images: moveItem(section.images, imageIndex, imageIndex - 1) })}
+                        className="flex h-8 w-8 items-center justify-center bg-white/90 text-stone-700 shadow disabled:opacity-30"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="이미지 뒤로"
+                        disabled={imageIndex === section.images.length - 1}
+                        onClick={() => set({ images: moveItem(section.images, imageIndex, imageIndex + 1) })}
+                        className="flex h-8 w-8 items-center justify-center bg-white/90 text-stone-700 shadow disabled:opacity-30"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="space-y-1.5 p-2">
+                  <Input
+                    value={image.alt}
+                    maxLength={120}
+                    placeholder="이미지 설명"
+                    aria-label="이미지 설명"
+                    onChange={(event) => set({ images: section.images.map((current) => (current.id === image.id ? { ...current, alt: event.target.value } : current)) })}
+                    className="h-8 rounded-md px-2 text-base sm:text-xs"
+                  />
                   {image.source === "design" && source.isFrontBackComposite && (
                     <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label="이미지 영역">
                       {(Object.keys(CROP_LABEL) as DetailImageCrop[]).map((crop) => (
@@ -388,9 +457,17 @@ export const DetailSectionEditor = ({
                     </Button>
                   )}
                   <div className="grid grid-cols-2 gap-1">
-                    <Button type="button" variant="outline" size="sm" className="h-8 rounded-md px-1 text-[11px]" onClick={() => openUpload(image.id)} disabled={uploading}>
-                      <RefreshCw className="mr-1 h-3 w-3" /> 교체
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" size="sm" className="h-8 rounded-md px-1 text-[11px]" disabled={uploading}>
+                          <RefreshCw className="mr-1 h-3 w-3" /> 교체
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onSelect={() => openUpload(image.id)}>새 사진 업로드</DropdownMenuItem>
+                        {loadLibrary && <DropdownMenuItem onSelect={() => setLibrary({ replaceId: image.id })}>AI · 업로드 · 컬러 이미지에서 고르기</DropdownMenuItem>}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       type="button"
                       variant="outline"
@@ -407,6 +484,11 @@ export const DetailSectionEditor = ({
           </div>
           {section.images.length < maxImages && (
             <div className="grid grid-cols-2 gap-2">
+              {loadLibrary && (
+                <Button type="button" variant="outline" className="col-span-2 h-11 rounded-md" onClick={() => setLibrary({ replaceId: null })}>
+                  <FolderOpen className="mr-1.5 h-4 w-4" /> 이미지 불러오기 (AI 생성 · 업로드 · 컬러별)
+                </Button>
+              )}
               {designChoices.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -437,6 +519,29 @@ export const DetailSectionEditor = ({
             onChange={(event) => void handleFile(event.target.files?.[0])}
           />
         </div>
+      )}
+
+      {loadLibrary && (
+        <DetailImageLibraryDialog
+          open={library !== null}
+          onOpenChange={(open) => !open && setLibrary(null)}
+          load={loadLibrary}
+          single={library?.replaceId != null || section.type === "hero"}
+          max={Math.max(1, maxImages - section.images.length)}
+          onPick={(picked) => {
+            const toImage = (entry: DetailLibraryImage): DetailImage => ({
+              id: createDetailId(),
+              url: entry.url,
+              crop: "full",
+              alt: entry.label.startsWith("AI") ? section.title || meta.label : entry.label,
+              source: entry.source,
+              ...(entry.assetId ? { assetId: entry.assetId } : {}),
+            });
+            const replaceId = library?.replaceId ?? (section.type === "hero" ? section.images[0]?.id ?? null : null);
+            if (replaceId) addOrReplaceImage(toImage(picked[0]), replaceId);
+            else set({ images: [...section.images, ...picked.map(toImage)].slice(0, maxImages) });
+          }}
+        />
       )}
 
       <Dialog open={regenTarget !== null} onOpenChange={(open) => !open && setRegenTarget(null)}>

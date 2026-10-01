@@ -154,6 +154,8 @@ export type DetailPageSource = {
   userProvided: DetailUserProvidedInfo;
   /** 펀딩에 등록된 컬러 옵션 이름(funding_colors). 있으면 AVAILABLE COLORS 섹션이 자동 생성된다. */
   availableColors?: string[];
+  /** 펀딩 기간(일). 연결된 펀딩에서 읽어온다. */
+  fundingDays?: number | null;
 };
 
 export type DetailEmphasis = "design" | "fit" | "fabric" | "detail" | "process" | "scarcity" | "price" | "brand_story";
@@ -168,6 +170,8 @@ export type DetailUserProvidedInfo = {
   details?: string;
   /** 제작 방식 메모 */
   productionNote?: string;
+  /** 배송 예정 / 배송 안내 메모 (예: 펀딩 종료 후 4주 내 순차 발송) */
+  shippingNote?: string;
   /** 강조할 요소 (복수 선택) */
   emphasis?: DetailEmphasis[];
   /** 원단 혼용률 — shown only when the creator typed it. */
@@ -196,6 +200,8 @@ export type ProductDetailPage = {
   source: DetailPageSource;
   generation: DetailPageGenerationMeta;
   document: DetailPageDocument;
+  /** 마지막 등록(게시) 버전. 0 이면 아직 등록 전. */
+  publishedVersion?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -245,6 +251,16 @@ export type DetailImageType =
   | "fabric"
   | "mood"
   | "flat_lay";
+
+/** 부분 재작성 지시: 이 문구만 다시 / 더 고급스럽게 / 더 짧게 / 패션 브랜드 스타일 / 더 풍부하게 */
+export type DetailRewriteInstruction = "rewrite" | "luxury" | "shorter" | "fashion" | "longer";
+
+/** 인라인 편집·부분 재작성 대상 필드 */
+export type DetailTextField =
+  | { scope: "document"; field: "productName" | "productNameEn" | "subtitle" | "mainCopy" }
+  | { scope: "section"; sectionId: string; field: "eyebrow" | "title" | "description" }
+  | { scope: "item"; sectionId: string; itemId: string; field: "title" | "text" }
+  | { scope: "fact"; sectionId: string; index: number; field: "label" | "value" };
 
 /** "AI 다시 작성" tone. Facts stay the same; only the voice changes. */
 export type DetailCopyTone = "concise" | "emotional" | "professional" | "street" | "luxury";

@@ -122,6 +122,20 @@ export const useDetailPageAutosave = (pageId: string | null, snapshot: Snapshot 
     return () => window.removeEventListener("beforeunload", handler);
   }, [status]);
 
+  // Leaving the editor inside the app (route change) unmounts it before the debounce fires:
+  // flush the pending edit instead of only keeping the local backup.
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
+  useEffect(
+    () => () => {
+      if (timer.current) window.clearTimeout(timer.current);
+      if (latest.current && baseline.current !== null && JSON.stringify(latest.current) !== baseline.current) {
+        void persistRef.current().catch(() => undefined);
+      }
+    },
+    [],
+  );
+
   const saveNow = useCallback(
     async (nextStatus?: Exclude<DetailPageStatus, "linked">) => {
       if (timer.current) window.clearTimeout(timer.current);
@@ -131,9 +145,10 @@ export const useDetailPageAutosave = (pageId: string | null, snapshot: Snapshot 
   );
 
   /** Marks the given snapshot as already saved (e.g. right after loading or creating). */
-  const resetBaseline = useCallback((next: Snapshot) => {
+  const resetBaseline = useCallback((next: Snapshot, savedAt?: string | Date | null) => {
     baseline.current = JSON.stringify(next);
     setStatus("idle");
+    if (savedAt) setLastSavedAt(new Date(savedAt));
   }, []);
 
   return { status, lastSavedAt, error, saveNow, resetBaseline };

@@ -10,6 +10,8 @@ import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
  * Requires the GEMINI_API_KEY secret (already used by analyze-production-estimate).
  * Login is required and each call is metered (ai_usage_precheck / log_ai_usage).
  * Optional body.tone rewrites the same facts in a different voice (section "AI 다시 작성").
+ * body.mode = "rewrite" rewrites ONE piece of text (a title, a paragraph, a list item) with
+ * body.instruction and returns { text } — every other part of the page is left alone.
  * The client sanitizes the result again and falls back to a deterministic writer if this
  * function fails, so it is safe to deploy after the frontend.
  */
@@ -123,6 +125,55 @@ ${JSON.stringify(source, null, 2).slice(0, 6000)}
 designPoints는 3~5개, styling은 2~3개, care는 2~4개, notices는 3~5개로 작성하세요.
 `.trim();
 
+const REWRITE_INSTRUCTION: Record<string, string> = {
+  rewrite: "같은 의미를 유지하면서 문장을 새롭게 다시 작성하세요.",
+  luxury: "더 고급스럽고 여유 있는 에디토리얼 문장으로 바꾸세요. 과장하지 마세요.",
+  shorter: "핵심만 남겨 원문보다 확실히 짧게(절반 정도) 줄이세요.",
+  fashion: "감각적인 패션 브랜드 상세페이지 말투로 바꾸세요. 짧고 리듬감 있게.",
+  longer: "확인된 사실 범위 안에서 조금 더 풍부하게 설명하세요.",
+};
+
+const FIELD_LABEL: Record<string, string> = {
+  title: "섹션 제목",
+  eyebrow: "섹션 라벨(짧은 영문 대문자 권장)",
+  description: "섹션 본문",
+  itemTitle: "목록 항목 제목",
+  itemText: "목록 항목 내용",
+  productName: "상품명",
+  subtitle: "한 줄 소개",
+  mainCopy: "메인 카피",
+};
+
+const buildRewritePrompt = (
+  facts: Record<string, unknown>,
+  template: string,
+  text: string,
+  instruction: string,
+  field: string,
+  sectionType: string,
+) => `
+당신은 한국 패션 브랜드 쇼핑몰의 시니어 카피라이터입니다.
+펀딩 상품 상세페이지의 "${sectionType}" 섹션에 있는 ${FIELD_LABEL[field] ?? "문구"} 하나만 다시 작성합니다.
+
+요청: ${REWRITE_INSTRUCTION[instruction] ?? instruction.slice(0, 200)}
+기본 톤: ${TEMPLATE_TONE[template] ?? TEMPLATE_TONE.minimal}
+
+절대 규칙:
+- 아래 "확인된 제품 정보"와 원문에 없는 사실(혼용률, 중량, 기능성, 인증, 가격·날짜·수량 약속)을 추가하지 마세요.
+- 원문에 줄바꿈으로 나뉜 문단이 있으면 문단 구분을 유지하세요.
+- 이모지와 해시태그 없이 한국어로 작성하세요(영문 라벨/상품명은 예외).
+
+확인된 제품 정보(JSON):
+${JSON.stringify(facts, null, 2).slice(0, 4000)}
+
+원문:
+"""
+${text.slice(0, 3000)}
+"""
+
+다음 JSON 형식으로만 답하세요: {"text": "다시 작성한 문구"}
+`.trim();
+
 const parseJson = (text: string) => {
   const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
   const start = cleaned.indexOf("{");
@@ -153,7 +204,21 @@ serve(async (req) => {
     if (userError || !userData?.user) return json({ error: "로그인이 필요합니다." }, 401);
     userId = userData.user.id;
 
-    const { source = {}, template = "minimal", tone = "", detailPageId: requestedPageId } = await req.json();
+    const {
+      source = {},
+      template = "minimal",
+      tone = "",
+      detailPageId: requestedPageId,
+      mode = "page",
+      text: rewriteText = "",
+      instruction = "rewrite",
+      field = "description",
+      sectionType = "",
+    } = await req.json();
+    const isRewrite = mode === "rewrite";
+    if (isRewrite && (typeof rewriteText !== "string" || !rewriteText.trim())) {
+      return json({ error: "다시 작성할 문구가 비어 있습니다." }, 400);
+    }
     if (typeof requestedPageId === "string") {
       const { data: page } = await admin.from("product_detail_pages").select("id, user_id").eq("id", requestedPageId).maybeSingle();
       if (page && page.user_id === userId) detailPageId = page.id as string;
@@ -186,14 +251,22 @@ serve(async (req) => {
       강조특징_작성자입력: provided.highlights || undefined,
       디테일_작성자입력: provided.details || undefined,
       제작방식_작성자입력: provided.productionNote || undefined,
+      배송안내_작성자입력: provided.shippingNote || undefined,
+      판매가: provided.price || undefined,
+      목표수량_MOQ: source.targetQuantity || undefined,
+      펀딩기간_일: source.fundingDays || undefined,
       상세페이지무드_작성자선택: provided.mood || undefined,
       브랜드명: source.brandName,
       브랜드소개: source.brandShortDescription || source.brandDescription,
       제작자명: source.creatorName,
     };
 
-    const image = typeof source.imageUrl === "string" ? await fetchImage(source.imageUrl) : null;
-    const parts: Array<Record<string, unknown>> = [{ text: buildPrompt(facts, String(template), String(tone), emphasis) }];
+    // 부분 재작성은 텍스트만 다루므로 이미지를 보내지 않는다(빠르고 저렴).
+    const image = !isRewrite && typeof source.imageUrl === "string" ? await fetchImage(source.imageUrl) : null;
+    const prompt = isRewrite
+      ? buildRewritePrompt(facts, String(template), String(rewriteText), String(instruction), String(field), String(sectionType))
+      : buildPrompt(facts, String(template), String(tone), emphasis);
+    const parts: Array<Record<string, unknown>> = [{ text: prompt }];
     if (image) parts.push({ inlineData: image });
 
     const body = JSON.stringify({
@@ -224,10 +297,13 @@ serve(async (req) => {
       }
       try {
         const copy = parseJson(text);
+        if (isRewrite && (typeof copy?.text !== "string" || !copy.text.trim())) throw new Error("empty rewrite");
         await logAiUsage(admin, {
           userId, feature: "detail_copy", status: "success", provider: "gemini", model, detailPageId,
-          latencyMs: Date.now() - startedAt, metadata: { tone: tone || null, template },
+          latencyMs: Date.now() - startedAt,
+          metadata: isRewrite ? { mode: "rewrite", instruction, field, template } : { tone: tone || null, template },
         });
+        if (isRewrite) return json({ text: String(copy.text).trim().slice(0, 3000), model });
         return json({ copy, model, usedImage: Boolean(image) });
       } catch {
         errors.push(`${model}: invalid json`);

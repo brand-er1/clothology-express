@@ -125,13 +125,13 @@ export const SaveStatusBadge = ({
     status === "saving" ? (
       <><Loader2 className="h-3.5 w-3.5 animate-spin" /> 저장 중...</>
     ) : status === "saved" ? (
-      <><Check className="h-3.5 w-3.5 text-emerald-600" /> 저장 완료{time ? ` · ${time}` : ""}</>
+      <><Check className="h-3.5 w-3.5 text-emerald-600" /> 저장 완료{time ? ` · 마지막 저장 ${time}` : ""}</>
     ) : status === "error" ? (
       <><CloudOff className="h-3.5 w-3.5 text-red-600" /> 저장 실패</>
     ) : status === "dirty" ? (
       <><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> 변경사항 있음</>
     ) : (
-      <><Check className="h-3.5 w-3.5 text-stone-400" /> 저장됨</>
+      <><Check className="h-3.5 w-3.5 text-stone-400" /> {time ? `마지막 저장 ${time}` : "저장됨"}</>
     );
   return (
     <span

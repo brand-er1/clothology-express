@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer"
 import { FundingColorGallery } from "@/components/funding/FundingColorGallery";
 import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
-import { fetchDetailPageForFunding } from "@/services/detailPage";
+import { fetchDetailPage, fetchDetailPageForFunding, fetchMyDetailPageForFunding } from "@/services/detailPage";
 import type { ProductDetailPage } from "@/types/detailPage";
 import {
   ArrowLeft,
@@ -64,6 +64,9 @@ const getCustomerDescription = (funding: Funding) => {
 
 const FundingDetail = () => {
   const { id } = useParams();
+  // 상세페이지 편집기의 "미리보기": 등록 전 편집본(초안)을 실제 펀딩 화면 그대로 보여준다(작성자 본인만).
+  const [searchParams] = useSearchParams();
+  const draftPreview = searchParams.get("preview") === "draft";
   const navigate = useNavigate();
   const [funding, setFunding] = useState<Funding | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -86,13 +89,17 @@ const FundingDetail = () => {
     if (!id) return;
     let cancelled = false;
     setDetailPage(null);
-    void fetchDetailPageForFunding(id).then((page) => {
+    const loadDraft = async () => {
+      const pageId = await fetchMyDetailPageForFunding(id).catch(() => null);
+      return pageId ? fetchDetailPage(pageId).catch(() => null) : null;
+    };
+    void (draftPreview ? loadDraft().then((draft) => draft ?? fetchDetailPageForFunding(id)) : fetchDetailPageForFunding(id)).then((page) => {
       if (!cancelled) setDetailPage(page && page.document.sections.some((section) => section.visible) ? page : null);
     });
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, draftPreview]);
 
   useEffect(() => {
     if (!id) return;
@@ -227,7 +234,8 @@ const FundingDetail = () => {
   const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
   const remaining = Math.max(0, funding.moq - funding.current_orders);
   const isPreview = funding.status !== "approved";
-  const isCreator = currentUserId === funding.creator_id;
+  // 미리보기에서는 작성자용 버튼을 숨겨 구매자 화면과 같게 보여준다.
+  const isCreator = currentUserId === funding.creator_id && !draftPreview;
   const isFreeTeeEventItem = !isPreview && funding.id === latestDropId;
   const totalPrice = (funding.price || 0) * quantity;
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
@@ -297,7 +305,7 @@ const FundingDetail = () => {
                   <Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-1.5 h-4 w-4" /> 상품 수정</Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="rounded-none bg-transparent">
-                  <Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-1.5 h-4 w-4" /> 상세페이지</Link>
+                  <Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-1.5 h-4 w-4" /> 상세페이지 수정</Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="rounded-none bg-transparent">
                   <Link to={`/fundings/${funding.id}/manage`}><Users className="mr-1.5 h-4 w-4" /> 주문 관리</Link>

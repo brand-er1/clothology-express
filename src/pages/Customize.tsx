@@ -350,8 +350,9 @@ const Customize = () => {
             </div>
 
             <div
-              ref={stepNavRef}
-              className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 mt-8 flex items-center justify-between sm:items-start gap-2 rounded-md border border-black/10 bg-[#fbfaf8]/95 p-2.5 shadow-[0_12px_32px_rgba(36,26,24,0.10)] backdrop-blur sm:static sm:mt-10 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+              // 마지막 단계는 버튼이 4개라 모바일 고정 바로 두면 화면의 40% 이상을 덮고 아래 버튼이 하단 탭에 가려진다 → 본문 흐름에 둔다.
+              ref={currentStep === TOTAL_STEPS ? undefined : stepNavRef}
+              className={`${currentStep === TOTAL_STEPS ? "static" : "sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20"} mt-8 flex items-center justify-between sm:items-start gap-2 rounded-md border border-black/10 bg-[#fbfaf8]/95 p-2.5 shadow-[0_12px_32px_rgba(36,26,24,0.10)] backdrop-blur sm:static sm:mt-10 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none`}
               data-mascot-safezone
             >
               {currentStep > 1 ? (

@@ -720,7 +720,7 @@ export const ModifyImageStep = ({
                 </p>
               </div>
               {selectedImageUrl && (
-                <div className="flex shrink-0 flex-wrap gap-2">
+                <div className="flex min-w-0 flex-wrap gap-2">
                   <Button
                     type="button"
                     className="h-11 rounded-[3px] bg-brand px-4 text-sm font-bold hover:bg-brand-dark"

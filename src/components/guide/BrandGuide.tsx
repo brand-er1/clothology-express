@@ -141,6 +141,10 @@ export const BrandGuide = () => {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const bubbleOpenedByUser = useRef(false);
   const [bubbleOverCta, setBubbleOverCta] = useState(false);
+  // 도킹한 마스코트가 본문 흐름에 있는 버튼 영역(예: 태블릿에서 화면 아래 오른쪽에 온 '다음 단계')과 겹치면
+  // 그 영역 위로 올리고, 올릴 자리가 없으면 숨긴다.
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dockLift, setDockLift] = useState<number | "hidden">(0);
 
   const showMessage = (candidate: GuideMessage) => {
     hasEngagedWithBubble.current = false;
@@ -246,6 +250,38 @@ export const BrandGuide = () => {
       window.removeEventListener("resize", check);
     };
   }, [isBubbleOpen, message]);
+
+  useEffect(() => {
+    if (!roam.safeZoneActive) {
+      setDockLift(0);
+      return;
+    }
+    const check = () => {
+      const dock = dockRef.current;
+      if (!dock) return;
+      // 현재 올려 둔 만큼을 되돌린 원래 도킹 위치 기준으로 계산한다.
+      const current = dock.getBoundingClientRect();
+      const applied = typeof dockLift === "number" ? dockLift : 0;
+      const box = { left: current.left, right: current.right, top: current.top + applied, bottom: current.bottom + applied };
+      let lift = 0;
+      for (const zone of Array.from(document.querySelectorAll(SAFE_ZONE_SELECTOR))) {
+        const rect = zone.getBoundingClientRect();
+        if (!rect.width || rect.left >= box.right || rect.right <= box.left || rect.top >= box.bottom || rect.bottom <= box.top) continue;
+        lift = Math.max(lift, box.bottom - rect.top + 12);
+      }
+      const next = lift === 0 ? 0 : box.top - lift < 88 ? "hidden" : Math.round(lift);
+      setDockLift((prev) => (prev === next ? prev : next));
+    };
+    check();
+    const interval = setInterval(check, 400);
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [roam.safeZoneActive, dockLift]);
 
   useEffect(() => {
     if (!isBubbleOpen) return;
@@ -704,7 +740,12 @@ export const BrandGuide = () => {
   if (docked) {
     return (
       <>
-        <div data-floating-widget className="pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-[calc(1.5rem+var(--mobile-cta-h,0px))] md:right-6">
+        <div
+          ref={dockRef}
+          data-floating-widget
+          className={`pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-[calc(1.5rem+var(--mobile-cta-h,0px))] md:right-6 ${dockLift === "hidden" ? "invisible" : ""}`}
+          style={typeof dockLift === "number" && dockLift > 0 ? { transform: `translateY(-${dockLift}px)` } : undefined}
+        >
           {panel}
         </div>
         <TutorialFaqDialog open={isFaqOpen} onOpenChange={setIsFaqOpen} />

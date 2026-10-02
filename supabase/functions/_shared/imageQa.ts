@@ -73,6 +73,7 @@ export const inspectGeneratedImage = async (
   generated: InlineImage,
   reference: InlineImage | null,
   scope: QaScope = "full",
+  signal?: AbortSignal,
 ): Promise<ImageQaResult | null> => {
   if (!apiKey) return null;
   const parts: Array<Record<string, unknown>> = [
@@ -83,9 +84,12 @@ export const inspectGeneratedImage = async (
   if (reference) parts.push({ text: "IMAGE B (original design):" }, { inlineData: { data: reference.data, mimeType: reference.mimeType } });
 
   for (const model of QA_MODELS) {
+    // 응답 시간 예산이 끝났으면 null(호출부가 검수 없이 통과시키지 않고 실패 처리한다).
+    if (signal?.aborted) return null;
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
+        signal,
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           contents: [{ role: "user", parts }],

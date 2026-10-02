@@ -15,6 +15,7 @@ import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
 import { CREATOR_LOGO_REFERENCE_LABEL, findCreatorLogo, parseBrandLogoMode } from "../_shared/brandingPolicy.ts";
 import { inspectGeneratedImage, REFRAME_ON_RETRY, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
 import { cropBelowHead } from "../_shared/reframeCrop.ts";
+import { createTimeBudget, DETAIL_IMAGE_AI_BUDGET_MS, isTimeBudgetError, runWithinBudget, TIME_BUDGET_MESSAGE, TimeBudgetError } from "../_shared/timeBudget.ts";
 
 /**
  * Generates ONE AI detail-page image from the creator's design (reference image).
@@ -223,8 +224,14 @@ serve(async (req) => {
     const aspectRatio = IMAGE_ASPECT_RATIO[imageType as DetailImageType];
     const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
     const qaScope = imageType === "detail" || imageType === "fabric" ? "partial" : "full";
-    const inspect = (image: ImageGenerationResult) =>
-      inspectGeneratedImage(geminiKey, { data: image.base64, mimeType: image.mimeType }, references[0], qaScope);
+    // 게이트웨이 150초 제한 전에 이유가 담긴 응답을 돌려주도록 AI 호출(생성 · 검수)은 예산 안에서만 한다.
+    const budget = createTimeBudget(startedAt, DETAIL_IMAGE_AI_BUDGET_MS);
+    const inspect = async (image: ImageGenerationResult) => {
+      const qa = await inspectGeneratedImage(geminiKey, { data: image.base64, mimeType: image.mimeType }, references[0], qaScope, budget.signal());
+      // 시간이 다 돼 검수하지 못한 이미지는 통과시키지 않는다.
+      if (!qa && budget.expired()) throw new TimeBudgetError();
+      return qa;
+    };
     const settle = async (image: ImageGenerationResult) => {
       const firstQa = await inspect(image);
       if (!violatesPeoplePolicy(firstQa, peopleMode)) return { image, qa: firstQa, reframed: false, ok: true };
@@ -239,12 +246,11 @@ serve(async (req) => {
       return { image, qa: firstQa, reframed: false, ok: false };
     };
 
-    let attempts = 1;
-    let result = await settle(await provider.generate({ prompt, references, aspectRatio }));
-    if (!result.ok) {
-      attempts = 2;
-      result = await settle(await provider.generate({ prompt: `${prompt}\n\n${REFRAME_ON_RETRY}`, references, aspectRatio }));
-    }
+    const { result, attempts } = await runWithinBudget(
+      async (retry) =>
+        settle(await provider.generate({ prompt: retry ? `${prompt}\n\n${REFRAME_ON_RETRY}` : prompt, references, aspectRatio, signal: budget.signal() })),
+      budget,
+    );
     if (!result.ok) {
       throw new Error("얼굴이 보이지 않는 구도로 이미지를 만들지 못했습니다. 다시 생성해 주세요.");
     }
@@ -276,7 +282,7 @@ serve(async (req) => {
 
     return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, reframed, qa });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = isTimeBudgetError(error) ? TIME_BUDGET_MESSAGE : error instanceof Error ? error.message : String(error);
     console.error("generate-detail-image error:", message);
     if (assetId) {
       await admin

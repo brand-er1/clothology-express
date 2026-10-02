@@ -22,7 +22,7 @@ export const VisitDataNotice = () => {
     <aside
       data-mascot-safezone
       data-floating-widget
-      className="fixed inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] z-[70] mx-auto flex max-w-md items-center gap-2 rounded-full border border-stone-200 bg-white/95 py-1 pl-3.5 pr-1 shadow-lg backdrop-blur md:bottom-5"
+      className="fixed inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] z-[70] mx-auto flex max-w-md items-center gap-2 rounded-full border border-stone-200 bg-white/95 py-1 pl-3.5 pr-1 shadow-lg backdrop-blur md:bottom-[calc(1.25rem+var(--mobile-cta-h,0px))]"
     >
       <p className="min-w-0 flex-1 truncate text-[11px] leading-4 text-stone-500">
         <span className="font-bold text-stone-900">방문정보 수집 안내</span>{" "}

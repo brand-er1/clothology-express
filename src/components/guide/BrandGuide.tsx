@@ -662,7 +662,7 @@ export const BrandGuide = () => {
   if (docked) {
     return (
       <>
-        <div data-floating-widget className="pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-6 md:right-6">
+        <div data-floating-widget className="pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-[calc(1.5rem+var(--mobile-cta-h,0px))] md:right-6">
           {panel}
         </div>
         <TutorialFaqDialog open={isFaqOpen} onOpenChange={setIsFaqOpen} />

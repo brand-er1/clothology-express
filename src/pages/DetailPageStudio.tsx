@@ -863,7 +863,7 @@ const DetailPageStudio = () => {
     return (
       <div className="min-h-screen bg-[#f3f1ed] text-stone-900">
         <Header />
-        <main className="mx-auto max-w-[960px] px-4 pb-40 pt-20 sm:px-6 sm:pt-24 md:pb-24">
+        <main className="mx-auto max-w-[960px] px-4 pb-40 pt-20 sm:px-6 sm:pt-24 md:pb-10">
           <button
             type="button"
             onClick={() => (hasContent ? setShowSetup(false) : navigate(-1))}
@@ -941,10 +941,11 @@ const DetailPageStudio = () => {
           </section>
         </main>
 
+        {/* 모바일: 하단 탭 위 고정. 태블릿·PC: 페이지 안 sticky 라 끝까지 내리면 푸터 위에 멈춰 푸터를 가리지 않는다. */}
         <div
           ref={stickyRef}
           data-mascot-safezone
-          className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:sticky md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           <div className="mx-auto flex max-w-[960px] items-center gap-3">
             <p className="hidden min-w-0 flex-1 truncate text-sm text-stone-500 sm:block">

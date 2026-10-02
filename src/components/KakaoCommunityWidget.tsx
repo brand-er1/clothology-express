@@ -66,7 +66,7 @@ export const KakaoCommunityWidget = () => {
     <>
       {/* Bottom offset clears the brand mascot's docked corner spot (76px+safe-area/right-4 above the mobile bottom nav,
           bottom-6/right-6 desktop in BrandGuide; both lift by --mobile-cta-h over a sticky CTA) so the two floating elements never overlap. */}
-      <div data-floating-widget className="pointer-events-none fixed right-4 z-50 flex flex-col items-end gap-3 bottom-[calc(156px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] md:bottom-28 md:right-6">
+      <div data-floating-widget className="pointer-events-none fixed right-4 z-50 flex flex-col items-end gap-3 bottom-[calc(156px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] md:bottom-[calc(7rem+var(--mobile-cta-h,0px))] md:right-6">
         {isBubbleVisible && (
           <div className="pointer-events-auto relative max-w-[180px] animate-fadeIn rounded-2xl border border-stone-200 bg-white p-3 pr-7 shadow-lg sm:max-w-[240px] sm:p-4 sm:pr-8">
             <button

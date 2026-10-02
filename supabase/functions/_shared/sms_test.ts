@@ -1,5 +1,6 @@
 // deno test supabase/functions/_shared/sms_test.ts
 import {
+  buildFundingEarlyClosedParticipantText,
   buildFundingSuccessCreatorText,
   createSmsProvider,
   MockSmsProvider,
@@ -27,6 +28,18 @@ Deno.test("creator funding-success text matches the approved copy", () => {
       "\"FENRAX 후드티\" 펀딩이 목표 수량 20장을 달성했습니다.",
       "현재 18명/20장 참여가 완료되었습니다.",
       "BRAND-ER에서 펀딩 현황을 확인하고 제작을 준비해주세요.",
+      "brand-er.store",
+    ].join("\n"),
+  );
+});
+
+Deno.test("participant early-close text matches the approved copy", () => {
+  assertEquals(
+    buildFundingEarlyClosedParticipantText({ fundingName: "FENRAX 후드티" }),
+    [
+      "[브랜더]",
+      "참여하신 \"FENRAX 후드티\" 펀딩이 제작자에 의해 조기 마감되었습니다.",
+      "현재 참여 결과를 기준으로 이후 제작 절차가 진행됩니다.",
       "brand-er.store",
     ].join("\n"),
   );

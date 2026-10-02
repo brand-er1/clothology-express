@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Ban, Flame, Heart, Loader2, MessageCircle, PackageCheck, PartyPopper, Rocket,
+  Ban, Flag, Flame, Heart, Loader2, MessageCircle, PackageCheck, PartyPopper, Rocket,
   UserPlus, UserX, Vote, Megaphone,
 } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -31,6 +31,7 @@ const iconByType: Record<CommunityNotificationType, typeof Heart> = {
   admin_notice: Megaphone,
   funding_success: PartyPopper,
   funding_success_participant: PartyPopper,
+  funding_early_closed: Flag,
 };
 
 // 서버가 내려준 내부 경로만 따라간다(외부 URL/프로토콜 상대 경로 차단).

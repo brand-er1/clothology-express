@@ -20,6 +20,7 @@ import {
   fetchMyFundings,
   fetchSellerFundingDashboard,
   fetchSellerDashboardTotals,
+  getEarlyCloseResultLabel,
 } from "@/services/funding";
 import type {
   Funding, FundingPaymentStatus, MyFundingParticipation, MyFundingPaymentIntent,
@@ -259,7 +260,7 @@ const MyFundings = () => {
                         <img src={funding.image_url} alt={funding.product_name} className="img-zoom h-full w-full object-contain mix-blend-multiply" />
                       </Link>
                       <div className="pt-5">
-                        <div className="flex items-center justify-between gap-3"><Badge variant="secondary">{fundingStatusLabel[funding.status]}</Badge><span className="font-display text-xs text-stone-400">{new Date(funding.created_at).toLocaleDateString("ko-KR")}</span></div>
+                        <div className="flex items-center justify-between gap-3"><Badge variant="secondary">{funding.early_closed ? getEarlyCloseResultLabel(funding) : fundingStatusLabel[funding.status]}</Badge><span className="font-display text-xs text-stone-400">{new Date(funding.created_at).toLocaleDateString("ko-KR")}</span></div>
                         <Link to={`/fundings/${funding.id}`} className="text-wrap-anywhere mt-3 block text-xl font-semibold tracking-[-0.02em] transition-colors hover:text-brand">{funding.product_name}</Link>
                         <ProgressLine current={funding.current_orders} target={funding.moq} size="md" className="mt-5" caption={`${funding.current_orders} / ${funding.moq}장 · 달성 ${progress}%`} />
                         {dashboardRow && (

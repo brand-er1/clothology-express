@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type {
   CreateFundingInput,
+  EarlyCloseFundingResult,
   Funding,
   KakaoPayReadyResult,
   MyFundingParticipation,
@@ -18,6 +19,8 @@ import type {
 } from "@/types/funding";
 import { getAppUrl } from "@/utils/appUrl";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
+
+export { getEarlyCloseResultLabel, getFundingEndDate, isFundingRecruitmentOver } from "@/lib/funding-close";
 
 const FUNDING_WITH_BRAND_SELECT = `
   *,
@@ -211,6 +214,18 @@ export const submitFundingForReview = async (id: string): Promise<Funding> => {
   });
   if (error) throw error;
   return fetchFunding(id);
+};
+
+/**
+ * 제작자 조기 마감. 권한(creator_id = 로그인 사용자)·상태 검증, 모집 종료, 성공 판정, 참여자 알림 생성은
+ * 모두 서버(DB 함수) 한 트랜잭션에서 처리한다. 여기서는 만들어진 SMS 작업만 발송하도록 디스패처를 깨운다.
+ */
+export const earlyCloseFunding = async (fundingId: string): Promise<EarlyCloseFundingResult> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("creator_early_close_funding", { p_funding_id: fundingId });
+  if (error) throwFundingError(error, "펀딩을 조기 마감하지 못했습니다.");
+  void supabase.functions.invoke("dispatch-notifications", { body: { fundingId } }).catch(() => undefined);
+  return data as EarlyCloseFundingResult;
 };
 
 export const fetchAllFundings = async (): Promise<Funding[]> => {

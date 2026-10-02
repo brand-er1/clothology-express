@@ -13,6 +13,7 @@
  *   SMS_KAKAO_PF_ID                          (선택) 카카오 알림톡 발신 프로필 ID
  *   SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS       (선택) 제작자용 펀딩 성공 알림톡 템플릿 ID
  *   SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS_PARTICIPANT (선택) 참여자용 템플릿 ID
+ *   SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED  (선택) 참여자용 조기 마감 안내 템플릿 ID
  *
  * 새 업체(NHN Cloud, 알리고 등)는 SmsProvider 를 구현해 createSmsProvider 에 추가하면 된다.
  */
@@ -67,6 +68,14 @@ export const buildFundingSuccessCreatorText = ({ fundingName, targetQuantity, qu
     `"${clipName(fundingName)}" 펀딩이 목표 수량 ${targetQuantity}장을 달성했습니다.`,
     `현재 ${participants}명/${quantity}장 참여가 완료되었습니다.`,
     "BRAND-ER에서 펀딩 현황을 확인하고 제작을 준비해주세요.",
+    "brand-er.store",
+  ].join("\n");
+
+export const buildFundingEarlyClosedParticipantText = ({ fundingName }: Pick<FundingSuccessSmsInput, "fundingName">) =>
+  [
+    "[브랜더]",
+    `참여하신 "${clipName(fundingName)}" 펀딩이 제작자에 의해 조기 마감되었습니다.`,
+    "현재 참여 결과를 기준으로 이후 제작 절차가 진행됩니다.",
     "brand-er.store",
   ].join("\n");
 
@@ -194,5 +203,21 @@ export async function sendFundingSuccessSMS(
     kakaoTemplateId: (participant
       ? env.get("SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS_PARTICIPANT")
       : env.get("SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS"))?.trim() || undefined,
+  });
+}
+
+/** 제작자 조기 마감 안내(참여자). 알림톡 템플릿이 있으면 알림톡, 없으면 문자로 보낸다. */
+export async function sendFundingEarlyClosedSMS(
+  provider: SmsProvider,
+  input: { to: string; fundingName: string },
+  env: Env = denoEnv,
+): Promise<SmsSendResult> {
+  const to = normalizeKrPhone(input.to);
+  if (!to) return { ok: false, provider: provider.name, error: "휴대폰 번호 형식 오류" };
+  return provider.send({
+    to,
+    subject: "[BRAND-ER] 펀딩 조기 마감",
+    text: buildFundingEarlyClosedParticipantText(input),
+    kakaoTemplateId: env.get("SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED")?.trim() || undefined,
   });
 }

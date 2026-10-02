@@ -74,6 +74,19 @@ export type FundingRow = Paged & {
   admin_comment: string | null; created_at: string;
 };
 
+export type FundingClosureRow = {
+  funding_id: string; close_type: "period_end" | "creator_early" | "admin" | null; closed_at: string | null;
+  early_closed: boolean; early_closed_at: string | null; early_closed_quantity: number | null;
+  early_closed_by: string | null; early_closed_by_name: string | null; early_closed_by_email: string | null;
+  target_quantity: number; succeeded: boolean;
+};
+
+export const fetchFundingClosures = async (fundingIds: string[]) => {
+  if (fundingIds.length === 0) return new Map<string, FundingClosureRow>();
+  const rows = await adminRpc<FundingClosureRow[]>("admin_list_funding_closures", { p_funding_ids: fundingIds });
+  return new Map((rows ?? []).map((row) => [row.funding_id, row]));
+};
+
 export type OrderRow = Paged & {
   id: string; order_number: string | null; participant_id: string; orderer_name: string | null; orderer_phone: string | null;
   funding_id: string; product_name: string; brand_name: string | null; selected_color: string; selected_size: string;

@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { adminRpc, totalOf, type FundingRow } from "@/services/adminApi";
+import { adminRpc, fetchFundingClosures, totalOf, type FundingClosureRow, type FundingRow } from "@/services/adminApi";
 import { supabase } from "@/lib/supabase";
-import { dateOnly, dateTime, FUNDING_PHASE, num, pct, productionLabel, SETTLEMENT_STATUS, won } from "@/lib/admin/format";
+import { dateOnly, dateTime, FUNDING_CLOSE_TYPE, FUNDING_PHASE, num, pct, productionLabel, SETTLEMENT_STATUS, won } from "@/lib/admin/format";
 import {
   DataTable, DefinitionGrid, EmptyState, ErrorBanner, FilterChips, KpiCard, LoadingBlock, MappedBadge, Notice, PageHeader,
   Pager, Panel, SearchInput, StatusBadge, Td,
@@ -32,6 +32,21 @@ type Detail = {
   history: { action: string; admin_name: string; reason: string | null; created_at: string }[];
 };
 
+const FundingClosurePanel = ({ closure, creatorName, creatorEmail }: { closure: FundingClosureRow; creatorName: string | null; creatorEmail: string | null }) => (
+  <Panel title={<div className="flex flex-wrap items-center gap-2">종료 방식 <MappedBadge map={FUNDING_CLOSE_TYPE} value={closure.close_type} /></div>}>
+    <DefinitionGrid items={closure.early_closed ? [
+      { label: "조기 마감 여부", value: "예 (제작자 조기 마감)" },
+      { label: "마감 시간", value: dateTime(closure.early_closed_at) },
+      { label: "마감 당시 참여 수량", value: `${num(closure.early_closed_quantity)}장 / 목표 ${num(closure.target_quantity)}장` },
+      { label: "결과", value: closure.succeeded ? "펀딩 성공 · 조기 마감" : "목표 미달 · 조기 마감" },
+      { label: "마감한 제작자", value: `${closure.early_closed_by_name ?? creatorName ?? "-"}${(closure.early_closed_by_email ?? creatorEmail) ? ` · ${closure.early_closed_by_email ?? creatorEmail}` : ""}` },
+    ] : [
+      { label: "조기 마감 여부", value: "아니오" },
+      { label: "종료 시간", value: dateTime(closure.closed_at) },
+    ]} />
+  </Panel>
+);
+
 const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | null; onClose: () => void; onChanged: () => void }) => {
   const { can } = useAdminContext();
   const manage = can("fundings.manage");
@@ -41,7 +56,10 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
   const { data, loading, error, reload } = useAdminQuery(
     () => (fundingId ? adminRpc<Detail>("admin_get_funding_detail", { p_funding_id: fundingId }) : Promise.resolve(null)), [fundingId],
   );
-  const done = () => { void reload(); onChanged(); };
+  const closure = useAdminQuery(
+    async () => (fundingId ? (await fetchFundingClosures([fundingId])).get(fundingId) ?? null : null), [fundingId],
+  );
+  const done = () => { void reload(); void closure.reload(); onChanged(); };
   const f = data?.funding;
   // 제작자의 AI 상세페이지(있으면) — 관리자는 읽기 전용으로 열람
   const detailPage = useAdminQuery(async () => {
@@ -137,6 +155,7 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
               </div>
             )}
             {f.suspended_at && <Notice>운영 중단 · {dateTime(f.suspended_at)} · 사유: {f.suspension_reason}</Notice>}
+            {closure.data?.close_type && <FundingClosurePanel closure={closure.data} creatorName={data.creator?.display_name ?? null} creatorEmail={data.creator_email} />}
             {data.trademark && data.trademark.decision !== "clear" && <Notice>상표 검수: {data.trademark.decision} — {data.trademark.reason}</Notice>}
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -198,6 +217,7 @@ const FundingsPage = () => {
     [search, phase, page],
   );
   const rows = data ?? [];
+  const closures = useAdminQuery(() => fetchFundingClosures(rows.map((row) => row.id)), [data]);
 
   return (
     <div>
@@ -225,7 +245,7 @@ const FundingsPage = () => {
                 <Td className="font-bold tabular-nums">{won(row.gmv)}</Td>
                 <Td className="text-xs">{dateOnly(row.start_at)}</Td>
                 <Td className="text-xs">{dateOnly(row.end_at)}</Td>
-                <Td><div className="flex flex-wrap gap-1"><MappedBadge map={FUNDING_PHASE} value={row.phase} />{row.is_hidden && <StatusBadge>비공개</StatusBadge>}</div></Td>
+                <Td><div className="flex flex-wrap gap-1"><MappedBadge map={FUNDING_PHASE} value={row.phase} />{closures.data?.get(row.id)?.close_type && <MappedBadge map={FUNDING_CLOSE_TYPE} value={closures.data.get(row.id)!.close_type} />}{row.is_hidden && <StatusBadge>비공개</StatusBadge>}</div></Td>
               </tr>
             ))}
           </DataTable>

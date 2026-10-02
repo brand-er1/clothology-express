@@ -37,6 +37,13 @@ export const FUNDING_PHASE: Record<string, { label: string; tone: Tone }> = {
   rejected: { label: "반려", tone: "neutral" },
 };
 
+// 펀딩 종료 방식(admin_list_funding_closures.close_type)
+export const FUNDING_CLOSE_TYPE: Record<string, { label: string; tone: Tone }> = {
+  period_end: { label: "정상 마감", tone: "neutral" },
+  creator_early: { label: "제작자 조기 마감", tone: "violet" },
+  admin: { label: "관리자 종료", tone: "red" },
+};
+
 export const ORDER_STATE: Record<string, { label: string; tone: Tone }> = {
   payment_pending: { label: "결제대기", tone: "amber" },
   paid: { label: "결제완료", tone: "wine" },

@@ -691,7 +691,7 @@ export const BrandGuide = () => {
     <div className="pointer-events-auto relative inline-block">
       {characterButton}
       <div
-        className={`absolute flex flex-col gap-3 ${flipPanelBelow ? "top-full mt-3" : "bottom-full mb-3"} ${
+        className={`pointer-events-none absolute flex flex-col gap-3 [&>*]:pointer-events-auto ${flipPanelBelow ? "top-full mt-3" : "bottom-full mb-3"} ${
           flipPanelLeft ? "left-0 items-start" : "right-0 items-end"
         }`}
         style={popupRightInset ? { right: popupRightInset } : undefined}

@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProgressLine } from "@/components/funding/FundingProductCard";
+import { FundingEarlyCloseButton } from "@/components/funding/FundingEarlyCloseCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -274,6 +275,9 @@ const MyFundings = () => {
                           <Button asChild variant="outline"><Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-2 h-4 w-4" />정보 수정</Link></Button>
                           <Button asChild className="bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />펀딩 관리</Link></Button>
                           <Button asChild variant="outline" className="col-span-2"><Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-2 h-4 w-4" />상세페이지 수정</Link></Button>
+                          {funding.status === "approved" && !funding.early_closed && (
+                            <FundingEarlyCloseButton funding={funding} onClosed={load} className="col-span-2 w-full" />
+                          )}
                           <Button
                             type="button"
                             variant="ghost"

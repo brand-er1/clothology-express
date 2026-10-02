@@ -78,7 +78,7 @@ describe("AI image branding policy", () => {
 });
 
 import { PEOPLE_MODE, isBottomsGarment } from "../../supabase/functions/_shared/detailImagePrompt";
-import { reframeBelowHead, textPolicyIssue, violatesPeoplePolicy } from "../../supabase/functions/_shared/imageQa";
+import { designRetryNote, reframeBelowHead, textPolicyIssue, violatesPeoplePolicy } from "../../supabase/functions/_shared/imageQa";
 import { SCENE_TEXT_RULE } from "../../supabase/functions/_shared/detailImagePrompt";
 
 describe("detail-page people / face policy", () => {
@@ -156,5 +156,13 @@ describe("detail-page people / face policy", () => {
     expect(textPolicyIssue({ ...qa, brandErVisible: true })).toBe("brand_er");
     expect(textPolicyIssue({ ...qa, extraText: ["MOONLIGHT"] }, "Moonlight")).toBeNull();
     expect(textPolicyIssue(null)).toBeNull();
+  });
+
+  // 운영 E2E(2026-10-02 2차): 룩북 컷에 원본에 없는 스트링이 추가됐다 → 차이를 되돌리는 재생성 지시.
+  it("design retry names the differences to undo", () => {
+    const note = designRetryNote(["Added drawstrings not present in original design"]);
+    expect(note).toMatch(/Differences to undo: Added drawstrings not present in original design/);
+    expect(note).toMatch(/do not add drawstrings/);
+    expect(designRetryNote([])).not.toMatch(/Differences to undo/);
   });
 });

@@ -43,18 +43,20 @@ export const DETAIL_IMAGE_SPECS: DetailImageSpec[] = [
 export const getDetailImageSpec = (type: DetailImageType) =>
   DETAIL_IMAGE_SPECS.find((spec) => spec.type === type) ?? DETAIL_IMAGE_SPECS[0];
 
-const readFunctionError = async (error: unknown) => {
+const readFunctionErrorPayload = async (error: unknown): Promise<{ message: string; timedOut: boolean }> => {
   const functionError = error as { message?: string; context?: Response };
   if (functionError?.context && typeof functionError.context.json === "function") {
     try {
       const payload = await functionError.context.json();
-      if (typeof payload?.error === "string") return payload.error;
+      if (typeof payload?.error === "string") return { message: payload.error, timedOut: payload.timedOut === true };
     } catch {
       // fall through
     }
   }
-  return functionError?.message || "이미지 생성에 실패했습니다.";
+  return { message: functionError?.message || "이미지 생성에 실패했습니다.", timedOut: false };
 };
+
+const readFunctionError = async (error: unknown) => (await readFunctionErrorPayload(error)).message;
 
 export type GeneratedDetailImage = { assetId: string; url: string; model: string };
 
@@ -66,16 +68,22 @@ export const requestDetailImage = async (input: {
   userInstruction?: string;
   brandLogo?: "none" | "creator";
 }): Promise<GeneratedDetailImage> => {
-  const { data, error } = await supabase.functions.invoke("generate-detail-image", {
-    body: {
-      detailPageId: input.detailPageId,
-      imageType: input.imageType,
-      style: input.style,
-      userInstruction: input.userInstruction || undefined,
-      brandLogo: input.brandLogo ?? "none",
-    },
-  });
-  if (error) throw new Error(await readFunctionError(error));
+  const body = {
+    detailPageId: input.detailPageId,
+    imageType: input.imageType,
+    style: input.style,
+    userInstruction: input.userInstruction || undefined,
+    brandLogo: input.brandLogo ?? "none",
+  };
+  let { data, error } = await supabase.functions.invoke("generate-detail-image", { body });
+  if (error) {
+    // 서버가 응답 시간 예산(게이트웨이 150초) 때문에 중단한 경우(timedOut)는 생성 자체는 정상이라
+    // 제작자가 '다시 생성' 을 누르지 않아도 되게 한 번 자동으로 다시 요청한다.
+    const first = await readFunctionErrorPayload(error);
+    if (!first.timedOut) throw new Error(first.message);
+    ({ data, error } = await supabase.functions.invoke("generate-detail-image", { body }));
+    if (error) throw new Error(await readFunctionError(error));
+  }
   // (429: 하루/페이지 생성 한도 초과 메시지가 그대로 전달된다)
   if (!data?.url || !data?.assetId) throw new Error(data?.error || "이미지가 반환되지 않았습니다.");
   return { assetId: data.assetId, url: data.url, model: data.model };

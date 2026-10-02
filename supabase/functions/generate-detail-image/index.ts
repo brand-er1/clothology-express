@@ -13,7 +13,7 @@ import {
 import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ImageGenerationResult, type ReferenceImage } from "../_shared/imageProviders.ts";
 import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
 import { CREATOR_LOGO_REFERENCE_LABEL, findCreatorLogo, parseBrandLogoMode } from "../_shared/brandingPolicy.ts";
-import { inspectGeneratedImage, REFRAME_ON_RETRY, TEXT_ON_RETRY, textPolicyIssue, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
+import { designRetryNote, inspectGeneratedImage, REFRAME_ON_RETRY, TEXT_ON_RETRY, textPolicyIssue, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
 import { cropBelowHead } from "../_shared/reframeCrop.ts";
 import { createTimeBudget, DETAIL_IMAGE_AI_BUDGET_MS, isTimeBudgetError, runWithinBudget, TIME_BUDGET_MESSAGE, TimeBudgetError } from "../_shared/timeBudget.ts";
 
@@ -232,12 +232,17 @@ serve(async (req) => {
       if (!qa && budget.expired()) throw new TimeBudgetError();
       return qa;
     };
-    // 사람 정책을 통과한 뒤 글자 정책을 본다: BRAND-ER 표기는 저장하지 않고, 원본 디자인에 없는 글자 · 숫자
-    // (소품 · 배경 · 캡션)는 한 번 다시 생성한다. 다시 생성할 시간이 없거나 재시도도 실패하면 글자만 남은 첫 결과를 쓴다.
+    // 사람 정책을 통과한 뒤 글자 · 디자인을 본다: BRAND-ER 표기는 저장하지 않고, 원본 디자인에 없는 글자 · 숫자
+    // (소품 · 배경 · 캡션)나 원본과 다른 디자인(예: 없던 스트링 추가)은 한 번 다시 생성한다.
+    // 다시 생성할 시간이 없거나 재시도가 더 나쁘면 첫 결과를 쓴다.
     const allowedBrand = creatorLogo?.brandName ?? null;
     const judge = (image: ImageGenerationResult, qa: ImageQaResult | null, reframed: boolean) => {
       const textIssue = textPolicyIssue(qa, allowedBrand);
-      return { image, qa, reframed, peopleOk: true, textIssue, ok: !textIssue, acceptable: textIssue !== "brand_er" };
+      const designDifferences = qa && !qa.matchesReference ? qa.designDifferences : null;
+      return {
+        image, qa, reframed, peopleOk: true, textIssue, designDifferences,
+        ok: !textIssue && !designDifferences, acceptable: textIssue !== "brand_er",
+      };
     };
     const settle = async (image: ImageGenerationResult) => {
       const firstQa = await inspect(image);
@@ -250,16 +255,20 @@ serve(async (req) => {
           if (croppedQa && !violatesPeoplePolicy(croppedQa, peopleMode)) return judge(reframedImage, croppedQa, true);
         }
       }
-      return { image, qa: firstQa, reframed: false, peopleOk: false, textIssue: null, ok: false, acceptable: false };
+      return { image, qa: firstQa, reframed: false, peopleOk: false, textIssue: null, designDifferences: null, ok: false, acceptable: false };
     };
 
-    // 재시도 프롬프트는 첫 시도가 걸린 정책에 맞춘다(얼굴/사람 → 재구도, 글자 → 소품 없는 세트).
-    let firstFailedOnPeople = true;
+    // 재시도 프롬프트는 첫 시도가 걸린 정책에 맞춘다(얼굴/사람 → 재구도, 글자 → 소품 없는 세트, 디자인 → 차이 되돌리기).
+    let retryNote = REFRAME_ON_RETRY;
     const { result, attempts } = await runWithinBudget(
       async (retry) => {
-        const retryNote = firstFailedOnPeople ? REFRAME_ON_RETRY : TEXT_ON_RETRY;
         const settled = await settle(await provider.generate({ prompt: retry ? `${prompt}\n\n${retryNote}` : prompt, references, aspectRatio, signal: budget.signal() }));
-        if (!retry) firstFailedOnPeople = !settled.peopleOk;
+        if (!retry && settled.peopleOk) {
+          retryNote = [
+            settled.textIssue ? TEXT_ON_RETRY : "",
+            settled.designDifferences ? designRetryNote(settled.designDifferences) : "",
+          ].filter(Boolean).join("\n\n");
+        }
         return settled;
       },
       budget,
@@ -293,13 +302,14 @@ serve(async (req) => {
       detailPageId: page.id, imageType, latencyMs: Date.now() - startedAt,
       metadata: {
         references: references.length, style: detailPageStyle, instruction: Boolean(instruction), brandLogo: brandLogoMode,
-        peopleMode, attempts, reframed, textIssue: result.textIssue, qa,
+        peopleMode, attempts, reframed, textIssue: result.textIssue, designChanged: Boolean(result.designDifferences), qa,
       },
     });
 
     return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, reframed, textIssue: result.textIssue, qa });
   } catch (error) {
-    const message = isTimeBudgetError(error) ? TIME_BUDGET_MESSAGE : error instanceof Error ? error.message : String(error);
+    const timedOut = isTimeBudgetError(error);
+    const message = timedOut ? TIME_BUDGET_MESSAGE : error instanceof Error ? error.message : String(error);
     console.error("generate-detail-image error:", message);
     if (assetId) {
       await admin
@@ -313,6 +323,7 @@ serve(async (req) => {
         imageType: requestedType, latencyMs: Date.now() - startedAt, error: message,
       });
     }
-    return json({ error: message, assetId }, 502);
+    // timedOut: 시간 예산 초과(생성 자체는 정상) → 프론트가 한 번 자동으로 다시 요청한다.
+    return json({ error: message, assetId, timedOut }, 502);
   }
 });

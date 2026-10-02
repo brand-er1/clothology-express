@@ -150,6 +150,16 @@ export const textPolicyIssue = (qa: ImageQaResult | null, allowedBrand?: string 
   return extra.length ? "extra_text" : null;
 };
 
+/** 원본 디자인과 다르다고 판정된 결과의 재생성 지시(검수가 찾은 차이를 그대로 되돌리게 한다). */
+export const designRetryNote = (differences: string[]) =>
+  [
+    "RETRY — the previous attempt changed the garment design compared with REFERENCE IMAGE 1.",
+    differences.length ? `Differences to undo: ${differences.slice(0, 6).join("; ")}.` : "",
+    "Reproduce the reference garment exactly: do not add drawstrings, pockets, zippers, buttons, trims, panels, prints or any element that is not in the reference, and do not remove any that is.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
 export const TEXT_ON_RETRY = [
   "RETRY — the previous attempt contained text, letters or numbers that are not part of the garment design (on props, background, signs, books, rulers, tags or captions).",
   "Recompose with a plain, prop-free set: no books, magazines, posters, signage, packaging, rulers or paper. The only graphics allowed are the ones on the garment design itself.",

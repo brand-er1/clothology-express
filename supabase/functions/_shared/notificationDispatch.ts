@@ -1,11 +1,11 @@
-import { createSmsProvider, sendFundingSuccessSMS, type SmsProvider } from "./sms.ts";
+import { createSmsProvider, sendFundingEarlyClosedSMS, sendFundingSuccessSMS, type SmsProvider } from "./sms.ts";
 
 /**
  * 알림 발송 큐 처리 (service_role 클라이언트 전용)
  *
  * 1) evaluate_funding_success   — 트리거에서 판정이 누락된 펀딩을 다시 판정(멱등, 안전망)
  * 2) claim_notification_jobs    — 대기(pending) 작업을 'sending' 으로 잠그며 가져옴(FOR UPDATE SKIP LOCKED)
- * 3) sendFundingSuccessSMS      — 발송 업체 호출
+ * 3) sendFundingSuccessSMS / sendFundingEarlyClosedSMS — 발송 업체 호출
  * 4) complete_notification_job  — 결과 기록(성공 시 fundings.success_sms_sent = true)
  *
  * 성공 판정·작업 생성은 DB 가 하므로 이 함수를 여러 번/동시에 호출해도 같은 알림이 두 번 나가지 않는다.
@@ -60,7 +60,9 @@ export async function dispatchNotificationJobs(
           quantity: Number(job.payload.quantity ?? 0),
           participants: Number(job.payload.participants ?? 0),
         })
-        : { ok: false as const, provider: provider.name, error: `지원하지 않는 이벤트: ${job.event_type}` };
+        : job.event_type === "funding_early_closed"
+          ? await sendFundingEarlyClosedSMS(provider, { to: job.phone, fundingName: job.payload.funding_name ?? "" })
+          : { ok: false as const, provider: provider.name, error: `지원하지 않는 이벤트: ${job.event_type}` };
     } catch (sendError) {
       result = { ok: false as const, provider: provider.name, error: sendError instanceof Error ? sendError.message : String(sendError) };
     }

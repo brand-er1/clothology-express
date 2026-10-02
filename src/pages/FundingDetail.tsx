@@ -17,6 +17,8 @@ import { supabase } from "@/lib/supabase";
 import {
   fetchApprovedFundings,
   fetchFunding,
+  getEarlyCloseResultLabel,
+  getFundingEndDate,
   getFundingErrorMessage,
   registerFundingPaymentIntent,
 } from "@/services/funding";
@@ -34,6 +36,7 @@ import type { ProductDetailPage } from "@/types/detailPage";
 import {
   ArrowLeft,
   Clock3,
+  Flag,
   Loader2,
   Minus,
   PackageCheck,
@@ -61,6 +64,8 @@ const getCustomerDescription = (funding: Funding) => {
   const brandName = funding.brand?.brand_name || "이 제작자";
   return `${funding.material} 소재와 ${colorCopy}로 완성한 ${brandName}의 ${funding.cloth_type}입니다. BRAND-ER 플랫폼에서 선택받은 수량만큼 제작합니다.`;
 };
+
+const isParticipationClosed = (funding: Funding) => funding.status === "closed" || Boolean(funding.early_closed);
 
 const FundingDetail = () => {
   const { id } = useParams();
@@ -178,7 +183,7 @@ const FundingDetail = () => {
   }, [funding]);
 
   const handleParticipate = () => {
-    if (!funding || !id) return;
+    if (!funding || !id || isParticipationClosed(funding)) return;
 
     if (!currentUserId) {
       toast({ title: "로그인이 필요합니다", description: "로그인 후 상품을 주문할 수 있습니다." });
@@ -196,7 +201,7 @@ const FundingDetail = () => {
   };
 
   const handlePaymentIntent = async () => {
-    if (!funding || !id) return;
+    if (!funding || !id || isParticipationClosed(funding)) return;
     if (!currentUserId) {
       navigate(`/auth?returnTo=${encodeURIComponent(`/fundings/${id}`)}`);
       return;
@@ -233,10 +238,14 @@ const FundingDetail = () => {
 
   const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
   const remaining = Math.max(0, funding.moq - funding.current_orders);
-  const isPreview = funding.status !== "approved";
+  const isPreview = funding.status !== "approved" && funding.status !== "closed";
+  // 조기 마감 · 종료 · 운영 중단(status = closed): 참여/결제 버튼을 막는다(서버도 status = 'approved' 만 허용).
+  const isClosed = !isPreview && isParticipationClosed(funding);
+  const isEarlyClosed = !isPreview && Boolean(funding.early_closed);
+  const closedLabel = isEarlyClosed ? getEarlyCloseResultLabel(funding) : funding.success_at ? "펀딩 성공 · 종료" : "펀딩 종료";
   // 미리보기에서는 작성자용 버튼을 숨겨 구매자 화면과 같게 보여준다.
   const isCreator = currentUserId === funding.creator_id && !draftPreview;
-  const isFreeTeeEventItem = !isPreview && funding.id === latestDropId;
+  const isFreeTeeEventItem = !isPreview && !isClosed && funding.id === latestDropId;
   const totalPrice = (funding.price || 0) * quantity;
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
   const customerDescription = getCustomerDescription(funding);
@@ -261,7 +270,16 @@ const FundingDetail = () => {
     });
   };
 
-  const renderPurchaseButton = (heightClassName = "h-14") => !isPreview && funding.price && !currentUserId ? (
+  const renderPurchaseButton = (heightClassName = "h-14") => isClosed ? (
+    <Button
+      disabled
+      aria-disabled
+      className={`${heightClassName} w-full rounded-[2px] bg-stone-400 text-base font-semibold text-white disabled:opacity-100`}
+      data-tutorial="funding-detail-participate"
+    >
+      <Flag className="mr-2 h-5 w-5" /> {isEarlyClosed ? "조기 마감" : "펀딩 종료"}
+    </Button>
+  ) : !isPreview && funding.price && !currentUserId ? (
     <Button asChild className={`${heightClassName} w-full rounded-[2px] bg-brand text-base font-semibold text-white hover:bg-brand-dark`} data-tutorial="funding-detail-participate">
       <Link to={loginReturnTo}>
         <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
@@ -281,11 +299,13 @@ const FundingDetail = () => {
 
   const fundingRateActual = funding.moq > 0 ? Math.round((funding.current_orders / funding.moq) * 100) : 0;
   const expectedRevenue = (funding.price || 0) * funding.current_orders;
-  const endDate = funding.reviewed_at
-    ? new Date(new Date(funding.reviewed_at).getTime() + funding.funding_days * 24 * 60 * 60 * 1000)
-    : null;
+  const endDate = getFundingEndDate(funding);
   const daysLeft = endDate ? Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null;
-  const dDayLabel = daysLeft === null ? "기간 미정" : daysLeft > 0 ? `D-${daysLeft}` : daysLeft === 0 ? "D-DAY" : "펀딩 종료";
+  const dDayLabel = isEarlyClosed
+    ? "조기 마감"
+    : isClosed
+      ? "펀딩 종료"
+      : daysLeft === null ? "기간 미정" : daysLeft > 0 ? `D-${daysLeft}` : daysLeft === 0 ? "D-DAY" : "펀딩 종료";
 
   return (
     <div className="min-h-screen bg-[#f6f3ee] text-[#211b1c]">
@@ -298,6 +318,11 @@ const FundingDetail = () => {
           <div className="flex flex-wrap items-center gap-2">
             {isPreview && (
               <Badge className="rounded-none bg-amber-100 text-amber-900 hover:bg-amber-100">작성자 미리보기 · 판매 전</Badge>
+            )}
+            {isClosed && (
+              <Badge className={`rounded-none ${funding.success_at ? "bg-emerald-600 text-white hover:bg-emerald-600" : "bg-stone-200 text-stone-800 hover:bg-stone-200"}`}>
+                {closedLabel}
+              </Badge>
             )}
             {isCreator && (
               <>
@@ -360,7 +385,11 @@ const FundingDetail = () => {
                 <div className="absolute inset-y-0 left-0 bg-brand transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
               </div>
               <p className="mt-3 text-sm font-medium text-[#211b1c]">
-                {remaining > 0 ? `제작 확정까지 ${remaining}장의 주문이 더 필요해요` : "제작이 확정된 컬렉션입니다"}
+                {isClosed
+                  ? funding.success_at
+                    ? `${closedLabel} · 제작이 확정된 컬렉션입니다`
+                    : `${closedLabel} · 목표 수량에 도달하지 못했어요`
+                  : remaining > 0 ? `제작 확정까지 ${remaining}장의 주문이 더 필요해요` : "제작이 확정된 컬렉션입니다"}
               </p>
               <p className="mt-0.5 text-xs text-stone-500">선택받은 수량만큼 제작하는 리미티드 오더</p>
               <dl className="mt-6 grid grid-cols-3 gap-4 border-y border-black/10 py-4">
@@ -438,6 +467,23 @@ const FundingDetail = () => {
                 <strong className="text-wrap-anywhere text-2xl">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "가격 준비 중"}</strong>
               </div>
 
+              {isClosed && (
+                <div
+                  role="status"
+                  className={`flex items-start gap-3 border px-4 py-3 text-sm ${funding.success_at ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-black/10 bg-white/60 text-[#211b1c]"}`}
+                >
+                  <Flag className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-semibold">{isEarlyClosed ? "제작자에 의해 조기 마감된 펀딩입니다." : "모집이 종료된 펀딩입니다."}</p>
+                    <p className="mt-0.5 text-xs opacity-80">
+                      {closedLabel}
+                      {isEarlyClosed && funding.early_closed_at && ` · ${new Date(funding.early_closed_at).toLocaleDateString("ko-KR")} 마감`}
+                      {" · "}추가 참여와 결제는 할 수 없습니다.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {renderPurchaseButton()}
 
               <Button
@@ -454,7 +500,7 @@ const FundingDetail = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isPreview || !funding.price || intentSubmitting}
+                    disabled={isPreview || isClosed || !funding.price || intentSubmitting}
                     className="h-12 w-full rounded-none border-black/20 bg-transparent text-sm font-bold text-[#211b1c] hover:bg-black/5"
                   >
                     {intentSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}

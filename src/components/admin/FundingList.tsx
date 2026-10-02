@@ -19,7 +19,8 @@ const EMPTY_OVERVIEW: AdminFundingOverview = {
   avg_funding_rate: 0,
 };
 
-const statusBadge = (status: Funding["status"]) => {
+const statusBadge = (status: Funding["status"], earlyClosed = false) => {
+  if (status === "closed" && earlyClosed) return <Badge variant="secondary">제작자 조기 마감</Badge>;
   if (status === "draft") return <Badge variant="secondary">준비 중</Badge>;
   if (status === "approved") return <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />승인됨</Badge>;
   if (status === "rejected") return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />거절됨</Badge>;
@@ -103,7 +104,7 @@ export const FundingList = ({ fundings, onReview }: { fundings: Funding[]; onRev
                   </TableCell>
                   <TableCell>{funding.moq}장</TableCell>
                   <TableCell>{trademarkBadge(funding)}</TableCell>
-                  <TableCell>{statusBadge(funding.status)}</TableCell>
+                  <TableCell>{statusBadge(funding.status, funding.early_closed)}</TableCell>
                   <TableCell>{new Date(funding.created_at).toLocaleDateString("ko-KR")}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" onClick={() => onReview(funding)}>

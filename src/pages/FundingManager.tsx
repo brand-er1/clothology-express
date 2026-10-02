@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
+import { FundingEarlyCloseCard } from "@/components/funding/FundingEarlyCloseCard";
+import { supabase } from "@/lib/supabase";
 import { buildOrderSheet, buildQuantitySheet, exportFileDate, type OrderExportRow } from "@/lib/order-export";
 import { downloadBlob, downloadXlsx, safeFileName } from "@/lib/xlsx";
 import {
@@ -22,6 +24,7 @@ import {
   fetchFunding,
   fetchFundingParticipants,
   fetchFundingPaymentIntents,
+  getEarlyCloseResultLabel,
   uploadAndShareFundingSample,
   updateFundingParticipationStatus,
   updateFundingOrderFulfillment,
@@ -52,6 +55,7 @@ const FundingManager = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [funding, setFunding] = useState<Funding | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<FundingParticipation[]>([]);
   const [paymentIntents, setPaymentIntents] = useState<FundingPaymentIntent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,11 +77,13 @@ const FundingManager = () => {
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      const [fundingData, participantData, intentData] = await Promise.all([
+      const [fundingData, participantData, intentData, sessionData] = await Promise.all([
         fetchFunding(id),
         fetchFundingParticipants(id),
         fetchFundingPaymentIntents(id),
+        supabase.auth.getSession(),
       ]);
+      setCurrentUserId(sessionData.data.session?.user.id ?? null);
       setFunding(fundingData);
       setParticipants(participantData);
       setPaymentIntents(intentData);
@@ -516,7 +522,12 @@ const FundingManager = () => {
             <div className="mb-3 flex items-end justify-between">
               <div>
                 <strong className="text-3xl text-brand">{progress}%</strong><span className="ml-2 text-sm text-gray-500">달성</span>
-                {funding.success_at && (
+                {funding.early_closed && (
+                  <Badge className={`ml-3 align-middle ${funding.success_at ? "bg-emerald-600 hover:bg-emerald-600" : "bg-stone-600 hover:bg-stone-600"}`}>
+                    {getEarlyCloseResultLabel(funding)}
+                  </Badge>
+                )}
+                {funding.success_at && !funding.early_closed && (
                   <Badge className="ml-3 bg-emerald-600 align-middle hover:bg-emerald-600">
                     🎉 {funding.funding_status === "production" ? "제작 진행 중" : "펀딩 성공"} · {new Date(funding.success_at).toLocaleDateString("ko-KR")}
                   </Badge>
@@ -527,6 +538,8 @@ const FundingManager = () => {
             <Progress value={progress} className="h-3" />
           </CardContent>
         </Card>
+
+        <FundingEarlyCloseCard funding={funding} currentUserId={currentUserId} onClosed={load} className="mt-5" />
 
         <Card className="mt-5 rounded-lg">
           <CardContent className="grid gap-5 p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

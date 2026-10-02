@@ -99,6 +99,26 @@ export type Funding = {
   funding_status?: "funding" | "success" | "production";
   success_at?: string | null;
   final_quantity?: number | null;
+  /** 제작자 조기 마감 기록. 서버 함수(creator_early_close_funding)만 변경한다. */
+  early_closed?: boolean;
+  early_closed_at?: string | null;
+  early_closed_by?: string | null;
+  early_closed_quantity?: number | null;
+  closed_at?: string | null;
+  suspended_at?: string | null;
+};
+
+export type EarlyCloseFundingResult = {
+  funding_id: string;
+  status: FundingStatus;
+  early_closed: true;
+  early_closed_at: string;
+  quantity: number;
+  participants: number;
+  target_quantity: number;
+  result: "success" | "unmet";
+  notified_participants: number;
+  cancelled_pending_payments: number;
 };
 
 export type FundingPaymentIntent = {

@@ -307,7 +307,7 @@ const Customize = () => {
             )}
 
             {(currentStep === 4 || currentStep === 5) && generatedImageUrls && generatedImageUrls.length > 0 && (
-              <div className="mt-6 flex flex-col gap-3 border-t border-stone-200 px-1 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-0">
+              <div className="mt-6 flex flex-col gap-3 border-t border-stone-200 px-1 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-0" data-mascot-safezone>
                 <div className="min-w-0">
                   <p className="text-[15px] font-bold text-stone-950">디자인이 마음에 드시나요?</p>
                   <p className="mt-1 text-[13px] leading-5 text-stone-500">

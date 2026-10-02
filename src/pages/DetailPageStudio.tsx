@@ -944,7 +944,7 @@ const DetailPageStudio = () => {
         <div
           ref={stickyRef}
           data-mascot-safezone
-          className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0"
+          className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           <div className="mx-auto flex max-w-[960px] items-center gap-3">
             <p className="hidden min-w-0 flex-1 truncate text-sm text-stone-500 sm:block">
@@ -1291,8 +1291,8 @@ const DetailPageStudio = () => {
       className="h-12 min-w-0 flex-1 rounded-md bg-brand px-4 text-sm font-bold hover:bg-brand-dark md:h-10 md:flex-none"
     >
       {startingFunding ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Rocket className="mr-1.5 h-4 w-4" />}
-      <span className="truncate md:hidden">펀딩 시작하기</span>
-      <span className="hidden md:inline">이 상세페이지로 펀딩 시작하기</span>
+      <span className="truncate lg:hidden">펀딩 시작하기</span>
+      <span className="hidden lg:inline">이 상세페이지로 펀딩 시작하기</span>
     </Button>
   );
   // 펀딩에 연결된 상세페이지만 "등록"할 수 있다. 연결 전에는 펀딩 시작(=생성 후 자동 등록)이 다음 단계.
@@ -1370,7 +1370,7 @@ const DetailPageStudio = () => {
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden min-w-0 flex-wrap items-center justify-end gap-2 md:flex">
               <div className="flex border border-stone-300" role="group" aria-label="편집 화면 너비">
                 <button type="button" onClick={() => setPreviewWidth("mobile")} className={cn("flex h-10 w-10 items-center justify-center", previewWidth === "mobile" && "bg-stone-900 text-white")} aria-label="모바일 너비로 편집">
                   <Smartphone className="h-4 w-4" />
@@ -1412,8 +1412,8 @@ const DetailPageStudio = () => {
           </div>
         </div>
 
-        <div className="mx-auto grid max-w-[1600px] gap-0 pb-40 md:grid-cols-[400px_minmax(0,1fr)] md:gap-6 md:px-6 md:pb-12 md:pt-6">
-          <aside className={cn("md:sticky md:top-24 md:block md:max-h-[calc(100vh-7rem)] md:self-start md:overflow-y-auto md:border md:border-stone-300", mobileView === "edit" ? "block" : "hidden")}>
+        <div className="mx-auto grid max-w-[1600px] gap-0 pb-40 md:grid-cols-[320px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[400px_minmax(0,1fr)] md:px-6 md:pb-12 md:pt-6">
+          <aside className={cn("md:sticky md:top-24 md:block md:max-h-[calc(100dvh-7rem)] md:self-start md:overflow-y-auto md:border md:border-stone-300", mobileView === "edit" ? "block" : "hidden")}>
             {editorPanel}
           </aside>
           <section className={cn("min-w-0 md:block", mobileView === "preview" ? "block" : "hidden")} aria-label="상세페이지 편집 캔버스">

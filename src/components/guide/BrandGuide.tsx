@@ -28,6 +28,7 @@ import {
   returningVisitorGreeting,
   staticMessages,
   type GuideMessage,
+  SAFE_ZONE_SELECTOR,
 } from "./mascotConfig";
 import { useMascotPageContextValue } from "./MascotContext";
 import { useMascotRoam } from "./useMascotRoam";
@@ -134,9 +135,16 @@ export const BrandGuide = () => {
   }, []);
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  // 자동으로 뜬 말풍선이 주문 · 제작 버튼 영역(data-mascot-safezone)을 덮으면 겹치지 않을 때까지 숨긴다.
+  // 태블릿 · PC 에서는 버튼이 화면 가운데에 있어 마스코트 위로 뜨는 말풍선이 'AI 상세페이지 제작' 같은
+  // 버튼을 가렸다. 메뉴에서 직접 고른 말풍선은 그대로 보여 준다.
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const bubbleOpenedByUser = useRef(false);
+  const [bubbleOverCta, setBubbleOverCta] = useState(false);
 
   const showMessage = (candidate: GuideMessage) => {
     hasEngagedWithBubble.current = false;
+    bubbleOpenedByUser.current = false;
     shownKeys.current.add(candidate.key);
     setMessage(candidate);
     setIsDetailOpen(false);
@@ -210,6 +218,34 @@ export const BrandGuide = () => {
       if (showTimer) clearTimeout(showTimer);
     };
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isBubbleOpen) {
+      setBubbleOverCta(false);
+      return;
+    }
+    const check = () => {
+      const bubble = bubbleRef.current;
+      if (!bubble || bubbleOpenedByUser.current) return setBubbleOverCta(false);
+      const box = bubble.getBoundingClientRect();
+      setBubbleOverCta(
+        Array.from(document.querySelectorAll(SAFE_ZONE_SELECTOR)).some((zone) => {
+          const rect = zone.getBoundingClientRect();
+          return rect.width > 0 && rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top;
+        }),
+      );
+    };
+    check();
+    // 스크롤 · 리사이즈 · 마스코트 이동에 따라 다시 판단한다.
+    const interval = setInterval(check, 400);
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [isBubbleOpen, message]);
 
   useEffect(() => {
     if (!isBubbleOpen) return;
@@ -430,6 +466,7 @@ export const BrandGuide = () => {
     engagementCount.current += 1;
     if (choice.next) {
       showMessage(choice.next);
+      bubbleOpenedByUser.current = true;
       return;
     }
     setIsBubbleOpen(false);
@@ -569,7 +606,12 @@ export const BrandGuide = () => {
       )}
 
       {isBubbleOpen && message && !isMenuOpen && (
-        <div className="relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl" style={{ maxWidth: popupMaxWidth }}>
+        <div
+          ref={bubbleRef}
+          aria-hidden={bubbleOverCta || undefined}
+          className={`relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl ${bubbleOverCta ? "invisible" : ""}`}
+          style={{ maxWidth: popupMaxWidth }}
+        >
           <button
             type="button"
             onClick={closeBubble}

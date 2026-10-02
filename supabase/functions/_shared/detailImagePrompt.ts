@@ -151,6 +151,13 @@ export const facelessFraming = (product: PromptProduct, variant: "fit" | "editor
     : "CAMERA FRAMING (mandatory, decide it before anything else): choose ONE — (a) TORSO CROP: the top edge cuts straight across the shoulders/collarbones so the chin and face never enter the image, or (b) a back view where the wearer faces away and the top edge is at the shoulder blades (no hair or back of head), or (c) a close upper-body or lower-body crop on the garment. The head is completely outside the frame in every option.";
 };
 
+/**
+ * 세트 · 배경 글자 금지. NO_BRANDING_RULES 는 의류와 오버레이만 다뤄, 룩북 소품(책 · 잡지 · 포스터)이나
+ * 플랫레이 소품(자 · 줄자)의 글자 · 숫자가 생성되던 문제(운영 E2E: "Art Home", "1~16")를 막는다.
+ */
+export const SCENE_TEXT_RULE =
+  "SET AND BACKGROUND (highest priority): no readable text, letters or numbers anywhere in the scene — no books, magazines, posters, signs, packaging, screens, rulers, measuring tapes, price tags, labels or paper with printing. Props, if any, are plain and unmarked.";
+
 /** 모든 상세페이지 이미지에 붙는 사람 규칙(유형별). */
 export const peopleRules = (imageType: DetailImageType) =>
   PEOPLE_MODE[imageType] === "none"
@@ -174,13 +181,13 @@ const TYPE_TEMPLATE: Record<DetailImageType, (product: PromptProduct) => string>
   detail: (product) =>
     `Create a close-up DETAIL SHOT of this garment focusing on its most distinctive visible design element${product.decorations.length ? ` (${product.decorations.map((decoration) => [decoration.location, decoration.label].filter(Boolean).join(" ")).join(", ")})` : " (graphic, neckline, cuff or hem)"}. Macro fashion photography with shallow depth of field. Only show construction, stitching and surface texture that are visible in the reference; do not invent seams, trims, labels, hardware or fabric finishes. ${view(product, "front")}`,
   editorial: (product) =>
-    `Create a fashion LOOKBOOK / EDITORIAL image of this exact ${product.clothType || "garment"} being worn, styled as a magazine editorial page with considered composition. ${facelessFraming(product, "editorial")} The garment is the hero of the image and stays fully recognizable. ${view(product, "front")}`,
+    `Create a fashion LOOKBOOK / EDITORIAL image of this exact ${product.clothType || "garment"} being worn, shot as an editorial lookbook photograph with considered composition (a photograph only — no page layout, titles, captions or magazine text). ${facelessFraming(product, "editorial")} The garment is the hero of the image and stays fully recognizable. ${view(product, "front")}`,
   lifestyle: (product) =>
     `Create a WORN FIT SHOT: an anonymous wearer naturally wearing this exact ${product.clothType || "garment"} in a real setting${product.fit ? `, showing its ${product.fit} fit` : ""}. ${facelessFraming(product, "fit")} The worn garment must be the same product, not a similar one: same color, graphics and their placement, pockets, hood, zipper, sleeves and length. ${view(product, "front")}`,
   fabric: (product) =>
     `Create a FABRIC TEXTURE close-up of this garment's material${product.material ? ` (${product.material})` : ""}, filling the frame with the fabric surface in the garment's exact color, soft raking light to show texture. Show only texture plausible from the reference; do not depict technical features (coatings, membranes, perforations) that are not stated.`,
   flat_lay: (product) =>
-    `Create a FLAT LAY image: this exact ${product.clothType || "garment"} laid flat and neatly arranged on a floor or studio surface, shot from directly above, whole garment visible with natural folds and a soft realistic shadow. Minimal styling props are allowed at the edges only; the garment stays the clear subject. ${view(product, "front")}`,
+    `Create a FLAT LAY image: this exact ${product.clothType || "garment"} laid flat and neatly arranged on a floor or studio surface, shot from directly above, whole garment visible with natural folds and a soft realistic shadow. At most one or two plain, unmarked styling props at the edges (no rulers, measuring tapes, tags, cards, books, packaging or anything printed); the garment stays the clear subject. ${view(product, "front")}`,
   mood: (product) =>
     `Create a BRAND MOOD image expressing the concept of this ${product.clothType || "garment"}: atmospheric, wide still-life composition where the garment appears naturally (folded, draped over furniture or hanging) and stays recognizable. Evoke the product's attitude through setting, light and color, without adding text or logos. ${view(product, "front")}`,
 };
@@ -233,6 +240,7 @@ export const buildProductImagePrompt = ({
       ? `Creator's change request for this image (apply it only to background, setting, lighting or mood — never to the garment design, and never in a way that brings a face or extra people into the frame): "${instruction}"`
       : "",
     peopleRules(imageType),
+    SCENE_TEXT_RULE,
     identityLock(product),
     `Output exactly one image, aspect ratio ${IMAGE_ASPECT_RATIO[imageType]}.`,
   ]

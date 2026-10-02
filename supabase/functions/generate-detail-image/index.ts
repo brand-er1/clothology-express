@@ -13,7 +13,7 @@ import {
 import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ImageGenerationResult, type ReferenceImage } from "../_shared/imageProviders.ts";
 import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
 import { CREATOR_LOGO_REFERENCE_LABEL, findCreatorLogo, parseBrandLogoMode } from "../_shared/brandingPolicy.ts";
-import { inspectGeneratedImage, REFRAME_ON_RETRY, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
+import { inspectGeneratedImage, REFRAME_ON_RETRY, TEXT_ON_RETRY, textPolicyIssue, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
 import { cropBelowHead } from "../_shared/reframeCrop.ts";
 import { createTimeBudget, DETAIL_IMAGE_AI_BUDGET_MS, isTimeBudgetError, runWithinBudget, TIME_BUDGET_MESSAGE, TimeBudgetError } from "../_shared/timeBudget.ts";
 
@@ -232,27 +232,44 @@ serve(async (req) => {
       if (!qa && budget.expired()) throw new TimeBudgetError();
       return qa;
     };
+    // 사람 정책을 통과한 뒤 글자 정책을 본다: BRAND-ER 표기는 저장하지 않고, 원본 디자인에 없는 글자 · 숫자
+    // (소품 · 배경 · 캡션)는 한 번 다시 생성한다. 다시 생성할 시간이 없거나 재시도도 실패하면 글자만 남은 첫 결과를 쓴다.
+    const allowedBrand = creatorLogo?.brandName ?? null;
+    const judge = (image: ImageGenerationResult, qa: ImageQaResult | null, reframed: boolean) => {
+      const textIssue = textPolicyIssue(qa, allowedBrand);
+      return { image, qa, reframed, peopleOk: true, textIssue, ok: !textIssue, acceptable: textIssue !== "brand_er" };
+    };
     const settle = async (image: ImageGenerationResult) => {
       const firstQa = await inspect(image);
-      if (!violatesPeoplePolicy(firstQa, peopleMode)) return { image, qa: firstQa, reframed: false, ok: true };
+      if (!violatesPeoplePolicy(firstQa, peopleMode)) return judge(image, firstQa, false);
       if (peopleMode === "faceless_worn" && firstQa && firstQa.personCount <= 1) {
         const cropped = await cropBelowHead(image.base64, firstQa.headBox);
         if (cropped) {
           const reframedImage = { ...image, ...cropped };
           const croppedQa = await inspect(reframedImage);
-          if (croppedQa && !violatesPeoplePolicy(croppedQa, peopleMode)) return { image: reframedImage, qa: croppedQa, reframed: true, ok: true };
+          if (croppedQa && !violatesPeoplePolicy(croppedQa, peopleMode)) return judge(reframedImage, croppedQa, true);
         }
       }
-      return { image, qa: firstQa, reframed: false, ok: false };
+      return { image, qa: firstQa, reframed: false, peopleOk: false, textIssue: null, ok: false, acceptable: false };
     };
 
+    // 재시도 프롬프트는 첫 시도가 걸린 정책에 맞춘다(얼굴/사람 → 재구도, 글자 → 소품 없는 세트).
+    let firstFailedOnPeople = true;
     const { result, attempts } = await runWithinBudget(
-      async (retry) =>
-        settle(await provider.generate({ prompt: retry ? `${prompt}\n\n${REFRAME_ON_RETRY}` : prompt, references, aspectRatio, signal: budget.signal() })),
+      async (retry) => {
+        const retryNote = firstFailedOnPeople ? REFRAME_ON_RETRY : TEXT_ON_RETRY;
+        const settled = await settle(await provider.generate({ prompt: retry ? `${prompt}\n\n${retryNote}` : prompt, references, aspectRatio, signal: budget.signal() }));
+        if (!retry) firstFailedOnPeople = !settled.peopleOk;
+        return settled;
+      },
       budget,
     );
-    if (!result.ok) {
-      throw new Error("얼굴이 보이지 않는 구도로 이미지를 만들지 못했습니다. 다시 생성해 주세요.");
+    if (!result.ok && !result.acceptable) {
+      throw new Error(
+        result.peopleOk
+          ? "BRAND-ER 표기가 없는 이미지를 만들지 못했습니다. 다시 생성해 주세요."
+          : "얼굴이 보이지 않는 구도로 이미지를 만들지 못했습니다. 다시 생성해 주세요.",
+      );
     }
     const generated = result.image;
     const qa: ImageQaResult | null = result.qa;
@@ -276,11 +293,11 @@ serve(async (req) => {
       detailPageId: page.id, imageType, latencyMs: Date.now() - startedAt,
       metadata: {
         references: references.length, style: detailPageStyle, instruction: Boolean(instruction), brandLogo: brandLogoMode,
-        peopleMode, attempts, reframed, qa,
+        peopleMode, attempts, reframed, textIssue: result.textIssue, qa,
       },
     });
 
-    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, reframed, qa });
+    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, reframed, textIssue: result.textIssue, qa });
   } catch (error) {
     const message = isTimeBudgetError(error) ? TIME_BUDGET_MESSAGE : error instanceof Error ? error.message : String(error);
     console.error("generate-detail-image error:", message);

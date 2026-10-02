@@ -48,8 +48,10 @@ export const createTimeBudget = (startedAt: number, budgetMs: number, now: () =>
 /**
  * 생성 + 검수를 한 번 하고, 통과하지 못하면 한 번 더 한다. 두 번째 시도는 첫 시도만큼 걸린다고 보고,
  * 예산 안에 끝낼 수 없으면 시작하지 않고 TimeBudgetError 를 던진다(게이트웨이 시간 초과로 끊기지 않도록).
+ * acceptable(완벽하진 않지만 저장해도 되는 결과, 예: 배경 글자만 남음)인 첫 결과는 예산이 없으면 그대로 쓰고,
+ * 두 번째 시도가 저장 불가로 끝나면 첫 결과로 돌아간다.
  */
-export const runWithinBudget = async <T extends { ok: boolean }>(
+export const runWithinBudget = async <T extends { ok: boolean; acceptable?: boolean }>(
   attempt: (retry: boolean) => Promise<T>,
   budget: TimeBudget,
   now: () => number = Date.now,
@@ -57,6 +59,11 @@ export const runWithinBudget = async <T extends { ok: boolean }>(
   const firstStartedAt = now();
   const first = await attempt(false);
   if (first.ok) return { result: first, attempts: 1 };
-  if (!budget.canAfford(now() - firstStartedAt)) throw new TimeBudgetError();
-  return { result: await attempt(true), attempts: 2 };
+  if (!budget.canAfford(now() - firstStartedAt)) {
+    if (first.acceptable) return { result: first, attempts: 1 };
+    throw new TimeBudgetError();
+  }
+  const second = await attempt(true);
+  if (!second.ok && !second.acceptable && first.acceptable) return { result: first, attempts: 2 };
+  return { result: second, attempts: 2 };
 };

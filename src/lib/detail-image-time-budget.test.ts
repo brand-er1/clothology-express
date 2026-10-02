@@ -51,6 +51,32 @@ describe("detail image time budget", () => {
     expect(attempt).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps an acceptable first result (only extra text) when a retry does not fit or fails harder", async () => {
+    let clock = 0;
+    const now = () => clock;
+    const slow = vi.fn(async () => {
+      clock += 90_000;
+      return { ok: false, acceptable: true, id: "first" };
+    });
+    const kept = await runWithinBudget(slow, createTimeBudget(0, 135_000, now), now);
+    expect(kept.result.id).toBe("first");
+    expect(slow).toHaveBeenCalledTimes(1);
+
+    clock = 0;
+    const worse = vi.fn(async (retry: boolean) => {
+      clock += 40_000;
+      return retry ? { ok: false, acceptable: false, id: "second" } : { ok: false, acceptable: true, id: "first" };
+    });
+    expect((await runWithinBudget(worse, createTimeBudget(0, 135_000, now), now)).result.id).toBe("first");
+
+    clock = 0;
+    const fixed = vi.fn(async (retry: boolean) => {
+      clock += 40_000;
+      return retry ? { ok: true, acceptable: true, id: "second" } : { ok: false, acceptable: true, id: "first" };
+    });
+    expect((await runWithinBudget(fixed, createTimeBudget(0, 135_000, now), now)).result.id).toBe("second");
+  });
+
   it("recognises aborted fetches as time-budget errors", () => {
     expect(isTimeBudgetError(new TimeBudgetError())).toBe(true);
     expect(isTimeBudgetError(new DOMException("timed out", "TimeoutError"))).toBe(true);

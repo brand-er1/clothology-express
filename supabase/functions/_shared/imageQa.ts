@@ -13,6 +13,8 @@ export type ImageQaResult = {
   bodyPartsVisible: boolean;
   garmentIsMainSubject: boolean;
   visibleText: string[];
+  /** 원본 디자인(B)에 없는 글자 · 숫자(배경 · 소품 · 캡션 · 의류에 새로 생긴 글자). */
+  extraText: string[];
   logoOrBrandMark: boolean;
   brandErVisible: boolean;
   matchesReference: boolean;
@@ -40,6 +42,7 @@ Return JSON only:
   "bodyPartsVisible": false,     // any human body part (hands, arms, legs, neck, torso skin) visible in A
   "garmentIsMainSubject": true,  // the garment, not a person, is the clear main subject of A
   "visibleText": [],             // every legible word/letter/number printed or shown anywhere in A
+  "extraText": [],               // legible words/letters/numbers in A that are NOT part of the garment design in B (background, props, signs, books, rulers, tags, captions, or lettering newly added to the garment)
   "logoOrBrandMark": false,      // any logo, emblem, monogram or brand mark visible in A
   "brandErVisible": false,       // the text "BRAND-ER"/"BRANDER" or a similar platform mark visible in A
   "matchesReference": true,      // the garment in A is the same design as B: same garment type, colors, graphics/prints and their placement, pockets, hood, collar, sleeves and length
@@ -101,6 +104,7 @@ export const inspectGeneratedImage = async (
       const text = (data?.candidates?.[0]?.content?.parts ?? []).map((part: { text?: string }) => part.text ?? "").join("");
       const value = parse(text) as Record<string, unknown>;
       const visibleText = strList(value.visibleText);
+      const extraText = strList(value.extraText);
       return {
         faceVisible: value.faceVisible === true,
         headVisible: value.headVisible === true,
@@ -108,6 +112,7 @@ export const inspectGeneratedImage = async (
         bodyPartsVisible: value.bodyPartsVisible === true,
         garmentIsMainSubject: value.garmentIsMainSubject !== false,
         visibleText,
+        extraText,
         logoOrBrandMark: value.logoOrBrandMark === true,
         brandErVisible: value.brandErVisible === true || visibleText.some((entry) => /brand\s*-?\s*er/i.test(entry)),
         matchesReference: value.matchesReference !== false,
@@ -129,6 +134,26 @@ export const violatesPeoplePolicy = (qa: ImageQaResult | null, peopleMode: "none
   if (peopleMode === "none" && (qa.personCount > 0 || qa.bodyPartsVisible)) return true;
   return qa.personCount > 1;
 };
+
+/**
+ * 글자 정책: BRAND-ER 표기는 절대 저장하지 않고(brand_er), 원본 디자인에 없는 글자 · 숫자(extra_text)는
+ * 한 번 다시 생성한다. "내 브랜드 로고 적용" 이면 그 브랜드명은 허용한다.
+ */
+export const textPolicyIssue = (qa: ImageQaResult | null, allowedBrand?: string | null): "brand_er" | "extra_text" | null => {
+  if (!qa) return null;
+  if (qa.brandErVisible) return "brand_er";
+  const allowed = (allowedBrand ?? "").trim().toLowerCase();
+  const extra = qa.extraText.filter((text) => {
+    const value = text.trim().toLowerCase();
+    return value && !(allowed && (value.includes(allowed) || allowed.includes(value)));
+  });
+  return extra.length ? "extra_text" : null;
+};
+
+export const TEXT_ON_RETRY = [
+  "RETRY — the previous attempt contained text, letters or numbers that are not part of the garment design (on props, background, signs, books, rulers, tags or captions).",
+  "Recompose with a plain, prop-free set: no books, magazines, posters, signage, packaging, rulers or paper. The only graphics allowed are the ones on the garment design itself.",
+].join("\n");
 
 /**
  * 착용 컷 재구도: 머리가 화면 위쪽에 걸쳐 들어온 경우, 카메라 프레임을 머리 아래(어깨선)로 내린 크롭 영역을 계산한다.

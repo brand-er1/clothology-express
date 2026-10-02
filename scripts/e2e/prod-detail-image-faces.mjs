@@ -43,7 +43,8 @@ if (signInError) {
 }
 const userId = signIn.session.user.id;
 
-const invoke = async (name, body, retried = false) => {
+let timeoutRetries = 0;
+const invoke = async (name, body, retried = false, timeoutRetried = false) => {
   const { data, error } = await client.functions.invoke(name, { body }).catch((cause) => ({ data: null, error: cause }));
   // 게이트웨이가 일시적으로 HTML 오류 페이지를 돌려준 경우 한 번만 다시 호출
   if (error && !retried && /DOCTYPE|not valid JSON|FunctionsFetchError|FunctionsRelayError/i.test(`${error.name} ${error.message}`)) {
@@ -51,6 +52,11 @@ const invoke = async (name, body, retried = false) => {
   }
   if (error) {
     const payload = error.context && typeof error.context.json === "function" ? await error.context.json().catch(() => null) : null;
+    // 프론트(requestDetailImage)와 같이: 시간 예산 초과(timedOut)는 한 번 자동으로 다시 요청한다.
+    if (payload?.timedOut && !timeoutRetried) {
+      timeoutRetries += 1;
+      return invoke(name, body, retried, true);
+    }
     throw new Error(payload?.error || error.message);
   }
   return data;
@@ -142,7 +148,7 @@ await step("정리: 테스트 상세페이지 · 업로드 이미지 삭제", as
 });
 
 results.push(
-  `SUMMARY 이미지 ${summary.total}장 · 얼굴/머리 노출 ${summary.faces}장 · 착용 컷 ${summary.worn}장 · 사람 포함 ${summary.people}장 · 재생성 ${summary.retries}회 · 재구도(프레임 재설정) ${summary.reframed}회`,
+  `SUMMARY 이미지 ${summary.total}장 · 얼굴/머리 노출 ${summary.faces}장 · 착용 컷 ${summary.worn}장 · 사람 포함 ${summary.people}장 · 재생성 ${summary.retries}회 · 재구도(프레임 재설정) ${summary.reframed}회 · 시간 초과 자동 재요청 ${timeoutRetries}회`,
 );
 fs.writeFileSync(`${OUT}/results.txt`, results.join("\n") + "\n");
 console.log("\n" + results.join("\n"));

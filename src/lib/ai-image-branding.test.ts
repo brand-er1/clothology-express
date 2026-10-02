@@ -78,7 +78,8 @@ describe("AI image branding policy", () => {
 });
 
 import { PEOPLE_MODE, isBottomsGarment } from "../../supabase/functions/_shared/detailImagePrompt";
-import { reframeBelowHead, violatesPeoplePolicy } from "../../supabase/functions/_shared/imageQa";
+import { reframeBelowHead, textPolicyIssue, violatesPeoplePolicy } from "../../supabase/functions/_shared/imageQa";
+import { SCENE_TEXT_RULE } from "../../supabase/functions/_shared/detailImagePrompt";
 
 describe("detail-page people / face policy", () => {
   const types = ["hero", "product_front", "product_back", "detail", "editorial", "lifestyle", "fabric", "mood", "flat_lay"] as const;
@@ -116,7 +117,7 @@ describe("detail-page people / face policy", () => {
   });
 
   it("QA decides when to reframe and regenerate", () => {
-    const qa = { faceVisible: false, headVisible: false, personCount: 0, bodyPartsVisible: false, garmentIsMainSubject: true, visibleText: [], logoOrBrandMark: false, brandErVisible: false, matchesReference: true, designDifferences: [], headBox: null, model: "m" };
+    const qa = { faceVisible: false, headVisible: false, personCount: 0, bodyPartsVisible: false, garmentIsMainSubject: true, visibleText: [], extraText: [], logoOrBrandMark: false, brandErVisible: false, matchesReference: true, designDifferences: [], headBox: null, model: "m" };
     expect(violatesPeoplePolicy(qa, "none")).toBe(false);
     expect(violatesPeoplePolicy({ ...qa, faceVisible: true }, "faceless_worn")).toBe(true);
     expect(violatesPeoplePolicy({ ...qa, headVisible: true }, "faceless_worn")).toBe(true);
@@ -135,5 +136,25 @@ describe("detail-page people / face policy", () => {
     expect(reframeBelowHead(900, 1200, [0, 400, 500, 600])).toBeNull(); // too little garment left
     expect(reframeBelowHead(900, 1200, [600, 400, 700, 600])).toBeNull(); // head not at the top
     expect(reframeBelowHead(900, 1200, null)).toBeNull();
+  });
+
+  // 운영 E2E(2026-10-02): 룩북 컷에 잡지 글자("Art Home"), 플랫레이 컷에 자 눈금(1~16)이 생성됐다.
+  it("keeps readable text out of the set: no magazine page layout, no printed props", () => {
+    for (const type of types) expect(build(type)).toContain(SCENE_TEXT_RULE);
+    expect(build("editorial")).not.toMatch(/magazine editorial page/);
+    expect(build("editorial")).toMatch(/a photograph only — no page layout, titles, captions or magazine text/);
+    expect(build("flat_lay")).toMatch(/no rulers, measuring tapes, tags, cards, books, packaging or anything printed/);
+    expect(build("flat_lay")).not.toMatch(/Minimal styling props are allowed/);
+  });
+
+  it("text policy: BRAND-ER never saved, extra (non-design) text triggers a retry, creator brand allowed", () => {
+    const qa = { faceVisible: false, headVisible: false, personCount: 0, bodyPartsVisible: false, garmentIsMainSubject: true, visibleText: [], extraText: [] as string[], logoOrBrandMark: false, brandErVisible: false, matchesReference: true, designDifferences: [], headBox: null, model: "m" };
+    expect(textPolicyIssue(qa)).toBeNull();
+    expect(textPolicyIssue({ ...qa, visibleText: ["NYC 1994"] })).toBeNull(); // 디자인 자체의 레터링
+    expect(textPolicyIssue({ ...qa, extraText: ["Art Home", "Hideo Matsushita"] })).toBe("extra_text");
+    expect(textPolicyIssue({ ...qa, extraText: ["1", "2", "3"] })).toBe("extra_text");
+    expect(textPolicyIssue({ ...qa, brandErVisible: true })).toBe("brand_er");
+    expect(textPolicyIssue({ ...qa, extraText: ["MOONLIGHT"] }, "Moonlight")).toBeNull();
+    expect(textPolicyIssue(null)).toBeNull();
   });
 });

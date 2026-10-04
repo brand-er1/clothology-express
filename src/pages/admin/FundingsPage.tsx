@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, PauseCircle, PlayCircle, StopCircle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Eye, EyeOff, Flag, PauseCircle, PlayCircle, StopCircle, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { adminRpc, fetchFundingClosures, totalOf, type FundingClosureRow, type FundingRow } from "@/services/adminApi";
+import { adminRpc, fetchFundingClosures, totalOf, type EarlyCloseLogRow, type FundingClosureRow, type FundingRow } from "@/services/adminApi";
 import { supabase } from "@/lib/supabase";
 import { dateOnly, dateTime, FUNDING_CLOSE_TYPE, FUNDING_PHASE, num, pct, productionLabel, SETTLEMENT_STATUS, won } from "@/lib/admin/format";
 import {
@@ -16,6 +16,7 @@ import { ReasonDialog, type ReasonDialogState } from "@/components/admin/shell/R
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
 import { useAdminContext } from "@/components/admin/shell/AdminContext";
+import { EarlyCloseConfirmBody } from "@/components/funding/FundingEarlyCloseCard";
 
 const PAGE = 30;
 const PHASES = ["all", "pending", "funding", "approved", "succeeded", "failed", "in_production", "shipping", "completed", "suspended", "rejected"] as const;
@@ -35,11 +36,14 @@ type Detail = {
 const FundingClosurePanel = ({ closure, creatorName, creatorEmail }: { closure: FundingClosureRow; creatorName: string | null; creatorEmail: string | null }) => (
   <Panel title={<div className="flex flex-wrap items-center gap-2">종료 방식 <MappedBadge map={FUNDING_CLOSE_TYPE} value={closure.close_type} /></div>}>
     <DefinitionGrid items={closure.early_closed ? [
-      { label: "조기 마감 여부", value: "예 (제작자 조기 마감)" },
+      { label: "조기 마감 여부", value: closure.closed_by_role === "admin" ? "예 (관리자 조기 마감)" : "예 (제작자 조기 마감)" },
       { label: "마감 시간", value: dateTime(closure.early_closed_at) },
-      { label: "마감 당시 참여 수량", value: `${num(closure.early_closed_quantity)}장 / 목표 ${num(closure.target_quantity)}장` },
+      { label: "원래 종료일", value: dateTime(closure.original_end_date) },
       { label: "결과", value: closure.succeeded ? "펀딩 성공 · 조기 마감" : "목표 미달 · 조기 마감" },
-      { label: "마감한 제작자", value: `${closure.early_closed_by_name ?? creatorName ?? "-"}${(closure.early_closed_by_email ?? creatorEmail) ? ` · ${closure.early_closed_by_email ?? creatorEmail}` : ""}` },
+      { label: "최종 수량 · 달성률", value: `${num(closure.final_quantity ?? closure.early_closed_quantity)}장 / 목표 ${num(closure.target_quantity)}장${closure.final_achievement_rate != null ? ` · ${pct(Number(closure.final_achievement_rate))}` : ""}` },
+      { label: "최종 참여자 · 매출", value: closure.final_participant_count != null ? `${num(closure.final_participant_count)}명 · ${won(closure.final_amount)}` : "-" },
+      { label: closure.closed_by_role === "admin" ? "마감한 관리자" : "마감한 제작자", value: `${closure.early_closed_by_name ?? (closure.closed_by_role === "admin" ? "-" : creatorName) ?? "-"}${(closure.early_closed_by_email ?? (closure.closed_by_role === "admin" ? null : creatorEmail)) ? ` · ${closure.early_closed_by_email ?? creatorEmail}` : ""}` },
+      ...(closure.close_reason ? [{ label: "조기 마감 사유", value: closure.close_reason }] : []),
     ] : [
       { label: "조기 마감 여부", value: "아니오" },
       { label: "종료 시간", value: dateTime(closure.closed_at) },
@@ -137,6 +141,25 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
                     onConfirm: (reason) => adminRpc("admin_close_funding", { p_funding_id: f.id, p_reason: reason }),
                   })}><StopCircle className="mr-1 h-4 w-4" />종료</Button>
                 )}
+                {f.status === "approved" && !f.suspended_at && !closure.data?.early_closed && (
+                  <Button size="sm" variant="outline" className="border-rose-200 text-rose-700" onClick={() => setDialog({
+                    title: "펀딩을 조기 마감하시겠습니까?",
+                    destructive: true,
+                    confirmLabel: f.current_orders < f.moq ? "그래도 조기 마감" : "조기 마감",
+                    reasonLabel: "조기 마감 사유",
+                    placeholder: "예: 목표 달성으로 생산 조기 착수 (Audit Log 에 기록됩니다)",
+                    extra: <EarlyCloseConfirmBody funding={f} asDialogHeader={false} />,
+                    onConfirm: async (reason) => {
+                      const result = await adminRpc<{ result: string; quantity: number; achievement_rate: number; notified_participants: number }>(
+                        "admin_early_close_funding", { p_funding_id: f.id, p_reason: reason },
+                      );
+                      // 대기열에 들어간 참여자 SMS 를 바로 발송(실패해도 기존 예약 발송이 다시 처리한다)
+                      void supabase.functions.invoke("dispatch-notifications", { body: { fundingId: f.id } }).catch(() => undefined);
+                      return { warning: `${result.result === "success" ? "펀딩 성공" : "목표 미달"} · ${num(result.quantity)}장(${pct(Number(result.achievement_rate))}) 확정 · 참여자 ${num(result.notified_participants)}명에게 알림을 보냈습니다.` };
+                    },
+                    successMessage: "펀딩을 조기 마감했습니다",
+                  })}><Flag className="mr-1 h-4 w-4" />펀딩 조기 마감</Button>
+                )}
                 {["approved", "closed"].includes(f.status) && !f.suspended_at && (
                   <Button size="sm" variant="outline" className="text-rose-600" onClick={() => { notifyRef.current = true; setDialog({
                     title: "운영 중단", destructive: true, confirmLabel: "운영 중단", reasonLabel: "중단 사유",
@@ -206,6 +229,36 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
   );
 };
 
+const EarlyCloseLogPanel = ({ onOpen, refreshKey }: { onOpen: (fundingId: string) => void; refreshKey: unknown }) => {
+  const { data, loading, error, reload } = useAdminQuery(
+    () => adminRpc<EarlyCloseLogRow[]>("admin_list_early_close_logs", { p_limit: 10, p_offset: 0 }), [refreshKey],
+  );
+  const rows = data ?? [];
+  return (
+    <Panel className="mb-4" bodyClassName="p-0" title="조기 마감 기록" description="누가 · 언제 조기 마감했는지와 마감 당시 최종 수치 (최근 10건)">
+      {error && <div className="p-4"><ErrorBanner message={error} onRetry={reload} /></div>}
+      {loading && !data ? <LoadingBlock /> : rows.length === 0 ? <EmptyState title="조기 마감된 펀딩이 없습니다" /> : (
+        <DataTable minWidth={1100} head={["펀딩", "마감 주체", "마감 시간", "원래 종료일", "결과", "최종 수량", "달성률", "참여자", "최종 매출", "사유"]}>
+          {rows.map((row) => (
+            <tr key={row.funding_id} className="cursor-pointer hover:bg-stone-50" onClick={() => onOpen(row.funding_id)}>
+              <Td><p className="max-w-[200px] truncate font-bold">{row.product_name}</p><p className="text-xs text-stone-400">{row.brand_name ?? "브랜드 미지정"}</p></Td>
+              <Td className="text-xs"><StatusBadge tone={row.closed_by_role === "admin" ? "red" : "violet"}>{row.closed_by_role === "admin" ? "관리자" : "제작자"}</StatusBadge><p className="mt-1">{row.closed_by_name}</p></Td>
+              <Td className="text-xs">{dateTime(row.closed_at)}</Td>
+              <Td className="text-xs">{dateOnly(row.original_end_date)}</Td>
+              <Td><StatusBadge tone={row.succeeded ? "green" : "amber"}>{row.succeeded ? "목표 달성" : "목표 미달"}</StatusBadge></Td>
+              <Td className="tabular-nums">{num(row.final_quantity)} / {num(row.target_quantity)}</Td>
+              <Td className="font-bold tabular-nums">{pct(Number(row.final_achievement_rate))}</Td>
+              <Td className="tabular-nums">{num(row.final_participant_count)}</Td>
+              <Td className="font-bold tabular-nums">{won(row.final_amount)}</Td>
+              <Td className="max-w-[220px] truncate text-xs text-stone-500">{row.reason ?? "-"}</Td>
+            </tr>
+          ))}
+        </DataTable>
+      )}
+    </Panel>
+  );
+};
+
 const FundingsPage = () => {
   const [params] = useSearchParams();
   const [search, setSearch] = useState(params.get("q") ?? "");
@@ -221,7 +274,8 @@ const FundingsPage = () => {
 
   return (
     <div>
-      <PageHeader eyebrow="Fundings" title="펀딩 관리" description="승인 대기 펀딩이 목록 상단에 표시됩니다. 행을 눌러 승인·반려·공개·중단을 처리하세요." />
+      <PageHeader eyebrow="Fundings" title="펀딩 관리" description="승인 대기 펀딩이 목록 상단에 표시됩니다. 행을 눌러 승인·반려·공개·중단·조기 마감을 처리하세요." />
+      <EarlyCloseLogPanel onOpen={setSelected} refreshKey={data} />
       <Panel bodyClassName="p-0" title={
         <div className="flex flex-col gap-2">
           <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="펀딩명, 제작자, 브랜드" />

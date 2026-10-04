@@ -45,6 +45,27 @@ Deno.test("participant early-close text matches the approved copy", () => {
   );
 });
 
+Deno.test("participant early-close text differs for goal met / unmet", () => {
+  assertEquals(
+    buildFundingEarlyClosedParticipantText({ fundingName: "FENRAX 후드티", outcome: "success" }),
+    [
+      "[브랜더]",
+      "참여하신 \"FENRAX 후드티\" 펀딩이 목표 달성으로 조기 마감되었습니다.",
+      "제작 준비가 시작될 예정입니다.",
+      "brand-er.store",
+    ].join("\n"),
+  );
+  assertEquals(
+    buildFundingEarlyClosedParticipantText({ fundingName: "FENRAX 후드티", outcome: "unmet" }),
+    [
+      "[브랜더]",
+      "참여하신 \"FENRAX 후드티\" 펀딩이 목표 수량에 도달하지 못한 상태로 조기 마감되었습니다.",
+      "이후 진행 방법은 BRAND-ER 에서 별도로 안내드리겠습니다.",
+      "brand-er.store",
+    ].join("\n"),
+  );
+});
+
 Deno.test("phone normalization mirrors the DB rule", () => {
   assertEquals(normalizeKrPhone("+82 10-1234-5678"), "01012345678");
   assertEquals(normalizeKrPhone("010-1234-5678"), "01012345678");

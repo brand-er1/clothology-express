@@ -19,7 +19,7 @@ type ClaimedJob = {
   recipient_role: "creator" | "participant";
   channel: "sms" | "alimtalk";
   phone: string;
-  payload: { funding_name?: string; target_quantity?: number; quantity?: number; participants?: number };
+  payload: { funding_name?: string; target_quantity?: number; quantity?: number; participants?: number; succeeded?: boolean };
   attempt_count: number;
 };
 
@@ -61,7 +61,11 @@ export async function dispatchNotificationJobs(
           participants: Number(job.payload.participants ?? 0),
         })
         : job.event_type === "funding_early_closed"
-          ? await sendFundingEarlyClosedSMS(provider, { to: job.phone, fundingName: job.payload.funding_name ?? "" })
+          ? await sendFundingEarlyClosedSMS(provider, {
+            to: job.phone,
+            fundingName: job.payload.funding_name ?? "",
+            outcome: job.payload.succeeded === true ? "success" : job.payload.succeeded === false ? "unmet" : undefined,
+          })
           : { ok: false as const, provider: provider.name, error: `지원하지 않는 이벤트: ${job.event_type}` };
     } catch (sendError) {
       result = { ok: false as const, provider: provider.name, error: sendError instanceof Error ? sendError.message : String(sendError) };

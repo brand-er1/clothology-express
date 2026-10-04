@@ -29,6 +29,8 @@ import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer";
 import { FundingColorGallery } from "@/components/funding/FundingColorGallery";
+import { FundingInquiryPanel, FundingReviewsPanel, ReviewSummaryInline } from "@/components/funding/FundingReviewsSection";
+import { fetchFundingReviews, type ReviewSummary } from "@/services/fundingReviews";
 import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
 import { fetchDetailPage, fetchDetailPageForFunding, fetchMyDetailPageForFunding } from "@/services/detailPage";
@@ -89,6 +91,19 @@ const FundingDetail = () => {
   const [detailPage, setDetailPage] = useState<ProductDetailPage | null>(null);
   // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
   const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
+  // 하단 [상세정보] [리뷰] [문의]
+  const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">("detail");
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setReviewSummary(null);
+    fetchFundingReviews(id, "latest", 1)
+      .then((result) => { if (!cancelled) setReviewSummary(result.summary); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -250,6 +265,11 @@ const FundingDetail = () => {
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
   const customerDescription = getCustomerDescription(funding);
 
+  const openDetailTab = (tab: "detail" | "reviews" | "inquiry") => {
+    setDetailTab(tab);
+    window.requestAnimationFrame(() => document.getElementById("funding-detail-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
   const tryOnFundingGarment = () => {
     navigate("/closet", {
       state: {
@@ -319,6 +339,9 @@ const FundingDetail = () => {
             {isPreview && (
               <Badge className="rounded-none bg-amber-100 text-amber-900 hover:bg-amber-100">작성자 미리보기 · 판매 전</Badge>
             )}
+            {isEarlyClosed && (
+              <Badge className="rounded-none bg-[#211b1c] text-white hover:bg-[#211b1c]">조기 마감된 펀딩입니다</Badge>
+            )}
             {isClosed && (
               <Badge className={`rounded-none ${funding.success_at ? "bg-emerald-600 text-white hover:bg-emerald-600" : "bg-stone-200 text-stone-800 hover:bg-stone-200"}`}>
                 {closedLabel}
@@ -362,6 +385,11 @@ const FundingDetail = () => {
             <h1 className="mt-3 text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:mt-4 sm:text-5xl xl:text-[3.5rem]">
               {funding.product_name}
             </h1>
+            {!isPreview && reviewSummary && (
+              <div className="mt-3">
+                <ReviewSummaryInline summary={reviewSummary} onClick={() => openDetailTab("reviews")} />
+              </div>
+            )}
             <p className="mt-5 text-sm leading-7 text-stone-600">{detailPage?.document.subtitle || customerDescription}</p>
             <div className="mt-6 border-y border-black/10 py-4">
               <BrandIdentity brand={funding.brand} />
@@ -474,7 +502,7 @@ const FundingDetail = () => {
                 >
                   <Flag className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="min-w-0">
-                    <p className="font-semibold">{isEarlyClosed ? "제작자에 의해 조기 마감된 펀딩입니다." : "모집이 종료된 펀딩입니다."}</p>
+                    <p className="font-semibold">{isEarlyClosed ? "조기 마감된 펀딩입니다." : "모집이 종료된 펀딩입니다."}</p>
                     <p className="mt-0.5 text-xs opacity-80">
                       {closedLabel}
                       {isEarlyClosed && funding.early_closed_at && ` · ${new Date(funding.early_closed_at).toLocaleDateString("ko-KR")} 마감`}
@@ -556,6 +584,31 @@ const FundingDetail = () => {
         </section>
         )}
 
+        {!isPreview && (
+          <div id="funding-detail-tabs" className="sticky top-14 z-20 -mx-4 mt-16 scroll-mt-14 border-b border-black/10 bg-[#f6f3ee]/95 px-4 backdrop-blur-md sm:top-16 sm:mx-0 sm:px-0">
+            <div role="tablist" aria-label="펀딩 상세 메뉴" className="grid grid-cols-3">
+              {([
+                ["detail", "상세정보"],
+                ["reviews", `리뷰${reviewSummary ? ` ${Number(reviewSummary.count).toLocaleString("ko-KR")}` : ""}`],
+                ["inquiry", "문의"],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={detailTab === key}
+                  onClick={() => openDetailTab(key)}
+                  className={`min-h-12 border-b-2 text-sm font-semibold transition ${detailTab === key ? "border-[#211b1c] text-[#211b1c]" : "border-transparent text-stone-500 hover:text-[#211b1c]"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {detailTab === "detail" && (
+        <>
         {(funding.sample_image_url || funding.sample_note) && (
           <section className="mt-24 grid gap-8 md:grid-cols-12 md:gap-8">
             {funding.sample_image_url && (
@@ -649,6 +702,19 @@ const FundingDetail = () => {
           </ol>
         </section>
         </>
+        )}
+        </>
+        )}
+
+        {!isPreview && detailTab === "reviews" && (
+          <section className="mt-10" aria-label="리뷰">
+            <FundingReviewsPanel fundingId={funding.id} loginReturnTo={loginReturnTo} onSummary={setReviewSummary} />
+          </section>
+        )}
+        {!isPreview && detailTab === "inquiry" && (
+          <section className="mt-10" aria-label="문의">
+            <FundingInquiryPanel fundingId={funding.id} loginReturnTo={loginReturnTo} />
+          </section>
         )}
       </main>
 

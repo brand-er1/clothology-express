@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Flag, Loader2 } from "lucide-react";
+import { AlertTriangle, Flag, Loader2 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -15,6 +15,7 @@ import {
   isFundingRecruitmentOver,
 } from "@/services/funding";
 import type { Funding } from "@/types/funding";
+import { earlyCloseAchievementRate } from "@/lib/funding-close";
 
 type ButtonProps = {
   funding: Funding;
@@ -62,22 +63,7 @@ export const FundingEarlyCloseButton = ({ funding, onClosed, className = "" }: B
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className="max-w-md rounded-lg">
-        <AlertDialogHeader>
-          <AlertDialogTitle>펀딩을 조기 마감하시겠습니까?</AlertDialogTitle>
-          <AlertDialogDescription className="leading-6">
-            조기 마감 후에는 추가 참여가 불가능합니다.<br />
-            현재까지 참여한 주문을 기준으로 펀딩 결과가 확정됩니다.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="rounded-lg bg-stone-50 px-4 py-3 text-sm">
-          <p className="font-medium">{funding.product_name}</p>
-          <p className="mt-1">
-            현재 참여 <strong>{funding.current_orders}장</strong> / 목표 <strong>{funding.moq}장</strong>
-          </p>
-          {unmet && (
-            <p className="mt-1 text-xs text-amber-700">목표 수량에 미달한 상태로 마감되어 &lsquo;목표 미달 · 조기 마감&rsquo;으로 확정됩니다.</p>
-          )}
-        </div>
+        <EarlyCloseConfirmBody funding={funding} />
         <AlertDialogFooter>
           <AlertDialogCancel disabled={closing}>취소</AlertDialogCancel>
           <AlertDialogAction
@@ -89,11 +75,64 @@ export const FundingEarlyCloseButton = ({ funding, onClosed, className = "" }: B
             }}
           >
             {closing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            조기 마감하기
+            {unmet ? "그래도 조기 마감" : "조기 마감"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+};
+
+/**
+ * 조기 마감 확인 문구. 목표 미달이면 더 강한 경고(목표·현재 수량·달성률)를 보여준다.
+ * 제작자 확인창과 관리자 확인창이 함께 쓴다.
+ */
+export const EarlyCloseConfirmBody = ({ funding, asDialogHeader = true }: {
+  funding: Pick<Funding, "product_name" | "current_orders" | "moq">; asDialogHeader?: boolean;
+}) => {
+  const unmet = funding.current_orders < funding.moq;
+  const Title = asDialogHeader ? AlertDialogTitle : "p";
+  const Description = asDialogHeader ? AlertDialogDescription : "div";
+  return (
+    <div className="grid gap-3">
+      {asDialogHeader ? (
+        <AlertDialogHeader>
+          <Title className="text-lg font-semibold">펀딩을 조기 마감하시겠습니까?</Title>
+          <Description className="leading-6 text-sm text-muted-foreground">
+            조기 마감 후에는 새로운 구매자가 해당 펀딩에 참여할 수 없습니다.<br />
+            현재까지 참여한 주문 및 구매자 정보는 그대로 유지됩니다.
+          </Description>
+        </AlertDialogHeader>
+      ) : (
+        <p className="text-sm leading-6 text-stone-600">
+          조기 마감 후에는 새로운 구매자가 해당 펀딩에 참여할 수 없습니다.<br />
+          현재까지 참여한 주문 및 구매자 정보는 그대로 유지됩니다.
+        </p>
+      )}
+      {unmet ? (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="flex items-center gap-1.5 font-bold"><AlertTriangle className="h-4 w-4 shrink-0" />아직 목표 수량을 달성하지 않았습니다.</p>
+          <dl className="mt-2 grid grid-cols-[6rem_minmax(0,1fr)] gap-y-0.5">
+            <dt className="text-amber-800/80">목표수량</dt><dd className="font-semibold">{funding.moq.toLocaleString("ko-KR")}장</dd>
+            <dt className="text-amber-800/80">현재수량</dt><dd className="font-semibold">{funding.current_orders.toLocaleString("ko-KR")}장</dd>
+            <dt className="text-amber-800/80">현재 달성률</dt><dd className="font-semibold">{earlyCloseAchievementRate(funding)}%</dd>
+          </dl>
+          <p className="mt-2 font-semibold">그래도 펀딩을 종료하시겠습니까?</p>
+          <p className="mt-1 text-xs leading-5 text-amber-800/90">
+            &lsquo;목표 미달 · 조기 마감&rsquo;으로 확정됩니다. 기존 결제는 자동으로 취소·환불되지 않으며, 환불은 BRAND-ER 정책에 따라 별도로 처리됩니다.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-stone-50 px-4 py-3 text-sm">
+          <p className="font-medium">{funding.product_name}</p>
+          <p className="mt-1">
+            현재 <strong>{funding.current_orders.toLocaleString("ko-KR")}장</strong> / 목표 <strong>{funding.moq.toLocaleString("ko-KR")}장</strong>
+            {" · "}달성률 <strong>{earlyCloseAchievementRate(funding)}%</strong>
+          </p>
+          <p className="mt-1 text-xs text-emerald-700">목표를 달성했습니다. 조기 마감하면 현재 달성률로 확정되고 제작 준비 단계로 넘어갑니다.</p>
+        </div>
+      )}
+    </div>
   );
 };
 

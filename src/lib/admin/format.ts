@@ -41,6 +41,7 @@ export const FUNDING_PHASE: Record<string, { label: string; tone: Tone }> = {
 export const FUNDING_CLOSE_TYPE: Record<string, { label: string; tone: Tone }> = {
   period_end: { label: "정상 마감", tone: "neutral" },
   creator_early: { label: "제작자 조기 마감", tone: "violet" },
+  admin_early: { label: "관리자 조기 마감", tone: "violet" },
   admin: { label: "관리자 종료", tone: "red" },
 };
 

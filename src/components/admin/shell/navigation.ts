@@ -1,5 +1,5 @@
 import {
-  BarChart3, BellRing, Building2, ClipboardList, CreditCard, Factory, Flag, LayoutDashboard, Megaphone, Palette,
+  BarChart3, BellRing, Building2, ClipboardList, Contact, CreditCard, Factory, Flag, LayoutDashboard, Megaphone, Palette,
   ReceiptText, RotateCcw, ScrollText, Settings, ShieldCheck, Sparkles, Truck, Users, WalletCards, Wrench,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/admin/permissions";
@@ -25,6 +25,7 @@ export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
   { group: "커머스", items: [
     { path: "fundings", label: "펀딩 관리", icon: WalletCards, anyOf: ["fundings.view"] },
     { path: "orders", label: "주문 관리", icon: ClipboardList, anyOf: ["orders.view"] },
+    { path: "buyers", label: "구매자 관리", icon: Contact, anyOf: ["orders.pii"] },
     { path: "payments", label: "결제 관리", icon: CreditCard, anyOf: ["payments.view"] },
     { path: "refunds", label: "환불 관리", icon: RotateCcw, anyOf: ["refunds.view"] },
     { path: "settlements", label: "정산 관리", icon: ReceiptText, anyOf: ["settlements.view"] },

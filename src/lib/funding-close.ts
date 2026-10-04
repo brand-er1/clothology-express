@@ -19,3 +19,7 @@ export const isFundingRecruitmentOver = (
 /** 조기 마감 결과 라벨. 성공 판정은 서버(success_at)가 한 값을 그대로 쓴다. */
 export const getEarlyCloseResultLabel = (funding: Pick<Funding, "success_at">) =>
   funding.success_at ? "펀딩 성공 · 조기 마감" : "목표 미달 · 조기 마감";
+
+/** 현재 달성률(%) — 조기 마감 확인창 표시용. 서버는 결제 완료·미취소 수량으로 다시 계산해 기록한다. */
+export const earlyCloseAchievementRate = (funding: Pick<Funding, "current_orders" | "moq">) =>
+  funding.moq > 0 ? Math.round((funding.current_orders / funding.moq) * 100) : 0;

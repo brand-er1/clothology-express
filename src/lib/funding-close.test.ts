@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEarlyCloseResultLabel, isFundingRecruitmentOver } from "./funding-close";
+import { earlyCloseAchievementRate, getEarlyCloseResultLabel, isFundingRecruitmentOver } from "./funding-close";
 
 const base = {
   status: "approved" as const,
@@ -30,5 +30,13 @@ describe("getEarlyCloseResultLabel", () => {
   it("uses the server success state", () => {
     expect(getEarlyCloseResultLabel({ success_at: "2026-10-02T00:00:00.000Z" })).toBe("펀딩 성공 · 조기 마감");
     expect(getEarlyCloseResultLabel({ success_at: null })).toBe("목표 미달 · 조기 마감");
+  });
+});
+
+describe("earlyCloseAchievementRate", () => {
+  it("keeps over-achievement (no cap) and handles unmet / zero goals", () => {
+    expect(earlyCloseAchievementRate({ current_orders: 50, moq: 20 })).toBe(250);
+    expect(earlyCloseAchievementRate({ current_orders: 18, moq: 30 })).toBe(60);
+    expect(earlyCloseAchievementRate({ current_orders: 5, moq: 0 })).toBe(0);
   });
 });

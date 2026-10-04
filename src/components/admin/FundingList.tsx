@@ -20,7 +20,7 @@ const EMPTY_OVERVIEW: AdminFundingOverview = {
 };
 
 const statusBadge = (status: Funding["status"], earlyClosed = false) => {
-  if (status === "closed" && earlyClosed) return <Badge variant="secondary">제작자 조기 마감</Badge>;
+  if (status === "closed" && earlyClosed) return <Badge variant="secondary">조기 마감</Badge>;
   if (status === "draft") return <Badge variant="secondary">준비 중</Badge>;
   if (status === "approved") return <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />승인됨</Badge>;
   if (status === "rejected") return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />거절됨</Badge>;

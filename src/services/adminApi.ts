@@ -75,10 +75,21 @@ export type FundingRow = Paged & {
 };
 
 export type FundingClosureRow = {
-  funding_id: string; close_type: "period_end" | "creator_early" | "admin" | null; closed_at: string | null;
+  funding_id: string; close_type: "period_end" | "creator_early" | "admin_early" | "admin" | null; closed_at: string | null;
   early_closed: boolean; early_closed_at: string | null; early_closed_quantity: number | null;
   early_closed_by: string | null; early_closed_by_name: string | null; early_closed_by_email: string | null;
   target_quantity: number; succeeded: boolean;
+  // 조기 마감 기록(funding_early_close_logs). 기록 이전 데이터는 null 일 수 있다.
+  closed_by_role: "creator" | "admin" | null; close_reason: string | null; original_end_date: string | null;
+  final_participant_count: number | null; final_quantity: number | null; final_amount: number | null;
+  final_achievement_rate: number | null;
+};
+
+export type EarlyCloseLogRow = {
+  funding_id: string; product_name: string; brand_name: string | null; closed_by: string | null; closed_by_name: string;
+  closed_by_role: "creator" | "admin"; reason: string | null; original_end_date: string | null; closed_at: string;
+  target_quantity: number | null; final_participant_count: number; final_quantity: number; final_amount: number;
+  final_achievement_rate: number; succeeded: boolean; notified_participants: number; total_count: number;
 };
 
 export const fetchFundingClosures = async (fundingIds: string[]) => {

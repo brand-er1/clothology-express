@@ -12,6 +12,7 @@ const CreatorsPage = lazy(() => import("./CreatorsPage"));
 const BrandsPage = lazy(() => import("./BrandsPage"));
 const FundingsPage = lazy(() => import("./FundingsPage"));
 const OrdersPage = lazy(() => import("./OrdersPage"));
+const BuyersPage = lazy(() => import("./BuyersPage"));
 const PaymentsPage = lazy(() => import("./PaymentsPage"));
 const RefundsPage = lazy(() => import("./RefundsPage"));
 const SettlementsPage = lazy(() => import("./SettlementsPage"));
@@ -63,6 +64,7 @@ const AdminRoutes = () => {
           <Route path="brands" element={<Guard anyOf={["brands.view"]}><BrandsPage /></Guard>} />
           <Route path="fundings" element={<Guard anyOf={["fundings.view"]}><FundingsPage /></Guard>} />
           <Route path="orders" element={<Guard anyOf={["orders.view"]}><OrdersPage /></Guard>} />
+          <Route path="buyers" element={<Guard anyOf={["orders.pii"]}><BuyersPage /></Guard>} />
           <Route path="payments" element={<Guard anyOf={["payments.view"]}><PaymentsPage /></Guard>} />
           <Route path="refunds" element={<Guard anyOf={["refunds.view"]}><RefundsPage /></Guard>} />
           <Route path="settlements" element={<Guard anyOf={["settlements.view"]}><SettlementsPage /></Guard>} />

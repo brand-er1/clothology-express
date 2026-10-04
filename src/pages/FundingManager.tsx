@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
 import { FundingEarlyCloseCard } from "@/components/funding/FundingEarlyCloseCard";
+import { FundingManageTabs } from "@/components/funding/FundingManageTabs";
 import { supabase } from "@/lib/supabase";
 import { buildOrderSheet, buildQuantitySheet, exportFileDate, type OrderExportRow } from "@/lib/order-export";
 import { downloadBlob, downloadXlsx, safeFileName } from "@/lib/xlsx";
@@ -459,6 +460,8 @@ const FundingManager = () => {
             </Button>
           </div>
         </div>
+
+        <FundingManageTabs fundingId={funding.id} className="mb-6" />
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card className="rounded-lg">

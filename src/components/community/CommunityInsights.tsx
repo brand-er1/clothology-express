@@ -1,52 +1,52 @@
+import { useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
+import {
+  formatMagazineDate,
+  magazineArticles,
+  sortMagazineArticles,
+  type MagazineArticle,
+} from "@/data/magazineArticles";
 
-type PressArticle = {
-  title: string;
-  summary: string;
-  image: string;
-  source: string;
-  date: string;
-  href: string;
+/** 외부 기사는 새 탭, 내부 콘텐츠는 라우터 이동. */
+const ArticleLink = ({ article, className, children }: { article: MagazineArticle; className: string; children: ReactNode }) =>
+  article.type === "external" ? (
+    <a href={article.externalUrl} target="_blank" rel="noopener noreferrer" className={className}>
+      {children}
+    </a>
+  ) : (
+    <Link to={article.externalUrl} className={className}>
+      {children}
+    </Link>
+  );
+
+const sortedArticles = sortMagazineArticles(magazineArticles);
+
+/** 썸네일 로드 실패 시 언론사명이 들어간 브랜드 톤 플레이스홀더로 대체한다. */
+const ArticleThumbnail = ({ article, lead }: { article: MagazineArticle; lead: boolean }) => {
+  const [failed, setFailed] = useState(!article.thumbnail);
+  const ratio = lead ? "aspect-[4/3]" : "aspect-[16/10] lg:aspect-[4/3]";
+
+  if (failed) {
+    return (
+      <div className={`flex w-full items-center justify-center bg-brand/10 ${ratio}`} aria-hidden="true">
+        <span className="text-sm font-semibold tracking-[-0.02em] text-brand">{article.publisher}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={article.thumbnail}
+      alt={`${article.publisher} 기사 이미지`}
+      className={`img-zoom w-full object-cover ${ratio}`}
+      loading={lead ? "eager" : "lazy"}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
 };
-
-const pressArticles: PressArticle[] = [
-  {
-    title: "“18세부터 시작된 창업 도전”… BRAND-ER 김하성 대표, AI로 패션 산업의 문턱을 낮추다",
-    summary:
-      "구매대행과 의류 쇼핑몰 운영 경험에서 발견한 제작 현장의 문제를 AI 기반 의류 프로모션 플랫폼으로 해결해 온 김하성 대표의 창업 이야기입니다.",
-    image: "https://cdn.newsfinder.co.kr/news/thumbnail/202606/220437_225168_1236_v150.jpg",
-    source: "뉴스파인더",
-    date: "2026.06.06",
-    href: "http://www.newsfinder.co.kr/news/articleView.html?idxno=220437",
-  },
-  {
-    title: "AI 의류 프로모션 기업 브랜더, 라사라·루아트 패션학교와 협력 확대",
-    summary:
-      "패션 교육기관과의 협력을 통해 학생들의 졸업작품 제작과 브랜드 론칭을 지원하고, 신진 디자이너의 생산 진입장벽을 낮추는 BRAND-ER의 행보를 소개합니다.",
-    image: "https://cdn.gokorea.kr/news/thumbnail/202606/870763_147910_389_v150.jpg",
-    source: "공감신문",
-    date: "2026.06.30",
-    href: "https://www.gokorea.kr/news/articleView.html?idxno=870763",
-  },
-  {
-    title: "디큐베이터, ‘DeXplore 글로벌 청년 창업 아이디어 경진대회’ 성료…우수팀 사업화 지원",
-    summary:
-      "대학생 창업팀 11개 팀이 참여한 글로벌 청년 창업 아이디어 경진대회의 수상 결과와 후속 사업화 지원 계획을 다룬 기사로, BRAND-ER가 수상팀으로 소개됐습니다.",
-    image: "https://www.thevaluenews.co.kr/data/cheditor4/2502/bbed3bf147bcaac8670b45d4acc6ad4716634ce2.png",
-    source: "더밸류뉴스",
-    date: "2025.02.06",
-    href: "https://www.thevaluenews.co.kr/news/view.php?idx=188400",
-  },
-  {
-    title: "브랜더(BRAND-ER), AI 기반 의류 디자인·자동견적·상표분석으로 패션 창업 혁신",
-    summary:
-      "디자인 생성부터 제작 견적과 상표 분석까지 한곳에서 제공하는 BRAND-ER의 서비스를 소개하며, AI 자동견적 시스템의 특허 출원을 준비 중인 소식을 전합니다.",
-    image: "https://cdn.newsfinder.co.kr/news/thumbnail/202608/221368_226384_5731_v150.jpg",
-    source: "뉴스파인더",
-    date: "2026.08.02",
-    href: "http://www.newsfinder.co.kr/news/articleView.html?idxno=221368",
-  },
-];
 
 const CommunityInsights = () => {
   return (
@@ -63,38 +63,36 @@ const CommunityInsights = () => {
 
       {/* Magazine layout: the lead story takes half the width, the rest run as a narrower column. */}
       <div className="grid gap-10 sm:grid-cols-2 md:gap-8 lg:grid-cols-12">
-        {pressArticles.map((article, index) => (
-          <a
-            key={article.href}
-            href={article.href}
-            target="_blank"
-            rel="noreferrer"
+        {sortedArticles.map((article, index) => (
+          <ArticleLink
+            key={article.externalUrl}
+            article={article}
             className={`group block ${index === 0 ? "sm:col-span-2 lg:col-span-6 lg:row-span-3" : "lg:col-span-6 lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-6"}`}
           >
             <div className="overflow-hidden bg-stone-200">
-              <img
-                src={article.image}
-                alt={`${article.source} 기사 이미지`}
-                className={`img-zoom w-full object-cover ${index === 0 ? "aspect-[4/3]" : "aspect-[16/10] lg:aspect-[4/3]"}`}
-                loading={index === 0 ? "eager" : "lazy"}
-              />
+              <ArticleThumbnail article={article} lead={index === 0} />
             </div>
 
             <div className={index === 0 ? "pt-6" : "pt-5 lg:pt-0"}>
-              <div className="flex items-center gap-2 text-[11px] font-semibold text-stone-500">
-                <span className="text-brand">{article.source}</span>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-stone-500">
+                {article.type === "external" && (
+                  <span className="rounded-full border border-brand/30 bg-brand/5 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                    언론보도
+                  </span>
+                )}
+                <span className="text-brand">{article.publisher}</span>
                 <span className="text-stone-300">|</span>
-                <span>{article.date}</span>
+                <time dateTime={article.publishedAt}>{formatMagazineDate(article.publishedAt)}</time>
               </div>
-              <h3 className={`mt-3 font-semibold tracking-[-0.035em] text-stone-950 transition-colors group-hover:text-brand ${index === 0 ? "text-2xl leading-[1.3] sm:text-[2.1rem]" : "text-xl leading-[1.35] lg:line-clamp-3 lg:text-lg"}`}>
+              <h3 className={`mt-3 font-semibold tracking-[-0.035em] text-stone-950 transition-colors group-hover:text-brand ${index === 0 ? "line-clamp-3 text-2xl leading-[1.3] sm:text-[2.1rem]" : "line-clamp-3 text-xl leading-[1.35] lg:text-lg"}`}>
                 {article.title}
               </h3>
               <p className={`mt-3 text-sm leading-6 text-stone-600 ${index === 0 ? "" : "lg:line-clamp-2"}`}>{article.summary}</p>
-              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-950 transition-colors group-hover:text-brand">
-                기사 원문 보기 <ArrowUpRight className="h-4 w-4" />
+              <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-stone-950 px-4 py-2 text-sm font-semibold text-stone-950 transition-colors group-hover:border-brand group-hover:bg-brand group-hover:text-white">
+                {article.type === "external" ? "기사 보러가기" : "자세히 보기"} <ArrowUpRight className="h-4 w-4" />
               </span>
             </div>
-          </a>
+          </ArticleLink>
         ))}
       </div>
 

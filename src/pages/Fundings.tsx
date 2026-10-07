@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
-import { fetchApprovedFundings, fetchMyFundings } from "@/services/funding";
+import { fetchApprovedFundings, fetchMyFundings, fetchSuccessfulEarlyClosedFundings } from "@/services/funding";
+import { isEarlyCloseSuccess } from "@/lib/funding-close";
 import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { FreeTeeEventBanner } from "@/components/funding/FreeTeeEvent";
 import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 import { FundingProductCard, ProgressLine, formatWon } from "@/components/funding/FundingProductCard";
 import { Reveal } from "@/components/portfolio/ScrollReveal";
@@ -19,7 +19,8 @@ const statusLabel: Record<FundingStatus, string> = {
   closed: "판매 종료",
 };
 
-type CollectionFilter = "ALL" | "TOP" | "OUTER" | "BOTTOM" | "KNIT";
+// SUCCESS(펀딩 성공팀)는 옷 종류가 아니라 조기 마감으로 목표를 달성한 펀딩 모음이다.
+type CollectionFilter = "ALL" | "TOP" | "OUTER" | "BOTTOM" | "KNIT" | "SUCCESS";
 
 const collectionFilters: { value: CollectionFilter; label: string }[] = [
   { value: "ALL", label: "전체" },
@@ -27,9 +28,10 @@ const collectionFilters: { value: CollectionFilter; label: string }[] = [
   { value: "OUTER", label: "아우터" },
   { value: "BOTTOM", label: "하의" },
   { value: "KNIT", label: "니트" },
+  { value: "SUCCESS", label: "펀딩 성공팀" },
 ];
 
-const getCollectionFilter = (funding: Funding): CollectionFilter => {
+const getCollectionFilter = (funding: Funding): Exclude<CollectionFilter, "ALL" | "SUCCESS"> => {
   const type = funding.cloth_type.toLowerCase();
   if (/니트|knit/.test(type)) return "KNIT";
   if (/자켓|재킷|점퍼|패딩|베스트|outer|jacket/.test(type)) return "OUTER";
@@ -45,8 +47,10 @@ const FundingCards = ({
   isMine = false,
   highlightNewDrop = false,
   newDropIds,
+  emptyState = "collection",
 }: {
   fundings: Funding[];
+  emptyState?: "collection" | "success";
   isMine?: boolean;
   highlightNewDrop?: boolean;
   newDropIds: Set<string>;
@@ -56,8 +60,14 @@ const FundingCards = ({
       <div className="grid gap-8 border-t border-black/10 py-20 sm:py-28 lg:grid-cols-12">
         <p className="display-number text-[6rem] text-black/10 sm:text-[9rem] lg:col-span-4">00</p>
         <div className="lg:col-span-6 lg:col-start-6 lg:self-end">
-          <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#211b1c] sm:text-3xl">새로운 컬렉션을 준비하고 있습니다.</h3>
-          <p className="mt-3 text-sm leading-7 text-stone-500">곧 공개될 BRAND-ER의 다음 드롭을 기다려주세요.</p>
+          <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#211b1c] sm:text-3xl">
+            {emptyState === "success" ? "아직 조기 마감으로 성공한 펀딩이 없습니다." : "새로운 컬렉션을 준비하고 있습니다."}
+          </h3>
+          <p className="mt-3 text-sm leading-7 text-stone-500">
+            {emptyState === "success"
+              ? "목표를 달성하고 조기 마감한 펀딩이 이곳에 모입니다."
+              : "곧 공개될 BRAND-ER의 다음 드롭을 기다려주세요."}
+          </p>
           <Link to="/customize" className="cta-text mt-6">
             <span className="link-draw">내 디자인 출시하기</span> <ArrowRight className="h-4 w-4" />
           </Link>
@@ -84,7 +94,11 @@ const FundingCards = ({
               tutorialId={cardIndex === 0 ? "funding-card" : undefined}
               statusLabel={isMine ? statusLabel[funding.status] : undefined}
               badge={
-                highlightNewDrop && isDropItem ? (
+                isEarlyCloseSuccess(funding) ? (
+                  <span className="inline-flex items-center bg-brand px-2 py-1 text-[10px] font-bold tracking-[0.08em] text-white">
+                    펀딩 성공 · 조기 마감
+                  </span>
+                ) : highlightNewDrop && isDropItem ? (
                   <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white ${fireGradientClassName}`}>
                     <FlickerFlame className="h-3.5 w-3.5" />
                     Hot · Drop 01
@@ -104,6 +118,7 @@ const Fundings = () => {
   const initialFilter = searchParams.get("category");
   const [approved, setApproved] = useState<Funding[]>([]);
   const [mine, setMine] = useState<Funding[]>([]);
+  const [successful, setSuccessful] = useState<Funding[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<CollectionFilter>(
@@ -118,12 +133,17 @@ const Fundings = () => {
         const { data } = await supabase.auth.getSession();
         const signedIn = Boolean(data.session?.user);
         setIsAuthenticated(signedIn);
-        const [approvedData, myData] = await Promise.all([
+        const [approvedData, myData, successfulData] = await Promise.all([
           fetchApprovedFundings(),
           signedIn ? fetchMyFundings() : Promise.resolve([]),
+          fetchSuccessfulEarlyClosedFundings().catch((error) => {
+            console.error("Failed to load successful fundings:", error);
+            return [] as Funding[];
+          }),
         ]);
         setApproved(approvedData);
         setMine(myData);
+        setSuccessful(successfulData);
       } catch (error) {
         console.error("Failed to load fundings:", error);
       } finally {
@@ -135,19 +155,27 @@ const Fundings = () => {
   }, []);
 
   const visibleFundings = useMemo(() => {
+    if (activeFilter === "SUCCESS") return view === "mine" ? mine.filter(isEarlyCloseSuccess) : successful;
     const source = view === "mine" ? mine : approved;
     if (activeFilter === "ALL") return source;
     return source.filter((funding) => getCollectionFilter(funding) === activeFilter);
-  }, [activeFilter, approved, mine, view]);
+  }, [activeFilter, approved, mine, successful, view]);
 
   const filterCounts = useMemo(() => {
     const source = view === "mine" ? mine : approved;
-    const counts: Record<CollectionFilter, number> = { ALL: source.length, TOP: 0, OUTER: 0, BOTTOM: 0, KNIT: 0 };
+    const counts: Record<CollectionFilter, number> = {
+      ALL: source.length,
+      TOP: 0,
+      OUTER: 0,
+      BOTTOM: 0,
+      KNIT: 0,
+      SUCCESS: view === "mine" ? mine.filter(isEarlyCloseSuccess).length : successful.length,
+    };
     source.forEach((funding) => {
       counts[getCollectionFilter(funding)] += 1;
     });
     return counts;
-  }, [approved, mine, view]);
+  }, [approved, mine, successful, view]);
 
   const newDropCountdown = useNewDropCountdown();
   const newDropIds = useNewDropIds(approved);
@@ -157,7 +185,6 @@ const Fundings = () => {
     <div className="min-h-screen bg-[#f6f3ee] text-[#211b1c]">
       <Header />
       <main className="pb-24 pt-16 sm:pt-[72px]">
-        <FreeTeeEventBanner fundings={approved} />
         <NewDropEventBanner ctaHref="#collection" ctaLabel="NEW DROP 01 쇼핑하기" />
 
         {/* Masthead: title on the left, the featured piece large on the right — no framed boxes. */}
@@ -285,6 +312,7 @@ const Fundings = () => {
               isMine={view === "mine"}
               highlightNewDrop={Boolean(newDropCountdown) && view === "shop"}
               newDropIds={newDropIds}
+              emptyState={activeFilter === "SUCCESS" ? "success" : "collection"}
             />
           )}
         </section>

@@ -6,7 +6,6 @@ import { fetchApprovedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
-import { FreeTeeEventBanner } from "@/components/funding/FreeTeeEvent";
 import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 import { FundingProductCard } from "@/components/funding/FundingProductCard";
 import { Reveal, RevealImage } from "@/components/portfolio/ScrollReveal";
@@ -239,7 +238,6 @@ const Index = () => {
           </div>
         </section>
 
-        <FreeTeeEventBanner fundings={approvedFundings} />
         <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
 
         {/* NOW FUNDING — commerce grid set with an editorial stagger. */}

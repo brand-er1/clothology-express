@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { earlyCloseAchievementRate, getEarlyCloseResultLabel, isFundingRecruitmentOver } from "./funding-close";
+import {
+  earlyCloseAchievementRate,
+  getEarlyCloseResultLabel,
+  isEarlyCloseSuccess,
+  isFundingRecruitmentOver,
+} from "./funding-close";
 
 const base = {
   status: "approved" as const,
@@ -38,5 +43,13 @@ describe("earlyCloseAchievementRate", () => {
     expect(earlyCloseAchievementRate({ current_orders: 50, moq: 20 })).toBe(250);
     expect(earlyCloseAchievementRate({ current_orders: 18, moq: 30 })).toBe(60);
     expect(earlyCloseAchievementRate({ current_orders: 5, moq: 0 })).toBe(0);
+  });
+});
+
+describe("isEarlyCloseSuccess", () => {
+  it("only counts early-closed fundings the server marked successful", () => {
+    expect(isEarlyCloseSuccess({ early_closed: true, success_at: "2026-10-03T00:00:00.000Z" })).toBe(true);
+    expect(isEarlyCloseSuccess({ early_closed: true, success_at: null })).toBe(false);
+    expect(isEarlyCloseSuccess({ early_closed: false, success_at: "2026-10-03T00:00:00.000Z" })).toBe(false);
   });
 });

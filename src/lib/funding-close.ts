@@ -16,6 +16,10 @@ export const isFundingRecruitmentOver = (
   return funding.status === "approved" && endDate !== null && now >= endDate.getTime();
 };
 
+/** 조기 마감으로 목표를 달성한 펀딩인지(펀딩 성공팀). */
+export const isEarlyCloseSuccess = (funding: Pick<Funding, "early_closed" | "success_at">) =>
+  Boolean(funding.early_closed && funding.success_at);
+
 /** 조기 마감 결과 라벨. 성공 판정은 서버(success_at)가 한 값을 그대로 쓴다. */
 export const getEarlyCloseResultLabel = (funding: Pick<Funding, "success_at">) =>
   funding.success_at ? "펀딩 성공 · 조기 마감" : "목표 미달 · 조기 마감";

@@ -11,11 +11,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { FundingCheckoutDialog } from "@/components/funding/FundingCheckoutDialog";
-import { FreeTeeEventNotice, useLatestDropFunding } from "@/components/funding/FreeTeeEvent";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import {
-  fetchApprovedFundings,
   fetchFunding,
   getEarlyCloseResultLabel,
   getFundingEndDate,
@@ -85,8 +83,6 @@ const FundingDetail = () => {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [shippingPrefill, setShippingPrefill] = useState<Partial<ShippingDetails>>({});
   const stickyCtaRef = useMobileStickyCtaOffset();
-  const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
-  const latestDropId = useLatestDropFunding(approvedFundings)?.id ?? null;
   // AI detail page linked to this funding. null → the existing product UI below (fallback).
   const [detailPage, setDetailPage] = useState<ProductDetailPage | null>(null);
   // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
@@ -127,14 +123,8 @@ const FundingDetail = () => {
     const load = async () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
-        // The approved list only decides whether this is the free-tee event drop; load it
-        // alongside the product so the event notice doesn't shift the page after first paint.
-        const [fundingData, approvedList, colorRows] = await Promise.all([
+        const [fundingData, colorRows] = await Promise.all([
           fetchFunding(id),
-          fetchApprovedFundings().catch((error) => {
-            console.error("Failed to load latest drop for free tee event:", error);
-            return [] as Funding[];
-          }),
           fetchFundingColors(id).catch((error) => {
             console.error("Failed to load funding colors:", error);
             return [] as FundingColor[];
@@ -144,7 +134,6 @@ const FundingDetail = () => {
         const user = sessionData.session?.user || null;
         setCurrentUserId(user?.id || null);
         setFunding(fundingData);
-        setApprovedFundings(approvedList);
 
         if (user) {
           const { data: profile } = await supabase
@@ -260,7 +249,6 @@ const FundingDetail = () => {
   const closedLabel = isEarlyClosed ? getEarlyCloseResultLabel(funding) : funding.success_at ? "펀딩 성공 · 종료" : "펀딩 종료";
   // 미리보기에서는 작성자용 버튼을 숨겨 구매자 화면과 같게 보여준다.
   const isCreator = currentUserId === funding.creator_id && !draftPreview;
-  const isFreeTeeEventItem = !isPreview && !isClosed && funding.id === latestDropId;
   const totalPrice = (funding.price || 0) * quantity;
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
   const customerDescription = getCustomerDescription(funding);
@@ -398,7 +386,6 @@ const FundingDetail = () => {
             <p className="mt-7 text-2xl font-semibold tracking-[-0.02em]" data-tutorial="funding-detail-price">
               {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
             </p>
-            {isFreeTeeEventItem && <FreeTeeEventNotice className="mt-4" />}
 
             <div className="mt-8 border-t border-black/10 pt-6" data-tutorial="funding-detail-progress">
               <div className="flex items-end justify-between gap-4">
@@ -742,7 +729,6 @@ const FundingDetail = () => {
         size={selectedSize}
         quantity={quantity}
         prefill={shippingPrefill}
-        freeTeeEvent={isFreeTeeEventItem}
       />
     </div>
   );

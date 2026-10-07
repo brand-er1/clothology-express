@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Header } from "@/components/Header";
-import { fetchApprovedFundings } from "@/services/funding";
+import { fetchApprovedFundings, fetchSuccessfulEarlyClosedFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
-import { FreeTeeEventBanner } from "@/components/funding/FreeTeeEvent";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
+import { NewDropEventBanner, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 import { FundingProductCard } from "@/components/funding/FundingProductCard";
 import { Reveal, RevealImage } from "@/components/portfolio/ScrollReveal";
 
@@ -72,6 +71,7 @@ const categories = [
   { name: "TOPS", label: "상의", note: "매일 입는 새로운 기본", filter: "TOP", image: "/portfolio/rolled-hem-long-sleeve.webp" },
   { name: "KNIT", label: "니트", note: "부드럽고 여유로운 형태", filter: "KNIT", image: "/portfolio/rib-half-zip.webp" },
   { name: "BOTTOMS", label: "하의", note: "움직임을 위한 균형", filter: "BOTTOM", image: "/portfolio/wide-trousers.webp" },
+  { name: "SUCCESS", label: "펀딩 성공팀", note: "조기 마감으로 목표 달성", filter: "SUCCESS", image: "/portfolio/studded-hoodie.webp" },
 ];
 
 // The making story, told as one continuous sequence instead of four equal cards.
@@ -151,6 +151,8 @@ const Index = () => {
   const newDropCountdown = useNewDropCountdown();
   const isNewDropLive = newDropCountdown !== null;
   const newDropIds = useNewDropIds(approvedFundings);
+  // 펀딩 성공팀 카테고리 미리보기에는 가장 최근에 조기 마감으로 성공한 상품 이미지를 쓴다.
+  const [latestSuccessImage, setLatestSuccessImage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -161,6 +163,14 @@ const Index = () => {
       })
       .catch((error) => {
         console.error("Failed to load homepage collection:", error);
+      });
+
+    fetchSuccessfulEarlyClosedFundings()
+      .then((fundings) => {
+        if (active) setLatestSuccessImage(fundings[0]?.image_url || null);
+      })
+      .catch((error) => {
+        console.error("Failed to load successful fundings:", error);
       });
 
     return () => {
@@ -239,7 +249,6 @@ const Index = () => {
           </div>
         </section>
 
-        <FreeTeeEventBanner fundings={approvedFundings} />
         <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
 
         {/* NOW FUNDING — commerce grid set with an editorial stagger. */}
@@ -281,9 +290,8 @@ const Index = () => {
                     titleSize={isLead ? "lg" : "md"}
                     badge={
                       isNewDropLive && isDropItem ? (
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-white sm:text-[10px] ${fireGradientClassName}`}>
-                          <FlickerFlame className="h-3 w-3" />
-                          Hot · Drop 01
+                        <span className="inline-flex items-center bg-brand px-2 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-white sm:text-[10px]">
+                          Drop 01
                         </span>
                       ) : (
                         <span className="font-display text-[10px] font-semibold tracking-[0.2em] text-stone-500">
@@ -449,7 +457,12 @@ const Index = () => {
                       <span className="block text-xs text-stone-400">{category.note}</span>
                     </span>
                     <span className="pointer-events-none absolute right-[22%] top-1/2 hidden h-36 w-28 -translate-y-1/2 overflow-hidden bg-[#ebe7e1] opacity-0 transition-opacity duration-500 group-hover:opacity-100 lg:block">
-                      <img src={getAppPath(category.image)} alt="" loading="lazy" className="h-full w-full object-contain p-2" />
+                      <img
+                        src={category.filter === "SUCCESS" && latestSuccessImage ? latestSuccessImage : getAppPath(category.image)}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-contain p-2"
+                      />
                     </span>
                     <ArrowUpRight className="ml-auto h-5 w-5 shrink-0 text-stone-400 transition-colors group-hover:text-brand sm:ml-0" strokeWidth={1.5} />
                   </Link>

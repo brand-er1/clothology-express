@@ -6,7 +6,7 @@ import { fetchApprovedFundings, fetchSuccessfulEarlyClosedFundings } from "@/ser
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
+import { NewDropEventBanner, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 import { FundingProductCard } from "@/components/funding/FundingProductCard";
 import { Reveal, RevealImage } from "@/components/portfolio/ScrollReveal";
 
@@ -290,9 +290,8 @@ const Index = () => {
                     titleSize={isLead ? "lg" : "md"}
                     badge={
                       isNewDropLive && isDropItem ? (
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-white sm:text-[10px] ${fireGradientClassName}`}>
-                          <FlickerFlame className="h-3 w-3" />
-                          Hot · Drop 01
+                        <span className="inline-flex items-center bg-brand px-2 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-white sm:text-[10px]">
+                          Drop 01
                         </span>
                       ) : (
                         <span className="font-display text-[10px] font-semibold tracking-[0.2em] text-stone-500">

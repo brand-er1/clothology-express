@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Flame } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 // NEW DROP 01 런칭 이벤트 종료 시각 (KST 10월 10일 자정 직전)
 export const NEW_DROP_EVENT_END = new Date("2026-10-10T23:59:59+09:00");
@@ -67,17 +67,6 @@ const tickerItems = [
   "선주문 한정 수량",
   "MADE IN KOREA",
 ];
-
-// 불꽃 그라데이션 (브랜드 버건디 → 레드 → 오렌지)
-export const fireGradientClassName =
-  "bg-[linear-gradient(90deg,#741b2b,#c81e3a,#f97316,#c81e3a,#741b2b)] bg-[length:200%_100%] animate-fire-shift motion-reduce:animate-none";
-
-export const FlickerFlame = ({ className = "h-4 w-4" }: { className?: string }) => (
-  <Flame
-    aria-hidden
-    className={`${className} shrink-0 origin-bottom animate-flicker fill-amber-300 text-amber-200 drop-shadow-[0_0_6px_rgba(251,146,60,0.9)] motion-reduce:animate-none`}
-  />
-);
 
 export const NewDropTicker = () => {
   const items = [...tickerItems, ...tickerItems];

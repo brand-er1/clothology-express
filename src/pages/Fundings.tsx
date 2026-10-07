@@ -7,7 +7,7 @@ import { isEarlyCloseSuccess } from "@/lib/funding-close";
 import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { FlickerFlame, NewDropEventBanner, fireGradientClassName, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
+import { NewDropEventBanner, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 import { FundingProductCard, ProgressLine, formatWon } from "@/components/funding/FundingProductCard";
 import { Reveal } from "@/components/portfolio/ScrollReveal";
 
@@ -99,9 +99,8 @@ const FundingCards = ({
                     펀딩 성공 · 조기 마감
                   </span>
                 ) : highlightNewDrop && isDropItem ? (
-                  <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white ${fireGradientClassName}`}>
-                    <FlickerFlame className="h-3.5 w-3.5" />
-                    Hot · Drop 01
+                  <span className="inline-flex items-center bg-brand px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                    Drop 01
                   </span>
                 ) : undefined
               }

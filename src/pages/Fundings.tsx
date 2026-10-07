@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
-import { fetchApprovedFundings, fetchMyFundings, fetchSuccessfulEarlyClosedFundings } from "@/services/funding";
+import { fetchApprovedFundings, fetchMyFundings, fetchSuccessfulFundings } from "@/services/funding";
 import { isEarlyCloseSuccess } from "@/lib/funding-close";
+import { isFundingSucceeded } from "@/lib/funding-success-stories";
 import { supabase } from "@/lib/supabase";
 import type { Funding, FundingStatus } from "@/types/funding";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -19,7 +20,7 @@ const statusLabel: Record<FundingStatus, string> = {
   closed: "판매 종료",
 };
 
-// SUCCESS(펀딩 성공팀)는 옷 종류가 아니라 조기 마감으로 목표를 달성한 펀딩 모음이다.
+// SUCCESS(펀딩 성공팀)는 옷 종류가 아니라 목표를 달성한 펀딩 모음이다(조기 마감 여부 무관).
 type CollectionFilter = "ALL" | "TOP" | "OUTER" | "BOTTOM" | "KNIT" | "SUCCESS";
 
 const collectionFilters: { value: CollectionFilter; label: string }[] = [
@@ -61,11 +62,11 @@ const FundingCards = ({
         <p className="display-number text-[6rem] text-black/10 sm:text-[9rem] lg:col-span-4">00</p>
         <div className="lg:col-span-6 lg:col-start-6 lg:self-end">
           <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#211b1c] sm:text-3xl">
-            {emptyState === "success" ? "아직 조기 마감으로 성공한 펀딩이 없습니다." : "새로운 컬렉션을 준비하고 있습니다."}
+            {emptyState === "success" ? "아직 목표를 달성한 펀딩이 없습니다." : "새로운 컬렉션을 준비하고 있습니다."}
           </h3>
           <p className="mt-3 text-sm leading-7 text-stone-500">
             {emptyState === "success"
-              ? "목표를 달성하고 조기 마감한 펀딩이 이곳에 모입니다."
+              ? "목표 수량을 달성한 펀딩이 이곳에 모입니다."
               : "곧 공개될 BRAND-ER의 다음 드롭을 기다려주세요."}
           </p>
           <Link to="/customize" className="cta-text mt-6">
@@ -97,6 +98,10 @@ const FundingCards = ({
                 isEarlyCloseSuccess(funding) ? (
                   <span className="inline-flex items-center bg-brand px-2 py-1 text-[10px] font-bold tracking-[0.08em] text-white">
                     펀딩 성공 · 조기 마감
+                  </span>
+                ) : isFundingSucceeded(funding) ? (
+                  <span className="inline-flex items-center bg-brand px-2 py-1 text-[10px] font-bold tracking-[0.08em] text-white">
+                    펀딩 성공
                   </span>
                 ) : highlightNewDrop && isDropItem ? (
                   <span className="inline-flex items-center bg-brand px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
@@ -135,7 +140,7 @@ const Fundings = () => {
         const [approvedData, myData, successfulData] = await Promise.all([
           fetchApprovedFundings(),
           signedIn ? fetchMyFundings() : Promise.resolve([]),
-          fetchSuccessfulEarlyClosedFundings().catch((error) => {
+          fetchSuccessfulFundings().catch((error) => {
             console.error("Failed to load successful fundings:", error);
             return [] as Funding[];
           }),
@@ -154,7 +159,7 @@ const Fundings = () => {
   }, []);
 
   const visibleFundings = useMemo(() => {
-    if (activeFilter === "SUCCESS") return view === "mine" ? mine.filter(isEarlyCloseSuccess) : successful;
+    if (activeFilter === "SUCCESS") return view === "mine" ? mine.filter(isFundingSucceeded) : successful;
     const source = view === "mine" ? mine : approved;
     if (activeFilter === "ALL") return source;
     return source.filter((funding) => getCollectionFilter(funding) === activeFilter);
@@ -168,7 +173,7 @@ const Fundings = () => {
       OUTER: 0,
       BOTTOM: 0,
       KNIT: 0,
-      SUCCESS: view === "mine" ? mine.filter(isEarlyCloseSuccess).length : successful.length,
+      SUCCESS: view === "mine" ? mine.filter(isFundingSucceeded).length : successful.length,
     };
     source.forEach((funding) => {
       counts[getCollectionFilter(funding)] += 1;

@@ -166,6 +166,25 @@ export const fetchSuccessfulEarlyClosedFundings = async (): Promise<Funding[]> =
   return (data || []) as Funding[];
 };
 
+/**
+ * 메인 '펀딩 성공팀' 노출 대상. 서버가 기록한 success_at 이 있는 공개 펀딩 중 관리자가
+ * '펀딩 성공팀에 노출'을 켠 것만 가져온다. 정렬·표시값 계산은 buildFundingSuccessStories 가 한다.
+ */
+export const fetchFundingSuccessShowcase = async (): Promise<Funding[]> => {
+  const { data, error } = await supabase
+    .from("fundings")
+    .select(FUNDING_WITH_BRAND_SELECT)
+    .in("status", ["approved", "closed"])
+    .eq("is_hidden", false)
+    .eq("success_showcase_visible", true)
+    .not("success_at", "is", null)
+    .order("success_at", { ascending: false })
+    .limit(24);
+
+  if (error) throw error;
+  return (data || []) as Funding[];
+};
+
 export const fetchMyFundings = async (): Promise<Funding[]> => {
   const user = await requireUser();
   const { data, error } = await supabase

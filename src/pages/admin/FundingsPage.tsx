@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Flag, PauseCircle, PlayCircle, StopCircle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Eye, EyeOff, Flag, PauseCircle, PlayCircle, StopCircle, ThumbsDown, ThumbsUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { adminRpc, fetchFundingClosures, totalOf, type EarlyCloseLogRow, type FundingClosureRow, type FundingRow } from "@/services/adminApi";
 import { supabase } from "@/lib/supabase";
@@ -22,7 +24,7 @@ const PAGE = 30;
 const PHASES = ["all", "pending", "funding", "approved", "succeeded", "failed", "in_production", "shipping", "completed", "suspended", "rejected"] as const;
 
 type Detail = {
-  funding: Record<string, unknown> & { id: string; product_name: string; image_url: string; description: string | null; cloth_type: string; material: string; moq: number; price: number | null; current_orders: number; status: string; is_hidden: boolean; suspended_at: string | null; suspension_reason: string | null; admin_comment: string | null; reviewed_at: string | null; created_at: string; color_options: string[]; size_options: string[]; production_status: string | null };
+  funding: Record<string, unknown> & { id: string; product_name: string; image_url: string; description: string | null; cloth_type: string; material: string; moq: number; price: number | null; current_orders: number; status: string; is_hidden: boolean; suspended_at: string | null; suspension_reason: string | null; admin_comment: string | null; reviewed_at: string | null; created_at: string; color_options: string[]; size_options: string[]; production_status: string | null; success_at?: string | null; final_quantity?: number | null; success_showcase_visible?: boolean; success_showcase_category?: string | null; success_showcase_rate?: number | null; success_showcase_summary?: string | null };
   phase: string; end_at: string | null;
   creator: { display_name: string } | null; creator_email: string | null;
   brand: { brand_name: string; status: string } | null;
@@ -56,6 +58,7 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
   const manage = can("fundings.manage");
   const [dialog, setDialog] = useState<ReasonDialogState>(null);
   const reviewValues = useRef({ moq: 0, price: 0 });
+  const showcaseValues = useRef({ visible: true, category: "", rate: "", summary: "" });
   const notifyRef = useRef(true);
   const { data, loading, error, reload } = useAdminQuery(
     () => (fundingId ? adminRpc<Detail>("admin_get_funding_detail", { p_funding_id: fundingId }) : Promise.resolve(null)), [fundingId],
@@ -96,6 +99,45 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
         p_moq: reviewValues.current.moq, p_price: reviewValues.current.price,
       }),
       successMessage: "펀딩을 승인했습니다",
+    });
+  };
+
+  // 펀딩 성공팀 노출 설정: 성공(success_at)한 펀딩만 대상. 대표 이미지·브랜드 정보는 기존 펀딩 데이터를 그대로 쓴다.
+  const openSuccessShowcase = (visible: boolean) => {
+    if (!f) return;
+    showcaseValues.current = {
+      visible,
+      category: f.success_showcase_category ?? "",
+      rate: f.success_showcase_rate != null ? String(f.success_showcase_rate) : "",
+      summary: f.success_showcase_summary ?? "",
+    };
+    setDialog({
+      title: "펀딩 성공팀 노출 설정", confirmLabel: "저장", reasonRequired: false, reasonLabel: "변경 메모(선택)",
+      description: "ON 이면 메인페이지 '펀딩 성공팀'에 최근 성공순으로 노출됩니다. 비워 둔 항목은 기존 펀딩 데이터로 표시됩니다.",
+      extra: (
+        <div className="grid gap-3">
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-3 py-2.5 text-sm font-bold">
+            펀딩 성공팀에 노출
+            <Switch defaultChecked={visible} onCheckedChange={(v) => { showcaseValues.current.visible = v; }} />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="grid gap-1 text-xs font-bold text-stone-600">카테고리 표시
+              <Input maxLength={40} placeholder={f.cloth_type} defaultValue={showcaseValues.current.category} onChange={(e) => { showcaseValues.current.category = e.target.value; }} /></label>
+            <label className="grid gap-1 text-xs font-bold text-stone-600">표시 달성률(%)
+              <Input type="number" min={0} step="0.1" placeholder={String(f.moq ? Math.round(((f.final_quantity ?? f.current_orders) / f.moq) * 100) : 0)} defaultValue={showcaseValues.current.rate} onChange={(e) => { showcaseValues.current.rate = e.target.value; }} /></label>
+          </div>
+          <label className="grid gap-1 text-xs font-bold text-stone-600">성공 스토리 소개(선택)
+            <Textarea rows={3} maxLength={1000} defaultValue={showcaseValues.current.summary} onChange={(e) => { showcaseValues.current.summary = e.target.value; }} /></label>
+        </div>
+      ),
+      onConfirm: (reason) => {
+        const { visible: nextVisible, category, rate, summary } = showcaseValues.current;
+        return adminRpc("admin_set_funding_success_showcase", {
+          p_funding_id: f.id, p_visible: nextVisible, p_category: category.trim() || null,
+          p_rate: rate.trim() === "" ? null : Number(rate), p_summary: summary.trim() || null, p_reason: reason || null,
+        });
+      },
+      successMessage: "펀딩 성공팀 노출 설정을 저장했습니다",
     });
   };
 
@@ -179,6 +221,21 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
             )}
             {f.suspended_at && <Notice>운영 중단 · {dateTime(f.suspended_at)} · 사유: {f.suspension_reason}</Notice>}
             {closure.data?.close_type && <FundingClosurePanel closure={closure.data} creatorName={data.creator?.display_name ?? null} creatorEmail={data.creator_email} />}
+            {f.success_at && (
+              <Panel title={<div className="flex flex-wrap items-center gap-2"><Trophy className="h-4 w-4 text-[#741b2b]" />펀딩 성공팀 {f.success_showcase_visible !== false ? <StatusBadge tone="wine">노출 중</StatusBadge> : <StatusBadge>미노출</StatusBadge>}</div>}
+                description={`목표 달성 ${dateTime(f.success_at)} · 메인페이지 '펀딩 성공팀' 노출 여부`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <label className="flex items-center gap-3 text-sm font-bold">
+                    <Switch checked={f.success_showcase_visible !== false} disabled={!manage} onCheckedChange={(v) => openSuccessShowcase(v)} />
+                    펀딩 성공팀에 노출
+                  </label>
+                  {manage && <Button size="sm" variant="outline" onClick={() => openSuccessShowcase(f.success_showcase_visible !== false)}>표시 정보 편집</Button>}
+                </div>
+                <p className="mt-2 text-xs text-stone-500">
+                  카테고리 {f.success_showcase_category || f.cloth_type} · 달성률 {f.success_showcase_rate != null ? `${num(Number(f.success_showcase_rate))}% (지정값)` : `${pct(f.moq ? ((f.final_quantity ?? f.current_orders) / f.moq) * 100 : 0)} (자동 계산)`}
+                </p>
+              </Panel>
+            )}
             {data.trademark && data.trademark.decision !== "clear" && <Notice>상표 검수: {data.trademark.decision} — {data.trademark.reason}</Notice>}
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

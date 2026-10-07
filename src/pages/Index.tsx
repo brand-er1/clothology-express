@@ -8,6 +8,7 @@ import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
 import { NewDropEventBanner, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds } from "@/components/funding/NewDropPromo";
 import { FundingProductCard } from "@/components/funding/FundingProductCard";
+import { FundingSuccessShowcase } from "@/components/funding/FundingSuccessShowcase";
 import { Reveal, RevealImage } from "@/components/portfolio/ScrollReveal";
 
 type CollectionItem = Pick<
@@ -309,6 +310,9 @@ const Index = () => {
             <span className="link-draw">전체 컬렉션 보기</span> <ArrowRight className="h-4 w-4" />
           </Link>
         </section>
+
+        {/* FUNDING SUCCESS — 실제로 펀딩에 성공한 브랜드. 최근 성공팀부터 노출된다. */}
+        <FundingSuccessShowcase />
 
         {/* PROCESS — one story read left to right (stacked on mobile). Numbers carry the rhythm. */}
         <section className="pb-24 sm:pb-32 lg:pb-44">

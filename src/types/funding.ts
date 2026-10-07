@@ -99,6 +99,12 @@ export type Funding = {
   funding_status?: "funding" | "success" | "production";
   success_at?: string | null;
   final_quantity?: number | null;
+  success_participant_count?: number | null;
+  /** 펀딩 성공팀 노출 설정. 관리자 RPC(admin_set_funding_success_showcase)만 변경한다. */
+  success_showcase_visible?: boolean;
+  success_showcase_category?: string | null;
+  success_showcase_rate?: number | null;
+  success_showcase_summary?: string | null;
   /** 제작자 조기 마감 기록. 서버 함수(creator_early_close_funding)만 변경한다. */
   early_closed?: boolean;
   early_closed_at?: string | null;
@@ -106,6 +112,28 @@ export type Funding = {
   early_closed_quantity?: number | null;
   closed_at?: string | null;
   suspended_at?: string | null;
+  is_hidden?: boolean;
+  production_status?: string | null;
+  production_updated_at?: string | null;
+};
+
+/** 메인 '펀딩 성공팀' 카드·성공 스토리 한 건. 기존 펀딩 행에서 만들어지며 별도로 저장하지 않는다. */
+export type FundingSuccessStory = {
+  fundingId: string;
+  brandName: string;
+  brandLogo: string | null;
+  productName: string;
+  thumbnail: string;
+  category: string;
+  /** 달성률(%). 관리자 표시값이 있으면 그 값, 없으면 최종 수량 / 목표 수량. */
+  fundingRate: number;
+  fundingAmount: number | null;
+  participantCount: number | null;
+  /** 성공 시각(success_at). 최신순 정렬 기준. */
+  completedAt: string;
+  description: string | null;
+  status: "success";
+  funding: Funding;
 };
 
 export type EarlyCloseFundingResult = {

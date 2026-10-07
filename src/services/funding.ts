@@ -151,16 +151,18 @@ export const fetchApprovedFundings = async (): Promise<Funding[]> => {
   return (data || []) as Funding[];
 };
 
-/** 조기 마감으로 목표를 달성한 펀딩(펀딩 성공팀). 성공 판정은 서버가 기록한 success_at 을 따른다. */
-export const fetchSuccessfulEarlyClosedFundings = async (): Promise<Funding[]> => {
+/**
+ * 목표를 달성한 공개 펀딩(SHOP '펀딩 성공팀'). 조기 마감 여부와 관계없이 서버가 기록한 success_at 으로
+ * 판정하며, 메인 '펀딩 성공팀' 섹션과 같은 기준이다. 최근 성공순.
+ */
+export const fetchSuccessfulFundings = async (): Promise<Funding[]> => {
   const { data, error } = await supabase
     .from("fundings")
     .select(FUNDING_WITH_BRAND_SELECT)
-    .eq("status", "closed")
-    .eq("early_closed", true)
+    .in("status", ["approved", "closed"])
     .eq("is_hidden", false)
     .not("success_at", "is", null)
-    .order("early_closed_at", { ascending: false });
+    .order("success_at", { ascending: false });
 
   if (error) throw error;
   return (data || []) as Funding[];

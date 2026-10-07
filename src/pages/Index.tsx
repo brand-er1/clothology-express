@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Header } from "@/components/Header";
-import { fetchApprovedFundings, fetchSuccessfulEarlyClosedFundings } from "@/services/funding";
+import { fetchApprovedFundings, fetchSuccessfulFundings } from "@/services/funding";
 import type { Funding } from "@/types/funding";
 import { getAppPath } from "@/utils/appUrl";
 import { portfolioProducts } from "@/data/portfolioProducts";
@@ -72,7 +72,7 @@ const categories = [
   { name: "TOPS", label: "상의", note: "매일 입는 새로운 기본", filter: "TOP", image: "/portfolio/rolled-hem-long-sleeve.webp" },
   { name: "KNIT", label: "니트", note: "부드럽고 여유로운 형태", filter: "KNIT", image: "/portfolio/rib-half-zip.webp" },
   { name: "BOTTOMS", label: "하의", note: "움직임을 위한 균형", filter: "BOTTOM", image: "/portfolio/wide-trousers.webp" },
-  { name: "SUCCESS", label: "펀딩 성공팀", note: "조기 마감으로 목표 달성", filter: "SUCCESS", image: "/portfolio/studded-hoodie.webp" },
+  { name: "SUCCESS", label: "펀딩 성공팀", note: "목표 수량 달성", filter: "SUCCESS", image: "/portfolio/studded-hoodie.webp" },
 ];
 
 // The making story, told as one continuous sequence instead of four equal cards.
@@ -152,7 +152,7 @@ const Index = () => {
   const newDropCountdown = useNewDropCountdown();
   const isNewDropLive = newDropCountdown !== null;
   const newDropIds = useNewDropIds(approvedFundings);
-  // 펀딩 성공팀 카테고리 미리보기에는 가장 최근에 조기 마감으로 성공한 상품 이미지를 쓴다.
+  // 펀딩 성공팀 카테고리 미리보기에는 가장 최근에 목표를 달성한 상품 이미지를 쓴다.
   const [latestSuccessImage, setLatestSuccessImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -166,7 +166,7 @@ const Index = () => {
         console.error("Failed to load homepage collection:", error);
       });
 
-    fetchSuccessfulEarlyClosedFundings()
+    fetchSuccessfulFundings()
       .then((fundings) => {
         if (active) setLatestSuccessImage(fundings[0]?.image_url || null);
       })

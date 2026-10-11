@@ -1,3 +1,4 @@
+import { ProductionOverview } from "@/components/seo/ProductionOverview";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
@@ -524,6 +525,7 @@ const Index = () => {
             </div>
           </div>
         </section>
+        <ProductionOverview />
       </main>
     </div>
   );

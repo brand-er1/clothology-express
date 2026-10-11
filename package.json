@@ -10,7 +10,9 @@
     "generate:models": "node scripts/generate-garment-models.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prebuild": "node scripts/seo/generate-public-guides.mjs",
+    "prebuild:dev": "node scripts/seo/generate-public-guides.mjs"
   },
   "dependencies": {
     "@fal-ai/serverless-client": "^0.9.0",

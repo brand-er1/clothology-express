@@ -1,4 +1,4 @@
+# Project reference only: crawler rules must be served at the host root.
 User-agent: *
 Allow: /
-
-Sitemap: https://brand-er.store/sitemap.xml
+Sitemap: https://brand-er1.github.io/clothology-express/sitemap.xml

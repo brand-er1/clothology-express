@@ -5,15 +5,14 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
-  MAX_REVIEW_IMAGES, REVIEW_BLOCK_LABEL, createFundingInquiry, createFundingReview, deleteMyFundingReview,
-  fetchFundingReviews, fetchMyFundingInquiries, fetchMyReviewEligibility, reviewImageUrl, validateReviewImage,
-  type FundingInquiry, type FundingReview, type ReviewEligibility, type ReviewSort, type ReviewSummary,
+  MAX_REVIEW_IMAGES, REVIEW_BLOCK_LABEL, createFundingReview, deleteMyFundingReview,
+  fetchFundingReviews, fetchMyReviewEligibility, reviewImageUrl, validateReviewImage,
+  type FundingReview, type ReviewEligibility, type ReviewSort, type ReviewSummary,
 } from "@/services/fundingReviews";
 
 const PAGE_SIZE = 10;
@@ -24,9 +23,6 @@ const SORTS: { value: ReviewSort; label: string }[] = [
   { value: "rating_asc", label: "별점 낮은순" },
 ];
 
-const INQUIRY_STATUS: Record<FundingInquiry["status"], string> = {
-  open: "접수", in_progress: "확인 중", waiting_customer: "답변 대기", resolved: "답변 완료", closed: "종료",
-};
 
 export const Stars = ({ value, className }: { value: number; className?: string }) => (
   <span className={cn("inline-flex items-center gap-0.5", className)} aria-label={`별점 ${value}점`}>
@@ -388,84 +384,6 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
       )}
 
       <ReviewWriteDialog order={writing} onClose={() => setWriting(null)} onCreated={() => void load()} />
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// 문의 (기존 CS 문의로 접수)
-// ---------------------------------------------------------------------------
-
-export const FundingInquiryPanel = ({ fundingId, loginReturnTo }: { fundingId: string; loginReturnTo: string }) => {
-  const [items, setItems] = useState<FundingInquiry[]>([]);
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
-  const [subject, setSubject] = useState("");
-  const [content, setContent] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const load = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    setLoggedIn(Boolean(data.session));
-    if (data.session) setItems(await fetchMyFundingInquiries(fundingId).catch(() => []));
-  }, [fundingId]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const invalid = subject.trim().length < 2 || content.trim().length < 2;
-  const submit = async () => {
-    if (invalid) return;
-    setSaving(true);
-    try {
-      await createFundingInquiry(fundingId, subject.trim(), content.trim());
-      setSubject(""); setContent("");
-      toast({ title: "문의를 접수했습니다", description: "BRAND-ER 고객센터에서 확인 후 안내드립니다." });
-      void load();
-    } catch (error) {
-      toast({ title: "문의를 접수하지 못했습니다", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loggedIn === false) {
-    return (
-      <div className="py-12 text-center text-sm text-stone-500">
-        상품·사이즈·배송 문의는 <Link to={loginReturnTo} className="font-semibold text-brand underline-offset-4 hover:underline">로그인</Link> 후 남길 수 있습니다.
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="grid gap-3">
-        <p className="text-sm text-stone-500">문의는 비공개로 BRAND-ER 고객센터에 접수되며, 확인 후 안내드립니다.</p>
-        <Input value={subject} onChange={(event) => setSubject(event.target.value.slice(0, 200))} placeholder="제목 (예: 사이즈 문의)" aria-label="문의 제목" className="rounded-none border-black/15 bg-white" />
-        <Textarea value={content} onChange={(event) => setContent(event.target.value.slice(0, 5000))} rows={5} placeholder="문의 내용을 입력해주세요." aria-label="문의 내용" className="rounded-none border-black/15 bg-white" />
-        <Button className="w-full rounded-none bg-brand hover:bg-brand-dark sm:w-auto sm:justify-self-end" disabled={saving || invalid} onClick={() => void submit()}>
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}문의 남기기
-        </Button>
-      </div>
-      <div>
-        <p className="text-sm font-semibold">내 문의 내역</p>
-        {items.length === 0 ? (
-          <p className="mt-3 text-sm text-stone-400">이 펀딩에 남긴 문의가 없습니다.</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-black/10 border-y border-black/10">
-            {items.map((item) => (
-              <li key={item.id} className="py-3 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-wrap-anywhere font-semibold">{item.subject}</p>
-                  <span className={cn("shrink-0 px-1.5 py-0.5 text-[11px] font-bold", ["resolved", "closed"].includes(item.status) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>
-                    {INQUIRY_STATUS[item.status] ?? item.status}
-                  </span>
-                </div>
-                <p className="text-wrap-anywhere mt-1 line-clamp-2 text-stone-500">{item.content}</p>
-                <p className="mt-1 text-xs text-stone-400">{new Date(item.created_at).toLocaleDateString("ko-KR")}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
     </div>
   );
 };

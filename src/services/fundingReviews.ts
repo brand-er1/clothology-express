@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 
-// 펀딩 리뷰 · 문의. 작성 권한(실제 구매·결제 완료·미취소·배송 완료·주문당 1개)은
+// 펀딩 리뷰. 작성 권한(실제 구매·결제 완료·미취소·배송 완료·주문당 1개)은
 // 서버 RPC 와 DB 트리거가 매번 다시 검증하므로 이 파일은 권한을 판단하지 않는다.
 
 export type ReviewSort = "latest" | "rating_desc" | "rating_asc";
@@ -37,14 +37,6 @@ export type ReviewEligibility = {
   review_id: string | null;
 };
 
-export type FundingInquiry = {
-  id: string;
-  subject: string;
-  content: string;
-  status: "open" | "in_progress" | "waiting_customer" | "resolved" | "closed";
-  created_at: string;
-  resolved_at: string | null;
-};
 
 export const REVIEW_BUCKET = "funding-reviews";
 export const MAX_REVIEW_IMAGES = 5;
@@ -127,18 +119,7 @@ export const deleteMyFundingReview = async (reviewId: string) => {
   if (error) fail(error, "리뷰를 삭제하지 못했습니다.");
 };
 
-export const createFundingInquiry = async (fundingId: string, subject: string, content: string) => {
-  const { error } = await rpc("create_funding_inquiry", { p_funding_id: fundingId, p_subject: subject, p_content: content });
-  if (error) fail(error, "문의를 등록하지 못했습니다.");
-};
 
-export const fetchMyFundingInquiries = async (fundingId: string): Promise<FundingInquiry[]> => {
-  const { data: session } = await supabase.auth.getSession();
-  if (!session.session) return [];
-  const { data, error } = await rpc("list_my_funding_inquiries", { p_funding_id: fundingId });
-  if (error) fail(error, "문의 내역을 불러오지 못했습니다.");
-  return (data ?? []) as FundingInquiry[];
-};
 
 export const REVIEW_BLOCK_LABEL: Record<NonNullable<ReviewEligibility["block_reason"]>, string> = {
   not_owner: "본인 주문이 아닙니다",

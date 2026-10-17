@@ -27,7 +27,8 @@ import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer";
 import { FundingColorGallery } from "@/components/funding/FundingColorGallery";
-import { FundingInquiryPanel, FundingReviewsPanel, ReviewSummaryInline } from "@/components/funding/FundingReviewsSection";
+import { FundingReviewsPanel, ReviewSummaryInline } from "@/components/funding/FundingReviewsSection";
+import { FundingInquiriesPanel } from "@/components/funding/FundingInquiriesPanel";
 import { fetchFundingReviews, type ReviewSummary } from "@/services/fundingReviews";
 import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
@@ -87,7 +88,7 @@ const FundingDetail = () => {
   const [detailPage, setDetailPage] = useState<ProductDetailPage | null>(null);
   // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
   const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
-  // 하단 [상세정보] [리뷰] [문의]
+  // 하단 [상세정보] [리뷰] [상품 문의]
   // ?tab=reviews|inquiry 로 들어오면(내 펀딩의 "리뷰 작성하기" 등) 해당 탭을 바로 연다.
   const initialTab = searchParams.get("tab");
   const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">(
@@ -588,7 +589,7 @@ const FundingDetail = () => {
               {([
                 ["detail", "상세정보"],
                 ["reviews", `리뷰${reviewSummary ? ` ${Number(reviewSummary.count).toLocaleString("ko-KR")}` : ""}`],
-                ["inquiry", "문의"],
+                ["inquiry", "상품 문의"],
               ] as const).map(([key, label]) => (
                 <button
                   key={key}
@@ -710,8 +711,8 @@ const FundingDetail = () => {
           </section>
         )}
         {!isPreview && detailTab === "inquiry" && (
-          <section className="mt-10" aria-label="문의">
-            <FundingInquiryPanel fundingId={funding.id} loginReturnTo={loginReturnTo} />
+          <section className="mt-10" aria-label="상품 문의">
+            <FundingInquiriesPanel fundingId={funding.id} loginReturnTo={loginReturnTo} />
           </section>
         )}
       </main>

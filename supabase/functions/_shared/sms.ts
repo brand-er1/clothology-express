@@ -14,6 +14,7 @@
  *   SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS       (선택) 제작자용 펀딩 성공 알림톡 템플릿 ID
  *   SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS_PARTICIPANT (선택) 참여자용 템플릿 ID
  *   SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED  (선택) 참여자용 조기 마감 안내 템플릿 ID
+ *   SMS_KAKAO_TEMPLATE_FUNDING_INQUIRY       (선택) 제작자용 새 상품 문의 알림톡 템플릿 ID
  *
  * 새 업체(NHN Cloud, 알리고 등)는 SmsProvider 를 구현해 createSmsProvider 에 추가하면 된다.
  */
@@ -101,6 +102,24 @@ export const buildFundingEarlyClosedParticipantText = (
     "brand-er.store",
   ].join("\n");
 };
+
+const INQUIRY_TYPE_LABEL: Record<string, string> = {
+  size_fit: "사이즈 및 핏",
+  fabric: "원단 및 소재",
+  production: "제작 및 생산",
+  shipping: "배송 일정",
+  exchange_refund: "교환 및 환불",
+  other: "기타",
+};
+
+/** 새 상품 문의(제작자). 고객 이름·문의 내용은 문자에 넣지 않는다. */
+export const buildFundingInquiryCreatorText = ({ fundingName, inquiryType }: { fundingName: string; inquiryType?: string }) =>
+  [
+    "[BRAND-ER]",
+    `"${clipName(fundingName)}" 펀딩에 새 상품 문의(${INQUIRY_TYPE_LABEL[inquiryType ?? ""] ?? "기타"})가 등록되었습니다.`,
+    "BRAND-ER 펀딩 상세페이지 [상품 문의]에서 답변을 남겨주세요.",
+    "brand-er.store",
+  ].join("\n");
 
 export const buildFundingSuccessParticipantText = ({ fundingName }: Pick<FundingSuccessSmsInput, "fundingName">) =>
   [
@@ -247,5 +266,21 @@ export async function sendFundingEarlyClosedSMS(
     subject: "[BRAND-ER] 펀딩 조기 마감",
     text: buildFundingEarlyClosedParticipantText(input),
     kakaoTemplateId: env.get(templateEnv)?.trim() || undefined,
+  });
+}
+
+/** 새 상품 문의 안내(담당 제작자). */
+export async function sendFundingInquirySMS(
+  provider: SmsProvider,
+  input: { to: string; fundingName: string; inquiryType?: string },
+  env: Env = denoEnv,
+): Promise<SmsSendResult> {
+  const to = normalizeKrPhone(input.to);
+  if (!to) return { ok: false, provider: provider.name, error: "휴대폰 번호 형식 오류" };
+  return provider.send({
+    to,
+    subject: "[BRAND-ER] 새 상품 문의",
+    text: buildFundingInquiryCreatorText(input),
+    kakaoTemplateId: env.get("SMS_KAKAO_TEMPLATE_FUNDING_INQUIRY")?.trim() || undefined,
   });
 }

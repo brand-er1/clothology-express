@@ -8,11 +8,142 @@ import { DataTable, EmptyState, ErrorBanner, FilterChips, LoadingBlock, MappedBa
 import { ReasonDialog, type ReasonDialogState } from "@/components/admin/shell/ReasonDialog";
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { useAdminContext } from "@/components/admin/shell/AdminContext";
+import { ReviewPhotoViewer, type PhotoViewerState } from "@/components/funding/FundingReviewParts";
+import { REPORT_REASON_LABEL, reviewImageUrl, type ReviewReportReason } from "@/services/fundingReviews";
 
 type Report = { id: string; reporter_name: string; target_type: string; target_id: string; target_summary: string | null; target_state: string | null; reason: string | null; status: string; resolution_note: string | null; action_taken: string | null; reviewed_by_name: string | null; created_at: string };
 type Comment = { id: string; post_id: string; post_title: string; author_name: string; content: string; is_deleted: boolean; deleted_reason: string | null; deleted_by_name: string | null; deleted_at: string | null; report_count: number; created_at: string };
 type Post = { id: string; title: string; author_name: string; cover_image_url: string | null; report_count: number; moderation_status: string; admin_note: string | null; created_at: string };
 type Ticket = Paged & { id: string; user_name: string; user_email: string | null; order_number: string | null; category: string; subject: string; content: string; status: string; priority: string; assigned_to_name: string | null; admin_memo: string | null; created_at: string };
+
+type FundingReviewRow = Paged & {
+  id: string; funding_id: string; funding_name: string; nickname: string; order_number: string | null; rating: number; content: string;
+  image_paths: string[]; purchase_type: "real" | "mock"; status: "visible" | "hidden" | "removed"; is_public: boolean;
+  moderation_reason: string | null; moderated_by_name: string | null; report_count: number; pending_report_count: number;
+  created_at: string; edited_at: string | null;
+};
+type FundingReviewReport = {
+  id: string; review_id: string; funding_id: string; funding_name: string; review_nickname: string; review_rating: number;
+  review_content: string; review_image_paths: string[]; review_status: string; reporter_name: string; reason: ReviewReportReason;
+  detail: string | null; status: string; action_taken: string; resolution_note: string | null; reviewed_by_name: string | null; created_at: string;
+};
+const REVIEW_STATUS = {
+  visible: { label: "노출", tone: "green" as const }, hidden: { label: "숨김", tone: "amber" as const }, removed: { label: "삭제(보관)", tone: "red" as const },
+};
+const REVIEW_ACTION: Record<string, string> = { none: "조치 없음", hide_review: "숨김", remove_review: "삭제(보관)" };
+
+const ReviewThumbs = ({ paths, onOpen }: { paths: string[]; onOpen: (index: number) => void }) => paths.length ? (
+  <div className="mt-1 flex gap-1">{paths.map((path, index) => (
+    <button key={path} type="button" onClick={() => onOpen(index)} aria-label={`리뷰 사진 ${index + 1} 보기`}>
+      <img src={reviewImageUrl(path)} alt="" loading="lazy" className="h-9 w-9 rounded object-cover" />
+    </button>
+  ))}</div>
+) : null;
+
+// 펀딩 리뷰 신고: 기각/확인은 reports.manage, 숨김·삭제 조치는 content.manage 가 추가로 필요(서버에서도 검증)
+const FundingReviewReportsTab = () => {
+  const { can } = useAdminContext();
+  const [status, setStatus] = useState("pending");
+  const [dialog, setDialog] = useState<ReasonDialogState>(null);
+  const [viewer, setViewer] = useState<PhotoViewerState>(null);
+  const { data, loading, error, reload } = useAdminQuery(() => adminRpc<FundingReviewReport[]>("admin_list_funding_review_reports", { p_status: status }), [status]);
+  const resolve = (r: FundingReviewReport, next: "reviewed" | "dismissed", action: string, title: string) => setDialog({
+    title, confirmLabel: title, reasonRequired: action !== "none", reasonLabel: "처리 메모", destructive: action !== "none",
+    description: action !== "none" ? "리뷰는 soft delete 로 보관되며 공개 목록·평균 별점에서 즉시 제외되고, 작성자에게 사유가 포함된 알림이 발송됩니다. 같은 리뷰의 다른 미처리 신고도 함께 처리됩니다." : undefined,
+    onConfirm: (note) => adminRpc("admin_resolve_funding_review_report", { p_report_id: r.id, p_status: next, p_note: note || null, p_action: action }),
+  });
+  return (
+    <Panel bodyClassName="p-0" title={<FilterChips value={status} onChange={setStatus} options={[{ value: "pending", label: "미처리" }, { value: "reviewed", label: "조치완료" }, { value: "dismissed", label: "기각" }, { value: "all", label: "전체" }]} />}>
+      {error && <div className="p-4"><ErrorBanner message={error} onRetry={reload} /></div>}
+      {loading && !data ? <LoadingBlock /> : !data?.length ? <EmptyState title="리뷰 신고가 없습니다" /> : (
+        <DataTable minWidth={1100} head={["펀딩", "신고된 리뷰", "신고 사유", "신고자", "리뷰 상태", "처리 상태", "신고일", "처리"]}>
+          {data.map((r) => (
+            <tr key={r.id} className="hover:bg-stone-50">
+              <Td className="max-w-[160px] truncate text-xs">{r.funding_name}</Td>
+              <Td className="max-w-[300px]">
+                <p className="text-[11px] text-stone-400">{r.review_nickname} · ★{r.review_rating}</p>
+                <p className="line-clamp-2 text-sm">{r.review_content}</p>
+                <ReviewThumbs paths={r.review_image_paths} onOpen={(index) => setViewer({ paths: r.review_image_paths, index })} />
+              </Td>
+              <Td className="max-w-[200px] text-xs"><p className="font-semibold">{REPORT_REASON_LABEL[r.reason] ?? r.reason}</p>{r.detail && <p className="line-clamp-2 text-stone-500">{r.detail}</p>}</Td>
+              <Td className="text-xs">{r.reporter_name}</Td>
+              <Td><MappedBadge map={REVIEW_STATUS} value={r.review_status} /></Td>
+              <Td><MappedBadge map={REPORT_STATUS} value={r.status} />{r.status !== "pending" && <p className="mt-0.5 max-w-[160px] truncate text-[10px] text-stone-400">{REVIEW_ACTION[r.action_taken] ?? r.action_taken}{r.resolution_note ? ` · ${r.resolution_note}` : ""}{r.reviewed_by_name ? ` · ${r.reviewed_by_name}` : ""}</p>}</Td>
+              <Td className="text-xs">{dateTime(r.created_at)}</Td>
+              <Td>{r.status === "pending" && can("reports.manage") && (
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => resolve(r, "dismissed", "none", "기각")}>기각</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => resolve(r, "reviewed", "none", "확인 완료")}>확인</Button>
+                  {can("content.manage") && r.review_status === "visible" && <>
+                    <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600" onClick={() => resolve(r, "reviewed", "hide_review", "리뷰 숨김")}>숨김</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600" onClick={() => resolve(r, "reviewed", "remove_review", "리뷰 삭제")}>삭제</Button>
+                  </>}
+                </div>
+              )}</Td>
+            </tr>
+          ))}
+        </DataTable>
+      )}
+      <ReasonDialog state={dialog} onClose={() => setDialog(null)} onDone={reload} />
+      <ReviewPhotoViewer state={viewer} onClose={() => setViewer(null)} />
+    </Panel>
+  );
+};
+
+const FundingReviewsTab = () => {
+  const { can } = useAdminContext();
+  const [status, setStatus] = useState("all");
+  const [search, setSearch] = useState("");
+  const [dialog, setDialog] = useState<ReasonDialogState>(null);
+  const [viewer, setViewer] = useState<PhotoViewerState>(null);
+  const { data, loading, error, reload } = useAdminQuery(
+    () => adminRpc<FundingReviewRow[]>("admin_list_funding_reviews", { p_status: status === "reported" ? "all" : status, p_reported_only: status === "reported", p_search: search || null }),
+    [status, search],
+  );
+  const rows = useMemo(() => data ?? [], [data]);
+  const moderate = (r: FundingReviewRow, next: "visible" | "hidden" | "removed", title: string) => setDialog({
+    title, confirmLabel: title, reasonRequired: next !== "visible", destructive: next === "removed",
+    description: next === "visible" ? "리뷰를 다시 공개합니다. 평균 별점·리뷰 수에 다시 포함됩니다." : "soft delete 로 데이터는 보관되며 공개 목록·평균 별점에서 즉시 제외됩니다. 작성자에게 사유가 포함된 알림이 발송됩니다.",
+    onConfirm: (reason) => adminRpc("admin_moderate_funding_review", { p_review_id: r.id, p_status: next, p_reason: reason || null }),
+  });
+  return (
+    <Panel bodyClassName="p-0" title={
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SearchInput value={search} onChange={setSearch} placeholder="리뷰 내용, 닉네임, 펀딩명, 주문번호" />
+        <FilterChips value={status} onChange={setStatus} options={[{ value: "all", label: "전체" }, { value: "reported", label: "신고 미처리" }, { value: "visible", label: "노출" }, { value: "hidden", label: "숨김" }, { value: "removed", label: "삭제(보관)" }]} />
+      </div>
+    }>
+      {error && <div className="p-4"><ErrorBanner message={error} onRetry={reload} /></div>}
+      {loading && !data ? <LoadingBlock /> : rows.length === 0 ? <EmptyState title="리뷰가 없습니다" /> : (
+        <DataTable minWidth={1150} head={["펀딩", "리뷰", "작성자", "구매", "신고", "상태", "작성일", "관리"]}>
+          {rows.map((r) => (
+            <tr key={r.id} className="hover:bg-stone-50">
+              <Td className="max-w-[160px] truncate text-xs">{r.funding_name}</Td>
+              <Td className="max-w-[320px]">
+                <p className="text-[11px] text-stone-400">★{r.rating}{r.edited_at ? " · 수정됨" : ""}</p>
+                <p className={`line-clamp-2 text-sm ${r.status !== "visible" ? "text-stone-400" : ""}`}>{r.content}</p>
+                <ReviewThumbs paths={r.image_paths} onOpen={(index) => setViewer({ paths: r.image_paths, index })} />
+              </Td>
+              <Td className="text-xs"><p>{r.nickname}</p><p className="font-mono text-[10px] text-stone-400">{r.order_number ?? "-"}</p></Td>
+              <Td><StatusBadge tone={r.purchase_type === "mock" ? "amber" : "blue"}>{r.purchase_type === "mock" ? "모의결제" : "실결제"}</StatusBadge></Td>
+              <Td className="tabular-nums text-xs">{r.report_count}{r.pending_report_count > 0 && <span className="ml-1 font-bold text-rose-600">(미처리 {r.pending_report_count})</span>}</Td>
+              <Td><MappedBadge map={REVIEW_STATUS} value={r.status} />{!r.is_public && r.status === "visible" && <p className="mt-0.5 text-[10px] text-stone-400">비공개(집계 제외)</p>}{r.moderation_reason && <p className="mt-0.5 max-w-[160px] truncate text-[10px] text-stone-400">{r.moderated_by_name} · {r.moderation_reason}</p>}</Td>
+              <Td className="text-xs">{dateTime(r.created_at)}</Td>
+              <Td>{can("content.manage") && <div className="flex gap-1">
+                {r.status !== "visible" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => moderate(r, "visible", "공개 복구")}>복구</Button>}
+                {r.status === "visible" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => moderate(r, "hidden", "숨김")}>숨김</Button>}
+                {r.status !== "removed" && <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600" onClick={() => moderate(r, "removed", "삭제")}>삭제</Button>}
+              </div>}</Td>
+            </tr>
+          ))}
+        </DataTable>
+      )}
+      <div className="px-4 pb-3 text-[11px] text-stone-400">총 {totalOf(rows)}건</div>
+      <ReasonDialog state={dialog} onClose={() => setDialog(null)} onDone={reload} />
+      <ReviewPhotoViewer state={viewer} onClose={() => setViewer(null)} />
+    </Panel>
+  );
+};
 
 const TARGET = { post: "게시물", comment: "댓글", user: "회원" } as Record<string, string>;
 const POST_STATUS = { visible: { label: "노출", tone: "green" as const }, hidden: { label: "숨김", tone: "amber" as const }, removed: { label: "삭제(보관)", tone: "red" as const } };
@@ -201,6 +332,8 @@ const ContentPage = () => {
   const { can } = useAdminContext();
   const tabs = [
     can("content.view") && { key: "reports", label: "신고", node: <ReportsTab /> },
+    can("content.view") && { key: "review-reports", label: "리뷰 신고", node: <FundingReviewReportsTab /> },
+    can("content.view") && { key: "reviews", label: "펀딩 리뷰", node: <FundingReviewsTab /> },
     can("cs.view") && { key: "tickets", label: "CS 문의", node: <TicketsTab /> },
     can("content.view") && { key: "comments", label: "댓글", node: <CommentsTab /> },
     can("content.manage") && { key: "posts", label: "게시물", node: <PostsTab /> },
@@ -208,8 +341,8 @@ const ContentPage = () => {
 
   return (
     <div>
-      <PageHeader eyebrow="Content & CS" title="콘텐츠 · 신고 · 문의" description="댓글/게시물 삭제는 soft delete 로 처리되며 삭제한 관리자·시각·사유가 기록됩니다." />
-      <div className="mb-3"><Notice tone="stone">현재 BRAND-ER 에는 별도의 상품 리뷰 기능이 없어 리뷰 관리는 제공되지 않습니다. 리뷰 기능 도입 시 같은 soft delete 구조로 추가할 수 있습니다.</Notice></div>
+      <PageHeader eyebrow="Content & CS" title="콘텐츠 · 신고 · 문의" description="댓글/게시물/리뷰 삭제는 soft delete 로 처리되며 삭제한 관리자·시각·사유가 기록됩니다." />
+      <div className="mb-3"><Notice tone="stone">펀딩 구매 리뷰는 [리뷰 신고] · [펀딩 리뷰] 탭에서 관리합니다. 숨김·삭제는 soft delete 로 보관되며 평균 별점·리뷰 수는 공개 리뷰 기준으로 즉시 다시 계산됩니다.</Notice></div>
       <Tabs defaultValue={tabs[0]?.key}>
         <TabsList className="mb-3">{tabs.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}</TabsList>
         {tabs.map((t) => <TabsContent key={t.key} value={t.key}>{t.node}</TabsContent>)}

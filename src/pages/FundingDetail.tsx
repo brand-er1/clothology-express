@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
@@ -88,8 +88,16 @@ const FundingDetail = () => {
   // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
   const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
   // 하단 [상세정보] [리뷰] [문의]
-  const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">("detail");
+  // ?tab=reviews 로 들어오면(마이페이지 → 내 리뷰 보기) 리뷰 탭을 연다.
+  const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">(() => (searchParams.get("tab") === "reviews" ? "reviews" : "detail"));
   const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
+  const scrolledToReviews = useRef(false);
+
+  useEffect(() => {
+    if (loading || scrolledToReviews.current || searchParams.get("tab") !== "reviews") return;
+    scrolledToReviews.current = true;
+    window.requestAnimationFrame(() => document.getElementById("funding-detail-tabs")?.scrollIntoView({ block: "start" }));
+  }, [loading, searchParams]);
 
   useEffect(() => {
     if (!id) return;
@@ -576,7 +584,7 @@ const FundingDetail = () => {
             <div role="tablist" aria-label="펀딩 상세 메뉴" className="grid grid-cols-3">
               {([
                 ["detail", "상세정보"],
-                ["reviews", `리뷰${reviewSummary ? ` ${Number(reviewSummary.count).toLocaleString("ko-KR")}` : ""}`],
+                ["reviews", `구매 리뷰${reviewSummary ? ` ${Number(reviewSummary.count).toLocaleString("ko-KR")}` : ""}`],
                 ["inquiry", "문의"],
               ] as const).map(([key, label]) => (
                 <button

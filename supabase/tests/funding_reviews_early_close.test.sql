@@ -51,23 +51,27 @@ values
 insert into public.funding_participations (id, funding_id, participant_id, selected_color, selected_size, quantity, unit_price,
   status, payment_provider, payment_status, payment_approved_at, partner_order_id, orderer_name, orderer_phone, shipping_status, production_stage)
 values
-  -- 배송 완료된 실제 구매자(2건)
+  -- 배송 완료된 실제 구매자(2건, 실결제)
   ('10000000-0000-0000-0000-00000000a001', '10000000-0000-0000-0000-0000000000fa', '10000000-0000-0000-0000-0000000000b1',
-   'BLACK', 'M', 30, 39000, 'pledged', 'mock', 'paid', now(), 'BRANDER-FA-1', '김구매', '010-1234-5678', 'delivered', 'delivered'),
+   'BLACK', 'M', 30, 39000, 'pledged', 'kakaopay', 'paid', now(), 'BRANDER-FA-1', '김구매', '010-1234-5678', 'delivered', 'delivered'),
   ('10000000-0000-0000-0000-00000000a002', '10000000-0000-0000-0000-0000000000fa', '10000000-0000-0000-0000-0000000000b1',
-   'BLACK', 'L', 1, 39000, 'fulfilled', 'mock', 'paid', now(), 'BRANDER-FA-2', '김구매', '010-1234-5678', 'preparing', 'delivered'),
+   'BLACK', 'L', 1, 39000, 'fulfilled', 'kakaopay', 'paid', now(), 'BRANDER-FA-2', '김구매', '010-1234-5678', 'delivered', 'delivered'),
   -- 취소 주문
   ('10000000-0000-0000-0000-00000000a003', '10000000-0000-0000-0000-0000000000fa', '10000000-0000-0000-0000-0000000000b3',
-   'BLACK', 'M', 2, 39000, 'cancelled', 'mock', 'cancelled', now(), 'BRANDER-FA-3', '이취소', '010-0000-0003', 'delivered', 'delivered'),
+   'BLACK', 'M', 2, 39000, 'cancelled', 'kakaopay', 'cancelled', now(), 'BRANDER-FA-3', '이취소', '010-0000-0003', 'delivered', 'delivered'),
   -- 결제 완료 · 배송 전
   ('10000000-0000-0000-0000-00000000a004', '10000000-0000-0000-0000-0000000000fa', '10000000-0000-0000-0000-0000000000b4',
-   'BLACK', 'M', 1, 39000, 'pledged', 'mock', 'paid', now(), 'BRANDER-FA-4', '최배송전', '010-0000-0004', 'preparing', 'production'),
+   'BLACK', 'M', 1, 39000, 'pledged', 'kakaopay', 'paid', now(), 'BRANDER-FA-4', '최배송전', '010-0000-0004', 'preparing', 'production'),
   -- 배송 완료(별점 3)
   ('10000000-0000-0000-0000-00000000a006', '10000000-0000-0000-0000-0000000000fa', '10000000-0000-0000-0000-0000000000b6',
-   'BLACK', 'L', 1, 39000, 'pledged', 'mock', 'paid', now(), 'BRANDER-FA-6', '한별점', '010-0000-0006', 'delivered', 'delivered'),
+   'BLACK', 'L', 1, 39000, 'pledged', 'kakaopay', 'paid', now(), 'BRANDER-FA-6', '한별점', '010-0000-0006', 'delivered', 'delivered'),
   -- FB 참여자(목표 미달)
   ('10000000-0000-0000-0000-00000000b001', '10000000-0000-0000-0000-0000000000fb', '10000000-0000-0000-0000-0000000000b5',
    'NAVY', 'M', 18, 29000, 'pledged', 'mock', 'paid', now(), 'BRANDER-FB-1', '정미달', '010-0000-0005', 'preparing', 'funding');
+
+-- 리뷰 사진은 Storage 에 실제로 업로드된 객체만 연결할 수 있다.
+insert into storage.objects (bucket_id, name, owner, metadata) values
+  ('funding-reviews', '10000000-0000-0000-0000-0000000000b1/a.jpg', '10000000-0000-0000-0000-0000000000b1', '{"mimetype": "image/jpeg", "size": 1024}');
 
 set local session_replication_role = origin;
 

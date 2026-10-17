@@ -18,6 +18,7 @@ const LABEL: Record<string, string> = {
   brand_requires_review: "신규 브랜드 사전 검수",
   pg_live_refund_enabled: "실제 PG 환불 자동 실행",
   notification_channels: "알림 채널 연동 상태",
+  funding_review_allow_mock_orders: "모의결제 주문 리뷰 허용",
 };
 
 const SettingRow = ({ setting, canEdit, onEdit }: { setting: Setting; canEdit: boolean; onEdit: (value: unknown) => void }) => {

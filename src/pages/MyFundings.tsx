@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProgressLine } from "@/components/funding/FundingProductCard";
 import { FundingEarlyCloseButton } from "@/components/funding/FundingEarlyCloseCard";
+import { ReviewWriteDialog } from "@/components/funding/FundingReviewParts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -23,14 +24,17 @@ import {
   fetchSellerDashboardTotals,
   getEarlyCloseResultLabel,
 } from "@/services/funding";
+import {
+  REVIEW_BLOCK_LABEL, fetchMyReviewStates, type MyReviewState, type ReviewTarget,
+} from "@/services/fundingReviews";
 import type {
   Funding, FundingPaymentStatus, MyFundingParticipation, MyFundingPaymentIntent,
   SellerFundingDashboardRow, SellerDashboardTotals,
 } from "@/types/funding";
 import { PRODUCTION_STAGE_LABEL } from "@/types/funding";
 import {
-  ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, RotateCcw, Settings2,
-  ShoppingBag, SquarePen, Trash2, TrendingUp, Truck, Users, WalletCards,
+  ArrowRight, BadgeCheck, CalendarDays, Clock3, Loader2, MessageSquareText, PackageOpen, PenLine, RotateCcw, Settings2,
+  ShoppingBag, SquarePen, Star, Trash2, TrendingUp, Truck, Users, WalletCards,
   Sparkles,
 } from "lucide-react";
 
@@ -84,6 +88,15 @@ const MyFundings = () => {
   const [deletingFundingId, setDeletingFundingId] = useState<string | null>(null);
   const [fundingToDelete, setFundingToDelete] = useState<Funding | null>(null);
   const [fundingDeleteReason, setFundingDeleteReason] = useState("");
+  const [reviewStates, setReviewStates] = useState<Map<string, MyReviewState>>(new Map());
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
+
+  // 리뷰 상태는 참여 내역과 별도로 불러와, 실패해도 기존 '내 펀딩' 화면에는 영향이 없게 한다.
+  const loadReviewStates = useCallback(async () => {
+    setReviewStates(await fetchMyReviewStates().catch(() => new Map<string, MyReviewState>()));
+  }, []);
+
+  useEffect(() => { void loadReviewStates(); }, [loadReviewStates]);
 
   const load = useCallback(async () => {
     try {
@@ -324,7 +337,18 @@ const MyFundings = () => {
             ) : (
               <div className="mt-6 border-b border-black/10">
                 {participationFilter !== "planned" && activePaidItems.map((item) => (
-                  <PaidParticipationCard key={`paid-${item.id}`} item={item} cancelling={cancellingId === item.id} onCancel={() => setSelectedItem(item)} />
+                  <PaidParticipationCard
+                    key={`paid-${item.id}`}
+                    item={item}
+                    cancelling={cancellingId === item.id}
+                    onCancel={() => setSelectedItem(item)}
+                    reviewState={reviewStates.get(item.id)}
+                    onReview={(review) => setReviewTarget({
+                      participationId: item.id,
+                      label: `${item.product_name} · ${item.selected_color} / ${item.selected_size} · ${item.quantity}장`,
+                      review,
+                    })}
+                  />
                 ))}
                 {participationFilter !== "paid" && plannedItems.map((item) => <PlannedParticipationCard key={`planned-${item.id}`} item={item} />)}
               </div>
@@ -332,6 +356,8 @@ const MyFundings = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <ReviewWriteDialog target={reviewTarget} onClose={() => setReviewTarget(null)} onSaved={() => void loadReviewStates()} />
 
       <AlertDialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
         <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>펀딩 참여를 취소할까요?</AlertDialogTitle>
@@ -409,7 +435,54 @@ const PARTICIPATION_CARD_GRID = "grid grid-cols-[88px_minmax(0,1fr)] md:grid-col
 const PARTICIPATION_CARD_IMAGE = "mt-5 block aspect-square self-start bg-[#ebe7e1] p-2 md:my-5 md:p-4 [&_img]:mix-blend-multiply";
 const PARTICIPATION_CARD_ACTIONS = "col-span-2 flex items-center pb-5 md:col-span-1 md:px-2 md:py-5";
 
-const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFundingParticipation; cancelling: boolean; onCancel: () => void }) => {
+// 배송완료 주문: 리뷰 작성 / 작성 완료(보기·수정). 배송 전: 비활성 버튼. 버튼 상태는 표시용이며 서버가 매번 다시 검증한다.
+const ParticipationReviewRow = ({ fundingId, state, onReview }: {
+  fundingId: string; state: MyReviewState | undefined; onReview: (review: MyReviewState["review"]) => void;
+}) => {
+  if (!state) return null;
+  const review = state.review;
+  if (review) {
+    const editable = review.status === "visible" && state.block_reason === "already_reviewed";
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/5 pt-3 text-xs">
+        <Badge className="gap-1 bg-brand/10 text-brand hover:bg-brand/10"><BadgeCheck className="h-3 w-3" />작성 완료</Badge>
+        <span className="inline-flex items-center gap-0.5 text-stone-500"><Star className="h-3.5 w-3.5 fill-brand text-brand" />{review.rating}점</span>
+        {review.status !== "visible" && <span className="text-stone-400">운영 정책에 따라 숨김 처리된 리뷰입니다</span>}
+        {editable && (
+          <Button size="sm" variant="outline" className="h-8 rounded-none text-xs" onClick={() => onReview(review)}>
+            <PenLine className="mr-1 h-3.5 w-3.5" />내 리뷰 보기·수정
+          </Button>
+        )}
+        <Link to={`/fundings/${fundingId}?tab=reviews`} className="inline-flex items-center gap-1 font-semibold text-stone-500 hover:text-brand">
+          <MessageSquareText className="h-3.5 w-3.5" />상세페이지 리뷰
+        </Link>
+      </div>
+    );
+  }
+  if (state.can_review) {
+    return (
+      <div className="mt-4 border-t border-black/5 pt-3">
+        <Button size="sm" className="h-9 rounded-none bg-brand hover:bg-brand-dark" onClick={() => onReview(null)}>
+          <PenLine className="mr-1.5 h-4 w-4" />리뷰 작성
+        </Button>
+      </div>
+    );
+  }
+  if (state.block_reason === "not_delivered" || state.block_reason === "mock_payment") {
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/5 pt-3 text-xs text-stone-400">
+        <Button size="sm" disabled className="h-9 rounded-none"><PenLine className="mr-1.5 h-4 w-4" />리뷰 작성</Button>
+        {REVIEW_BLOCK_LABEL[state.block_reason]}
+      </div>
+    );
+  }
+  return null;
+};
+
+const PaidParticipationCard = ({ item, cancelling, onCancel, reviewState, onReview }: {
+  item: MyFundingParticipation; cancelling: boolean; onCancel: () => void;
+  reviewState?: MyReviewState; onReview: (review: MyReviewState["review"]) => void;
+}) => {
   const isCancelled = item.status === "cancelled" || ["cancelled", "failed"].includes(item.payment_status);
   const canCancel = item.status !== "fulfilled" && !isCancelled && item.payment_status !== "failed";
   const fundingRate = item.funding_moq > 0 ? Math.round((item.funding_current_orders / item.funding_moq) * 100) : 0;
@@ -437,6 +510,7 @@ const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFunding
           </p>
         )}
         <p className="mt-4 flex items-center text-xs text-stone-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 참여</p>
+        {!isCancelled && <ParticipationReviewRow fundingId={item.funding_id} state={reviewState} onReview={onReview} />}
       </div>
       <div className={PARTICIPATION_CARD_ACTIONS}>{canCancel ? <Button variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50 md:w-auto" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-stone-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}</div>
     </div></article>

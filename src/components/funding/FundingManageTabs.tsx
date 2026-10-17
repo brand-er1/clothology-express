@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { ClipboardList, Users } from "lucide-react";
+import { ClipboardList, MessageSquareText, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // 내 펀딩 → 펀딩 관리 하위 메뉴
@@ -7,6 +7,7 @@ export const FundingManageTabs = ({ fundingId, className }: { fundingId: string;
   const tabs = [
     { to: `/fundings/${fundingId}/manage`, label: "참여자·배송 관리", icon: ClipboardList },
     { to: `/fundings/${fundingId}/buyers`, label: "구매자 관리", icon: Users },
+    { to: `/fundings/${fundingId}/reviews`, label: "구매 리뷰", icon: MessageSquareText },
   ];
   return (
     <nav aria-label="펀딩 관리 메뉴" className={cn("-mx-4 overflow-x-auto px-4", className)}>

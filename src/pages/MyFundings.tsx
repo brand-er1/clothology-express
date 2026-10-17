@@ -29,7 +29,7 @@ import type {
 } from "@/types/funding";
 import { PRODUCTION_STAGE_LABEL } from "@/types/funding";
 import {
-  ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, RotateCcw, Settings2,
+  ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, PenLine, RotateCcw, Settings2,
   ShoppingBag, SquarePen, Trash2, TrendingUp, Truck, Users, WalletCards,
   Sparkles,
 } from "lucide-react";
@@ -412,6 +412,10 @@ const PARTICIPATION_CARD_ACTIONS = "col-span-2 flex items-center pb-5 md:col-spa
 const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFundingParticipation; cancelling: boolean; onCancel: () => void }) => {
   const isCancelled = item.status === "cancelled" || ["cancelled", "failed"].includes(item.payment_status);
   const canCancel = item.status !== "fulfilled" && !isCancelled && item.payment_status !== "failed";
+  // 리뷰 작성 조건(서버 _funding_review_block_reason 과 동일): 결제 완료 · 미취소 · 배송 완료.
+  // 이미 작성한 주문인지는 상세페이지 리뷰 탭에서 서버가 다시 판단한다.
+  const canReview = !isCancelled && item.payment_status === "paid"
+    && (item.shipping_status === "delivered" || item.production_stage === "delivered" || item.status === "fulfilled");
   const fundingRate = item.funding_moq > 0 ? Math.round((item.funding_current_orders / item.funding_moq) * 100) : 0;
   return (
     <article className={`border-t border-black/10 ${isCancelled ? "opacity-65" : ""}`}><div className={PARTICIPATION_CARD_GRID}>
@@ -438,7 +442,10 @@ const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFunding
         )}
         <p className="mt-4 flex items-center text-xs text-stone-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 참여</p>
       </div>
-      <div className={PARTICIPATION_CARD_ACTIONS}>{canCancel ? <Button variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50 md:w-auto" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-stone-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}</div>
+      <div className={`${PARTICIPATION_CARD_ACTIONS} flex-col items-stretch gap-2 md:items-end md:justify-center`}>
+        {canReview && <Button asChild className="w-full bg-brand hover:bg-brand-dark md:w-auto"><Link to={`/fundings/${item.funding_id}?tab=reviews`}><PenLine className="mr-2 h-4 w-4" />리뷰 작성하기</Link></Button>}
+        {canCancel ? <Button variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50 md:w-auto" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-stone-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}
+      </div>
     </div></article>
   );
 };

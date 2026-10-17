@@ -88,7 +88,11 @@ const FundingDetail = () => {
   // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
   const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
   // 하단 [상세정보] [리뷰] [문의]
-  const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">("detail");
+  // ?tab=reviews|inquiry 로 들어오면(내 펀딩의 "리뷰 작성하기" 등) 해당 탭을 바로 연다.
+  const initialTab = searchParams.get("tab");
+  const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">(
+    initialTab === "reviews" || initialTab === "inquiry" ? initialTab : "detail",
+  );
   const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
 
   useEffect(() => {
@@ -175,6 +179,13 @@ const FundingDetail = () => {
 
     load();
   }, [id, navigate]);
+
+  // ?tab= 으로 연 탭은 상품 로딩 후 탭 위치로 스크롤한다.
+  const fundingLoaded = !loading && Boolean(funding);
+  useEffect(() => {
+    if (!fundingLoaded || (initialTab !== "reviews" && initialTab !== "inquiry")) return;
+    window.requestAnimationFrame(() => document.getElementById("funding-detail-tabs")?.scrollIntoView({ block: "start" }));
+  }, [fundingLoaded, initialTab]);
 
   const colorOptions = useMemo(() => {
     if (!funding) return [];

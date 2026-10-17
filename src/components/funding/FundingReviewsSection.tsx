@@ -288,7 +288,7 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
   };
 
   const reviewable = eligibility.filter((order) => order.can_review);
-  const waiting = eligibility.filter((order) => order.block_reason === "not_delivered");
+  const blocked = eligibility.filter((order) => !order.can_review && order.block_reason);
   const count = Number(summary?.count ?? 0);
   const average = Number(summary?.average ?? 0);
 
@@ -331,10 +331,17 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
           </ul>
         </div>
       )}
-      {reviewable.length === 0 && waiting.length > 0 && (
-        <p className="mt-6 border border-black/10 bg-white/60 px-4 py-3 text-sm text-stone-600">
-          {REVIEW_BLOCK_LABEL.not_delivered}입니다. 상품을 받으신 뒤 리뷰를 남겨주세요.
-        </p>
+      {/* 작성할 수 없는 내 주문도 이유를 보여줘서 버튼이 왜 없는지 알 수 있게 한다. */}
+      {blocked.length > 0 && (
+        <ul className="mt-4 grid gap-2">
+          {blocked.map((order) => (
+            <li key={order.participation_id} className="flex flex-wrap items-center justify-between gap-2 border border-black/10 bg-white/60 px-3 py-2 text-sm text-stone-600">
+              <span className="min-w-0">{order.selected_color} · {order.selected_size} · {order.quantity}장
+                <span className="ml-2 font-mono text-[11px] text-stone-400">{order.order_number}</span></span>
+              <span className="text-xs font-semibold text-stone-500">{REVIEW_BLOCK_LABEL[order.block_reason!]}</span>
+            </li>
+          ))}
+        </ul>
       )}
       {!loggedIn && (
         <p className="mt-6 text-sm text-stone-500">

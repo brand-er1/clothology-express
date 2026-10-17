@@ -33,6 +33,18 @@ export type DashboardData = {
   phase_breakdown: Record<string, number>;
 };
 
+// admin_get_platform_overview: 권한이 없는 항목은 null
+export type PlatformOverview = {
+  members: number | null;
+  ai_images: number | null;
+  ai_images_today: number | null;
+  fundings: number | null;
+  inquiries: number | null;
+  inquiries_pending: number | null;
+  inquiries_answered: number | null;
+  reviews_hidden: number | null;
+};
+
 export type AnalyticsData = {
   finance_visible: boolean;
   totals: Record<string, number | null>;

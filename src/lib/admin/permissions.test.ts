@@ -43,6 +43,19 @@ describe("admin RBAC matrix", () => {
     for (const hidden of ["관리자 관리", "시스템 설정", "Audit Log", "결제 관리", "정산 관리", "AI 사용량"]) expect(menus).not.toContain(hidden);
   });
 
+  it("new customer-data menus follow the requested order and permissions", () => {
+    const order = ADMIN_NAV.map((g) => g.group);
+    expect(order.slice(0, 8)).toEqual([
+      "대시보드", "회원 관리", "제작자 및 브랜드 관리", "펀딩 관리", "고객 문의 관리", "AI 디자인 관리", "주문 및 결제 관리", "리뷰 관리",
+    ]);
+    // 메뉴 경로는 중복되지 않는다
+    const paths = ADMIN_NAV.flatMap((g) => g.items).map((i) => i.path);
+    expect(new Set(paths).size).toBe(paths.length);
+    for (const role of ["super_admin", "operations_admin", "cs_admin"] as AdminRole[]) {
+      expect(visibleMenus(role)).toEqual(expect.arrayContaining(["고객 문의 관리", "AI 디자인 관리", "리뷰 관리"]));
+    }
+  });
+
   it("Super admin sees every menu", () => {
     expect(visibleMenus("super_admin")).toHaveLength(ADMIN_NAV.flatMap((g) => g.items).length);
   });

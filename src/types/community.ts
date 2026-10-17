@@ -153,7 +153,9 @@ export type CommunityNotificationType =
   | "admin_notice"
   | "funding_success"
   | "funding_success_participant"
-  | "funding_early_closed";
+  | "funding_early_closed"
+  | "funding_inquiry"
+  | "funding_inquiry_answer";
 
 export interface CommunityNotification {
   id: string;

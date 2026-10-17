@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import {
-  AlertCircle, BadgeCheck, Building2, ClipboardList, Coins, Flag, Headphones, Palette, Percent, ReceiptText,
-  RotateCcw, ShoppingBag, TrendingUp, UserPlus, Users, WalletCards,
+  AlertCircle, BadgeCheck, Building2, ClipboardList, Coins, Flag, Headphones, ImagePlus, Images, MessageCircleQuestion,
+  MessageSquareWarning, Palette, Percent, ReceiptText, RotateCcw, ShoppingBag, TrendingUp, UserPlus, Users, WalletCards,
 } from "lucide-react";
-import { adminRpc, type DashboardData } from "@/services/adminApi";
+import { adminRpc, type DashboardData, type PlatformOverview } from "@/services/adminApi";
 import { FUNDING_PHASE, num, pct, won } from "@/lib/admin/format";
 import { ErrorBanner, KpiCard, LoadingBlock, PageHeader, Panel, StatusBadge } from "@/components/admin/shell/ui";
 import { PeriodFilter, usePeriod } from "@/components/admin/shell/PeriodFilter";
@@ -19,6 +19,9 @@ const DashboardPage = () => {
     () => adminRpc<DashboardData>("admin_get_dashboard", { p_from: period.from, p_to: period.to }),
     [period.from, period.to],
   );
+  // 통합 현황(회원 · AI 이미지 · 펀딩 · 상품 문의). 권한이 없는 항목은 서버가 null 로 내려 카드가 숨겨진다.
+  const overview = useAdminQuery(() => adminRpc<PlatformOverview>("admin_get_platform_overview"), []);
+  const o = overview.data;
   const c = data?.counts ?? {};
   const m = data?.money ?? null;
   const locked = data ? !data.finance_visible : false;
@@ -28,6 +31,7 @@ const DashboardPage = () => {
     { label: "처리 중 환불", value: c.pending_refunds, to: "/admin/refunds", icon: RotateCcw, show: can("refunds.view") },
     { label: "미처리 신고", value: c.pending_reports, to: "/admin/content", icon: Flag, show: can("content.view") },
     { label: "진행 중 CS 문의", value: c.open_cs_tickets, to: "/admin/content", icon: Headphones, show: can("cs.view") },
+    { label: "미답변 상품 문의", value: o?.inquiries_pending, to: "/admin/inquiries?status=pending", icon: MessageSquareWarning, show: can("cs.view") },
     { label: "검수 대기 브랜드", value: c.pending_brands, to: "/admin/brands", icon: Building2, show: can("brands.view") },
   ].filter((item) => item.show);
 
@@ -39,7 +43,7 @@ const DashboardPage = () => {
       {loading && !data ? <LoadingBlock /> : data && (
         <div className="grid gap-5">
           {todo.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
               {todo.map(({ label, value, to, icon: Icon }) => (
                 <Link key={label} to={to} className="group flex items-center justify-between rounded-xl border border-stone-200/80 bg-white px-3 py-2.5 transition hover:border-[#741b2b]/40">
                   <span className="flex items-center gap-2 text-xs font-bold text-stone-600"><Icon className="h-4 w-4 text-[#741b2b]" />{label}</span>
@@ -47,6 +51,27 @@ const DashboardPage = () => {
                 </Link>
               ))}
             </div>
+          )}
+
+          {overview.error && <ErrorBanner message={`통합 현황을 불러오지 못했습니다: ${overview.error}`} onRetry={overview.reload} />}
+          {o && (
+            <Panel title="통합 현황" description="카드를 누르면 해당 관리 페이지로 이동합니다. 기간 필터와 관계없는 전체 누적 값입니다.">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+                {[
+                  { label: "전체 회원 수", value: o.members, to: "/admin/members", icon: Users },
+                  { label: "전체 AI 의류 이미지", value: o.ai_images, to: "/admin/ai-designs", icon: Images },
+                  { label: "오늘 생성된 이미지", value: o.ai_images_today, to: "/admin/ai-designs", icon: ImagePlus },
+                  { label: "전체 등록 펀딩", value: o.fundings, to: "/admin/fundings", icon: WalletCards },
+                  { label: "전체 고객 문의", value: o.inquiries, to: "/admin/inquiries", icon: MessageCircleQuestion },
+                  { label: "미답변 문의", value: o.inquiries_pending, to: "/admin/inquiries?status=pending", icon: MessageSquareWarning },
+                  { label: "답변 완료 문의", value: o.inquiries_answered, to: "/admin/inquiries?status=answered", icon: BadgeCheck },
+                ].filter((card) => card.value !== null && card.value !== undefined).map(({ label, value, to, icon }) => (
+                  <Link key={label} to={to} className="rounded-2xl transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#741b2b]">
+                    <KpiCard label={label} value={num(value)} icon={icon} />
+                  </Link>
+                ))}
+              </div>
+            </Panel>
           )}
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">

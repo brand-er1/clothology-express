@@ -27,6 +27,9 @@ const AuditLogPage = lazy(() => import("./AuditLogPage"));
 const SettingsPage = lazy(() => import("./SettingsPage"));
 const LegacyToolsPage = lazy(() => import("./LegacyToolsPage"));
 const AiUsagePage = lazy(() => import("./AiUsagePage"));
+const InquiriesPage = lazy(() => import("./InquiriesPage"));
+const AiDesignsPage = lazy(() => import("./AiDesignsPage"));
+const ReviewsPage = lazy(() => import("./ReviewsPage"));
 
 // 메뉴 가드는 UX 용이다. 실제 데이터 접근은 각 RPC 가 서버에서 다시 거부한다.
 const Guard = ({ anyOf, children }: { anyOf: AdminPermission[]; children: ReactNode }) => {
@@ -63,6 +66,9 @@ const AdminRoutes = () => {
           <Route path="creators" element={<Guard anyOf={["creators.view"]}><CreatorsPage /></Guard>} />
           <Route path="brands" element={<Guard anyOf={["brands.view"]}><BrandsPage /></Guard>} />
           <Route path="fundings" element={<Guard anyOf={["fundings.view"]}><FundingsPage /></Guard>} />
+          <Route path="inquiries" element={<Guard anyOf={["cs.view"]}><InquiriesPage /></Guard>} />
+          <Route path="ai-designs" element={<Guard anyOf={["members.view"]}><AiDesignsPage /></Guard>} />
+          <Route path="reviews" element={<Guard anyOf={["content.view"]}><ReviewsPage /></Guard>} />
           <Route path="orders" element={<Guard anyOf={["orders.view"]}><OrdersPage /></Guard>} />
           <Route path="buyers" element={<Guard anyOf={["orders.pii"]}><BuyersPage /></Guard>} />
           <Route path="payments" element={<Guard anyOf={["payments.view"]}><PaymentsPage /></Guard>} />

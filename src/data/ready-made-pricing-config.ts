@@ -15,6 +15,8 @@
  *   총 예상금액 = 장당 예상금액 × 제작수량 (+ VAT)
  */
 
+import type { ArtworkTransform } from "@/lib/artwork-transform";
+
 /** 위치 1곳당 프린팅 비용 (원/장) */
 export const READY_MADE_PRINT_LOCATION_PRICE = 5000;
 
@@ -216,8 +218,9 @@ export const READY_MADE_LOCATION_SIDE: Record<ReadyMadePrintLocation, ReadyMadeG
 /** Percentage-based placement geometry for one artwork on a garment mockup — same shape as the
  * custom-clothing flow's `ArtworkPlacement` (x/y/width, all % of the mockup image), kept as a
  * plain local type instead of importing that one so this pricing-data module has no dependency
- * on the custom-clothing feature. */
-export interface ReadyMadeArtworkPlacement {
+ * on the custom-clothing feature. Rotation/flip/stretch come from the shared, optional
+ * `ArtworkTransform` fields, so placements created before rotation existed stay valid. */
+export interface ReadyMadeArtworkPlacement extends ArtworkTransform {
   xPercent: number;
   yPercent: number;
   widthPercent: number;

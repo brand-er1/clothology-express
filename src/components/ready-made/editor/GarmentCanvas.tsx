@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from "react";
-import { Copy, Trash2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { ReadyMadeGarmentImage } from "@/components/ready-made/ReadyMadeGarmentImage";
+import { ArtworkEditToolbar } from "@/components/artwork-editor/ArtworkEditToolbar";
+import { ArtworkTransformBox } from "@/components/artwork-editor/ArtworkTransformBox";
+import { normalizeRotation, resolveRotation, resolveStretchY } from "@/lib/artwork-transform";
 import {
   READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
   READY_MADE_MIN_ARTWORK_WIDTH_PERCENT,
@@ -18,27 +21,24 @@ interface GarmentCanvasProps {
   designPreviewUrl: string | null;
   printJobs: ReadyMadePrintJob[];
   onPlacementChange: (jobId: string, placement: ReadyMadeArtworkPlacement) => void;
-  onDuplicateJob: (jobId: string) => void;
+  /** Returns the copy's id (when known) so it becomes the selection. */
+  onDuplicateJob: (jobId: string) => string | void;
   onDeleteJob: (jobId: string) => void;
+  /** Paint order: +1 brings the job one step forward, -1 sends it one step back. */
+  onMoveJob?: (jobId: string, direction: 1 | -1) => void;
+  /** Total jobs across both sides — the last remaining job can't be deleted. */
+  totalJobCount?: number;
+  /** Downloads the finished design exactly as shown (rotation included). */
+  onDownload?: () => void;
+  isDownloading?: boolean;
   /** True only for the brief moment a final-design preview image is being captured from this
-   * exact DOM node — hides every editing affordance (safe-zone guide, selection border, resize
-   * handle, duplicate/delete buttons, empty-state hint) so the capture is a clean product shot,
+   * exact DOM node — hides every editing affordance (safe-zone guide, selection border, resize/
+   * rotation handles, edit toolbar, duplicate/delete buttons, empty-state hint) so the capture is a clean product shot,
    * not a screenshot of the editor UI. Never true during normal editing. */
   captureMode?: boolean;
   /** Exposes the captured canvas container node to a parent that needs to snapshot it (see
    * `captureReadyMadeDesignPreviews`). Purely additive — normal editing never sets this. */
   stageRef?: React.Ref<HTMLDivElement>;
-}
-
-type GestureKind = "move" | "resize";
-
-interface Gesture {
-  kind: GestureKind;
-  jobId: string;
-  pointerId: number;
-  rect: DOMRect;
-  startXPercent: number;
-  startYPercent: number;
 }
 
 /** Purely visual guide for where print tends to land cleanly — does not clip or constrain
@@ -56,8 +56,6 @@ const isOutOfBounds = (placement: ReadyMadeArtworkPlacement) => {
   );
 };
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
 export const GarmentCanvas = ({
   product,
   color,
@@ -68,10 +66,14 @@ export const GarmentCanvas = ({
   onPlacementChange,
   onDuplicateJob,
   onDeleteJob,
+  onMoveJob,
+  totalJobCount,
+  onDownload,
+  isDownloading = false,
   captureMode = false,
   stageRef,
 }: GarmentCanvasProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const setContainerRef = useCallback(
     (node: HTMLDivElement | null) => {
       containerRef.current = node;
@@ -82,74 +84,17 @@ export const GarmentCanvas = ({
     },
     [stageRef],
   );
-  const gestureRef = useRef<Gesture | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [keepAspect, setKeepAspect] = useState(true);
 
   const jobsForSide = printJobs.filter((job) => job.side === side);
   const frontCount = printJobs.filter((job) => job.side === "front").length;
   const backCount = printJobs.filter((job) => job.side === "back").length;
+  const selectedJob = jobsForSide.find((job) => job.id === selectedJobId) ?? null;
+  const selectedIndex = selectedJob ? jobsForSide.indexOf(selectedJob) : -1;
 
-  const percentFromEvent = (event: React.PointerEvent, rect: DOMRect) => ({
-    xPercent: ((event.clientX - rect.left) / rect.width) * 100,
-    yPercent: ((event.clientY - rect.top) / rect.height) * 100,
-  });
-
-  const startGesture = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>, kind: GestureKind, job: ReadyMadePrintJob) => {
-      const container = containerRef.current;
-      if (!container) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setSelectedJobId(job.id);
-      gestureRef.current = {
-        kind,
-        jobId: job.id,
-        pointerId: event.pointerId,
-        rect: container.getBoundingClientRect(),
-        startXPercent: job.placement.xPercent,
-        startYPercent: job.placement.yPercent,
-      };
-      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    },
-    [],
-  );
-
-  const handlePointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      const gesture = gestureRef.current;
-      if (!gesture || gesture.pointerId !== event.pointerId) return;
-      const job = printJobs.find((entry) => entry.id === gesture.jobId);
-      if (!job) return;
-      const point = percentFromEvent(event, gesture.rect);
-
-      if (gesture.kind === "move") {
-        onPlacementChange(gesture.jobId, {
-          xPercent: clamp(point.xPercent, 0, 100),
-          yPercent: clamp(point.yPercent, 0, 100),
-          widthPercent: job.placement.widthPercent,
-        });
-        return;
-      }
-
-      const widthPercent = Math.min(
-        READY_MADE_MAX_ARTWORK_WIDTH_PERCENT,
-        Math.max(
-          READY_MADE_MIN_ARTWORK_WIDTH_PERCENT,
-          Math.abs(point.xPercent - gesture.startXPercent) * 2,
-        ),
-      );
-      onPlacementChange(gesture.jobId, {
-        xPercent: gesture.startXPercent,
-        yPercent: gesture.startYPercent,
-        widthPercent,
-      });
-    },
-    [onPlacementChange, printJobs],
-  );
-
-  const endGesture = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (gestureRef.current?.pointerId === event.pointerId) gestureRef.current = null;
-  }, []);
+  const updatePlacement = (job: ReadyMadePrintJob, patch: Partial<ReadyMadeArtworkPlacement>) =>
+    onPlacementChange(job.id, { ...job.placement, ...patch });
 
   const anyOutOfBounds = jobsForSide.some((job) => isOutOfBounds(job.placement));
 
@@ -161,7 +106,10 @@ export const GarmentCanvas = ({
             key={s}
             type="button"
             data-testid={`side-toggle-${s}`}
-            onClick={() => onSideChange(s)}
+            onClick={() => {
+              onSideChange(s);
+              setSelectedJobId(null);
+            }}
             className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
               side === s ? "bg-brand text-white" : "bg-stone-100 text-stone-500 hover:bg-stone-200"
             }`}
@@ -173,10 +121,8 @@ export const GarmentCanvas = ({
 
       <div
         ref={setContainerRef}
-        className="relative mt-3 h-[52vh] min-h-[360px] w-full touch-none overflow-hidden rounded-lg bg-stone-50 sm:h-[60vh] lg:h-[70vh]"
-        onPointerMove={handlePointerMove}
-        onPointerUp={endGesture}
-        onPointerCancel={endGesture}
+        data-testid="garment-stage"
+        className="relative mt-3 h-[52vh] min-h-[360px] w-full touch-none select-none overflow-hidden rounded-lg bg-stone-50 sm:h-[60vh] lg:h-[70vh]"
         onPointerDown={() => setSelectedJobId(null)}
       >
         <ReadyMadeGarmentImage
@@ -200,61 +146,42 @@ export const GarmentCanvas = ({
         )}
 
         {designPreviewUrl &&
-          jobsForSide.map((job) => {
+          jobsForSide.map((job, index) => {
             const isSelected = !captureMode && job.id === selectedJobId;
             return (
-              <div
+              <ArtworkTransformBox
                 key={job.id}
-                data-job-id={job.id}
-                className="absolute -translate-x-1/2 -translate-y-1/2 cursor-move"
-                style={{
-                  left: `${job.placement.xPercent}%`,
-                  top: `${job.placement.yPercent}%`,
-                  width: `${job.placement.widthPercent}%`,
-                  zIndex: isSelected ? 20 : 10,
-                }}
-                onPointerDown={(event) => startGesture(event, "move", job)}
-              >
-                <img src={designPreviewUrl} alt="" className="pointer-events-none block w-full select-none drop-shadow" />
-                {isSelected && (
-                  <>
-                    <div className="pointer-events-none absolute inset-0 rounded border-2 border-brand" />
-                    <div
-                      className="absolute -bottom-2.5 -right-2.5 h-5 w-5 cursor-nwse-resize rounded-full border-2 border-white bg-brand shadow"
-                      onPointerDown={(event) => startGesture(event, "resize", job)}
-                    />
-                    <div className="absolute -top-3 left-1/2 flex -translate-x-1/2 -translate-y-full gap-1">
-                      <button
-                        type="button"
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onDuplicateJob(job.id);
-                        }}
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-500 shadow ring-1 ring-stone-200 hover:text-brand"
-                        aria-label="디자인 복제"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
-                      {jobsForSide.length > 1 && (
-                        <button
-                          type="button"
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onDeleteJob(job.id);
-                            setSelectedJobId(null);
-                          }}
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-500 shadow ring-1 ring-stone-200 hover:text-red-500"
-                          aria-label="디자인 삭제"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+                stageRef={containerRef}
+                src={designPreviewUrl}
+                xPercent={job.placement.xPercent}
+                yPercent={job.placement.yPercent}
+                widthPercent={job.placement.widthPercent}
+                transform={job.placement}
+                selected={isSelected}
+                interactive={!captureMode}
+                keepAspect={keepAspect}
+                minWidthPercent={READY_MADE_MIN_ARTWORK_WIDTH_PERCENT}
+                maxWidthPercent={READY_MADE_MAX_ARTWORK_WIDTH_PERCENT}
+                // Paint order follows the job list; the selected one is lifted so its handles
+                // are never hidden under another artwork.
+                zIndex={isSelected ? 100 : 10 + index}
+                ariaLabel={`인쇄 디자인 ${index + 1} 선택`}
+                imageClassName="drop-shadow"
+                boxAttributes={{ "data-job-id": job.id }}
+                onSelect={() => setSelectedJobId(job.id)}
+                onChange={(geometry) =>
+                  onPlacementChange(job.id, {
+                    ...job.placement,
+                    xPercent: geometry.xPercent,
+                    yPercent: geometry.yPercent,
+                    widthPercent: geometry.widthPercent,
+                    rotation: geometry.rotation,
+                    ...(geometry.stretchY !== 1 || job.placement.stretchY !== undefined
+                      ? { stretchY: geometry.stretchY }
+                      : {}),
+                  })
+                }
+              />
             );
           })}
 
@@ -268,9 +195,67 @@ export const GarmentCanvas = ({
       {anyOutOfBounds && (
         <p className="mt-2 text-center text-xs font-bold text-amber-600">인쇄 가능 영역을 벗어났습니다.</p>
       )}
-      <p className="mt-2 text-center text-[11px] leading-5 text-stone-400">
-        디자인을 드래그해서 위치를, 오른쪽 아래 점을 드래그해서 크기를 조절하세요.
-      </p>
+
+      {!captureMode && selectedJob && designPreviewUrl ? (
+        <ArtworkEditToolbar
+          className="mt-3"
+          rotation={resolveRotation(selectedJob.placement)}
+          onRotationChange={(rotation) => updatePlacement(selectedJob, { rotation: normalizeRotation(rotation) })}
+          widthPercent={selectedJob.placement.widthPercent}
+          minWidthPercent={READY_MADE_MIN_ARTWORK_WIDTH_PERCENT}
+          maxWidthPercent={READY_MADE_MAX_ARTWORK_WIDTH_PERCENT}
+          onWidthChange={(widthPercent) => updatePlacement(selectedJob, { widthPercent })}
+          keepAspect={keepAspect}
+          onKeepAspectChange={setKeepAspect}
+          onResetProportions={
+            resolveStretchY(selectedJob.placement) !== 1
+              ? () => updatePlacement(selectedJob, { stretchY: 1 })
+              : undefined
+          }
+          flipX={Boolean(selectedJob.placement.flipX)}
+          flipY={Boolean(selectedJob.placement.flipY)}
+          onToggleFlip={(axis) =>
+            updatePlacement(
+              selectedJob,
+              axis === "x" ? { flipX: !selectedJob.placement.flipX } : { flipY: !selectedJob.placement.flipY },
+            )
+          }
+          onBringForward={onMoveJob ? () => onMoveJob(selectedJob.id, 1) : undefined}
+          onSendBackward={onMoveJob ? () => onMoveJob(selectedJob.id, -1) : undefined}
+          canBringForward={selectedIndex < jobsForSide.length - 1}
+          canSendBackward={selectedIndex > 0}
+          onDuplicate={() => {
+            const duplicateId = onDuplicateJob(selectedJob.id);
+            if (duplicateId) setSelectedJobId(duplicateId);
+          }}
+          onDelete={() => {
+            onDeleteJob(selectedJob.id);
+            setSelectedJobId(null);
+          }}
+          canDelete={(totalJobCount ?? printJobs.length) > 1}
+        />
+      ) : (
+        !captureMode && (
+          <p className="mt-2 text-center text-[11px] leading-5 text-stone-400">
+            디자인을 눌러 선택하면 드래그로 이동, 모서리 점으로 크기, 위쪽 핸들로 회전할 수 있어요.
+            <span className="hidden sm:inline"> Shift를 누른 채 회전하면 15° 단위로 맞춰져요.</span>
+            <span className="sm:hidden"> 두 손가락으로 벌리거나 돌려도 돼요.</span>
+          </p>
+        )
+      )}
+
+      {!captureMode && onDownload && designPreviewUrl && (
+        <button
+          type="button"
+          data-testid="download-design"
+          onClick={onDownload}
+          disabled={isDownloading}
+          className="mx-auto mt-3 inline-flex h-9 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 text-xs font-bold text-stone-600 transition hover:border-brand/40 hover:text-brand disabled:opacity-50"
+        >
+          {isDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          시안 이미지 다운로드
+        </button>
+      )}
     </div>
   );
 };

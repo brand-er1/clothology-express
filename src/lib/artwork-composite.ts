@@ -3,6 +3,7 @@ import type {
   ArtworkPlacement,
   CompositedImageReference,
 } from "@/types/customize";
+import { drawTransformedArtwork, resolveStretchY } from "@/lib/artwork-transform";
 
 const MAX_COMPOSITE_DIMENSION = 1600;
 const COMPOSITE_MIME_TYPE = "image/webp";
@@ -34,7 +35,10 @@ const blobToBase64 = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
-const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
+const canvasToBlob = (
+  canvas: HTMLCanvasElement,
+  mimeType: string,
+): Promise<Blob> =>
   new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -44,11 +48,12 @@ const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
         }
         resolve(blob);
       },
-      COMPOSITE_MIME_TYPE,
+      mimeType,
       COMPOSITE_QUALITY,
     );
   });
 
+/** The artwork's unrotated rect; rotation/flips are applied around its center when drawing. */
 export const calculateArtworkRect = (
   canvasWidth: number,
   canvasHeight: number,
@@ -57,7 +62,7 @@ export const calculateArtworkRect = (
   placement: ArtworkPlacement,
 ) => {
   const width = canvasWidth * (placement.widthPercent / 100);
-  const height = width * (artworkHeight / artworkWidth);
+  const height = width * (artworkHeight / artworkWidth) * resolveStretchY(placement);
   const centerX = canvasWidth * (placement.xPercent / 100);
   const centerY = canvasHeight * (placement.yPercent / 100);
 
@@ -69,15 +74,23 @@ export const calculateArtworkRect = (
   };
 };
 
-// Layers are drawn in order, so later layers sit on top of earlier ones.
+// Layers are drawn in order, so later layers sit on top of earlier ones. Each layer is drawn
+// with its rotation/flips around its own center — the same math the editor preview uses — so the
+// saved image is exactly what the customer saw.
 export const createExactArtworkComposite = async ({
   baseImageUrl,
   layers,
+  mimeType = COMPOSITE_MIME_TYPE,
+  allowEmpty = false,
 }: {
   baseImageUrl: string;
   layers: ArtworkLayer[];
+  /** PNG for downloads; the default WEBP keeps the upload to the server small. */
+  mimeType?: "image/webp" | "image/png";
+  /** Lets a download export the bare garment image when nothing is placed on it. */
+  allowEmpty?: boolean;
 }): Promise<CompositedImageReference> => {
-  if (layers.length === 0) {
+  if (layers.length === 0 && !allowEmpty) {
     throw new Error("합성할 이미지가 없습니다.");
   }
   const baseResponse = await fetch(baseImageUrl);
@@ -137,19 +150,23 @@ export const createExactArtworkComposite = async ({
         artworkImage.naturalHeight,
         placement,
       );
-      context.drawImage(
+      drawTransformedArtwork(
+        context,
         artworkImage,
-        artworkRect.x,
-        artworkRect.y,
-        artworkRect.width,
-        artworkRect.height,
+        {
+          centerX: artworkRect.x + artworkRect.width / 2,
+          centerY: artworkRect.y + artworkRect.height / 2,
+          width: artworkRect.width,
+          height: artworkRect.height,
+        },
+        placement,
       );
     });
 
-    const blob = await canvasToBlob(canvas);
+    const blob = await canvasToBlob(canvas, mimeType);
     return {
       base64: await blobToBase64(blob),
-      mimeType: COMPOSITE_MIME_TYPE,
+      mimeType,
       width: canvas.width,
       height: canvas.height,
     };

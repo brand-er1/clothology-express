@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import {
@@ -35,6 +35,8 @@ import type { TrademarkScreeningResult } from "@/types/trademark";
 import { createReadyMadeGroupWearRequest } from "@/services/readyMadeOrder";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import type { CapturedSidePreview } from "@/lib/ready-made-design-capture";
+import { MAX_STRETCH_Y, MIN_STRETCH_Y, normalizeRotation } from "@/lib/artwork-transform";
+import { clearEditorDraft, loadEditorDraft, saveEditorDraft } from "@/lib/editor-draft-store";
 
 export const READY_MADE_TOTAL_STEPS = 6;
 
@@ -56,6 +58,20 @@ const presetForLocation = (
   side: READY_MADE_LOCATION_SIDE[location],
   placement: { ...READY_MADE_LOCATION_PLACEMENT_PRESET[location] },
 });
+
+/** Bump when the draft shape changes incompatibly — older drafts are then ignored, not misread. */
+const EDITOR_DRAFT_KEY = "ready-made-group-wear";
+const EDITOR_DRAFT_VERSION = 1;
+
+interface ReadyMadeEditorDraft {
+  selectedProductKey: string;
+  selectedColor: string;
+  sizeQuantities: ReadyMadeSizeQuantities;
+  designArtwork: ArtworkReference | null;
+  trademarkScreening: TrademarkScreeningResult | null;
+  printJobs: ReadyMadePrintJob[];
+  printMethod: ReadyMadePrintMethod;
+}
 
 const createDefaultPrintJob = (): ReadyMadePrintJob => ({
   id: createPrintJobId(),
@@ -235,12 +251,14 @@ export const useReadyMadeGroupWearForm = () => {
   /** Copies an existing print job onto the same side, nudged slightly so the new instance is
    * visibly distinct from the original instead of sitting exactly on top of it. */
   const duplicatePrintJob = useCallback((id: string) => {
+    // Returned so the editor can select the copy right away.
+    const duplicateId = createPrintJobId();
     setPrintJobs((previous) => {
       const source = previous.find((job) => job.id === id);
       if (!source) return previous;
       const duplicate: ReadyMadePrintJob = {
         ...source,
-        id: createPrintJobId(),
+        id: duplicateId,
         placement: {
           ...source.placement,
           xPercent: Math.min(100, source.placement.xPercent + 6),
@@ -249,6 +267,7 @@ export const useReadyMadeGroupWearForm = () => {
       };
       return [...previous, duplicate];
     });
+    return duplicateId;
   }, []);
 
   const updatePrintJob = useCallback((id: string, patch: Partial<ReadyMadePrintJob>) => {
@@ -263,17 +282,40 @@ export const useReadyMadeGroupWearForm = () => {
     [updatePrintJob],
   );
 
+  /** Keeps every transform field (rotation, flips, stretch) — only position/size are clamped. */
   const setPrintJobPlacement = useCallback(
     (id: string, placement: ReadyMadeArtworkPlacement) =>
       updatePrintJob(id, {
         placement: {
+          ...placement,
           xPercent: Math.min(100, Math.max(0, placement.xPercent)),
           yPercent: Math.min(100, Math.max(0, placement.yPercent)),
           widthPercent: clampArtworkWidth(placement.widthPercent),
+          rotation: normalizeRotation(placement.rotation ?? 0),
+          ...(placement.stretchY !== undefined && {
+            stretchY: Math.min(MAX_STRETCH_Y, Math.max(MIN_STRETCH_Y, placement.stretchY)),
+          }),
         },
       }),
     [updatePrintJob],
   );
+
+  /** Paint order: later jobs draw on top. Swaps with the nearest job on the SAME side, since
+   * jobs on the other side never overlap this one. */
+  const movePrintJob = useCallback((id: string, direction: 1 | -1) => {
+    setPrintJobs((previous) => {
+      const index = previous.findIndex((job) => job.id === id);
+      if (index < 0) return previous;
+      let target = index + direction;
+      while (target >= 0 && target < previous.length && previous[target].side !== previous[index].side) {
+        target += direction;
+      }
+      if (target < 0 || target >= previous.length) return previous;
+      const next = [...previous];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }, []);
 
   // Informational only — pricing is still purely location-count-based (see calculateReadyMadeQuote).
   // No print-method price table exists, so this doesn't change the quote; it's folded into the
@@ -283,6 +325,68 @@ export const useReadyMadeGroupWearForm = () => {
   const [requestNote, setRequestNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
+
+  // Restores the last unsent design (artwork + every print job's position/size/rotation/flip) so
+  // a reload or a later visit continues exactly where the customer left off. Autosave waits until
+  // the restore attempt finished so it can never overwrite a saved draft with the empty defaults.
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+  const hasEditedBeforeRestoreRef = useRef(false);
+  useEffect(() => {
+    let isMounted = true;
+    void loadEditorDraft<ReadyMadeEditorDraft>(EDITOR_DRAFT_KEY, EDITOR_DRAFT_VERSION).then((draft) => {
+      if (!isMounted) return;
+      if (draft && !hasEditedBeforeRestoreRef.current) {
+        const product = READY_MADE_PRODUCT_OPTIONS.find((option) => option.key === draft.selectedProductKey);
+        if (product) {
+          setSelectedProductKey(product.key);
+          setSelectedColorState(product.colors.find((color) => color === draft.selectedColor) ?? product.colors[0]);
+        }
+        if (draft.sizeQuantities) setSizeQuantities({ ...createEmptySizeQuantities(), ...draft.sizeQuantities });
+        if (draft.designArtwork) {
+          setDesignArtwork(draft.designArtwork);
+          setTrademarkScreening(draft.trademarkScreening ?? null);
+        }
+        if (Array.isArray(draft.printJobs) && draft.printJobs.length > 0) setPrintJobs(draft.printJobs);
+        if (READY_MADE_PRINT_METHOD_OPTIONS.some((option) => option.key === draft.printMethod)) {
+          setPrintMethod(draft.printMethod);
+        }
+      }
+      setIsDraftRestored(true);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDraftRestored) {
+      hasEditedBeforeRestoreRef.current = Boolean(designArtwork);
+      return;
+    }
+    if (submittedOrderId) return;
+    const timer = window.setTimeout(() => {
+      void saveEditorDraft<ReadyMadeEditorDraft>(EDITOR_DRAFT_KEY, EDITOR_DRAFT_VERSION, {
+        selectedProductKey,
+        selectedColor,
+        sizeQuantities,
+        designArtwork,
+        trademarkScreening,
+        printJobs,
+        printMethod,
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [
+    isDraftRestored,
+    submittedOrderId,
+    selectedProductKey,
+    selectedColor,
+    sizeQuantities,
+    designArtwork,
+    trademarkScreening,
+    printJobs,
+    printMethod,
+  ]);
 
   const quote = useMemo<ReadyMadeQuoteResult | null>(() => {
     if (totalQuantity <= 0 || printJobs.length === 0) return null;
@@ -389,7 +493,9 @@ export const useReadyMadeGroupWearForm = () => {
               width: job.placement.widthPercent / 100,
               height: job.placement.widthPercent / 100,
               scale: 1,
-              rotation: 0,
+              rotation: normalizeRotation(job.placement.rotation ?? 0),
+              flipX: Boolean(job.placement.flipX),
+              flipY: Boolean(job.placement.flipY),
             }));
 
       const designData: ReadyMadeOrderDesignData = {
@@ -422,6 +528,7 @@ export const useReadyMadeGroupWearForm = () => {
         designData,
       });
       setSubmittedOrderId(String(result.id || "submitted"));
+      void clearEditorDraft(EDITOR_DRAFT_KEY);
       toast({
         title: "제작 의뢰 접수 완료",
         description: "관리자가 확인 후 안내드립니다.",
@@ -472,6 +579,7 @@ export const useReadyMadeGroupWearForm = () => {
     addPrintJob,
     removePrintJob,
     duplicatePrintJob,
+    movePrintJob,
     updatePrintJob,
     setPrintJobLocation,
     setPrintJobPlacement,

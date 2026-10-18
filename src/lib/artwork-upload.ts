@@ -4,6 +4,7 @@ import type {
   ArtworkSize,
 } from "@/types/customize";
 import type { DecorationLocation } from "@/types/productionEstimate";
+import { describeArtworkTransform } from "@/lib/artwork-transform";
 
 export type ArtworkContentType = "logo" | "photo";
 
@@ -167,12 +168,16 @@ export const resolveArtworkPlacementPrompt = (
 export const formatArtworkPercent = (value: number) =>
   value < 1 ? value.toFixed(1) : String(Math.round(value));
 
-export const summarizeArtworkPlacement = (placement: ArtworkPlacement) =>
-  `${artworkLocationLabels[placement.location]} · 화면 기준 가로 ${Math.round(
+export const summarizeArtworkPlacement = (placement: ArtworkPlacement) => {
+  const transform = describeArtworkTransform(placement);
+  return `${artworkLocationLabels[placement.location]} · 화면 기준 가로 ${Math.round(
     placement.xPercent,
   )}% / 세로 ${Math.round(
     placement.yPercent,
-  )}% · 이미지 폭 ${formatArtworkPercent(placement.widthPercent)}%`;
+  )}% · 이미지 폭 ${formatArtworkPercent(placement.widthPercent)}%${
+    transform ? ` · ${transform}` : ""
+  }`;
+};
 
 type Rgb = { r: number; g: number; b: number };
 

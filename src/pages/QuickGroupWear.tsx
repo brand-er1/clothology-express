@@ -14,6 +14,7 @@ import { QuotePanel } from "@/components/ready-made/editor/QuotePanel";
 import { useReadyMadeGroupWearForm } from "@/hooks/useReadyMadeGroupWearForm";
 import { captureReadyMadeDesignPreviews } from "@/lib/ready-made-design-capture";
 import type { ReadyMadeGarmentSide } from "@/data/ready-made-pricing-config";
+import { toast } from "@/components/ui/use-toast";
 
 const PANEL_COMPONENTS: Record<EditorPanelKey, typeof ProductPanel> = {
   product: ProductPanel,
@@ -35,6 +36,7 @@ const QuickGroupWear = () => {
   const desktopStageRef = useRef<HTMLDivElement>(null);
   const mobileStageRef = useRef<HTMLDivElement>(null);
   const [isCapturingDesign, setIsCapturingDesign] = useState(false);
+  const [isDownloadingDesign, setIsDownloadingDesign] = useState(false);
 
   useMascotPageContext({ page: "quick-group-wear", hasEstimate: Boolean(form.quote) });
 
@@ -74,6 +76,40 @@ const QuickGroupWear = () => {
     }
   }, [form, side, getVisibleStageNode]);
 
+  // Same clean WYSIWYG capture used for the order preview, saved locally — so the download shows
+  // the artwork exactly as placed, rotated and flipped on screen.
+  const handleDownload = useCallback(async () => {
+    setIsDownloadingDesign(true);
+    setIsCapturingDesign(true);
+    try {
+      const previews = await captureReadyMadeDesignPreviews({
+        printJobs: form.printJobs,
+        currentSide: side,
+        setSide,
+        getStageNode: getVisibleStageNode,
+      });
+      if (previews.length === 0) throw new Error("캡처할 시안이 없습니다.");
+      previews.forEach((preview) => {
+        const link = document.createElement("a");
+        link.href = `data:image/png;base64,${preview.base64}`;
+        link.download = `brander-design-${preview.side === "front" ? "front" : "back"}.png`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      });
+    } catch (error) {
+      console.error("Failed to download ready-made design preview:", error);
+      toast({
+        title: "다운로드 실패",
+        description: "시안 이미지를 만들지 못했습니다. 잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCapturingDesign(false);
+      setIsDownloadingDesign(false);
+    }
+  }, [form.printJobs, side, getVisibleStageNode]);
+
   const formForPanels = {
     ...form,
     submitRequest: handleSubmit,
@@ -91,7 +127,7 @@ const QuickGroupWear = () => {
             단체복 직접 디자인하기
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
-            옷을 고르고 색상을 바꾸고, 로고를 직접 옮기고 크기를 조절하면서 실시간으로 견적을 확인하세요.
+            옷을 고르고 색상을 바꾸고, 로고를 직접 옮기고 크기·각도를 조절하면서 실시간으로 견적을 확인하세요.
           </p>
         </div>
 
@@ -103,8 +139,10 @@ const QuickGroupWear = () => {
             <ActivePanelComponent form={formForPanels} />
           </div>
 
-          <div className="flex flex-1 items-center justify-center bg-[#faf9f7] p-6">
-            <div className="w-full max-w-xl">
+          {/* m-auto (not items-center) keeps the canvas centered yet scrollable once the edit
+              toolbar below it makes the column taller than the viewport. */}
+          <div className="flex flex-1 overflow-y-auto bg-[#faf9f7] p-6">
+            <div className="m-auto w-full max-w-xl">
               <GarmentCanvas
                 product={form.selectedProduct}
                 color={form.selectedColor}
@@ -115,6 +153,10 @@ const QuickGroupWear = () => {
                 onPlacementChange={form.setPrintJobPlacement}
                 onDuplicateJob={form.duplicatePrintJob}
                 onDeleteJob={form.removePrintJob}
+                onMoveJob={form.movePrintJob}
+                totalJobCount={form.printJobs.length}
+                onDownload={handleDownload}
+                isDownloading={isDownloadingDesign}
                 captureMode={isCapturingDesign}
                 stageRef={desktopStageRef}
               />
@@ -155,6 +197,10 @@ const QuickGroupWear = () => {
                 onPlacementChange={form.setPrintJobPlacement}
                 onDuplicateJob={form.duplicatePrintJob}
                 onDeleteJob={form.removePrintJob}
+                onMoveJob={form.movePrintJob}
+                totalJobCount={form.printJobs.length}
+                onDownload={handleDownload}
+                isDownloading={isDownloadingDesign}
                 captureMode={isCapturingDesign}
                 stageRef={mobileStageRef}
               />

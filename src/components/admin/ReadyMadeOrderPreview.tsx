@@ -141,7 +141,7 @@ export const ReadyMadeOrderPreview = ({ order, originalImageUrl }: ReadyMadeOrde
         <div>
           <h4 className="mb-2 text-sm font-black text-stone-800">제작 데이터</h4>
           <div className="overflow-x-auto rounded-xl border border-stone-200">
-            <table className="w-full min-w-[520px] text-left text-xs">
+            <table className="w-full min-w-[580px] text-left text-xs">
               <thead className="bg-stone-100 text-stone-500">
                 <tr>
                   <th className="px-3 py-2 font-bold">면</th>
@@ -152,6 +152,7 @@ export const ReadyMadeOrderPreview = ({ order, originalImageUrl }: ReadyMadeOrde
                   <th className="px-3 py-2 font-bold">Height</th>
                   <th className="px-3 py-2 font-bold">Scale</th>
                   <th className="px-3 py-2 font-bold">Rotation</th>
+                  <th className="px-3 py-2 font-bold">반전</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -165,6 +166,9 @@ export const ReadyMadeOrderPreview = ({ order, originalImageUrl }: ReadyMadeOrde
                     <td className="px-3 py-2 text-stone-600">{job.height.toFixed(3)}</td>
                     <td className="px-3 py-2 text-stone-600">{job.scale.toFixed(2)}</td>
                     <td className="px-3 py-2 text-stone-600">{job.rotation}°</td>
+                    <td className="px-3 py-2 text-stone-600">
+                      {[job.flipX && "좌우", job.flipY && "상하"].filter(Boolean).join("·") || "-"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

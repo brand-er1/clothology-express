@@ -6,7 +6,7 @@ import {
   getSupabaseClients,
   jsonResponse,
 } from "../_shared/kakaopay.ts";
-import { cancelKsnetPayment } from "../_shared/ksnet.ts";
+import { cancelKsnetOrder } from "../_shared/ksnet-payment.ts";
 
 type CancelParticipationRequest = {
   participationId?: string;
@@ -74,6 +74,13 @@ Deno.serve(async (req) => {
     if (funding.creator_id !== user.id && isAdmin !== true) {
       return jsonResponse({ error: "본인이 만든 펀딩의 참여자만 취소할 수 있습니다." }, 403);
     }
+    if (participation.payment_provider === "ksnet") {
+      return jsonResponse(await cancelKsnetOrder(serviceClient, {
+        participationId: participation.id, actorId: user.id, source: "creator",
+        reason: reason,
+      }));
+    }
+
     if (participation.status === "fulfilled") {
       return jsonResponse({ error: "이미 제작 처리가 완료된 참여 건은 취소할 수 없습니다." }, 409);
     }
@@ -83,13 +90,11 @@ Deno.serve(async (req) => {
 
     const needsKakaoPayRefund =
       participation.payment_provider === "kakaopay" && participation.payment_status === "paid";
-    const needsKsnetRefund =
-      participation.payment_provider === "ksnet" && participation.payment_status === "paid";
 
     let paymentPayload: Record<string, unknown> = {
       reason,
       cancelled_by: isAdmin === true && funding.creator_id !== user.id ? "admin" : "creator",
-      cancelled_without_external_refund: !needsKakaoPayRefund && !needsKsnetRefund,
+      cancelled_without_external_refund: !needsKakaoPayRefund,
     };
 
     if (needsKakaoPayRefund) {
@@ -113,19 +118,6 @@ Deno.serve(async (req) => {
       };
     }
 
-    if (needsKsnetRefund) {
-      if (!participation.payment_tid) {
-        throw new Error("KSNET 거래번호를 찾을 수 없습니다.");
-      }
-      await cancelKsnetPayment(participation.payment_tid);
-      paymentPayload = {
-        tid: participation.payment_tid,
-        canceled_amount: participation.total_amount,
-        reason,
-        cancelled_by: isAdmin === true && funding.creator_id !== user.id ? "admin" : "creator",
-      };
-    }
-
     const { error: finalizeError } = await serviceClient.rpc(
       "finalize_creator_funding_cancellation",
       {
@@ -139,7 +131,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       success: true,
-      refunded: needsKakaoPayRefund || needsKsnetRefund,
+      refunded: needsKakaoPayRefund,
       payment_provider: participation.payment_provider,
       funding_id: participation.funding_id,
     });

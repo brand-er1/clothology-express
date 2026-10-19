@@ -10,7 +10,9 @@
     "generate:models": "node scripts/generate-garment-models.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:payments": "deno test --no-lock --allow-env --allow-net=jsr.io supabase/functions/_shared/ksnet.test.ts supabase/functions/_shared/ksnet-payment.test.ts",
+    "check:payments": "deno check --no-lock supabase/functions/ksnet-ready/index.ts supabase/functions/ksnet-return/index.ts supabase/functions/kakaopay-approve/index.ts supabase/functions/kakaopay-cancel/index.ts supabase/functions/creator-cancel-participation/index.ts"
   },
   "dependencies": {
     "@fal-ai/serverless-client": "^0.9.0",

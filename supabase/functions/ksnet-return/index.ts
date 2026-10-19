@@ -1,9 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import {
-  cancelKsnetPayment,
-  confirmKsnetTransaction,
-  parseKsnetAuthResult,
-} from "../_shared/ksnet.ts";
+import { parseKsnetAuthResult } from "../_shared/ksnet.ts";
+import { processKsnetReturn } from "../_shared/ksnet-payment.ts";
 import { dispatchNotificationsSafely } from "../_shared/notificationDispatch.ts";
 
 // KSPay 결제창이 카드 인증을 끝내고 **브라우저가 POST 로 돌아오는** 곳(sndReply).
@@ -62,97 +59,9 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    const { data: participation, error } = await db
-      .from("funding_participations")
-      .select("id, participant_id, funding_id, payment_provider, payment_status, total_amount")
-      .eq("id", auth.participationId)
-      .maybeSingle();
-    if (error) throw error;
-    if (!participation || participation.payment_provider !== "ksnet") {
-      console.error("ksnet-return: 참여 없음", { participationId: auth.participationId });
-      return handoff(resultUrl());
-    }
-
-    const done = () => handoff(resultUrl(participation.id));
-
-    // 결제창에서 취소를 눌렀다. 승인을 걸 게 없다.
-    if (auth.cancelled) {
-      if (participation.payment_status === "ready") {
-        await db.rpc("finalize_funding_cancellation", {
-          p_participation_id: participation.id,
-          p_user_id: participation.participant_id,
-          p_payment_payload: { reason: "KSPay 결제창에서 취소", cancelled_without_payment: true },
-        });
-      }
-      return done();
-    }
-
-    // 이미 확정됐으면 승인을 다시 걸지 않는다. 이중 승인은 이중 청구다.
-    if (participation.payment_status !== "ready") return done();
-
-    // ★ 승인. 금액은 우리 DB 값이다.
-    const approval = await confirmKsnetTransaction(auth.commConId, participation.total_amount);
-
-    if (!approval.approved) {
-      await db.rpc("fail_funding_payment", {
-        p_participation_id: participation.id,
-        p_user_id: participation.participant_id,
-        p_error_payload: { stage: "confirm", message: approval.message, auth_no: approval.authNo },
-      });
-      return done();
-    }
-
-    // KSNET 이 알려준 주문번호가 다르면 다른 거래를 승인한 것이다. 확정하지 않는다.
-    if (approval.orderNo && approval.orderNo !== participation.id) {
-      console.error("ksnet-return: 주문번호 불일치", { participationId: participation.id, tid: approval.tid });
-      return done();
-    }
-
-    const paymentPayload = {
-      tid: approval.tid,
-      auth_no: approval.authNo,
-      amount: approval.amount,
-      message: approval.message,
-    };
-
-    const { error: tidError } = await db
-      .from("funding_participations")
-      .update({ payment_tid: approval.tid, updated_at: new Date().toISOString() })
-      .eq("id", participation.id);
-    const { error: finalizeError } = tidError
-      ? { error: tidError }
-      : await db.rpc("finalize_funding_payment", {
-        p_participation_id: participation.id,
-        p_user_id: participation.participant_id,
-        p_payment_method_type: "CARD",
-        p_approved_at: new Date().toISOString(),
-        p_payment_payload: paymentPayload,
-      });
-
-    if (finalizeError) {
-      // 돈은 승인됐는데 참여 반영에 실패했다. 승인을 되돌린다 (kakaopay-approve 와 같은 규칙).
-      console.error("ksnet-return finalize", finalizeError);
-      try {
-        await cancelKsnetPayment(approval.tid);
-        await db.rpc("finalize_funding_cancellation", {
-          p_participation_id: participation.id,
-          p_user_id: participation.participant_id,
-          p_payment_payload: { ...paymentPayload, auto_cancelled: true },
-        });
-      } catch (rollbackError) {
-        // 여기까지 오면 사람이 KStA 에서 직접 취소해야 한다. 찾을 수 있게 tid 를 남긴다.
-        console.error("ksnet-return rollback 실패 — KStA 에서 수동 취소 필요", {
-          participationId: participation.id,
-          tid: approval.tid,
-          error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
-        });
-      }
-      return done();
-    }
-
-    // 펀딩 성공 판정은 결제 트랜잭션 안에서 DB 가 이미 끝냈다. 만들어진 SMS 작업만 발송한다.
-    await dispatchNotificationsSafely(db, { fundingId: participation.funding_id as string });
-    return done();
+    const fundingId = await processKsnetReturn(db, auth);
+    if (fundingId) await dispatchNotificationsSafely(db, { fundingId });
+    return handoff(resultUrl(auth.participationId));
   } catch (error) {
     // 500 을 주면 구매자가 흰 화면을 본다. 결과 화면이 DB 상태를 그대로 보여준다.
     console.error("ksnet-return", error);

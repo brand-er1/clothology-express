@@ -6,7 +6,7 @@ import { fetchMyFundingParticipations } from "@/services/funding";
 import { supabase } from "@/lib/supabase";
 import { AlertCircle, CheckCircle2, Loader2, LogIn, XCircle } from "lucide-react";
 
-type ResultState = "loading" | "success" | "cancelled" | "failed" | "auth-required";
+type ResultState = "loading" | "pending" | "success" | "cancelled" | "failed" | "auth-required";
 
 /**
  * KSNET 결제창이 끝나면 ksnet-return 이 승인까지 마치고 이 화면으로 보낸다.
@@ -45,14 +45,17 @@ const KsnetPayResult = () => {
         } else if (participation.payment_status === "cancelled") {
           setState("cancelled");
           setMessage("결제를 취소했습니다. 펀딩 참여 수량에는 반영되지 않았습니다.");
+        } else if (participation.payment_status === "ready") {
+          setState("pending");
+          setMessage("결제 결과를 확인 중입니다. 중복 결제를 피하려면 다시 결제하지 말고 내 펀딩에서 확인해주세요. 상태가 계속 유지되면 관리자에게 문의해주세요.");
         } else {
           setState("failed");
           setMessage("결제가 완료되지 않았습니다. 다시 참여해주세요.");
         }
       } catch (error) {
         console.error(error);
-        setState("failed");
-        setMessage(error instanceof Error ? error.message : "결제 결과를 확인하지 못했습니다.");
+        setState("pending");
+        setMessage("결제 결과를 불러오지 못했습니다. 다시 결제하지 말고 잠시 후 내 펀딩에서 확인해주세요.");
       }
     };
 
@@ -61,6 +64,7 @@ const KsnetPayResult = () => {
 
   const content = {
     loading: { icon: <Loader2 className="h-16 w-16 animate-spin text-brand" />, title: "결제 확인 중" },
+    pending: { icon: <AlertCircle className="h-16 w-16 text-amber-600" />, title: "결제 확인 중" },
     success: { icon: <CheckCircle2 className="h-16 w-16 text-emerald-600" />, title: "펀딩 참여 완료" },
     cancelled: { icon: <XCircle className="h-16 w-16 text-gray-400" />, title: "결제 취소" },
     failed: { icon: <AlertCircle className="h-16 w-16 text-red-500" />, title: "결제 미완료" },

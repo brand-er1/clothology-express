@@ -7,7 +7,7 @@
 | 결제 방식 | **1회성 카드 결제** (결제창 안의 간편결제 포함). 정기결제(빌링)는 없다 |
 | 적용 범위 | 펀딩 참여(`/fundings/:id` → 주문하기)만. 제작 견적·단체복 요청은 결제가 없다 |
 | 필요한 계약 | KSNET **인증결제 MID** 1개와 그 MID 의 취소(pgapi) 인증키 |
-| 되돌리기 | `src/services/payment/index.ts` 의 `ACTIVE_PAYMENT_PROVIDER` 를 `"mock"` 으로 |
+| 모의결제 | 운영 전환 마이그레이션이 브라우저의 모의결제 RPC 실행 권한을 제거한다. 프론트 상수만 바꿔서는 모의결제를 재개할 수 없다 |
 
 ## 결제 흐름
 
@@ -24,9 +24,11 @@ sequenceDiagram
   R-->>B: 결제창 form (금액·MID·복귀 주소)
   B->>K: 결제창 (PC 팝업 / 모바일 같은 창)
   K->>T: 카드 인증 결과 POST (reCommConId)
+  T->>DB: claim_ksnet_operation — 주문별 처리 권한 확보
   T->>KS: 승인 요청 — 금액은 DB 값
   KS-->>T: 승인 결과
-  T->>DB: finalize_funding_payment → paid, 펀딩 수량 반영
+  T->>DB: record_ksnet_approval — 거래번호 별도 저장
+  T->>DB: finish_ksnet_operation → paid, 펀딩 수량 반영
   T-->>B: /payments/ksnet/result 로 이동
 ```
 
@@ -37,16 +39,29 @@ DB 금액으로 KSNET 에 직접 건다. 결제창 form 이나 리턴값을 조�
 
 | `payment_status` | 뜻 | 펀딩 수량 반영 |
 |---|---|:-:|
-| `ready` | 결제창을 열었고 아직 승인 전 | ❌ |
+| `ready` | 승인 대기 또는 결과 확인 중. 승인 요청 후에는 처리 잠금으로 재승인을 막는다 | ❌ |
 | `paid` | KSNET 승인 완료 | ✅ |
 | `failed` | 승인 거절·오류 | ❌ |
 | `cancelled` | 결제창에서 취소, 또는 결제 후 취소(환불) | ❌ |
+
+### 동시 요청과 결과 유실 처리
+
+- `ksnet_payment_operations`에 승인/환불 처리 권한을 먼저 저장한다. 같은 주문에는 진행 중인 작업이 하나만 존재할 수 있다. 구매자·판매자 취소도 같은 경로를 사용한다.
+- 결제창 취소는 DB 행 잠금 안에서 `ready`이고 승인 작업이 시작되지 않은 경우만 처리한다. 승인 중이거나 이미 결제된 주문은 바꾸지 않는다.
+- 승인 응답의 **주문번호·금액·거래번호**를 확인한다. 거래번호를 먼저 별도 트랜잭션으로 기록하고, 주문 확정 실패나 주문 정보 불일치 시 자동 취소한다. 다른 주문에서 사용한 거래번호는 임의 취소하지 않고 확인 대상으로 남긴다.
+- 승인 또는 취소 응답이 끊기면 결과를 실패로 단정하지 않는다. `review_required`와 거래 기록을 남기고 자동 재시도하지 않는다. 프로세스가 중단돼 `processing`으로 남은 작업도 자동 해제하지 않는다.
+- 같은 구매자가 해당 펀딩의 새 주문을 만드는 것도 기존 승인/환불 결과가 미확정인 동안 차단한다.
+- DB 확정 응답만 유실된 경우에는 저장된 작업 결과를 조회한다. 이미 확정됐다면 자동 환불하지 않는다.
+- 결과 화면은 `ready`를 “결제 확인 중”으로 표시하고 재결제를 권하지 않는다. 내 펀딩에서도 확인 중인 주문을 볼 수 있다.
+- 승인 확정·취소·실패 RPC 및 모의결제 RPC는 `anon`/`authenticated`가 실행할 수 없다. PG 인증 식별자와 작업 기록은 브라우저에 공개하지 않는다.
 
 ## 변경 파일
 
 | 구분 | 파일 | 내용 |
 |---|---|---|
 | DB | `supabase/migrations/20261001000000_enable_ksnet_funding_payment.sql` | `create_ksnet_funding_order` · `payment_provider` 에 `ksnet` · 판매자/관리자 실결제 매출 집계를 "모의결제 외 전체"로 |
+| DB 보강 | `supabase/migrations/20261019000000_harden_ksnet_payments.sql` | 결제 RPC 권한 제한, 모의결제 차단, 승인·환불 처리 잠금과 복구 기록 |
+| 처리 흐름 | `supabase/functions/_shared/ksnet-payment.ts` | 중복 방지, 자동 취소, 결과 유실 대응 |
 | Edge Function | `supabase/functions/_shared/ksnet.ts` | 결제창 form · 인증 결과 파싱 · 승인 · 취소 (+ `ksnet.test.ts`) |
 | | `supabase/functions/ksnet-ready/` | 결제 대기 참여 생성 + 결제창 form |
 | | `supabase/functions/ksnet-return/` | 결제창 복귀 → 승인 → 확정 (**JWT 검증 끔**) |
@@ -72,16 +87,21 @@ DB 금액으로 KSNET 에 직접 건다. 결제창 form 이나 리턴값을 조�
 
 ## 운영 배포
 
-```sh
-# 1. DB
-supabase db push   # 20261001000000_enable_ksnet_funding_payment.sql
+PR에서는 테스트·타입 검사만 실행한다. main 반영 시 검사가 통과한 뒤 **필수 시크릿 이름 확인 → DB 마이그레이션 → Edge Functions → 프론트** 순서로 배포한다. 백엔드 실패 시 프론트 배포를 중단한다. 시크릿의 실제 MID·키 유효성은 소액 실결제로 별도 확인해야 한다.
 
-# 2. 시크릿
+수동 배포도 같은 순서를 따른다. 기존 모의결제 권한은 DB 단계에서 제거되므로 전환 시간 동안 주문을 받지 않는 일정으로 진행한다.
+
+```sh
+# 1. 시크릿을 먼저 설정한다
 supabase secrets set KSNET_MID=<인증결제 MID> KSNET_AUTH_HEADER=<pgapi 키> APP_URL=<사이트 주소>
+
+# 2. DB — 20261001000000, 20261019000000 모두 적용
+supabase db push
 
 # 3. 함수 — ksnet-return 은 반드시 JWT 검증을 끈다 (KSPay 는 Supabase 토큰이 없다)
 supabase functions deploy ksnet-ready
 supabase functions deploy ksnet-return --no-verify-jwt
+supabase functions deploy kakaopay-approve
 supabase functions deploy kakaopay-cancel
 supabase functions deploy creator-cancel-participation
 
@@ -156,11 +176,21 @@ npm run dev
 ### 자동 테스트
 
 ```sh
-deno test --no-lock --allow-env --allow-net=jsr.io supabase/functions/_shared/ksnet.test.ts   # KSNET 어댑터 16개
-npm test                                                                          # 기존 vitest
+npm test                    # 프론트 Vitest만 실행
+npm run test:payments       # 어댑터 + 승인/환불 회귀 테스트 (외부 PG 호출 없음)
+npm run check:payments      # 결제 Edge Functions 타입 검사
+python3 scripts/payment-db-tests/run.py --container supabase_db_jwmzjszdjlrqrhadbggr
+# 마지막 명령은 로컬 DB 스키마만 임시 DB에 복제해 권한·상태 전이·동시 세션을 검사한다.
+# 테스트 데이터는 자체 생성하며 완료/실패 시 임시 DB를 삭제한다. 원본 DB는 변경하지 않는다.
 ```
 
-## 테스트 현황 (2026-09-29, 로컬)
+## 보강 검증 (2026-10-19)
+
+- 어댑터 16개 + 승인/환불 회귀 19개: 동시 승인, 승인 중/승인 후 취소, 구매자·판매자 동시 환불, 금액/주문번호 불일치, 승인 거절, PG 타임아웃, 확정 실패, 커밋 응답 유실, 환불 실패와 환불 후 DB 실패를 검증한다.
+- PostgreSQL: 비로그인 결제 확정 및 모의결제 권한 차단, 비공개 거래 기록, 금액 계산, 중복 확정 시 수량 1회 반영, 기존 취소 RPC의 잠금 우회 차단, 소유자 검증, 제작자 취소 알림 유지, 자동 취소와 확인 필요 상태를 검증한다. 실제 DB 세션 두 개로 동시 승인 권한 획득이 1회인지 검사한다.
+- **실제 카드 승인·환불·모바일·iframe 검증은 여전히 미완료**다. 위 테스트는 PG를 모의 처리하며 운영 DB에 연결하지 않는다.
+
+## 최초 연동 테스트 기록 (2026-09-29, 로컬)
 
 | 항목 | 방법 | 결과 |
 |---|---|:-:|
@@ -201,7 +231,7 @@ npm test                                                                        
   확인 처리한다. 구매자·판매자 취소 버튼만 KSNET 취소 API 로 자동 환불한다.
 - **최소 결제금액 1,000원.** 미만이면 결제창을 열기 전에 막는다.
 - 승인은 났는데 DB 확정이 실패하면 자동으로 KSNET 취소를 시도한다. 그것도 실패하면
-  `ksnet-return rollback 실패 — KStA 에서 수동 취소 필요` 로그가 tid 와 함께 남는다.
+  작업이 `review_required`로 남고 `KSNET 결과 확인 필요` 로그에 작업 ID와 거래번호가 기록된다.
 
 ## 문제 해결
 
@@ -216,3 +246,15 @@ npm test                                                                        
 | 승인이 계속 거절된다 | 정기결제 MID 를 넣었거나 MID 미개시. `failed` 참여의 `payment_payload.message` 확인 |
 
 로그는 Supabase 대시보드 → Edge Functions → `ksnet-ready` / `ksnet-return` 에서 본다.
+
+## 결과 확인이 필요한 작업 복구
+
+Supabase SQL Editor 등 서버 관리자 권한으로 `ksnet_payment_operations`의 `processing`/`review_required` 작업을 조회한다. 테이블의 `tid`, `payload`, `comm_con_id`와 KStA 거래내역을 대조한다. 이 값은 공유 문서나 브라우저에 공개하지 않는다.
+
+1. 먼저 원래 Edge Function 실행이 종료됐는지 확인한다. 진행 중인 요청과 동시에 복구하지 않는다.
+2. 승인 여부가 불명확하면 KSNET에 확인한다. 작업을 삭제하거나 잠금을 시간만으로 해제하지 않는다.
+3. 실제 승인이 있고 주문에 반영할 경우, `record_ksnet_approval`에 확인한 거래번호와 `order_no`·`amount`·`auth_no`를 기록한 뒤 `finish_ksnet_operation(..., 'paid', ...)`로 확정한다. 주문번호와 금액이 일치해야 한다.
+4. KStA에서 취소가 확인된 경우 `finish_ksnet_operation(..., 'cancelled', '{"refund_confirmed":true}')`로 DB를 맞춘다. 환불이 성공했지만 DB 반영만 실패한 경우도 **PG 취소를 다시 호출하지 않고** 이 단계만 수행한다.
+5. 승인/환불이 실행되지 않았음을 확실히 확인한 경우만 `finish_ksnet_operation(..., 'failed', ...)`로 작업을 닫는다. 승인 작업은 주문도 실패 처리하고, 환불 작업은 원래의 결제 완료 상태를 유지한다.
+
+복구 RPC는 service role 전용이다. 서비스 키를 브라우저나 고객에게 전달하지 않는다.

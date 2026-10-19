@@ -106,10 +106,7 @@ const MyFundings = () => {
 
   useEffect(() => { void load(); }, [load]);
 
-  const activePaidItems = useMemo(
-    () => paidItems.filter((item) => item.payment_status !== "ready"),
-    [paidItems],
-  );
+  const activePaidItems = paidItems;
 
   useMascotPageContext({
     page: "my-fundings",

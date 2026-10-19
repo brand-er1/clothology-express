@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
+import { FundingEarlyCloseCard } from "@/components/funding/FundingEarlyCloseCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +49,7 @@ const FundingEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [funding, setFunding] = useState<Funding | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [estimating, setEstimating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,6 +69,7 @@ const FundingEditor = () => {
         if (!sessionData.session?.user || sessionData.session.user.id !== fundingData.creator_id) {
           throw new Error("펀딩을 수정할 권한이 없습니다.");
         }
+        setCurrentUserId(sessionData.session.user.id);
         const editableMinimumOrderQuantity = getMinimumOrderQuantity(
           fundingData.cloth_type,
           fundingData.material,
@@ -702,6 +705,30 @@ const FundingEditor = () => {
             </CardContent>
           </Card>
         </div>
+
+        <FundingEarlyCloseCard
+          funding={funding}
+          currentUserId={currentUserId}
+          className="mt-6"
+          onClosed={async () => {
+            if (!id) return;
+            // 작성 중인 내용은 유지하고 마감 관련 상태만 서버 값으로 갱신한다.
+            const fresh = await fetchFunding(id);
+            setFunding((current) => current ? {
+              ...current,
+              status: fresh.status,
+              closed_at: fresh.closed_at,
+              current_orders: fresh.current_orders,
+              early_closed: fresh.early_closed,
+              early_closed_at: fresh.early_closed_at,
+              early_closed_by: fresh.early_closed_by,
+              early_closed_quantity: fresh.early_closed_quantity,
+              funding_status: fresh.funding_status,
+              success_at: fresh.success_at,
+              final_quantity: fresh.final_quantity,
+            } : fresh);
+          }}
+        />
 
         <div className="mt-6">
           <FundingSizeGuide

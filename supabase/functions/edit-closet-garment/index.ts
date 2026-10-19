@@ -1,6 +1,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { NO_BRANDING_RULES } from "../_shared/brandingPolicy.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
@@ -101,6 +102,8 @@ Apply ONLY the change described above. Every other element of the garment must r
 Do not redesign, restyle, or reinterpret the garment. Do not "improve" or add details that were not requested. If the request only touches one detail (for example, logo size or a single color), every other pixel-level design choice must stay as close as possible to the source image.
 
 Preserve the premium photorealistic 3D garment-render style: convincing three-dimensional volume, realistic fabric thickness, natural drape and folds, precise seams and material texture, soft studio lighting, and subtle contact shadows, on a clean background matching the source image.
+
+${NO_BRANDING_RULES}
 
 OUTPUT: Return exactly ONE edited product image of the garment alone (no person, no character, no mannequin unless the source image already has one). No before/after split, comparison layout, caption, watermark, or text overlay.
 `.trim();

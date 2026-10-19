@@ -1,3 +1,4 @@
+import { getAppPath } from "@/utils/appUrl";
 import { Link } from "react-router-dom";
 import { BrandMascot } from "@/components/BrandMascot";
 
@@ -39,6 +40,9 @@ export const Footer = () => (
                 <Link to={link.to} className="link-draw transition-colors hover:text-white">{link.label}</Link>
               </li>
             ))}
+            <li><a href={getAppPath("/guides/small-batch.html")} className="link-draw transition-colors hover:text-white">소량 의류 제작 상담</a></li>
+            <li><a href={getAppPath("/guides/services.html")} className="link-draw transition-colors hover:text-white">의류 제작 서비스 소개</a></li>
+            <li><a href={getAppPath("/guides/faq.html")} className="link-draw transition-colors hover:text-white">의류 제작 FAQ</a></li>
           </ul>
         </nav>
 

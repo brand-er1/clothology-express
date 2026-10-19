@@ -11,13 +11,16 @@ import { ADMIN_NAV } from "./navigation";
 const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { can } = useAdminContext();
   return (
-    <nav className="grid gap-5" aria-label="관리자 메뉴">
+    <nav className="grid gap-3" aria-label="관리자 메뉴">
       {ADMIN_NAV.map((group) => {
         const items = group.items.filter((item) => item.anyOf.some((permission) => can(permission)));
         if (!items.length) return null;
         return (
           <div key={group.group}>
-            <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">{group.group}</p>
+            {/* 메뉴 하나짜리 그룹은 제목이 메뉴명과 같으므로 그룹 제목을 생략한다 */}
+            {!(group.items.length === 1 && group.items[0].label === group.group) && (
+              <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">{group.group}</p>
+            )}
             <div className="grid gap-0.5">
               {items.map(({ path, label, icon: Icon }) => (
                 <NavLink key={path} to={path ? `/admin/${path}` : "/admin"} end={!path} onClick={onNavigate}

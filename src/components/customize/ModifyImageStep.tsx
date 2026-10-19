@@ -1,5 +1,8 @@
 
-import { useRef, useState } from "react";
+import { AiImageEditMenu } from "@/components/ai-image/AiImageEditMenu";
+import type { AiImageEditPreset } from "@/services/aiImageEdit";
+
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,12 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Calculator,
   Copy,
+  Download,
   ImageOff,
   ImagePlus,
   Loader2,
   MapPin,
-  Maximize2,
-  Move,
   RefreshCw,
   Send,
   ShieldAlert,
@@ -22,6 +24,26 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { createExactArtworkComposite } from "@/lib/artwork-composite";
+import {
+  artworkContentTransform,
+  describeArtworkTransform,
+  moveLayer,
+  normalizeRotation,
+  resolveRotation,
+  resolveStretchY,
+  rotatedHalfExtents,
+} from "@/lib/artwork-transform";
+import {
+  clearEditorDraft,
+  loadEditorDraft,
+  saveEditorDraft,
+} from "@/lib/editor-draft-store";
+import {
+  ArtworkTransformBox,
+  type ArtworkBoxGeometry,
+  type ArtworkBoxSize,
+} from "@/components/artwork-editor/ArtworkTransformBox";
+import { ArtworkEditToolbar } from "@/components/artwork-editor/ArtworkEditToolbar";
 import {
   artworkLocationLabels,
   DEFAULT_ARTWORK_WIDTH,
@@ -53,6 +75,23 @@ import type { TrademarkScreeningResult } from "@/types/trademark";
 import type { ProductionCountry } from "@/lib/production-country";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 
+/** 디자인 이미지용 "AI 이미지 수정" 요청 문구(기존 디자인 수정 기능 modify-generated-image 로 전달). */
+const buildDesignEditRequest = (preset: AiImageEditPreset, prompt?: string) => {
+  const keep = "핏·실루엣·색상·원단·디테일·배경·구도·앞뒤 배치는 그대로 유지하세요.";
+  switch (preset) {
+    case "remove_logo":
+      return `의류에 있는 모든 로고·브랜드 마크·엠블럼(BRAND-ER 로고와 글자 포함)만 자연스럽게 지우고, 그 자리는 주변 원단의 색상·질감·주름이 이어지도록 채워주세요. ${keep}`;
+    case "remove_text":
+      return `의류와 이미지에 있는 모든 글자·숫자·문구·워터마크만 자연스럽게 지우고, 그 자리는 주변 원단의 색상·질감·주름이 이어지도록 채워주세요. ${keep}`;
+    case "color":
+      return `컬러만 수정: ${prompt ?? ""}. 원단 질감·주름·음영과 다른 디테일은 그대로 유지하세요.`;
+    case "design":
+      return `디자인 수정: ${prompt ?? ""}. 요청한 부분 외에는 ${keep}`;
+    default:
+      return `${prompt ?? ""}. 요청한 부분 외에는 ${keep}`;
+  }
+};
+
 const placementExamples = [
   "앞면 왼쪽 가슴에 작게 넣어줘",
   "앞면 중앙에 크게 넣어줘",
@@ -68,33 +107,63 @@ const compactScoreLabels = [
   ["productClass", "상품류"],
 ] as const;
 
-type ArtworkGesture =
-  | {
-      mode: "move";
-      pointerId: number;
-      offsetXPercent: number;
-      offsetYPercent: number;
-    }
-  | {
-      mode: "resize";
-      pointerId: number;
-      startClientX: number;
-      startWidthPercent: number;
-    };
-
-// A logo the user already placed and set aside so another one can be added.
-// All staged logos are composited together with the one being edited.
-interface StagedArtwork {
+// One uploaded image placed at one spot on the garment. Every layer stays editable until the
+// customer applies them all at once; array order is paint order (later layers sit on top), and
+// the same image can appear in several layers.
+interface EditorLayer {
   id: string;
   sourceFile: File;
   artwork: ArtworkReference;
   preview: string;
   contentType: ArtworkContentType;
-  screening: TrademarkScreeningResult;
+  /** Null while the trademark screening for this image is still running (or failed). */
+  screening: TrademarkScreeningResult | null;
   placement: ArtworkPlacement;
   placementPrompt: string;
+  /** The prompt text `placement` was last resolved from — a differing prompt is re-resolved
+   * before applying, so typed-but-not-previewed instructions are never silently ignored. */
+  lastResolvedPrompt: string;
   placementSource: "prompt" | "drag";
 }
+
+const createLayerId = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+/** Unsent layers are kept per garment image, so a reload or coming back to the same design
+ * restores every logo with its position, size, rotation and flips. */
+const ARTWORK_DRAFT_VERSION = 1;
+const artworkDraftKey = (imageUrl: string) => `customize-artwork:${imageUrl}`;
+
+/** Keeps the rotated artwork's whole bounding box inside the garment image while dragging. */
+const constrainArtworkCenter = (
+  geometry: ArtworkBoxGeometry,
+  size: ArtworkBoxSize,
+) => {
+  const { halfWidth, halfHeight } = rotatedHalfExtents(
+    size.widthPx,
+    size.heightPx,
+    geometry.rotation,
+  );
+  const xMargin = Math.min(50, (halfWidth / size.stageWidth) * 100);
+  const yMargin = Math.min(50, (halfHeight / size.stageHeight) * 100);
+  return {
+    xPercent: Math.min(100 - xMargin, Math.max(xMargin, geometry.xPercent)),
+    yPercent: Math.min(100 - yMargin, Math.max(yMargin, geometry.yPercent)),
+  };
+};
+
+/** Re-resolving a prompt only changes where/how big the artwork is — never its rotation/flips. */
+const withTransformOf = (
+  placement: ArtworkPlacement,
+  source: ArtworkPlacement,
+): ArtworkPlacement => ({
+  ...placement,
+  rotation: source.rotation,
+  flipX: source.flipX,
+  flipY: source.flipY,
+  stretchY: source.stretchY,
+});
 
 const formatArtworkPrice = (analysis: UploadedArtworkAnalysis) => {
   if (
@@ -166,39 +235,81 @@ export const ModifyImageStep = ({
   const navigate = useNavigate();
   const [modificationPrompt, setModificationPrompt] = useState("");
   const [imageError, setImageError] = useState(false);
-  const [uploadedArtwork, setUploadedArtwork] =
-    useState<ArtworkReference | null>(null);
-  const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
-  const [sourceArtworkFile, setSourceArtworkFile] = useState<File | null>(null);
+  const [layers, setLayers] = useState<EditorLayer[]>([]);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  // Prompt (and image type) used for the NEXT upload while no layer is selected.
+  const [draftPlacementPrompt, setDraftPlacementPrompt] = useState(
+    placementExamples[0],
+  );
   const [artworkContentType, setArtworkContentType] =
     useState<ArtworkContentType>("logo");
-  const [artworkPlacementPrompt, setArtworkPlacementPrompt] = useState(
-    placementExamples[0],
-  );
-  const initialPlacement = resolveArtworkPlacementPrompt(
-    placementExamples[0],
-    DEFAULT_ARTWORK_WIDTH,
-  );
-  const [resolvedPlacement, setResolvedPlacement] =
-    useState<ArtworkPlacement>(initialPlacement.placement);
-  const [placementSummary, setPlacementSummary] = useState(
-    initialPlacement.summary,
-  );
-  const [lastResolvedPrompt, setLastResolvedPrompt] = useState(
-    placementExamples[0],
-  );
-  const [placementSource, setPlacementSource] = useState<"prompt" | "drag">(
-    "prompt",
-  );
+  const [keepAspect, setKeepAspect] = useState(true);
   const [baseImageAspectRatio, setBaseImageAspectRatio] = useState(4 / 3);
   const [isPreparingArtwork, setIsPreparingArtwork] = useState(false);
   const [isApplyingArtwork, setIsApplyingArtwork] = useState(false);
-  const [trademarkScreening, setTrademarkScreening] =
-    useState<TrademarkScreeningResult | null>(null);
-  const [stagedArtworks, setStagedArtworks] = useState<StagedArtwork[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const artworkCanvasRef = useRef<HTMLDivElement>(null);
-  const activeGestureRef = useRef<ArtworkGesture | null>(null);
+  // Which layer the next picked file replaces ("교체"); null adds a new layer.
+  const replaceTargetIdRef = useRef<string | null>(null);
+  const pendingDropPositionRef = useRef<{ xPercent: number; yPercent: number } | null>(null);
+  const layersRef = useRef(layers);
+  layersRef.current = layers;
+
+  const selectedLayer =
+    layers.find((layer) => layer.id === selectedLayerId) ?? null;
+  const selectedLayerIndex = selectedLayer ? layers.indexOf(selectedLayer) : -1;
+  const trademarkScreening = selectedLayer?.screening ?? null;
+  const artworkPlacementPrompt =
+    selectedLayer?.placementPrompt ?? draftPlacementPrompt;
+  const placementSource = selectedLayer?.placementSource ?? "prompt";
+  const placementSummary = selectedLayer
+    ? summarizeArtworkPlacement(selectedLayer.placement)
+    : resolveArtworkPlacementPrompt(draftPlacementPrompt, DEFAULT_ARTWORK_WIDTH)
+        .summary;
+  const isEditingLocked = isLoading || isApplyingArtwork;
+  const allLayersScreened =
+    layers.length > 0 &&
+    layers.every(
+      (layer) => layer.screening && layer.screening.decision !== "blocked",
+    );
+  const hasBlockedLayer = layers.some(
+    (layer) => layer.screening?.decision === "blocked",
+  );
+
+  // Restore the unsent layers saved for this garment image (only into an empty editor, so
+  // switching images never throws away logos the customer is placing right now).
+  const restoredDraftKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedImageUrl) return;
+    const key = artworkDraftKey(selectedImageUrl);
+    let cancelled = false;
+    restoredDraftKeyRef.current = null;
+    void loadEditorDraft<EditorLayer[]>(key, ARTWORK_DRAFT_VERSION).then(
+      (draft) => {
+        if (cancelled) return;
+        if (draft?.length && layersRef.current.length === 0) {
+          setLayers(draft);
+          setSelectedLayerId(null);
+        }
+        restoredDraftKeyRef.current = key;
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedImageUrl]);
+
+  useEffect(() => {
+    if (!selectedImageUrl) return;
+    const key = artworkDraftKey(selectedImageUrl);
+    if (restoredDraftKeyRef.current !== key) return;
+    const timer = window.setTimeout(() => {
+      if (layers.length === 0) void clearEditorDraft(key);
+      else void saveEditorDraft(key, ARTWORK_DRAFT_VERSION, layers);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [layers, selectedImageUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,9 +332,38 @@ export const ModifyImageStep = ({
     }
   };
 
+  const updateLayer = (
+    id: string,
+    patch: Partial<EditorLayer> | ((layer: EditorLayer) => Partial<EditorLayer>),
+  ) =>
+    setLayers((previous) =>
+      previous.map((layer) =>
+        layer.id === id
+          ? { ...layer, ...(typeof patch === "function" ? patch(layer) : patch) }
+          : layer,
+      ),
+    );
+
+  const selectLayer = (id: string | null) => {
+    setSelectedLayerId(id);
+    const layer = layersRef.current.find((item) => item.id === id);
+    if (layer) setArtworkContentType(layer.contentType);
+  };
+
+  // Suggests a spot no other layer was placed at by prompt, so a new logo doesn't land on top
+  // of the ones already placed.
+  const unusedPlacementPrompt = (existing: EditorLayer[]) => {
+    const usedPrompts = new Set(existing.map((item) => item.placementPrompt));
+    return (
+      placementExamples.find((example) => !usedPrompts.has(example)) ??
+      placementExamples[existing.length % placementExamples.length]
+    );
+  };
+
   const loadArtworkFile = async (
     file: File,
     contentType = artworkContentType,
+    replaceId: string | null = null,
   ) => {
     if (!file.type.startsWith("image/")) {
       toast({
@@ -242,16 +382,57 @@ export const ModifyImageStep = ({
       return;
     }
 
+    const replaced = replaceId
+      ? layersRef.current.find((layer) => layer.id === replaceId) ?? null
+      : null;
+    const dropPosition = pendingDropPositionRef.current;
+    pendingDropPositionRef.current = null;
+    let layerId: string | null = null;
+
     try {
-      const previousScreeningId = trademarkScreening?.id || null;
       setIsPreparingArtwork(true);
-      setTrademarkScreening(null);
       const prepared = await prepareArtworkReference(file, contentType);
-      setSourceArtworkFile(file);
-      setUploadedArtwork(prepared);
-      setArtworkPreview(
-        `data:${prepared.mimeType};base64,${prepared.base64}`,
-      );
+      const preview = `data:${prepared.mimeType};base64,${prepared.base64}`;
+
+      if (replaced) {
+        layerId = replaced.id;
+        updateLayer(replaced.id, {
+          sourceFile: file,
+          artwork: prepared,
+          preview,
+          contentType,
+          screening: null,
+        });
+      } else {
+        layerId = createLayerId();
+        const existing = layersRef.current;
+        const prompt = existing.some(
+          (layer) => layer.placementPrompt === draftPlacementPrompt,
+        )
+          ? unusedPlacementPrompt(existing)
+          : draftPlacementPrompt;
+        const resolved = resolveArtworkPlacementPrompt(
+          prompt,
+          DEFAULT_ARTWORK_WIDTH,
+        );
+        const newLayer: EditorLayer = {
+          id: layerId,
+          sourceFile: file,
+          artwork: prepared,
+          preview,
+          contentType,
+          screening: null,
+          placement: dropPosition
+            ? { ...resolved.placement, ...dropPosition }
+            : resolved.placement,
+          placementPrompt: prompt,
+          lastResolvedPrompt: prompt,
+          placementSource: dropPosition ? "drag" : "prompt",
+        };
+        setLayers((previous) => [...previous, newLayer]);
+        setSelectedLayerId(layerId);
+      }
+
       if (
         contentType === "logo" &&
         prepared.backgroundRemoval === "not-detected"
@@ -268,9 +449,9 @@ export const ModifyImageStep = ({
         source: "upload",
         selectedType,
         selectedMaterial,
-        previousScreeningId,
+        previousScreeningId: replaced?.screening?.id || null,
       });
-      setTrademarkScreening(screening);
+      updateLayer(layerId, { screening });
 
       if (screening.decision === "blocked") {
         toast({
@@ -287,10 +468,15 @@ export const ModifyImageStep = ({
         });
       }
     } catch (error) {
-      setSourceArtworkFile(null);
-      setUploadedArtwork(null);
-      setArtworkPreview(null);
-      setTrademarkScreening(null);
+      // A failed upload never leaves a half-ready layer behind: a replaced layer gets its
+      // previous image back, a new one is removed.
+      if (replaced) {
+        updateLayer(replaced.id, replaced);
+      } else if (layerId) {
+        const failedId = layerId;
+        setLayers((previous) => previous.filter((layer) => layer.id !== failedId));
+        setSelectedLayerId((current) => (current === failedId ? null : current));
+      }
       toast({
         title: "이미지 검수 실패",
         description:
@@ -304,161 +490,136 @@ export const ModifyImageStep = ({
     }
   };
 
+  const openFilePicker = (replaceId: string | null = null) => {
+    replaceTargetIdRef.current = replaceId;
+    fileInputRef.current?.click();
+  };
+
   const handleArtworkFile = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     event.target.value = "";
+    const replaceId = replaceTargetIdRef.current;
+    replaceTargetIdRef.current = null;
     if (!file) return;
-    await loadArtworkFile(file);
+    await loadArtworkFile(file, artworkContentType, replaceId);
   };
 
   const handleArtworkContentTypeChange = async (
     contentType: ArtworkContentType,
   ) => {
     setArtworkContentType(contentType);
-    if (sourceArtworkFile) {
-      await loadArtworkFile(sourceArtworkFile, contentType);
+    if (selectedLayer) {
+      await loadArtworkFile(
+        selectedLayer.sourceFile,
+        contentType,
+        selectedLayer.id,
+      );
     }
   };
 
-  const handleResolvePlacement = () => {
-    if (!artworkPlacementPrompt.trim()) {
+  const setArtworkPlacementPrompt = (prompt: string) => {
+    if (selectedLayer) updateLayer(selectedLayer.id, { placementPrompt: prompt });
+    else setDraftPlacementPrompt(prompt);
+  };
+
+  const resolveLayerPrompt = (layer: EditorLayer, prompt: string) => {
+    const resolved = resolveArtworkPlacementPrompt(
+      prompt,
+      layer.placement.widthPercent,
+    );
+    return withTransformOf(resolved.placement, layer.placement);
+  };
+
+  const applyPromptToSelection = (prompt: string) => {
+    if (!prompt.trim()) {
       toast({
         title: "위치 설명 필요",
         description:
           "예: '앞면 왼쪽 가슴에 작게 넣어줘'처럼 입력해주세요.",
         variant: "destructive",
       });
-      return null;
-    }
-
-    const resolved = resolveArtworkPlacementPrompt(
-      artworkPlacementPrompt,
-      resolvedPlacement.widthPercent,
-    );
-    setResolvedPlacement(resolved.placement);
-    setPlacementSummary(resolved.summary);
-    setLastResolvedPrompt(artworkPlacementPrompt.trim());
-    setPlacementSource("prompt");
-    return resolved;
-  };
-
-  // Validates the logo currently being edited and snapshots it (with its
-  // latest placement) so it can be staged or composited. Returns null and
-  // explains why via toast when it can't be used yet.
-  const buildCurrentLayer = (): StagedArtwork | null => {
-    if (!uploadedArtwork || !artworkPreview || !sourceArtworkFile) return null;
-    if (!trademarkScreening) {
-      toast({
-        title: "상표 검수 필요",
-        description: "이미지를 다시 선택해 상표 검수를 완료해주세요.",
-        variant: "destructive",
-      });
-      return null;
-    }
-    if (trademarkScreening.decision === "blocked") {
-      toast({
-        title: "이미지 적용 불가",
-        description:
-          "타사 상표 사용 위험이 높아 이 이미지는 의류에 적용할 수 없습니다.",
-        variant: "destructive",
-      });
-      return null;
-    }
-    let placement = resolvedPlacement;
-    let source = placementSource;
-    if (artworkPlacementPrompt.trim() !== lastResolvedPrompt) {
-      const resolved = handleResolvePlacement();
-      if (!resolved) return null;
-      placement = resolved.placement;
-      source = "prompt";
-    }
-    return {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      sourceFile: sourceArtworkFile,
-      artwork: uploadedArtwork,
-      preview: artworkPreview,
-      contentType: artworkContentType,
-      screening: trademarkScreening,
-      placement,
-      placementPrompt: artworkPlacementPrompt.trim(),
-      placementSource: source,
-    };
-  };
-
-  const resetPlacementPrompt = (prompt: string) => {
-    const resolved = resolveArtworkPlacementPrompt(
-      prompt,
-      DEFAULT_ARTWORK_WIDTH,
-    );
-    setArtworkPlacementPrompt(prompt);
-    setResolvedPlacement(resolved.placement);
-    setPlacementSummary(resolved.summary);
-    setLastResolvedPrompt(prompt);
-    setPlacementSource("prompt");
-  };
-
-  // Suggest a different spot for the next logo so it doesn't land on top of
-  // the ones already placed.
-  const resetToUnusedPlacement = (staged: StagedArtwork[]) => {
-    const usedPrompts = new Set(staged.map((item) => item.placementPrompt));
-    resetPlacementPrompt(
-      placementExamples.find((example) => !usedPrompts.has(example)) ??
-        placementExamples[staged.length % placementExamples.length],
-    );
-  };
-
-  // Fixes the current logo in place. With `duplicate`, the same image stays
-  // in the editor so it can be placed again somewhere else; otherwise the
-  // editor is cleared for a new file.
-  const handleStageArtwork = ({ duplicate = false } = {}) => {
-    const layer = buildCurrentLayer();
-    if (!layer) return;
-    const nextStaged = [...stagedArtworks, layer];
-    setStagedArtworks(nextStaged);
-    resetToUnusedPlacement(nextStaged);
-    if (duplicate) return;
-    clearArtwork();
-    fileInputRef.current?.click();
-  };
-
-  // Moves a placed logo back into the editor. With `duplicate`, the original
-  // stays placed and a copy of the same image is opened for a new position.
-  const handleEditStagedArtwork = (id: string, { duplicate = false } = {}) => {
-    const target = stagedArtworks.find((item) => item.id === id);
-    if (!target) return;
-    let remaining = duplicate
-      ? stagedArtworks
-      : stagedArtworks.filter((item) => item.id !== id);
-    if (uploadedArtwork) {
-      const current = buildCurrentLayer();
-      if (!current) return;
-      remaining = [...remaining, current];
-    }
-    setStagedArtworks(remaining);
-    setSourceArtworkFile(target.sourceFile);
-    setUploadedArtwork(target.artwork);
-    setArtworkPreview(target.preview);
-    setArtworkContentType(target.contentType);
-    setTrademarkScreening(target.screening);
-    if (duplicate) {
-      resetToUnusedPlacement(remaining);
       return;
     }
-    setArtworkPlacementPrompt(target.placementPrompt);
-    setLastResolvedPrompt(target.placementPrompt);
-    setResolvedPlacement(target.placement);
-    setPlacementSummary(summarizeArtworkPlacement(target.placement));
-    setPlacementSource(target.placementSource);
+    if (!selectedLayer) {
+      setDraftPlacementPrompt(prompt);
+      return;
+    }
+    updateLayer(selectedLayer.id, {
+      placementPrompt: prompt,
+      lastResolvedPrompt: prompt.trim(),
+      placement: resolveLayerPrompt(selectedLayer, prompt),
+      placementSource: "prompt",
+    });
   };
 
-  const handleRemoveStagedArtwork = (id: string) => {
-    setStagedArtworks((prev) => prev.filter((item) => item.id !== id));
+  const handleResolvePlacement = () =>
+    applyPromptToSelection(artworkPlacementPrompt);
+
+  const updateSelectedPlacement = (patch: Partial<ArtworkPlacement>) => {
+    if (!selectedLayer) return;
+    updateLayer(selectedLayer.id, (layer) => {
+      const placement = { ...layer.placement, ...patch };
+      return {
+        placement: { ...placement, size: resolveArtworkSize(placement.widthPercent) },
+        placementSource: "drag",
+      };
+    });
   };
 
-  const describeArtworkLayer = (layer: StagedArtwork) =>
-    `${
+  /** `toUnusedSpot` places the copy at a fresh preset spot (the panel's "같은 이미지 하나 더");
+   * otherwise it's nudged next to the original like Canva's duplicate. */
+  const duplicateLayer = (id: string, { toUnusedSpot = false } = {}) => {
+    const source = layersRef.current.find((layer) => layer.id === id);
+    if (!source) return;
+    const duplicateId = createLayerId();
+    let duplicate: EditorLayer;
+    if (toUnusedSpot) {
+      const prompt = unusedPlacementPrompt(layersRef.current);
+      const resolved = resolveArtworkPlacementPrompt(prompt, source.placement.widthPercent);
+      duplicate = {
+        ...source,
+        id: duplicateId,
+        placement: withTransformOf(resolved.placement, source.placement),
+        placementPrompt: prompt,
+        lastResolvedPrompt: prompt,
+        placementSource: "prompt",
+      };
+    } else {
+      duplicate = {
+        ...source,
+        id: duplicateId,
+        placement: {
+          ...source.placement,
+          xPercent: Math.min(95, source.placement.xPercent + 4),
+          yPercent: Math.min(95, source.placement.yPercent + 4),
+        },
+        placementSource: "drag",
+      };
+    }
+    setLayers((previous) => {
+      const index = previous.findIndex((layer) => layer.id === id);
+      const next = [...previous];
+      next.splice(index + 1, 0, duplicate);
+      return next;
+    });
+    setSelectedLayerId(duplicateId);
+  };
+
+  const removeLayer = (id: string) => {
+    setLayers((previous) => previous.filter((layer) => layer.id !== id));
+    setSelectedLayerId((current) => (current === id ? null : current));
+  };
+
+  const moveSelectedLayer = (direction: 1 | -1) => {
+    if (selectedLayerIndex < 0) return;
+    setLayers((previous) => moveLayer(previous, selectedLayerIndex, direction));
+  };
+
+  const describeArtworkLayer = (layer: EditorLayer) => {
+    const transform = describeArtworkTransform(layer.placement);
+    return `${
       selectedType === "knit"
         ? "이미지를 프린팅·직자수 없이 봉제 패치(와펜) 방식으로"
         : layer.contentType === "logo"
@@ -470,38 +631,84 @@ export const ModifyImageStep = ({
       layer.placement.yPercent,
     )}% 지점에 이미지 폭의 약 ${formatArtworkPercent(
       layer.placement.widthPercent,
-    )}% 크기로`;
+    )}% 크기로${transform ? `(${transform})` : ""}`;
+  };
 
-  const describeLayerRequest = (layer: StagedArtwork) =>
+  const describeLayerRequest = (layer: EditorLayer) =>
     `"${layer.placementPrompt}"${
       layer.placementSource === "drag" ? " 후 드래그로 미세 조정한 위치" : ""
     }`;
 
+  // Validates every layer and resolves any prompt typed since its last preview. Returns null
+  // (explaining why via toast) when something can't be applied yet.
+  const finalizeLayers = (): EditorLayer[] | null => {
+    const finalized: EditorLayer[] = [];
+    for (const [index, layer] of layers.entries()) {
+      if (!layer.screening) {
+        setSelectedLayerId(layer.id);
+        toast({
+          title: "상표 검수 필요",
+          description: `${index + 1}번 이미지의 상표 검수가 끝나지 않았습니다. 이미지를 다시 선택해주세요.`,
+          variant: "destructive",
+        });
+        return null;
+      }
+      if (layer.screening.decision === "blocked") {
+        setSelectedLayerId(layer.id);
+        toast({
+          title: "이미지 적용 불가",
+          description:
+            "타사 상표 사용 위험이 높아 이 이미지는 의류에 적용할 수 없습니다.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      if (layer.placementPrompt.trim() !== layer.lastResolvedPrompt) {
+        if (!layer.placementPrompt.trim()) {
+          setSelectedLayerId(layer.id);
+          toast({
+            title: "위치 설명 필요",
+            description:
+              "예: '앞면 왼쪽 가슴에 작게 넣어줘'처럼 입력해주세요.",
+            variant: "destructive",
+          });
+          return null;
+        }
+        finalized.push({
+          ...layer,
+          placement: resolveLayerPrompt(layer, layer.placementPrompt),
+          lastResolvedPrompt: layer.placementPrompt.trim(),
+          placementSource: "prompt",
+        });
+      } else {
+        finalized.push(layer);
+      }
+    }
+    setLayers(finalized);
+    return finalized;
+  };
+
   const handleApplyArtwork = async () => {
-    if (!selectedImageUrl || (!uploadedArtwork && stagedArtworks.length === 0)) {
-      fileInputRef.current?.click();
+    if (!selectedImageUrl || layers.length === 0) {
+      openFilePicker();
       return;
     }
-    const layers = [...stagedArtworks];
-    if (uploadedArtwork) {
-      const current = buildCurrentLayer();
-      if (!current) return;
-      layers.push(current);
-    }
+    const applied = finalizeLayers();
+    if (!applied) return;
 
     try {
       setIsApplyingArtwork(true);
       const compositedImage = await createExactArtworkComposite({
         baseImageUrl: selectedImageUrl,
-        layers,
+        layers: applied,
       });
 
       const prompt =
-        layers.length === 1
-          ? `사용자 요청 ${describeLayerRequest(layers[0])}에 따라 업로드한 ${describeArtworkLayer(
-              layers[0],
+        applied.length === 1
+          ? `사용자 요청 ${describeLayerRequest(applied[0])}에 따라 업로드한 ${describeArtworkLayer(
+              applied[0],
             )} 정확히 적용했습니다.`
-          : `업로드한 이미지 ${layers.length}개를 각각 지정한 위치에 정확히 적용했습니다.\n${layers
+          : `업로드한 이미지 ${applied.length}개를 각각 지정한 위치에 정확히 적용했습니다.\n${applied
               .map(
                 (layer, index) =>
                   `${index + 1}. 사용자 요청 ${describeLayerRequest(
@@ -512,22 +719,25 @@ export const ModifyImageStep = ({
 
       // Every layer is sent so each logo gets its own print analysis and
       // is charged separately in the estimate.
-      const applied = await onModifyImage(prompt, {
-        artworkLayers: layers.map(({ artwork, placement }) => ({
+      const wasApplied = await onModifyImage(prompt, {
+        artworkLayers: applied.map(({ artwork, placement }) => ({
           artwork,
           placement,
         })),
         compositedImage,
       });
-      if (applied) {
+      if (wasApplied) {
         // A logo that needs manual trademark review must stay visible to the
         // admin, so prefer it over ones that passed automatically.
         const screeningToTrack =
-          layers.find((layer) => layer.screening.decision === "review") ??
-          layers[layers.length - 1];
-        onArtworkScreeningApplied(screeningToTrack.screening.id);
-        clearArtwork();
-        setStagedArtworks([]);
+          applied.find((layer) => layer.screening?.decision === "review") ??
+          applied[applied.length - 1];
+        onArtworkScreeningApplied(screeningToTrack.screening?.id ?? null);
+        // The logos are now baked into the new design image; the draft saved for the old
+        // image is no longer needed.
+        void clearEditorDraft(artworkDraftKey(selectedImageUrl));
+        setLayers([]);
+        setSelectedLayerId(null);
       }
     } catch (error) {
       toast({
@@ -543,11 +753,35 @@ export const ModifyImageStep = ({
     }
   };
 
-  const clearArtwork = () => {
-    setSourceArtworkFile(null);
-    setUploadedArtwork(null);
-    setArtworkPreview(null);
-    setTrademarkScreening(null);
+  // Same compositing as "적용" (rotation and flips included), saved as a PNG on the device.
+  const handleDownloadDesign = async () => {
+    if (!selectedImageUrl) return;
+    try {
+      setIsDownloading(true);
+      const image = await createExactArtworkComposite({
+        baseImageUrl: selectedImageUrl,
+        layers: layers.map(({ artwork, placement }) => ({ artwork, placement })),
+        mimeType: "image/png",
+        allowEmpty: true,
+      });
+      const link = document.createElement("a");
+      link.href = `data:${image.mimeType};base64,${image.base64}`;
+      link.download = `brander-design-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      toast({
+        title: "다운로드 실패",
+        description:
+          error instanceof Error
+            ? error.message
+            : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const getPointerPercent = (clientX: number, clientY: number) => {
@@ -557,109 +791,7 @@ export const ModifyImageStep = ({
     return {
       xPercent: ((clientX - rect.left) / rect.width) * 100,
       yPercent: ((clientY - rect.top) / rect.height) * 100,
-      canvasWidth: rect.width,
     };
-  };
-
-  const clampArtworkPosition = (
-    xPercent: number,
-    yPercent: number,
-    widthPercent = resolvedPlacement.widthPercent,
-  ) => {
-    const xMargin = widthPercent / 2;
-    const yMargin = Math.max(6, widthPercent / 4);
-    return {
-      xPercent: Math.min(100 - xMargin, Math.max(xMargin, xPercent)),
-      yPercent: Math.min(100 - yMargin, Math.max(yMargin, yPercent)),
-    };
-  };
-
-  const applyDraggedPlacement = (placement: ArtworkPlacement) => {
-    setResolvedPlacement(placement);
-    setPlacementSummary(summarizeArtworkPlacement(placement));
-    setPlacementSource("drag");
-  };
-
-  const handleMovePointerDown = (
-    event: React.PointerEvent<HTMLElement>,
-  ) => {
-    if (isLoading || isApplyingArtwork) return;
-    const point = getPointerPercent(event.clientX, event.clientY);
-    if (!point) return;
-    event.preventDefault();
-    event.stopPropagation();
-    activeGestureRef.current = {
-      mode: "move",
-      pointerId: event.pointerId,
-      offsetXPercent: point.xPercent - resolvedPlacement.xPercent,
-      offsetYPercent: point.yPercent - resolvedPlacement.yPercent,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const handleResizePointerDown = (
-    event: React.PointerEvent<HTMLButtonElement>,
-  ) => {
-    if (isLoading || isApplyingArtwork) return;
-    event.preventDefault();
-    event.stopPropagation();
-    activeGestureRef.current = {
-      mode: "resize",
-      pointerId: event.pointerId,
-      startClientX: event.clientX,
-      startWidthPercent: resolvedPlacement.widthPercent,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const handleArtworkPointerMove = (
-    event: React.PointerEvent<HTMLDivElement>,
-  ) => {
-    const gesture = activeGestureRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    const point = getPointerPercent(event.clientX, event.clientY);
-    if (!point) return;
-    event.preventDefault();
-
-    if (gesture.mode === "move") {
-      const position = clampArtworkPosition(
-        point.xPercent - gesture.offsetXPercent,
-        point.yPercent - gesture.offsetYPercent,
-      );
-      applyDraggedPlacement({
-        ...resolvedPlacement,
-        ...position,
-      });
-      return;
-    }
-
-    const deltaPercent =
-      ((event.clientX - gesture.startClientX) / point.canvasWidth) * 100;
-    const widthPercent = Math.min(
-      MAX_ARTWORK_WIDTH,
-      Math.max(
-        MIN_ARTWORK_WIDTH,
-        gesture.startWidthPercent + deltaPercent,
-      ),
-    );
-    const position = clampArtworkPosition(
-      resolvedPlacement.xPercent,
-      resolvedPlacement.yPercent,
-      widthPercent,
-    );
-    applyDraggedPlacement({
-      ...resolvedPlacement,
-      ...position,
-      widthPercent,
-      size: resolveArtworkSize(widthPercent),
-    });
-  };
-
-  const handleArtworkPointerEnd = (
-    event: React.PointerEvent<HTMLDivElement>,
-  ) => {
-    if (activeGestureRef.current?.pointerId !== event.pointerId) return;
-    activeGestureRef.current = null;
   };
 
   const handleArtworkDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -676,11 +808,10 @@ export const ModifyImageStep = ({
     event.preventDefault();
     const point = getPointerPercent(event.clientX, event.clientY);
     if (point) {
-      const position = clampArtworkPosition(point.xPercent, point.yPercent);
-      applyDraggedPlacement({
-        ...resolvedPlacement,
-        ...position,
-      });
+      pendingDropPositionRef.current = {
+        xPercent: Math.min(95, Math.max(5, point.xPercent)),
+        yPercent: Math.min(95, Math.max(5, point.yPercent)),
+      };
     }
     await loadArtworkFile(file);
   };
@@ -700,7 +831,7 @@ export const ModifyImageStep = ({
                 </p>
               </div>
               {selectedImageUrl && (
-                <div className="flex shrink-0 flex-wrap gap-2">
+                <div className="flex min-w-0 flex-wrap gap-2">
                   <Button
                     type="button"
                     className="h-11 rounded-[3px] bg-brand px-4 text-sm font-bold hover:bg-brand-dark"
@@ -751,7 +882,7 @@ export const ModifyImageStep = ({
           <div className="flex flex-col items-center space-y-4">
             <div
               className={`relative w-full max-w-3xl select-none overflow-hidden rounded-xl border bg-gray-50 sm:rounded-xl ${
-                artworkPreview || stagedArtworks.length > 0
+                layers.length > 0
                   ? "border-brand/40 shadow-inner"
                   : "border-gray-200"
               }`}
@@ -760,10 +891,9 @@ export const ModifyImageStep = ({
             >
               <div
                 ref={artworkCanvasRef}
-                className="absolute inset-0"
-                onPointerMove={handleArtworkPointerMove}
-                onPointerUp={handleArtworkPointerEnd}
-                onPointerCancel={handleArtworkPointerEnd}
+                data-testid="artwork-stage"
+                className="absolute inset-0 touch-none"
+                onPointerDown={() => setSelectedLayerId(null)}
                 onDragOver={handleArtworkDragOver}
                 onDrop={(event) => void handleArtworkDrop(event)}
               >
@@ -791,79 +921,54 @@ export const ModifyImageStep = ({
                     </p>
                   </div>
                 )}
-                {stagedArtworks.map((item, index) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-md outline-1 outline-dashed outline-brand/50 hover:outline-2 hover:outline-brand"
-                    style={{
-                      left: `${item.placement.xPercent}%`,
-                      top: `${item.placement.yPercent}%`,
-                      width: `${item.placement.widthPercent}%`,
-                    }}
-                    onClick={() => handleEditStagedArtwork(item.id)}
-                    disabled={isLoading || isApplyingArtwork}
-                    aria-label={`배치한 이미지 ${index + 1} 다시 편집`}
-                  >
-                    <img
-                      src={item.preview}
-                      alt=""
-                      className="pointer-events-none block h-auto w-full object-contain"
-                      draggable={false}
+                {layers.map((layer, index) => {
+                  const isSelected = layer.id === selectedLayerId;
+                  return (
+                    <ArtworkTransformBox
+                      key={layer.id}
+                      stageRef={artworkCanvasRef}
+                      src={layer.preview}
+                      alt={isSelected ? "배치할 업로드 이미지" : ""}
+                      xPercent={layer.placement.xPercent}
+                      yPercent={layer.placement.yPercent}
+                      widthPercent={layer.placement.widthPercent}
+                      transform={layer.placement}
+                      selected={isSelected}
+                      disabled={isEditingLocked}
+                      keepAspect={keepAspect}
+                      minWidthPercent={MIN_ARTWORK_WIDTH}
+                      maxWidthPercent={MAX_ARTWORK_WIDTH}
+                      zIndex={isSelected ? 15 : 5 + index}
+                      ariaLabel={`배치한 이미지 ${index + 1} 선택`}
+                      boxAttributes={{ "data-layer-id": layer.id }}
+                      constrainCenter={constrainArtworkCenter}
+                      onSelect={() => selectLayer(layer.id)}
+                      onChange={(geometry) =>
+                        updateLayer(layer.id, {
+                          placement: {
+                            ...layer.placement,
+                            xPercent: geometry.xPercent,
+                            yPercent: geometry.yPercent,
+                            widthPercent: geometry.widthPercent,
+                            size: resolveArtworkSize(geometry.widthPercent),
+                            rotation: geometry.rotation,
+                            ...(geometry.stretchY !== 1 ||
+                            layer.placement.stretchY !== undefined
+                              ? { stretchY: geometry.stretchY }
+                              : {}),
+                          },
+                          placementSource: "drag",
+                        })
+                      }
                     />
-                  </button>
-                ))}
-                {artworkPreview && (
-                  <>
-                    <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-bold text-white shadow">
-                      프롬프트 적용 후 드래그로 미세 조절
-                    </div>
-                    <div
-                      className="absolute -translate-x-1/2 -translate-y-1/2 touch-none cursor-grab active:cursor-grabbing"
-                      style={{
-                        left: `${resolvedPlacement.xPercent}%`,
-                        top: `${resolvedPlacement.yPercent}%`,
-                        width: `${resolvedPlacement.widthPercent}%`,
-                      }}
-                      onPointerDown={handleMovePointerDown}
-                    >
-                      <img
-                        src={artworkPreview}
-                        alt="배치할 업로드 이미지"
-                        className="block h-auto w-full object-contain"
-                        draggable={false}
-                      />
-                      <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-dashed border-brand shadow-lg" />
-                      {resolvedPlacement.widthPercent > 4 ? (
-                        <span className="pointer-events-none absolute -right-2 -top-2 rounded-full bg-brand p-1 text-white shadow">
-                          <Move className="h-3.5 w-3.5" />
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="absolute right-full top-1/2 mr-2 flex h-7 w-7 -translate-y-1/2 touch-none items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md"
-                          onPointerDown={handleMovePointerDown}
-                          aria-label="매우 작은 이미지 위치 이동"
-                        >
-                          <Move className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className={`absolute flex h-7 w-7 touch-none cursor-nwse-resize items-center justify-center rounded-full border-2 border-white bg-brand text-white shadow-md ${
-                          resolvedPlacement.widthPercent <= 4
-                            ? "left-full top-1/2 ml-2 -translate-y-1/2"
-                            : "-bottom-3 -right-3"
-                        }`}
-                        onPointerDown={handleResizePointerDown}
-                        aria-label="이미지 크기 조절"
-                      >
-                        <Maximize2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </>
+                  );
+                })}
+                {selectedLayer && (
+                  <div className="pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-bold text-white shadow">
+                    드래그로 이동 · 모서리로 크기 · 위 핸들로 회전
+                  </div>
                 )}
-                {!artworkPreview && stagedArtworks.length === 0 && !isLoading && (
+                {layers.length === 0 && !isLoading && (
                   <div className="pointer-events-none absolute inset-x-2 bottom-2 rounded-lg bg-white/92 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-gray-600 shadow-sm sm:inset-x-3 sm:bottom-3 sm:text-xs">
                     이미지 선택 또는 파일 드롭 후 프롬프트·드래그를 모두 사용할
                     수 있습니다.
@@ -877,6 +982,99 @@ export const ModifyImageStep = ({
               </div>
             </div>
 
+            {selectedLayer ? (
+              <ArtworkEditToolbar
+                className="w-full max-w-3xl"
+                title={`선택한 이미지 편집 · ${selectedLayerIndex + 1}/${layers.length}`}
+                rotation={resolveRotation(selectedLayer.placement)}
+                onRotationChange={(rotation) =>
+                  updateSelectedPlacement({ rotation: normalizeRotation(rotation) })
+                }
+                widthPercent={selectedLayer.placement.widthPercent}
+                minWidthPercent={MIN_ARTWORK_WIDTH}
+                maxWidthPercent={MAX_ARTWORK_WIDTH}
+                onWidthChange={(widthPercent) => {
+                  // Grows/shrinks around the center, then nudges back inside the image.
+                  const canvas = artworkCanvasRef.current;
+                  const placement = { ...selectedLayer.placement, widthPercent };
+                  if (!canvas) {
+                    updateSelectedPlacement({ widthPercent });
+                    return;
+                  }
+                  const widthPx = (widthPercent / 100) * canvas.clientWidth;
+                  const box = canvas.querySelector<HTMLElement>(
+                    `[data-layer-id="${selectedLayer.id}"]`,
+                  );
+                  const aspect = box ? box.offsetHeight / Math.max(1, box.offsetWidth) : 1;
+                  const center = constrainArtworkCenter(
+                    {
+                      xPercent: placement.xPercent,
+                      yPercent: placement.yPercent,
+                      widthPercent,
+                      rotation: resolveRotation(placement),
+                      stretchY: resolveStretchY(placement),
+                    },
+                    {
+                      widthPx,
+                      heightPx: widthPx * aspect,
+                      stageWidth: canvas.clientWidth,
+                      stageHeight: canvas.clientHeight,
+                    },
+                  );
+                  updateSelectedPlacement({ widthPercent, ...center });
+                }}
+                keepAspect={keepAspect}
+                onKeepAspectChange={setKeepAspect}
+                onResetProportions={
+                  resolveStretchY(selectedLayer.placement) !== 1
+                    ? () => updateSelectedPlacement({ stretchY: 1 })
+                    : undefined
+                }
+                flipX={Boolean(selectedLayer.placement.flipX)}
+                flipY={Boolean(selectedLayer.placement.flipY)}
+                onToggleFlip={(axis) =>
+                  updateSelectedPlacement(
+                    axis === "x"
+                      ? { flipX: !selectedLayer.placement.flipX }
+                      : { flipY: !selectedLayer.placement.flipY },
+                  )
+                }
+                onBringForward={() => moveSelectedLayer(1)}
+                onSendBackward={() => moveSelectedLayer(-1)}
+                canBringForward={selectedLayerIndex < layers.length - 1}
+                canSendBackward={selectedLayerIndex > 0}
+                onDuplicate={() => duplicateLayer(selectedLayer.id)}
+                onDelete={() => removeLayer(selectedLayer.id)}
+                disabled={isEditingLocked}
+              />
+            ) : (
+              layers.length > 0 && (
+                <p className="w-full max-w-3xl text-center text-[11px] leading-5 text-gray-500">
+                  이미지를 눌러 선택하면 회전·크기·반전·순서·복제·삭제를 편집할 수 있어요.
+                  두 손가락으로 벌리거나 돌려도 됩니다.
+                </p>
+              )
+            )}
+
+            {selectedImageUrl && !imageError && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="self-end"
+                data-testid="download-design"
+                onClick={() => void handleDownloadDesign()}
+                disabled={isDownloading || isEditingLocked}
+              >
+                {isDownloading ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-1.5 h-4 w-4" />
+                )}
+                {layers.length > 0 ? "편집 중인 디자인 다운로드" : "디자인 이미지 다운로드"}
+              </Button>
+            )}
+
             <div
               className="w-full rounded-lg border border-brand/15 bg-brand/5 p-4 sm:p-5"
               data-tutorial="customize-artwork"
@@ -889,10 +1087,10 @@ export const ModifyImageStep = ({
                   </h4>
                   <p className="mt-1 text-xs leading-5 text-gray-600">
                     로고는 겉 배경을 자동으로 지우고, 사진은 배경을 유지합니다.
-                    위치와 크기는 프롬프트로 지정한 뒤 드래그로 미세 조절할 수
-                    있습니다. 로고를 여러 개 넣으려면 하나씩 위치를 고정한 뒤
-                    다음 로고를 추가하세요. 같은 이미지도 여러 번 넣을 수
-                    있습니다.
+                    위치와 크기는 프롬프트로 지정한 뒤 드래그로 미세 조절하고,
+                    위쪽 핸들로 자유롭게 회전할 수 있습니다. 로고를 여러 개
+                    넣으려면 하나씩 추가한 뒤 각각 선택해 따로 편집하세요. 같은
+                    이미지도 여러 번 넣을 수 있습니다.
                   </p>
                   {selectedType === "knit" && (
                     <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-900">
@@ -957,57 +1155,80 @@ export const ModifyImageStep = ({
                 onChange={handleArtworkFile}
               />
 
-              {stagedArtworks.length > 0 && (
+              {layers.length > 0 && (
                 <div className="mt-4 rounded-xl border border-brand/20 bg-white p-3">
                   <p className="text-xs font-bold text-gray-700">
-                    배치 완료한 이미지 {stagedArtworks.length}개
+                    배치한 이미지 {layers.length}개
                   </p>
                   <p className="mt-0.5 text-[11px] leading-4 text-gray-500">
                     적용 버튼을 누르면 모든 이미지가 한 번에 옷에 들어갑니다.
-                    미리보기나 편집 버튼으로 다시 조절할 수 있습니다.
+                    미리보기나 목록에서 선택해 각각 따로 편집할 수 있고, 아래쪽
+                    이미지가 위에 그려집니다.
                   </p>
                   <ul className="mt-2 space-y-1.5">
-                    {stagedArtworks.map((item, index) => (
+                    {layers.map((item, index) => (
                       <li
                         key={item.id}
-                        className="flex items-center gap-2 rounded-lg bg-gray-50 p-2"
+                        className={`flex items-center gap-2 rounded-lg p-2 ${
+                          item.id === selectedLayerId
+                            ? "bg-brand/10 ring-1 ring-brand/40"
+                            : "bg-gray-50"
+                        }`}
                       >
-                        <img
-                          src={item.preview}
-                          alt=""
-                          className="h-9 w-9 shrink-0 rounded border border-gray-200 bg-white object-contain"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-gray-800">
-                            {index + 1}. {item.artwork.fileName}
-                          </p>
-                          <p className="truncate text-[11px] text-gray-500">
-                            {summarizeArtworkPlacement(item.placement)}
-                          </p>
-                        </div>
-                        {item.screening.decision === "review" && (
-                          <ShieldAlert
-                            className="h-4 w-4 shrink-0 text-amber-600"
-                            aria-label="상표 검토 필요"
-                          />
-                        )}
-                        <Button
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditStagedArtwork(item.id)}
-                          disabled={isLoading || isApplyingArtwork}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                          onClick={() => selectLayer(item.id)}
+                          aria-pressed={item.id === selectedLayerId}
                         >
-                          편집
-                        </Button>
+                          <img
+                            src={item.preview}
+                            alt=""
+                            className="h-9 w-9 shrink-0 rounded border border-gray-200 bg-white object-contain"
+                            style={{
+                              transform: `rotate(${resolveRotation(item.placement)}deg) ${
+                                artworkContentTransform(item.placement) ?? ""
+                              }`,
+                            }}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-semibold text-gray-800">
+                              {index + 1}. {item.artwork.fileName}
+                            </span>
+                            <span className="block truncate text-[11px] text-gray-500">
+                              {summarizeArtworkPlacement(item.placement)}
+                            </span>
+                          </span>
+                        </button>
+                        {!item.screening ? (
+                          <Loader2
+                            className="h-4 w-4 shrink-0 animate-spin text-gray-400"
+                            aria-label="상표 검수 중"
+                          />
+                        ) : (
+                          item.screening.decision !== "clear" && (
+                            <ShieldAlert
+                              className={`h-4 w-4 shrink-0 ${
+                                item.screening.decision === "blocked"
+                                  ? "text-red-600"
+                                  : "text-amber-600"
+                              }`}
+                              aria-label={
+                                item.screening.decision === "blocked"
+                                  ? "상표 위험 · 적용 불가"
+                                  : "상표 검토 필요"
+                              }
+                            />
+                          )
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
                           onClick={() =>
-                            handleEditStagedArtwork(item.id, { duplicate: true })
+                            duplicateLayer(item.id, { toUnusedSpot: true })
                           }
-                          disabled={isLoading || isApplyingArtwork}
+                          disabled={isEditingLocked}
                           aria-label={`배치한 이미지 ${index + 1} 복제`}
                           title="같은 이미지 하나 더 배치"
                         >
@@ -1017,8 +1238,8 @@ export const ModifyImageStep = ({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleRemoveStagedArtwork(item.id)}
-                          disabled={isLoading || isApplyingArtwork}
+                          onClick={() => removeLayer(item.id)}
+                          disabled={isEditingLocked}
                           aria-label={`배치한 이미지 ${index + 1} 제거`}
                         >
                           <X className="h-4 w-4" />
@@ -1029,19 +1250,19 @@ export const ModifyImageStep = ({
                 </div>
               )}
 
-              {artworkPreview ? (
+              {selectedLayer ? (
                 <div className="mt-4 rounded-xl border border-brand/20 bg-white p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="min-w-0 truncate text-xs font-semibold text-gray-700">
-                      {uploadedArtwork?.fileName}
+                      {selectedLayer.artwork.fileName}
                     </p>
                     <div className="flex shrink-0 items-center gap-1">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isLoading}
+                        onClick={() => openFilePicker(selectedLayer.id)}
+                        disabled={isLoading || isPreparingArtwork}
                       >
                         교체
                       </Button>
@@ -1049,7 +1270,7 @@ export const ModifyImageStep = ({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={clearArtwork}
+                        onClick={() => removeLayer(selectedLayer.id)}
                         disabled={isLoading}
                         aria-label="업로드 이미지 제거"
                       >
@@ -1059,26 +1280,26 @@ export const ModifyImageStep = ({
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
                     <p className="text-xs font-bold text-brand">
-                      {artworkContentType === "logo"
-                        ? uploadedArtwork?.backgroundRemoval === "removed"
+                      {selectedLayer.contentType === "logo"
+                        ? selectedLayer.artwork.backgroundRemoval === "removed"
                           ? "배경과 흰 테두리를 정리한 미리보기입니다."
-                          : uploadedArtwork?.backgroundRemoval ===
+                          : selectedLayer.artwork.backgroundRemoval ===
                               "already-transparent"
                             ? "기존 투명 배경을 그대로 보존했습니다."
                             : "로고 손상 방지를 위해 원본에 가깝게 유지했습니다."
                         : "사진 배경을 제거하지 않고 원본 그대로 사용합니다."}
                     </p>
                     <p className="text-[11px] font-semibold text-gray-500">
-                      {artworkContentType === "logo"
-                        ? uploadedArtwork?.backgroundRemoval === "not-detected"
+                      {selectedLayer.contentType === "logo"
+                        ? selectedLayer.artwork.backgroundRemoval === "not-detected"
                           ? "원본 보호 PNG"
                           : "투명 PNG로 변환"
                         : "고화질 WEBP로 변환"}
                     </p>
                   </div>
                   <p className="mt-2 text-[11px] leading-4 text-gray-500">
-                    미리보기의 이미지를 직접 끌어 위치를 조절하고, 오른쪽 아래
-                    핸들로 크기를 바꿀 수도 있습니다.
+                    미리보기의 이미지를 직접 끌어 위치를 조절하고, 모서리 점으로
+                    크기를, 위쪽 핸들로 각도를 바꿀 수 있습니다.
                   </p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <Button
@@ -1086,34 +1307,24 @@ export const ModifyImageStep = ({
                       variant="outline"
                       size="sm"
                       className="border-brand/30 text-brand hover:bg-brand/5"
-                      onClick={() => handleStageArtwork()}
-                      disabled={
-                        isLoading ||
-                        isPreparingArtwork ||
-                        isApplyingArtwork ||
-                        !trademarkScreening ||
-                        trademarkScreening.decision === "blocked"
-                      }
+                      onClick={() => openFilePicker()}
+                      disabled={isEditingLocked || isPreparingArtwork}
                     >
                       <ImagePlus className="mr-1.5 h-4 w-4" />
-                      고정하고 다른 로고 추가
+                      다른 로고 추가
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       className="border-brand/30 text-brand hover:bg-brand/5"
-                      onClick={() => handleStageArtwork({ duplicate: true })}
-                      disabled={
-                        isLoading ||
-                        isPreparingArtwork ||
-                        isApplyingArtwork ||
-                        !trademarkScreening ||
-                        trademarkScreening.decision === "blocked"
+                      onClick={() =>
+                        duplicateLayer(selectedLayer.id, { toUnusedSpot: true })
                       }
+                      disabled={isEditingLocked || isPreparingArtwork}
                     >
                       <Copy className="mr-1.5 h-4 w-4" />
-                      고정하고 같은 이미지 하나 더
+                      같은 이미지 하나 더
                     </Button>
                   </div>
                 </div>
@@ -1121,14 +1332,14 @@ export const ModifyImageStep = ({
                 <button
                   type="button"
                   className="mt-4 flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-brand/25 bg-white px-4 py-7 text-center transition-colors hover:border-brand/50 hover:bg-brand/5"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => openFilePicker()}
                   disabled={isLoading || isPreparingArtwork}
                 >
                   <Upload className="h-6 w-6 text-brand" />
                   <span className="mt-2 text-sm font-bold text-gray-900">
                     {isPreparingArtwork
                       ? "이미지 준비 중..."
-                      : stagedArtworks.length > 0
+                      : layers.length > 0
                         ? "다른 이미지 추가하기"
                         : "이미지를 선택해주세요"}
                   </span>
@@ -1248,17 +1459,7 @@ export const ModifyImageStep = ({
                       key={example}
                       type="button"
                       className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-600 transition-colors hover:border-brand/30 hover:bg-brand/5 hover:text-brand"
-                      onClick={() => {
-                        setArtworkPlacementPrompt(example);
-                        const resolved = resolveArtworkPlacementPrompt(
-                          example,
-                          resolvedPlacement.widthPercent,
-                        );
-                        setResolvedPlacement(resolved.placement);
-                        setPlacementSummary(resolved.summary);
-                        setLastResolvedPrompt(example);
-                        setPlacementSource("prompt");
-                      }}
+                      onClick={() => applyPromptToSelection(example)}
                       disabled={isLoading || isApplyingArtwork}
                     >
                       {example.replace(" 넣어줘", "")}
@@ -1295,7 +1496,7 @@ export const ModifyImageStep = ({
                   왼쪽·오른쪽 가슴, 앞면·뒷면 중앙, 목 뒤, 양쪽 소매와
                   작게·중간·크게 또는 폭 20% 같은 표현을 이해합니다. 프롬프트
                   적용 뒤에는 드래그로 미세 조절하세요. 최소 폭 0.1%까지 줄일
-                  수 있습니다.
+                  수 있고, 위치를 다시 적용해도 회전·반전은 그대로 유지됩니다.
                 </p>
               </div>
 
@@ -1307,10 +1508,7 @@ export const ModifyImageStep = ({
                   isLoading ||
                   isPreparingArtwork ||
                   isApplyingArtwork ||
-                  (uploadedArtwork
-                    ? !trademarkScreening ||
-                      trademarkScreening.decision === "blocked"
-                    : stagedArtworks.length === 0)
+                  !allLayersScreened
                 }
               >
                 {isLoading || isApplyingArtwork || isPreparingArtwork ? (
@@ -1320,7 +1518,7 @@ export const ModifyImageStep = ({
                       ? "유명 브랜드 로고 검수 중..."
                       : "프롬프트 위치 적용·분석 중..."}
                   </>
-                ) : trademarkScreening?.decision === "blocked" ? (
+                ) : hasBlockedLayer ? (
                   <>
                     <ShieldAlert className="mr-2 h-4 w-4" />
                     상표 위험으로 적용할 수 없습니다
@@ -1328,10 +1526,8 @@ export const ModifyImageStep = ({
                 ) : (
                   <>
                     <BrandMark className="mr-2 h-4 w-4" variant="white" />
-                    {stagedArtworks.length + (uploadedArtwork ? 1 : 0) > 1
-                      ? `이미지 ${
-                          stagedArtworks.length + (uploadedArtwork ? 1 : 0)
-                        }개 한 번에 적용하고 공임 분석`
+                    {layers.length > 1
+                      ? `이미지 ${layers.length}개 한 번에 적용하고 공임 분석`
                       : "프롬프트대로 옷에 적용하고 공임 분석"}
                   </>
                 )}
@@ -1383,6 +1579,21 @@ export const ModifyImageStep = ({
               />
             )}
             
+            <div className="flex w-full flex-wrap items-center gap-2 border border-stone-200 bg-white p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold">AI 이미지 수정</p>
+                <p className="text-xs text-stone-500">로고·글자 제거, 디자인·컬러 수정. 핏·색상·원단·구도는 그대로 유지해요.</p>
+              </div>
+              <AiImageEditMenu
+                size="md"
+                busy={isLoading}
+                disabled={!selectedImageUrl}
+                onEdit={async (preset, prompt) => {
+                  await onModifyImage(buildDesignEditRequest(preset, prompt));
+                }}
+              />
+            </div>
+
             <form onSubmit={handleSubmit} className="w-full space-y-4">
               <Textarea
                 placeholder="이미지를 어떻게 수정할지 설명해주세요. (예: '소매를 짧게 만들어주세요', '색상을 파란색으로 변경해주세요')"

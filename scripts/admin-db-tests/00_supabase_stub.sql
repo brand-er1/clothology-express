@@ -83,7 +83,10 @@ create table public.orders (
 alter table public.orders enable row level security;
 create table public.system_prompts (id uuid primary key default gen_random_uuid(), prompt text not null, created_at timestamptz default now(), updated_at timestamptz default now());
 create table public.generated_images (
-  id uuid primary key default gen_random_uuid(), user_id uuid references auth.users(id), prompt text, image_url text, created_at timestamptz default now()
+  id uuid primary key default gen_random_uuid(), user_id uuid references auth.users(id), prompt text, image_url text, created_at timestamptz default now(),
+  -- 운영 컬럼(src/integrations/supabase/types.ts)
+  stored_image_url text, original_image_url text, image_path text, cloth_type text, material text, detail text,
+  generation_prompt text, is_selected boolean
 );
 alter table public.generated_images enable row level security;
 -- handle_new_user style trigger

@@ -10,7 +10,16 @@ export type XlsxSheet = {
   columnWidths?: number[];
   /** 첫 행을 굵게 + 고정 */
   header?: boolean;
+  /** 텍스트(@) 서식 열: 전화번호·우편번호·주문번호처럼 앞자리 0 이 사라지면 안 되는 값 */
+  textColumns?: number[];
+  /** 금액(#,##0) 서식 열 */
+  amountColumns?: number[];
 };
+
+// styles.xml 의 cellXfs 순서와 같아야 한다.
+const STYLE_HEADER = 1;
+const STYLE_TEXT = 2;
+const STYLE_AMOUNT = 3;
 
 const encoder = new TextEncoder();
 
@@ -138,6 +147,8 @@ const sheetXml = (sheet: XlsxSheet) => {
   const cols = widths.length
     ? `<cols>${widths.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join("")}</cols>`
     : "";
+  const textColumns = new Set(sheet.textColumns ?? []);
+  const amountColumns = new Set(sheet.amountColumns ?? []);
   const rowsXml = sheet.rows
     .map((row, rowIndex) => {
       const header = sheet.header !== false && rowIndex === 0;
@@ -145,8 +156,10 @@ const sheetXml = (sheet: XlsxSheet) => {
         .map((value, column) => {
           if (value === null || value === undefined || value === "") return "";
           const ref = `${columnName(column)}${rowIndex + 1}`;
-          const style = header ? ' s="1"' : "";
-          if (typeof value === "number" && Number.isFinite(value)) return `<c r="${ref}"${style}><v>${value}</v></c>`;
+          const isText = !header && textColumns.has(column);
+          const styleId = header ? STYLE_HEADER : isText ? STYLE_TEXT : amountColumns.has(column) ? STYLE_AMOUNT : 0;
+          const style = styleId ? ` s="${styleId}"` : "";
+          if (!isText && typeof value === "number" && Number.isFinite(value)) return `<c r="${ref}"${style}><v>${value}</v></c>`;
           return `<c r="${ref}" t="inlineStr"${style}><is><t xml:space="preserve">${xml(String(value))}</t></is></c>`;
         })
         .join("");
@@ -196,7 +209,7 @@ export const buildXlsx = (sheets: XlsxSheet[]): Uint8Array => {
     {
       name: "xl/styles.xml",
       data: encoder.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Malgun Gothic"/><family val="2"/></font><font><b/><sz val="11"/><name val="Malgun Gothic"/><family val="2"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF1EDE7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`),
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Malgun Gothic"/><family val="2"/></font><font><b/><sz val="11"/><name val="Malgun Gothic"/><family val="2"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF1EDE7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`),
     },
     ...sheets.map((sheet, index) => ({ name: `xl/worksheets/sheet${index + 1}.xml`, data: encoder.encode(sheetXml(sheet)) })),
   ];

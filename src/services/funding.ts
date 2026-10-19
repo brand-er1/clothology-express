@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type {
   CreateFundingInput,
+  EarlyCloseFundingResult,
   Funding,
   KakaoPayReadyResult,
   KsnetReadyResult,
@@ -19,6 +20,8 @@ import type {
 } from "@/types/funding";
 import { getAppUrl } from "@/utils/appUrl";
 import { getMinimumOrderQuantity } from "@/lib/minimum-order-quantity";
+
+export { getEarlyCloseResultLabel, getFundingEndDate, isFundingRecruitmentOver } from "@/lib/funding-close";
 
 const FUNDING_WITH_BRAND_SELECT = `
   *,
@@ -149,6 +152,42 @@ export const fetchApprovedFundings = async (): Promise<Funding[]> => {
   return (data || []) as Funding[];
 };
 
+/**
+ * 목표를 달성한 공개 펀딩(SHOP '펀딩 성공팀'). 조기 마감 여부와 관계없이 서버가 기록한 success_at 으로
+ * 판정하며, 메인 '펀딩 성공팀' 섹션과 같은 기준이다. 최근 성공순.
+ */
+export const fetchSuccessfulFundings = async (): Promise<Funding[]> => {
+  const { data, error } = await supabase
+    .from("fundings")
+    .select(FUNDING_WITH_BRAND_SELECT)
+    .in("status", ["approved", "closed"])
+    .eq("is_hidden", false)
+    .not("success_at", "is", null)
+    .order("success_at", { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as Funding[];
+};
+
+/**
+ * 메인 '펀딩 성공팀' 노출 대상. 서버가 기록한 success_at 이 있는 공개 펀딩 중 관리자가
+ * '펀딩 성공팀에 노출'을 켠 것만 가져온다. 정렬·표시값 계산은 buildFundingSuccessStories 가 한다.
+ */
+export const fetchFundingSuccessShowcase = async (): Promise<Funding[]> => {
+  const { data, error } = await supabase
+    .from("fundings")
+    .select(FUNDING_WITH_BRAND_SELECT)
+    .in("status", ["approved", "closed"])
+    .eq("is_hidden", false)
+    .eq("success_showcase_visible", true)
+    .not("success_at", "is", null)
+    .order("success_at", { ascending: false })
+    .limit(24);
+
+  if (error) throw error;
+  return (data || []) as Funding[];
+};
+
 export const fetchMyFundings = async (): Promise<Funding[]> => {
   const user = await requireUser();
   const { data, error } = await supabase
@@ -212,6 +251,18 @@ export const submitFundingForReview = async (id: string): Promise<Funding> => {
   });
   if (error) throw error;
   return fetchFunding(id);
+};
+
+/**
+ * 제작자 조기 마감. 권한(creator_id = 로그인 사용자)·상태 검증, 모집 종료, 성공 판정, 참여자 알림 생성은
+ * 모두 서버(DB 함수) 한 트랜잭션에서 처리한다. 여기서는 만들어진 SMS 작업만 발송하도록 디스패처를 깨운다.
+ */
+export const earlyCloseFunding = async (fundingId: string): Promise<EarlyCloseFundingResult> => {
+  await requireUser();
+  const { data, error } = await supabase.rpc("creator_early_close_funding", { p_funding_id: fundingId });
+  if (error) throwFundingError(error, "펀딩을 조기 마감하지 못했습니다.");
+  void supabase.functions.invoke("dispatch-notifications", { body: { fundingId } }).catch(() => undefined);
+  return data as EarlyCloseFundingResult;
 };
 
 export const fetchAllFundings = async (): Promise<Funding[]> => {

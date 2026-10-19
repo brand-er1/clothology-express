@@ -1,5 +1,7 @@
 // deno test supabase/functions/_shared/sms_test.ts
 import {
+  buildFundingEarlyClosedParticipantText,
+  buildFundingInquiryCreatorText,
   buildFundingSuccessCreatorText,
   createSmsProvider,
   MockSmsProvider,
@@ -27,6 +29,39 @@ Deno.test("creator funding-success text matches the approved copy", () => {
       "\"FENRAX 후드티\" 펀딩이 목표 수량 20장을 달성했습니다.",
       "현재 18명/20장 참여가 완료되었습니다.",
       "BRAND-ER에서 펀딩 현황을 확인하고 제작을 준비해주세요.",
+      "brand-er.store",
+    ].join("\n"),
+  );
+});
+
+Deno.test("participant early-close text matches the approved copy", () => {
+  assertEquals(
+    buildFundingEarlyClosedParticipantText({ fundingName: "FENRAX 후드티" }),
+    [
+      "[브랜더]",
+      "참여하신 \"FENRAX 후드티\" 펀딩이 제작자에 의해 조기 마감되었습니다.",
+      "현재 참여 결과를 기준으로 이후 제작 절차가 진행됩니다.",
+      "brand-er.store",
+    ].join("\n"),
+  );
+});
+
+Deno.test("participant early-close text differs for goal met / unmet", () => {
+  assertEquals(
+    buildFundingEarlyClosedParticipantText({ fundingName: "FENRAX 후드티", outcome: "success" }),
+    [
+      "[브랜더]",
+      "참여하신 \"FENRAX 후드티\" 펀딩이 목표 달성으로 조기 마감되었습니다.",
+      "제작 준비가 시작될 예정입니다.",
+      "brand-er.store",
+    ].join("\n"),
+  );
+  assertEquals(
+    buildFundingEarlyClosedParticipantText({ fundingName: "FENRAX 후드티", outcome: "unmet" }),
+    [
+      "[브랜더]",
+      "참여하신 \"FENRAX 후드티\" 펀딩이 목표 수량에 도달하지 못한 상태로 조기 마감되었습니다.",
+      "이후 진행 방법은 BRAND-ER 에서 별도로 안내드리겠습니다.",
       "brand-er.store",
     ].join("\n"),
   );
@@ -101,4 +136,36 @@ Deno.test("dispatcher sends claimed jobs once and records results", async () => 
   assertEquals(failing.failed, 2);
   const lastComplete = calls.filter(([fn]) => fn === "complete_notification_job").pop()![1]!;
   assertEquals(lastComplete.p_success, false);
+});
+
+Deno.test("creator inquiry text names the funding and type but no customer data", () => {
+  assertEquals(
+    buildFundingInquiryCreatorText({ fundingName: "FENRAX 후드티", inquiryType: "size_fit" }),
+    [
+      "[BRAND-ER]",
+      "\"FENRAX 후드티\" 펀딩에 새 상품 문의(사이즈 및 핏)가 등록되었습니다.",
+      "BRAND-ER 펀딩 상세페이지 [상품 문의]에서 답변을 남겨주세요.",
+      "brand-er.store",
+    ].join("\n"),
+  );
+  assertEquals(buildFundingInquiryCreatorText({ fundingName: "A", inquiryType: "unknown" }).includes("(기타)"), true);
+});
+
+Deno.test("dispatcher sends inquiry jobs through the inquiry template", async () => {
+  const sent: string[] = [];
+  const provider = { name: "mock", send: async (m: { text: string }) => { sent.push(m.text); return { ok: true as const, provider: "mock", messageId: "m1", channel: "sms" as const }; } };
+  const calls: string[] = [];
+  const admin = {
+    rpc: (fn: string) => {
+      calls.push(fn);
+      if (fn === "claim_notification_jobs") {
+        return Promise.resolve({ data: [{ log_id: "l1", event_type: "funding_inquiry_created", recipient_role: "creator", channel: "sms", phone: "01012345678", payload: { funding_name: "니트", inquiry_type: "shipping" }, attempt_count: 1 }], error: null });
+      }
+      return Promise.resolve({ data: true, error: null });
+    },
+  };
+  const summary = await dispatchNotificationJobs(admin, {}, provider);
+  assertEquals(summary.sent, 1);
+  assertEquals(sent[0].includes("새 상품 문의(배송 일정)"), true);
+  assertEquals(calls, ["claim_notification_jobs", "complete_notification_job"]);
 });

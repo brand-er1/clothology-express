@@ -12,7 +12,9 @@ import type {
   DetailSection,
   DetailLayoutId,
   DetailSectionLayout,
+  DetailTextField,
 } from "@/types/detailPage";
+import { InlineText } from "@/components/detail-page/InlineText";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { DetailImageView } from "@/components/detail-page/DetailImageView";
 import { DETAIL_THEMES, type DetailTheme } from "@/components/detail-page/templateThemes";
@@ -32,6 +34,14 @@ type RenderContext = {
   imageStatus?: Partial<Record<DetailImageType, DetailImageJobStatus>>;
   /** 펀딩의 현재 컬러 옵션(실시간). 있으면 COLOR 섹션이 컬러별 이미지로 자동 구성된다. */
   colors?: FundingColor[];
+  /** 편집기 전용: 있으면 텍스트를 미리보기 안에서 바로 고칠 수 있다(인라인 편집). */
+  edit?: DetailInlineEditApi;
+};
+
+export type DetailInlineEditApi = {
+  onChange: (target: DetailTextField, value: string) => void;
+  /** 편집 중인 필드(부분 재작성 도구 표시용) */
+  onFocusField?: (target: DetailTextField) => void;
 };
 
 const Ctx = createContext<RenderContext | null>(null);
@@ -41,10 +51,48 @@ const useRender = () => {
   return value;
 };
 
+const sectionField = (section: DetailSection, field: "eyebrow" | "title" | "description"): DetailTextField => ({
+  scope: "section",
+  sectionId: section.id,
+  field,
+});
+
+/** 편집기에서는 인라인 편집 텍스트, 고객 화면에서는 그냥 텍스트. */
+const T = ({ target, value, multiline, placeholder }: { target: DetailTextField; value: string; multiline?: boolean; placeholder?: string }) => {
+  const { edit } = useRender();
+  if (!edit) return <>{value}</>;
+  return (
+    <InlineText
+      value={value}
+      multiline={multiline}
+      placeholder={placeholder}
+      onChange={(next) => edit.onChange(target, next)}
+      onFocus={() => edit.onFocusField?.(target)}
+    />
+  );
+};
+
+const ItemText = ({ section, item, field }: { section: DetailSection; item: DetailSection["items"][number]; field: "title" | "text" }) => (
+  <T
+    target={{ scope: "item", sectionId: section.id, itemId: item.id, field }}
+    value={item[field]}
+    multiline={field === "text"}
+    placeholder={field === "title" ? "제목" : "내용"}
+  />
+);
+
 const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
 const pad = (value: number) => String(value).padStart(2, "0");
 
-const Paragraphs = ({ text, className }: { text: string; className?: string }) => {
+const Paragraphs = ({ text, className, field }: { text: string; className?: string; field?: DetailTextField }) => {
+  const { edit } = useRender();
+  if (edit && field) {
+    return (
+      <div className={cn("whitespace-pre-line text-wrap-anywhere", className)}>
+        <T target={field} value={text} multiline placeholder="본문을 입력하세요" />
+      </div>
+    );
+  }
   if (!text.trim()) return null;
   return (
     <div className={cn("space-y-4 whitespace-pre-line text-wrap-anywhere", className)}>
@@ -87,16 +135,16 @@ const Img = ({ image, className, fit }: { image: DetailImage; className?: string
   );
 };
 
-const Facts = ({ facts, className }: { facts: DetailSection["facts"]; className?: string }) => {
+const Facts = ({ facts, className, sectionId }: { facts: DetailSection["facts"]; className?: string; sectionId?: string }) => {
   const { t, template } = useRender();
   if (!facts.length) return null;
   if (template === "sports") {
     return (
       <dl className={cn("grid grid-cols-2 gap-px bg-[#11161c]/10 dp-md:grid-cols-3", className)}>
         {facts.map((fact, index) => (
-          <div key={`${fact.label}-${index}`} className="min-w-0 bg-white px-4 py-3">
-            <dt className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#11161c]/45">{fact.label}</dt>
-            <dd className="mt-1 text-wrap-anywhere text-sm font-bold">{fact.value}</dd>
+          <div key={`${sectionId ? <T target={{ scope: "fact", sectionId, index, field: "label" }} value={fact.label} /> : fact.label}-${index}`} className="min-w-0 bg-white px-4 py-3">
+            <dt className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#11161c]/45">{sectionId ? <T target={{ scope: "fact", sectionId, index, field: "label" }} value={fact.label} /> : fact.label}</dt>
+            <dd className="mt-1 text-wrap-anywhere text-sm font-bold">{sectionId ? <T target={{ scope: "fact", sectionId, index, field: "value" }} value={fact.value} /> : fact.value}</dd>
           </div>
         ))}
       </dl>
@@ -106,8 +154,8 @@ const Facts = ({ facts, className }: { facts: DetailSection["facts"]; className?
     return (
       <ul className={cn("flex flex-wrap gap-2", className)}>
         {facts.map((fact, index) => (
-          <li key={`${fact.label}-${index}`} className="max-w-full rounded-full bg-white px-3.5 py-1.5 text-sm text-wrap-anywhere">
-            <span className="text-[#2d2a26]/50">{fact.label}</span> <strong className="font-bold">{fact.value}</strong>
+          <li key={`${sectionId ? <T target={{ scope: "fact", sectionId, index, field: "label" }} value={fact.label} /> : fact.label}-${index}`} className="max-w-full rounded-full bg-white px-3.5 py-1.5 text-sm text-wrap-anywhere">
+            <span className="text-[#2d2a26]/50">{sectionId ? <T target={{ scope: "fact", sectionId, index, field: "label" }} value={fact.label} /> : fact.label}</span> <strong className="font-bold">{sectionId ? <T target={{ scope: "fact", sectionId, index, field: "value" }} value={fact.value} /> : fact.value}</strong>
           </li>
         ))}
       </ul>
@@ -117,11 +165,11 @@ const Facts = ({ facts, className }: { facts: DetailSection["facts"]; className?
     <dl className={cn("border-t", t.rule, template === "luxury" && "font-sans", className)}>
       {facts.map((fact, index) => (
         <div
-          key={`${fact.label}-${index}`}
+          key={`${sectionId ? <T target={{ scope: "fact", sectionId, index, field: "label" }} value={fact.label} /> : fact.label}-${index}`}
           className={cn("grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 border-b py-3 text-sm", t.rule)}
         >
-          <dt className={cn("text-xs font-semibold uppercase tracking-[0.1em]", t.muted)}>{fact.label}</dt>
-          <dd className="text-wrap-anywhere font-medium">{fact.value}</dd>
+          <dt className={cn("text-xs font-semibold uppercase tracking-[0.1em]", t.muted)}>{sectionId ? <T target={{ scope: "fact", sectionId, index, field: "label" }} value={fact.label} /> : fact.label}</dt>
+          <dd className="text-wrap-anywhere font-medium">{sectionId ? <T target={{ scope: "fact", sectionId, index, field: "value" }} value={fact.value} /> : fact.value}</dd>
         </div>
       ))}
     </dl>
@@ -134,16 +182,16 @@ const Heading = ({ section, index, align = "left" }: { section: DetailSection; i
     <header className={cn(align === "center" && "text-center")}>
       {template === "street" ? (
         <p className={t.eyebrow}>
-          {pad(index + 1)} / {section.eyebrow}
+          {pad(index + 1)} / <T target={sectionField(section, "eyebrow")} value={section.eyebrow} />
         </p>
       ) : template === "sports" ? (
         <p className={t.eyebrow}>
-          SEC.{pad(index + 1)} — {section.eyebrow}
+          SEC.{pad(index + 1)} — <T target={sectionField(section, "eyebrow")} value={section.eyebrow} />
         </p>
       ) : (
-        section.eyebrow && <p className={t.eyebrow}>{section.eyebrow}</p>
+        section.eyebrow && <p className={t.eyebrow}><T target={sectionField(section, "eyebrow")} value={section.eyebrow} /></p>
       )}
-      {section.title && <h2 className={cn(t.h2, "mt-3 text-wrap-anywhere")}>{section.title}</h2>}
+      {section.title && <h2 className={cn(t.h2, "mt-3 text-wrap-anywhere")}><T target={sectionField(section, "title")} value={section.title} /></h2>}
     </header>
   );
 };
@@ -155,18 +203,23 @@ const Hero = ({ section }: { section: DetailSection }) => {
   const image = section.images[0];
   const title = section.title || document.productName;
   const oneLiner = section.description || document.subtitle;
+  const titleText = <T target={sectionField(section, "title")} value={title} placeholder="상품명" />;
+  const oneLinerText = <T target={sectionField(section, "description")} value={oneLiner} multiline placeholder="한 줄 소개" />;
+  const nameEnField: DetailTextField = document.productNameEn ? { scope: "document", field: "productNameEn" } : sectionField(section, "title");
+  const nameEnOrTitle = <T target={nameEnField} value={document.productNameEn || title} />;
+  const nameEnText = <T target={{ scope: "document", field: "productNameEn" }} value={document.productNameEn} />;
 
   if (template === "street") {
     return (
       <section className="overflow-hidden pb-10 pt-8 dp-md:pb-14">
         <div className={t.inner}>
-          <p className={t.eyebrow}>{section.eyebrow}</p>
-          <h1 className={cn(t.h1, "mt-4 text-wrap-anywhere")}>{document.productNameEn || title}</h1>
+          <p className={t.eyebrow}><T target={sectionField(section, "eyebrow")} value={section.eyebrow} /></p>
+          <h1 className={cn(t.h1, "mt-4 text-wrap-anywhere")}>{nameEnOrTitle}</h1>
         </div>
         {image && <Img image={image} className="mt-6 aspect-[3/4] w-full dp-md:aspect-[16/10]" />}
         <div className={cn(t.inner, "mt-6 grid gap-3 border-t-4 border-current pt-5 dp-md:grid-cols-[1fr_1.2fr]")}>
-          <p className="text-xl font-black leading-tight text-wrap-anywhere dp-md:text-3xl">{title}</p>
-          <p className={t.body}>{oneLiner}</p>
+          <p className="text-xl font-black leading-tight text-wrap-anywhere dp-md:text-3xl">{titleText}</p>
+          <p className={t.body}>{oneLinerText}</p>
         </div>
         {document.productNameEn && (
           <div className="mt-8 overflow-hidden whitespace-nowrap border-y-2 border-current py-2" aria-hidden>
@@ -183,13 +236,13 @@ const Hero = ({ section }: { section: DetailSection }) => {
     return (
       <section className="py-16 dp-md:py-28">
         <div className={cn(t.inner, "text-center")}>
-          <p className={t.eyebrow}>{section.eyebrow}</p>
+          <p className={t.eyebrow}><T target={sectionField(section, "eyebrow")} value={section.eyebrow} /></p>
           {image && <Img image={image} className="mx-auto mt-10 aspect-[2/3] w-full max-w-[420px] dp-md:mt-14" />}
-          <h1 className={cn(t.h1, "mt-10 text-wrap-anywhere dp-md:mt-14")}>{title}</h1>
+          <h1 className={cn(t.h1, "mt-10 text-wrap-anywhere dp-md:mt-14")}>{titleText}</h1>
           {document.productNameEn && (
-            <p className="mt-4 font-sans text-[11px] uppercase tracking-[0.36em] text-[#2a2522]/55">{document.productNameEn}</p>
+            <p className="mt-4 font-sans text-[11px] uppercase tracking-[0.36em] text-[#2a2522]/55">{nameEnText}</p>
           )}
-          {oneLiner && <p className="mx-auto mt-8 max-w-md text-lg italic leading-8 text-[#2a2522]/70">{oneLiner}</p>}
+          {oneLiner && <p className="mx-auto mt-8 max-w-md text-lg italic leading-8 text-[#2a2522]/70">{oneLinerText}</p>}
         </div>
       </section>
     );
@@ -200,10 +253,10 @@ const Hero = ({ section }: { section: DetailSection }) => {
       <section className="py-8 dp-md:py-12">
         <div className={cn(t.inner, "grid gap-6 dp-md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] dp-md:items-end")}>
           <div className="order-2 dp-md:order-1">
-            <p className={t.eyebrow}>{section.eyebrow}</p>
-            <h1 className={cn(t.h1, "mt-3 text-wrap-anywhere")}>{document.productNameEn || title}</h1>
-            <p className="mt-3 text-lg font-bold text-wrap-anywhere">{title}</p>
-            {oneLiner && <p className={cn(t.body, "mt-4")}>{oneLiner}</p>}
+            <p className={t.eyebrow}><T target={sectionField(section, "eyebrow")} value={section.eyebrow} /></p>
+            <h1 className={cn(t.h1, "mt-3 text-wrap-anywhere")}>{nameEnOrTitle}</h1>
+            <p className="mt-3 text-lg font-bold text-wrap-anywhere">{titleText}</p>
+            {oneLiner && <p className={cn(t.body, "mt-4")}>{oneLinerText}</p>}
             <div className="mt-6 h-1.5 w-24 bg-brand" />
           </div>
           {image && (
@@ -225,8 +278,8 @@ const Hero = ({ section }: { section: DetailSection }) => {
         <div className={t.inner}>
           {image && <Img image={image} className="aspect-square w-full dp-md:aspect-[4/3]" />}
           <span className="mt-7 inline-block rounded-full bg-[#c2703d] px-3 py-1 text-xs font-bold text-white">NEW</span>
-          <h1 className={cn(t.h1, "mt-3 text-wrap-anywhere")}>{title}</h1>
-          {oneLiner && <p className="mt-3 text-lg leading-8 text-[#2d2a26]/75">{oneLiner}</p>}
+          <h1 className={cn(t.h1, "mt-3 text-wrap-anywhere")}>{titleText}</h1>
+          {oneLiner && <p className="mt-3 text-lg leading-8 text-[#2d2a26]/75">{oneLinerText}</p>}
         </div>
       </section>
     );
@@ -237,10 +290,10 @@ const Hero = ({ section }: { section: DetailSection }) => {
       <div className={cn(t.inner, "grid gap-8 dp-md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] dp-md:items-end dp-md:gap-12")}>
         {image && <Img image={image} className="aspect-[4/5] w-full" />}
         <div className="pb-2">
-          <p className={t.eyebrow}>{section.eyebrow}</p>
-          <h1 className={cn(t.h1, "mt-3 text-wrap-anywhere")}>{title}</h1>
-          {document.productNameEn && <p className={cn("mt-2 text-xs uppercase tracking-[0.2em]", t.muted)}>{document.productNameEn}</p>}
-          {oneLiner && <p className={cn(t.body, "mt-6 border-t pt-6", t.rule)}>{oneLiner}</p>}
+          <p className={t.eyebrow}><T target={sectionField(section, "eyebrow")} value={section.eyebrow} /></p>
+          <h1 className={cn(t.h1, "mt-3 text-wrap-anywhere")}>{titleText}</h1>
+          {document.productNameEn && <p className={cn("mt-2 text-xs uppercase tracking-[0.2em]", t.muted)}>{nameEnText}</p>}
+          {oneLiner && <p className={cn(t.body, "mt-6 border-t pt-6", t.rule)}>{oneLinerText}</p>}
         </div>
       </div>
     </section>
@@ -269,8 +322,8 @@ const InfoSection = ({ section, index }: { section: DetailSection; index: number
         <li key={item.id} className={cn("flex gap-3 text-[15px] leading-7", template === "street" && "font-bold")}>
           <span className={cn("mt-[11px] h-1 w-3 shrink-0", template === "casual" ? "rounded-full bg-[#c2703d]" : "bg-current opacity-40")} />
           <span className="min-w-0 text-wrap-anywhere">
-            {item.title && <strong className="mr-1.5">{item.title}</strong>}
-            {item.text}
+            {item.title && <strong className="mr-1.5"><ItemText section={section} item={item} field="title" /></strong>}
+            <ItemText section={section} item={item} field="text" />
           </span>
         </li>
       ))}
@@ -284,9 +337,9 @@ const InfoSection = ({ section, index }: { section: DetailSection; index: number
         <div className="mx-auto my-8 h-10 w-px bg-[#2a2522]/25" />
         {image && <Img image={image} className="mx-auto mb-10 aspect-[3/4] w-full max-w-[360px]" />}
         {swatch}
-        <Paragraphs text={section.description} className={t.body} />
+        <Paragraphs field={sectionField(section, "description")} text={section.description} className={t.body} />
         {itemList && <div className="text-left">{itemList}</div>}
-        <Facts facts={section.facts} className="mt-10 text-left" />
+        <Facts sectionId={section.id} facts={section.facts} className="mt-10 text-left" />
       </div>
     );
   }
@@ -297,9 +350,9 @@ const InfoSection = ({ section, index }: { section: DetailSection; index: number
         <Heading section={section} index={index} />
         <div>
           {swatch}
-          <Paragraphs text={section.description} className={cn(t.body, "text-lg dp-md:text-xl")} />
+          <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "text-lg dp-md:text-xl")} />
           {itemList}
-          <Facts facts={section.facts} className="mt-8" />
+          <Facts sectionId={section.id} facts={section.facts} className="mt-8" />
           {image && <Img image={image} className="mt-8 aspect-[4/5] w-full" />}
         </div>
       </div>
@@ -313,9 +366,9 @@ const InfoSection = ({ section, index }: { section: DetailSection; index: number
         <div className={cn("mt-6 grid gap-6", image && "dp-md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]")}>
           <div>
             {swatch}
-            <Paragraphs text={section.description} className={t.body} />
+            <Paragraphs field={sectionField(section, "description")} text={section.description} className={t.body} />
             {itemList}
-            <Facts facts={section.facts} className="mt-6" />
+            <Facts sectionId={section.id} facts={section.facts} className="mt-6" />
           </div>
           {image && <Img image={image} className="aspect-square w-full" />}
         </div>
@@ -330,9 +383,9 @@ const InfoSection = ({ section, index }: { section: DetailSection; index: number
         {image && <Img image={image} className="mt-6 aspect-[4/3] w-full" />}
         <div className="mt-6">
           {swatch}
-          <Paragraphs text={section.description} className={t.body} />
+          <Paragraphs field={sectionField(section, "description")} text={section.description} className={t.body} />
           {itemList}
-          <Facts facts={section.facts} className="mt-6" />
+          <Facts sectionId={section.id} facts={section.facts} className="mt-6" />
         </div>
       </div>
     );
@@ -345,9 +398,9 @@ const InfoSection = ({ section, index }: { section: DetailSection; index: number
       <div>
         {image && <Img image={image} className="mb-8 aspect-square w-full dp-md:aspect-[4/3]" />}
         {swatch}
-        <Paragraphs text={section.description} className={t.body} />
+        <Paragraphs field={sectionField(section, "description")} text={section.description} className={t.body} />
         {itemList}
-        <Facts facts={section.facts} className="mt-8" />
+        <Facts sectionId={section.id} facts={section.facts} className="mt-8" />
       </div>
     </div>
   );
@@ -363,8 +416,8 @@ const DesignSection = ({ section, index }: { section: DetailSection; index: numb
   const images = section.images;
   const text = (
     <>
-      <Paragraphs text={section.description} className={t.body} />
-      <Facts facts={section.facts} className="mt-8" />
+      <Paragraphs field={sectionField(section, "description")} text={section.description} className={t.body} />
+      <Facts sectionId={section.id} facts={section.facts} className="mt-8" />
     </>
   );
 
@@ -429,7 +482,7 @@ const DesignSection = ({ section, index }: { section: DetailSection; index: numb
     return (
       <div>
         <Heading section={section} index={index} />
-        <Paragraphs text={section.description} className={cn(t.body, "mt-5")} />
+        <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-5")} />
         <div className="mt-6 grid grid-cols-2 gap-3">
           {images.map((image, imageIndex) => (
             <figure key={image.id}>
@@ -440,7 +493,7 @@ const DesignSection = ({ section, index }: { section: DetailSection; index: numb
             </figure>
           ))}
         </div>
-        <Facts facts={section.facts} className="mt-6" />
+        <Facts sectionId={section.id} facts={section.facts} className="mt-6" />
       </div>
     );
   }
@@ -457,8 +510,8 @@ const DesignSection = ({ section, index }: { section: DetailSection; index: numb
         ))}
       </div>
       <div className="mt-10 grid gap-8 dp-md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Paragraphs text={section.description} className={t.body} />
-        <Facts facts={section.facts} />
+        <Paragraphs field={sectionField(section, "description")} text={section.description} className={t.body} />
+        <Facts sectionId={section.id} facts={section.facts} />
       </div>
     </div>
   );
@@ -476,8 +529,8 @@ const DetailSectionView = ({ section, index }: { section: DetailSection; index: 
         {section.items.map((item, itemIndex) => (
           <div key={item.id} className="border-2 border-current p-5">
             <p className="text-5xl font-black leading-none">{pad(itemIndex + 1)}</p>
-            <h3 className={cn(t.h3, "mt-6 text-wrap-anywhere")}>{item.title}</h3>
-            <p className={cn(t.body, "mt-2")}>{item.text}</p>
+            <h3 className={cn(t.h3, "mt-6 text-wrap-anywhere")}><ItemText section={section} item={item} field="title" /></h3>
+            <p className={cn(t.body, "mt-2")}><ItemText section={section} item={item} field="text" /></p>
           </div>
         ))}
       </div>
@@ -486,8 +539,8 @@ const DetailSectionView = ({ section, index }: { section: DetailSection; index: 
         {section.items.map((item, itemIndex) => (
           <li key={item.id}>
             <p className="text-sm tracking-[0.3em] text-[#8a6d4b]">{ROMAN[itemIndex] ?? itemIndex + 1}</p>
-            <h3 className="mt-3 text-2xl text-wrap-anywhere">{item.title}</h3>
-            <p className={cn(t.body, "mt-3")}>{item.text}</p>
+            <h3 className="mt-3 text-2xl text-wrap-anywhere"><ItemText section={section} item={item} field="title" /></h3>
+            <p className={cn(t.body, "mt-3")}><ItemText section={section} item={item} field="text" /></p>
           </li>
         ))}
       </ol>
@@ -496,8 +549,8 @@ const DetailSectionView = ({ section, index }: { section: DetailSection; index: 
         {section.items.map((item, itemIndex) => (
           <div key={item.id} className="border-t-4 border-brand bg-white p-5">
             <p className="text-xs font-extrabold italic tracking-[0.14em] text-brand">P.{pad(itemIndex + 1)}</p>
-            <h3 className={cn(t.h3, "mt-3 text-wrap-anywhere")}>{item.title}</h3>
-            <p className={cn(t.body, "mt-2")}>{item.text}</p>
+            <h3 className={cn(t.h3, "mt-3 text-wrap-anywhere")}><ItemText section={section} item={item} field="title" /></h3>
+            <p className={cn(t.body, "mt-2")}><ItemText section={section} item={item} field="text" /></p>
           </div>
         ))}
       </div>
@@ -509,8 +562,8 @@ const DetailSectionView = ({ section, index }: { section: DetailSection; index: 
               <Check className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <h3 className={cn(t.h3, "text-wrap-anywhere")}>{item.title}</h3>
-              <p className="mt-1 text-[15px] leading-7 text-[#2d2a26]/75">{item.text}</p>
+              <h3 className={cn(t.h3, "text-wrap-anywhere")}><ItemText section={section} item={item} field="title" /></h3>
+              <p className="mt-1 text-[15px] leading-7 text-[#2d2a26]/75"><ItemText section={section} item={item} field="text" /></p>
             </div>
           </li>
         ))}
@@ -521,8 +574,8 @@ const DetailSectionView = ({ section, index }: { section: DetailSection; index: 
           <li key={item.id} className={cn("grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 border-b py-5", t.rule)}>
             <span className={cn("text-sm font-semibold", t.muted)}>{pad(itemIndex + 1)}</span>
             <div>
-              <h3 className={cn(t.h3, "text-wrap-anywhere")}>{item.title}</h3>
-              <p className={cn(t.body, "mt-1")}>{item.text}</p>
+              <h3 className={cn(t.h3, "text-wrap-anywhere")}><ItemText section={section} item={item} field="title" /></h3>
+              <p className={cn(t.body, "mt-1")}><ItemText section={section} item={item} field="text" /></p>
             </div>
           </li>
         ))}
@@ -541,7 +594,7 @@ const DetailSectionView = ({ section, index }: { section: DetailSection; index: 
           )}
         />
       )}
-      {section.description && <Paragraphs text={section.description} className={cn(t.body, "mt-8", template === "luxury" && "mx-auto max-w-[560px] text-center")} />}
+      {section.description && <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-8", template === "luxury" && "mx-auto max-w-[560px] text-center")} />}
       <div className="mt-10">{points}</div>
     </div>
   );
@@ -555,8 +608,8 @@ const SizeSection = ({ section, index }: { section: DetailSection; index: number
   return (
     <div className={cn(template === "luxury" && "mx-auto max-w-[680px]")}>
       <Heading section={section} index={index} align={template === "luxury" ? "center" : "left"} />
-      <Paragraphs text={section.description} className={cn(t.body, "mt-6", template === "luxury" && "text-center")} />
-      <Facts facts={section.facts} className="mt-6" />
+      <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-6", template === "luxury" && "text-center")} />
+      <Facts sectionId={section.id} facts={section.facts} className="mt-6" />
       {hasTable && (
         <div id="size-guide" className="mt-8 scroll-mt-24 bg-white/60 font-sans text-stone-900">
           <FundingSizeGuide measurements={stats.measurements} sizeOptions={stats.sizeOptions} />
@@ -568,8 +621,8 @@ const SizeSection = ({ section, index }: { section: DetailSection; index: number
           <ul className="mt-3 space-y-2 text-[15px] leading-7">
             {section.items.map((item) => (
               <li key={item.id} className="text-wrap-anywhere">
-                · {item.title && <strong className="mr-1">{item.title}</strong>}
-                {item.text}
+                · {item.title && <strong className="mr-1"><ItemText section={section} item={item} field="title" /></strong>}
+                <ItemText section={section} item={item} field="text" />
               </li>
             ))}
           </ul>
@@ -588,7 +641,7 @@ const BrandSection = ({ section, index }: { section: DetailSection; index: numbe
   return (
     <div className={cn("grid gap-6", !centered && "dp-md:grid-cols-[200px_minmax(0,1fr)] dp-md:gap-12", centered && "mx-auto max-w-[560px] text-center")}>
       <header>
-        <p className={t.eyebrow}>{section.eyebrow}</p>
+        <p className={t.eyebrow}><T target={sectionField(section, "eyebrow")} value={section.eyebrow} /></p>
         {avatar && (
           <img
             src={avatar}
@@ -602,11 +655,11 @@ const BrandSection = ({ section, index }: { section: DetailSection; index: numbe
         )}
       </header>
       <div className="min-w-0">
-        <h2 className={cn(t.h2, "text-wrap-anywhere")}>{section.title || source.brandName}</h2>
+        <h2 className={cn(t.h2, "text-wrap-anywhere")}><T target={sectionField(section, "title")} value={section.title || source.brandName} /></h2>
         {source.creatorName && (
           <p className={cn("mt-2 text-sm", t.muted, template === "luxury" && "font-sans")}>Designed by {source.creatorName}</p>
         )}
-        <Paragraphs text={section.description} className={cn(t.body, "mt-5")} />
+        <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-5")} />
         {source.brandId && (
           <Link
             to={`/brands/${source.brandId}`}
@@ -661,7 +714,7 @@ const FundingSection = ({ section, index }: { section: DetailSection; index: num
             </div>
           ))}
         </dl>
-        <Paragraphs text={section.description} className={cn(t.body, "mt-6 max-w-2xl")} />
+        <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-6 max-w-2xl")} />
       </div>
     );
   }
@@ -686,7 +739,7 @@ const FundingSection = ({ section, index }: { section: DetailSection; index: num
           </div>
         ))}
       </dl>
-      <Paragraphs text={section.description} className={cn(t.body, "mt-6")} />
+      <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-6")} />
     </div>
   );
 };
@@ -711,8 +764,8 @@ const ProductionSection = ({ section, index }: { section: DetailSection; index: 
               )}
             >
               <p className="text-xs font-extrabold italic">{pad(itemIndex + 1)} →</p>
-              <h3 className="mt-3 text-sm font-extrabold text-wrap-anywhere">{item.title}</h3>
-              <p className={cn("mt-1 text-xs leading-5", t.muted)}>{item.text}</p>
+              <h3 className="mt-3 text-sm font-extrabold text-wrap-anywhere"><ItemText section={section} item={item} field="title" /></h3>
+              <p className={cn("mt-1 text-xs leading-5", t.muted)}><ItemText section={section} item={item} field="text" /></p>
             </li>
           ))}
         </ol>
@@ -732,14 +785,14 @@ const ProductionSection = ({ section, index }: { section: DetailSection; index: 
                 {itemIndex + 1}
               </span>
               <div className="pt-1">
-                <h3 className="text-[15px] font-semibold text-wrap-anywhere">{item.title}</h3>
-                <p className={cn("mt-1 text-sm leading-6", t.muted)}>{item.text}</p>
+                <h3 className="text-[15px] font-semibold text-wrap-anywhere"><ItemText section={section} item={item} field="title" /></h3>
+                <p className={cn("mt-1 text-sm leading-6", t.muted)}><ItemText section={section} item={item} field="text" /></p>
               </div>
             </li>
           ))}
         </ol>
       )}
-      <Paragraphs text={section.description} className={cn(t.body, "mt-8", template === "luxury" && "text-center")} />
+      <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-8", template === "luxury" && "text-center")} />
     </div>
   );
 };
@@ -752,12 +805,12 @@ const NoticeSection = ({ section, index }: { section: DetailSection; index: numb
     <div className={cn(template === "luxury" && "mx-auto max-w-[680px] font-sans")}>
       <Heading section={section} index={index} align={template === "luxury" ? "center" : "left"} />
       <div className={cn("mt-8 border-t", t.rule)}>
-        {section.description && <p className={cn("border-b py-4 text-sm leading-6", t.rule)}>{section.description}</p>}
+        {section.description && <p className={cn("border-b py-4 text-sm leading-6", t.rule)}><T target={sectionField(section, "description")} value={section.description} multiline /></p>}
         <ul>
           {section.items.map((item) => (
             <li key={item.id} className={cn("border-b py-3 text-[13px] leading-6 text-wrap-anywhere", t.rule)}>
-              <span className={t.muted}>※</span> {item.title && <strong className="mr-1">{item.title}</strong>}
-              {item.text}
+              <span className={t.muted}>※</span> {item.title && <strong className="mr-1"><ItemText section={section} item={item} field="title" /></strong>}
+              <ItemText section={section} item={item} field="text" />
             </li>
           ))}
         </ul>
@@ -774,7 +827,7 @@ const GallerySection = ({ section, index }: { section: DetailSection; index: num
   return (
     <div>
       <Heading section={section} index={index} align={template === "luxury" ? "center" : "left"} />
-      {section.description && <Paragraphs text={section.description} className={cn(t.body, "mt-5")} />}
+      {section.description && <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-5")} />}
       {images.length > 0 ? (
         <div className={cn("mt-8 grid gap-3", images.length > 1 && "dp-sm:grid-cols-2", template === "street" && "-mx-4 gap-1 dp-md:-mx-8")}>
           {images.map((image, imageIndex) => (
@@ -826,7 +879,7 @@ const ColorSection = ({ section, index }: { section: DetailSection; index: numbe
       <p className={cn("mt-4 text-sm font-bold uppercase tracking-[0.16em] text-wrap-anywhere")} data-testid="available-colors">
         {list.map((color) => color.name).join(" / ")}
       </p>
-      {section.description && <Paragraphs text={section.description} className={cn(t.body, "mt-5", centered && "mx-auto max-w-[560px]")} />}
+      {section.description && <Paragraphs field={sectionField(section, "description")} text={section.description} className={cn(t.body, "mt-5", centered && "mx-auto max-w-[560px]")} />}
       <div className={cn("mt-8 grid gap-6", list.length > 1 ? "grid-cols-1 dp-sm:grid-cols-2" : "grid-cols-1")}>
         {list.map((color) => {
           const views = (["front", "back"] as const).filter((view) => color.approved[view]?.url);
@@ -904,6 +957,8 @@ export type DetailPageRendererProps = {
   colors?: FundingColor[];
   selectedSectionId?: string | null;
   onSelectSection?: (sectionId: string) => void;
+  /** 편집기 전용: 인라인 텍스트 편집 */
+  edit?: DetailInlineEditApi;
   className?: string;
 };
 
@@ -916,6 +971,7 @@ export const DetailPageRenderer = ({
   colors,
   selectedSectionId,
   onSelectSection,
+  edit,
   className,
 }: DetailPageRendererProps) => {
   const template = getLayoutTemplate(document.template);
@@ -924,7 +980,7 @@ export const DetailPageRenderer = ({
   let contentIndex = -1;
 
   return (
-    <Ctx.Provider value={{ template, t, document, source, stats, watermark, imageStatus, colors }}>
+    <Ctx.Provider value={{ template, t, document, source, stats, watermark, imageStatus, colors, edit }}>
       <article
         className={cn("[container-name:detail-page] [container-type:inline-size] w-full overflow-hidden", t.root, className)}
         data-template={document.template}

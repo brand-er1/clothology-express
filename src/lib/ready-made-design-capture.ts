@@ -1,6 +1,7 @@
 import { toPng } from "html-to-image";
 import { READY_MADE_PRINT_LOCATION_OPTIONS, type ReadyMadeGarmentSide } from "@/data/ready-made-pricing-config";
 import type { ReadyMadeOrderDesignJob, ReadyMadePrintJob } from "@/types/readyMadeOrder";
+import { normalizeRotation } from "@/lib/artwork-transform";
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -24,7 +25,7 @@ export interface CapturedSidePreview {
  * `getStageNode` must return whichever `GarmentCanvas` container is actually visible/laid out at
  * call time (the caller renders both a desktop and mobile instance, only one of which has a
  * non-zero size at any given viewport) with `captureMode` already switched on, so the DOM has no
- * selection borders, resize handles, or guide overlays in it.
+ * selection borders, resize/rotation handles, or guide overlays in it.
  */
 export const captureReadyMadeDesignPreviews = async ({
   printJobs,
@@ -70,6 +71,12 @@ export const captureReadyMadeDesignPreviews = async ({
             job.location;
           const element = node.querySelector<HTMLElement>(`[data-job-id="${job.id}"]`);
           const rect = element?.getBoundingClientRect();
+          const transformFields = {
+            scale: 1,
+            rotation: normalizeRotation(job.placement.rotation ?? 0),
+            flipX: Boolean(job.placement.flipX),
+            flipY: Boolean(job.placement.flipY),
+          };
 
           if (!rect || containerRect.width === 0 || containerRect.height === 0) {
             // Falls back to the stored percentage placement if the element can't be measured
@@ -83,11 +90,13 @@ export const captureReadyMadeDesignPreviews = async ({
               y: job.placement.yPercent / 100,
               width: job.placement.widthPercent / 100,
               height: job.placement.widthPercent / 100,
-              scale: 1,
-              rotation: 0,
+              ...transformFields,
             };
           }
 
+          // The bounding rect of a rotated element is its axis-aligned envelope, so it's only used
+          // for the center (rotation happens around the center, so that stays exact). The size
+          // comes from the element's layout box, which CSS transforms don't affect.
           return {
             id: job.id,
             location: job.location,
@@ -95,14 +104,15 @@ export const captureReadyMadeDesignPreviews = async ({
             side,
             x: (rect.left + rect.width / 2 - containerRect.left) / containerRect.width,
             y: (rect.top + rect.height / 2 - containerRect.top) / containerRect.height,
-            width: rect.width / containerRect.width,
-            height: rect.height / containerRect.height,
-            scale: 1,
-            rotation: 0,
+            width: (element?.offsetWidth ?? rect.width) / node.clientWidth,
+            height: (element?.offsetHeight ?? rect.height) / node.clientHeight,
+            ...transformFields,
           };
         });
 
-      const dataUrl = await toPng(node, { pixelRatio: 2, skipFonts: true });
+      // The stage's own margin would otherwise be copied into the clone and shift the whole
+      // picture down inside the PNG (leaving a transparent strip on top, cropping the bottom).
+      const dataUrl = await toPng(node, { pixelRatio: 2, skipFonts: true, style: { margin: "0" } });
       const base64 = dataUrl.split(",")[1];
       if (base64) results.push({ side, base64, jobs });
     }

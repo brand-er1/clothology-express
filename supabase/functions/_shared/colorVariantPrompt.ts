@@ -4,6 +4,8 @@
  * design, construction, artwork placement/size and fabric realism stay identical.
  */
 
+import { NO_BRANDING_RULES } from "./brandingPolicy.ts";
+
 export type ColorVariantView = "front" | "back";
 
 export type ColorVariantPromptInput = {
@@ -39,6 +41,8 @@ export const buildColorVariantPrompt = (input: ColorVariantPromptInput) => {
     `CHANGE ONLY the base fabric color to ${target}. Trims that match the fabric color (ribbing, drawcords, zipper tape, lining edges) follow the new color; contrast trims keep their original color.`,
     "REALISM: keep the fabric texture/knit, folds, wrinkles, shadows, highlights and sheen. It must look like the garment was actually dyed in the new color — never a flat color overlay or tint.",
     "PRESENTATION: same camera angle and framing as the reference view, full garment visible and centered, plain light neutral studio background, soft even lighting. No model, no mannequin, no props, no added text, no watermark, no color swatches.",
+    // 원본에 이미 있는 디자인 요소는 유지하되, 새 로고·BRAND-ER 표기는 절대 추가하지 않는다.
+    NO_BRANDING_RULES,
     `Output exactly one image, aspect ratio ${COLOR_VARIANT_ASPECT_RATIO}.`,
   ]
     .filter(Boolean)

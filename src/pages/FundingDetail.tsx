@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { FundingSizeGuide } from "@/components/funding/FundingSizeGuide";
 import { FundingCheckoutDialog } from "@/components/funding/FundingCheckoutDialog";
-import { FreeTeeEventNotice, useLatestDropFunding } from "@/components/funding/FreeTeeEvent";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import {
-  fetchApprovedFundings,
   fetchFunding,
+  getEarlyCloseResultLabel,
+  getFundingEndDate,
   getFundingErrorMessage,
   registerFundingPaymentIntent,
 } from "@/services/funding";
@@ -27,14 +27,18 @@ import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
 import { BrandIdentity } from "@/components/brand/BrandIdentity";
 import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer";
 import { FundingColorGallery } from "@/components/funding/FundingColorGallery";
+import { FundingReviewsPanel, ReviewSummaryInline } from "@/components/funding/FundingReviewsSection";
+import { FundingInquiriesPanel } from "@/components/funding/FundingInquiriesPanel";
+import { fetchFundingReviews, type ReviewSummary } from "@/services/fundingReviews";
 import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
-import { fetchDetailPageForFunding } from "@/services/detailPage";
 import { ACTIVE_PAYMENT_PROVIDER } from "@/services/payment";
+import { fetchDetailPage, fetchDetailPageForFunding, fetchMyDetailPageForFunding } from "@/services/detailPage";
 import type { ProductDetailPage } from "@/types/detailPage";
 import {
   ArrowLeft,
   Clock3,
+  Flag,
   Loader2,
   Minus,
   PackageCheck,
@@ -63,8 +67,13 @@ const getCustomerDescription = (funding: Funding) => {
   return `${funding.material} 소재와 ${colorCopy}로 완성한 ${brandName}의 ${funding.cloth_type}입니다. BRAND-ER 플랫폼에서 선택받은 수량만큼 제작합니다.`;
 };
 
+const isParticipationClosed = (funding: Funding) => funding.status === "closed" || Boolean(funding.early_closed);
+
 const FundingDetail = () => {
   const { id } = useParams();
+  // 상세페이지 편집기의 "미리보기": 등록 전 편집본(초안)을 실제 펀딩 화면 그대로 보여준다(작성자 본인만).
+  const [searchParams] = useSearchParams();
+  const draftPreview = searchParams.get("preview") === "draft";
   const navigate = useNavigate();
   const [funding, setFunding] = useState<Funding | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -76,24 +85,43 @@ const FundingDetail = () => {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [shippingPrefill, setShippingPrefill] = useState<Partial<ShippingDetails>>({});
   const stickyCtaRef = useMobileStickyCtaOffset();
-  const [approvedFundings, setApprovedFundings] = useState<Funding[]>([]);
-  const latestDropId = useLatestDropFunding(approvedFundings)?.id ?? null;
   // AI detail page linked to this funding. null → the existing product UI below (fallback).
   const [detailPage, setDetailPage] = useState<ProductDetailPage | null>(null);
   // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
   const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
+  // 하단 [상세정보] [리뷰] [상품 문의]
+  // ?tab=reviews|inquiry 로 들어오면(내 펀딩의 "리뷰 작성하기" 등) 해당 탭을 바로 연다.
+  const initialTab = searchParams.get("tab");
+  const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">(
+    initialTab === "reviews" || initialTab === "inquiry" ? initialTab : "detail",
+  );
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setReviewSummary(null);
+    fetchFundingReviews(id, "latest", 1)
+      .then((result) => { if (!cancelled) setReviewSummary(result.summary); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     setDetailPage(null);
-    void fetchDetailPageForFunding(id).then((page) => {
+    const loadDraft = async () => {
+      const pageId = await fetchMyDetailPageForFunding(id).catch(() => null);
+      return pageId ? fetchDetailPage(pageId).catch(() => null) : null;
+    };
+    void (draftPreview ? loadDraft().then((draft) => draft ?? fetchDetailPageForFunding(id)) : fetchDetailPageForFunding(id)).then((page) => {
       if (!cancelled) setDetailPage(page && page.document.sections.some((section) => section.visible) ? page : null);
     });
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, draftPreview]);
 
   useEffect(() => {
     if (!id) return;
@@ -101,14 +129,8 @@ const FundingDetail = () => {
     const load = async () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
-        // The approved list only decides whether this is the free-tee event drop; load it
-        // alongside the product so the event notice doesn't shift the page after first paint.
-        const [fundingData, approvedList, colorRows] = await Promise.all([
+        const [fundingData, colorRows] = await Promise.all([
           fetchFunding(id),
-          fetchApprovedFundings().catch((error) => {
-            console.error("Failed to load latest drop for free tee event:", error);
-            return [] as Funding[];
-          }),
           fetchFundingColors(id).catch((error) => {
             console.error("Failed to load funding colors:", error);
             return [] as FundingColor[];
@@ -118,7 +140,6 @@ const FundingDetail = () => {
         const user = sessionData.session?.user || null;
         setCurrentUserId(user?.id || null);
         setFunding(fundingData);
-        setApprovedFundings(approvedList);
 
         if (user) {
           const { data: profile } = await supabase
@@ -161,6 +182,13 @@ const FundingDetail = () => {
     load();
   }, [id, navigate]);
 
+  // ?tab= 으로 연 탭은 상품 로딩 후 탭 위치로 스크롤한다.
+  const fundingLoaded = !loading && Boolean(funding);
+  useEffect(() => {
+    if (!fundingLoaded || (initialTab !== "reviews" && initialTab !== "inquiry")) return;
+    window.requestAnimationFrame(() => document.getElementById("funding-detail-tabs")?.scrollIntoView({ block: "start" }));
+  }, [fundingLoaded, initialTab]);
+
   const colorOptions = useMemo(() => {
     if (!funding) return [];
     return orderableColorNames(fundingColors, funding.color_options?.length ? funding.color_options : [funding.color || "기본 색상"]);
@@ -172,7 +200,7 @@ const FundingDetail = () => {
   }, [funding]);
 
   const handleParticipate = () => {
-    if (!funding || !id) return;
+    if (!funding || !id || isParticipationClosed(funding)) return;
 
     if (!currentUserId) {
       toast({ title: "로그인이 필요합니다", description: "로그인 후 상품을 주문할 수 있습니다." });
@@ -190,7 +218,7 @@ const FundingDetail = () => {
   };
 
   const handlePaymentIntent = async () => {
-    if (!funding || !id) return;
+    if (!funding || !id || isParticipationClosed(funding)) return;
     if (!currentUserId) {
       navigate(`/auth?returnTo=${encodeURIComponent(`/fundings/${id}`)}`);
       return;
@@ -227,12 +255,21 @@ const FundingDetail = () => {
 
   const progress = Math.min(100, Math.round((funding.current_orders / funding.moq) * 100));
   const remaining = Math.max(0, funding.moq - funding.current_orders);
-  const isPreview = funding.status !== "approved";
-  const isCreator = currentUserId === funding.creator_id;
-  const isFreeTeeEventItem = !isPreview && funding.id === latestDropId;
+  const isPreview = funding.status !== "approved" && funding.status !== "closed";
+  // 조기 마감 · 종료 · 운영 중단(status = closed): 참여/결제 버튼을 막는다(서버도 status = 'approved' 만 허용).
+  const isClosed = !isPreview && isParticipationClosed(funding);
+  const isEarlyClosed = !isPreview && Boolean(funding.early_closed);
+  const closedLabel = isEarlyClosed ? getEarlyCloseResultLabel(funding) : funding.success_at ? "펀딩 성공 · 종료" : "펀딩 종료";
+  // 미리보기에서는 작성자용 버튼을 숨겨 구매자 화면과 같게 보여준다.
+  const isCreator = currentUserId === funding.creator_id && !draftPreview;
   const totalPrice = (funding.price || 0) * quantity;
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
   const customerDescription = getCustomerDescription(funding);
+
+  const openDetailTab = (tab: "detail" | "reviews" | "inquiry") => {
+    setDetailTab(tab);
+    window.requestAnimationFrame(() => document.getElementById("funding-detail-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   const tryOnFundingGarment = () => {
     navigate("/closet", {
@@ -254,7 +291,16 @@ const FundingDetail = () => {
     });
   };
 
-  const renderPurchaseButton = (heightClassName = "h-14") => !isPreview && funding.price && !currentUserId ? (
+  const renderPurchaseButton = (heightClassName = "h-14") => isClosed ? (
+    <Button
+      disabled
+      aria-disabled
+      className={`${heightClassName} w-full rounded-[2px] bg-stone-400 text-base font-semibold text-white disabled:opacity-100`}
+      data-tutorial="funding-detail-participate"
+    >
+      <Flag className="mr-2 h-5 w-5" /> {isEarlyClosed ? "조기 마감" : "펀딩 종료"}
+    </Button>
+  ) : !isPreview && funding.price && !currentUserId ? (
     <Button asChild className={`${heightClassName} w-full rounded-[2px] bg-brand text-base font-semibold text-white hover:bg-brand-dark`} data-tutorial="funding-detail-participate">
       <Link to={loginReturnTo}>
         <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
@@ -274,11 +320,13 @@ const FundingDetail = () => {
 
   const fundingRateActual = funding.moq > 0 ? Math.round((funding.current_orders / funding.moq) * 100) : 0;
   const expectedRevenue = (funding.price || 0) * funding.current_orders;
-  const endDate = funding.reviewed_at
-    ? new Date(new Date(funding.reviewed_at).getTime() + funding.funding_days * 24 * 60 * 60 * 1000)
-    : null;
+  const endDate = getFundingEndDate(funding);
   const daysLeft = endDate ? Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null;
-  const dDayLabel = daysLeft === null ? "기간 미정" : daysLeft > 0 ? `D-${daysLeft}` : daysLeft === 0 ? "D-DAY" : "펀딩 종료";
+  const dDayLabel = isEarlyClosed
+    ? "조기 마감"
+    : isClosed
+      ? "펀딩 종료"
+      : daysLeft === null ? "기간 미정" : daysLeft > 0 ? `D-${daysLeft}` : daysLeft === 0 ? "D-DAY" : "펀딩 종료";
 
   return (
     <div className="min-h-screen bg-[#f6f3ee] text-[#211b1c]">
@@ -292,13 +340,21 @@ const FundingDetail = () => {
             {isPreview && (
               <Badge className="rounded-none bg-amber-100 text-amber-900 hover:bg-amber-100">작성자 미리보기 · 판매 전</Badge>
             )}
+            {isEarlyClosed && (
+              <Badge className="rounded-none bg-[#211b1c] text-white hover:bg-[#211b1c]">조기 마감된 펀딩입니다</Badge>
+            )}
+            {isClosed && (
+              <Badge className={`rounded-none ${funding.success_at ? "bg-emerald-600 text-white hover:bg-emerald-600" : "bg-stone-200 text-stone-800 hover:bg-stone-200"}`}>
+                {closedLabel}
+              </Badge>
+            )}
             {isCreator && (
               <>
                 <Button asChild variant="outline" size="sm" className="rounded-none bg-transparent">
                   <Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-1.5 h-4 w-4" /> 상품 수정</Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="rounded-none bg-transparent">
-                  <Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-1.5 h-4 w-4" /> 상세페이지</Link>
+                  <Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-1.5 h-4 w-4" /> 상세페이지 수정</Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="rounded-none bg-transparent">
                   <Link to={`/fundings/${funding.id}/manage`}><Users className="mr-1.5 h-4 w-4" /> 주문 관리</Link>
@@ -330,6 +386,11 @@ const FundingDetail = () => {
             <h1 className="mt-3 text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:mt-4 sm:text-5xl xl:text-[3.5rem]">
               {funding.product_name}
             </h1>
+            {!isPreview && reviewSummary && (
+              <div className="mt-3">
+                <ReviewSummaryInline summary={reviewSummary} onClick={() => openDetailTab("reviews")} />
+              </div>
+            )}
             <p className="mt-5 text-sm leading-7 text-stone-600">{detailPage?.document.subtitle || customerDescription}</p>
             <div className="mt-6 border-y border-black/10 py-4">
               <BrandIdentity brand={funding.brand} />
@@ -338,7 +399,6 @@ const FundingDetail = () => {
             <p className="mt-7 text-2xl font-semibold tracking-[-0.02em]" data-tutorial="funding-detail-price">
               {funding.price ? `${funding.price.toLocaleString("ko-KR")}원` : "가격 준비 중"}
             </p>
-            {isFreeTeeEventItem && <FreeTeeEventNotice className="mt-4" />}
 
             <div className="mt-8 border-t border-black/10 pt-6" data-tutorial="funding-detail-progress">
               <div className="flex items-end justify-between gap-4">
@@ -353,7 +413,11 @@ const FundingDetail = () => {
                 <div className="absolute inset-y-0 left-0 bg-brand transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
               </div>
               <p className="mt-3 text-sm font-medium text-[#211b1c]">
-                {remaining > 0 ? `제작 확정까지 ${remaining}장의 주문이 더 필요해요` : "제작이 확정된 컬렉션입니다"}
+                {isClosed
+                  ? funding.success_at
+                    ? `${closedLabel} · 제작이 확정된 컬렉션입니다`
+                    : `${closedLabel} · 목표 수량에 도달하지 못했어요`
+                  : remaining > 0 ? `제작 확정까지 ${remaining}장의 주문이 더 필요해요` : "제작이 확정된 컬렉션입니다"}
               </p>
               <p className="mt-0.5 text-xs text-stone-500">선택받은 수량만큼 제작하는 리미티드 오더</p>
               <dl className="mt-6 grid grid-cols-3 gap-4 border-y border-black/10 py-4">
@@ -431,6 +495,23 @@ const FundingDetail = () => {
                 <strong className="text-wrap-anywhere text-2xl">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "가격 준비 중"}</strong>
               </div>
 
+              {isClosed && (
+                <div
+                  role="status"
+                  className={`flex items-start gap-3 border px-4 py-3 text-sm ${funding.success_at ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-black/10 bg-white/60 text-[#211b1c]"}`}
+                >
+                  <Flag className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-semibold">{isEarlyClosed ? "조기 마감된 펀딩입니다." : "모집이 종료된 펀딩입니다."}</p>
+                    <p className="mt-0.5 text-xs opacity-80">
+                      {closedLabel}
+                      {isEarlyClosed && funding.early_closed_at && ` · ${new Date(funding.early_closed_at).toLocaleDateString("ko-KR")} 마감`}
+                      {" · "}추가 참여와 결제는 할 수 없습니다.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {renderPurchaseButton()}
 
               <Button
@@ -447,7 +528,7 @@ const FundingDetail = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isPreview || !funding.price || intentSubmitting}
+                    disabled={isPreview || isClosed || !funding.price || intentSubmitting}
                     className="h-12 w-full rounded-none border-black/20 bg-transparent text-sm font-bold text-[#211b1c] hover:bg-black/5"
                   >
                     {intentSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock3 className="mr-2 h-4 w-4" />}
@@ -505,6 +586,31 @@ const FundingDetail = () => {
         </section>
         )}
 
+        {!isPreview && (
+          <div id="funding-detail-tabs" className="sticky top-14 z-20 -mx-4 mt-16 scroll-mt-14 border-b border-black/10 bg-[#f6f3ee]/95 px-4 backdrop-blur-md sm:top-16 sm:mx-0 sm:px-0">
+            <div role="tablist" aria-label="펀딩 상세 메뉴" className="grid grid-cols-3">
+              {([
+                ["detail", "상세정보"],
+                ["reviews", `리뷰${reviewSummary ? ` ${Number(reviewSummary.count).toLocaleString("ko-KR")}` : ""}`],
+                ["inquiry", "상품 문의"],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={detailTab === key}
+                  onClick={() => openDetailTab(key)}
+                  className={`min-h-12 border-b-2 text-sm font-semibold transition ${detailTab === key ? "border-[#211b1c] text-[#211b1c]" : "border-transparent text-stone-500 hover:text-[#211b1c]"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {detailTab === "detail" && (
+        <>
         {(funding.sample_image_url || funding.sample_note) && (
           <section className="mt-24 grid gap-8 md:grid-cols-12 md:gap-8">
             {funding.sample_image_url && (
@@ -599,6 +705,19 @@ const FundingDetail = () => {
         </section>
         </>
         )}
+        </>
+        )}
+
+        {!isPreview && detailTab === "reviews" && (
+          <section className="mt-10" aria-label="리뷰">
+            <FundingReviewsPanel fundingId={funding.id} loginReturnTo={loginReturnTo} onSummary={setReviewSummary} />
+          </section>
+        )}
+        {!isPreview && detailTab === "inquiry" && (
+          <section className="mt-10" aria-label="상품 문의">
+            <FundingInquiriesPanel fundingId={funding.id} loginReturnTo={loginReturnTo} />
+          </section>
+        )}
       </main>
 
       {/* Mobile order bar: sits directly above the bottom tab bar (which owns the safe-area inset),
@@ -625,7 +744,6 @@ const FundingDetail = () => {
         size={selectedSize}
         quantity={quantity}
         prefill={shippingPrefill}
-        freeTeeEvent={isFreeTeeEventItem}
       />
     </div>
   );

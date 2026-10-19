@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
+import { AiImageEditMenu } from "@/components/ai-image/AiImageEditMenu";
+import { editAiImage, type AiImageEditPreset } from "@/services/aiImageEdit";
 import { cn } from "@/lib/utils";
 import { COLOR_PRESETS, VIEW_LABEL, colorHexOf, guessColorHex, type ColorView, type FundingColor } from "@/lib/funding-colors";
 import { fetchFunding } from "@/services/funding";
@@ -284,6 +286,20 @@ const ColorCard = ({ color, index, count, busy, jobs, onGenerate, onApprove, onR
   const [name, setName] = useState(color.name);
   const [hex, setHex] = useState(colorHexOf(color));
   const fileInputs = useRef<Partial<Record<ColorView, HTMLInputElement | null>>>({});
+  const [editingView, setEditingView] = useState<ColorView | null>(null);
+  /** AI 이미지 수정(로고 제거 등) → 결과를 '이미지 교체'와 같은 경로로 등록한다. */
+  const editColorImage = async (view: ColorView, url: string, preset: AiImageEditPreset, prompt?: string) => {
+    setEditingView(view);
+    try {
+      const edited = await editAiImage({ imageUrl: url, preset, prompt, aspectRatio: "4:5" });
+      const blob = await (await fetch(edited.url)).blob();
+      await onReplace(view, new File([blob], `ai-edit-${view}.${blob.type.split("/")[1] || "png"}`, { type: blob.type || "image/png" }));
+    } catch (error) {
+      toast({ title: "이미지를 수정하지 못했어요", description: colorErrorMessage(error), variant: "destructive" });
+    } finally {
+      setEditingView(null);
+    }
+  };
   useEffect(() => { setName(color.name); setHex(colorHexOf(color)); }, [color]);
   const dirty = name.trim() !== color.name || (color.hex ?? colorHexOf(color)) !== hex;
 
@@ -352,6 +368,14 @@ const ColorCard = ({ color, index, count, busy, jobs, onGenerate, onApprove, onR
                     {running ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
                     {approved ? "AI 재생성" : "AI 생성"}
                   </Button>
+                )}
+                {approved?.url && (
+                  <AiImageEditMenu
+                    className="h-8 px-2 text-xs"
+                    busy={editingView === view}
+                    disabled={busy || running}
+                    onEdit={(preset, prompt) => editColorImage(view, approved.url!, preset, prompt)}
+                  />
                 )}
                 <Button size="sm" variant="ghost" className="h-8 text-xs" disabled={busy} onClick={() => fileInputs.current[view]?.click()}><ImageUp className="mr-1 h-3.5 w-3.5" />이미지 교체</Button>
                 <input ref={(node) => { fileInputs.current[view] = node; }} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"

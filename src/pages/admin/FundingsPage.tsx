@@ -1,13 +1,15 @@
 import { useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, PauseCircle, PlayCircle, StopCircle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Eye, EyeOff, Flag, PauseCircle, PlayCircle, StopCircle, ThumbsDown, ThumbsUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { adminRpc, totalOf, type FundingRow } from "@/services/adminApi";
+import { adminRpc, fetchFundingClosures, totalOf, type EarlyCloseLogRow, type FundingClosureRow, type FundingRow } from "@/services/adminApi";
 import { supabase } from "@/lib/supabase";
-import { dateOnly, dateTime, FUNDING_PHASE, num, pct, productionLabel, SETTLEMENT_STATUS, won } from "@/lib/admin/format";
+import { dateOnly, dateTime, FUNDING_CLOSE_TYPE, FUNDING_PHASE, num, pct, productionLabel, SETTLEMENT_STATUS, won } from "@/lib/admin/format";
 import {
   DataTable, DefinitionGrid, EmptyState, ErrorBanner, FilterChips, KpiCard, LoadingBlock, MappedBadge, Notice, PageHeader,
   Pager, Panel, SearchInput, StatusBadge, Td,
@@ -16,12 +18,13 @@ import { ReasonDialog, type ReasonDialogState } from "@/components/admin/shell/R
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { ColorOrderSummary } from "@/components/funding/ColorOrderSummary";
 import { useAdminContext } from "@/components/admin/shell/AdminContext";
+import { EarlyCloseConfirmBody } from "@/components/funding/FundingEarlyCloseCard";
 
 const PAGE = 30;
 const PHASES = ["all", "pending", "funding", "approved", "succeeded", "failed", "in_production", "shipping", "completed", "suspended", "rejected"] as const;
 
 type Detail = {
-  funding: Record<string, unknown> & { id: string; product_name: string; image_url: string; description: string | null; cloth_type: string; material: string; moq: number; price: number | null; current_orders: number; status: string; is_hidden: boolean; suspended_at: string | null; suspension_reason: string | null; admin_comment: string | null; reviewed_at: string | null; created_at: string; color_options: string[]; size_options: string[]; production_status: string | null };
+  funding: Record<string, unknown> & { id: string; product_name: string; image_url: string; description: string | null; cloth_type: string; material: string; moq: number; price: number | null; current_orders: number; status: string; is_hidden: boolean; suspended_at: string | null; suspension_reason: string | null; admin_comment: string | null; reviewed_at: string | null; created_at: string; color_options: string[]; size_options: string[]; production_status: string | null; success_at?: string | null; final_quantity?: number | null; success_showcase_visible?: boolean; success_showcase_category?: string | null; success_showcase_rate?: number | null; success_showcase_summary?: string | null };
   phase: string; end_at: string | null;
   creator: { display_name: string } | null; creator_email: string | null;
   brand: { brand_name: string; status: string } | null;
@@ -32,16 +35,38 @@ type Detail = {
   history: { action: string; admin_name: string; reason: string | null; created_at: string }[];
 };
 
+const FundingClosurePanel = ({ closure, creatorName, creatorEmail }: { closure: FundingClosureRow; creatorName: string | null; creatorEmail: string | null }) => (
+  <Panel title={<div className="flex flex-wrap items-center gap-2">종료 방식 <MappedBadge map={FUNDING_CLOSE_TYPE} value={closure.close_type} /></div>}>
+    <DefinitionGrid items={closure.early_closed ? [
+      { label: "조기 마감 여부", value: closure.closed_by_role === "admin" ? "예 (관리자 조기 마감)" : "예 (제작자 조기 마감)" },
+      { label: "마감 시간", value: dateTime(closure.early_closed_at) },
+      { label: "원래 종료일", value: dateTime(closure.original_end_date) },
+      { label: "결과", value: closure.succeeded ? "펀딩 성공 · 조기 마감" : "목표 미달 · 조기 마감" },
+      { label: "최종 수량 · 달성률", value: `${num(closure.final_quantity ?? closure.early_closed_quantity)}장 / 목표 ${num(closure.target_quantity)}장${closure.final_achievement_rate != null ? ` · ${pct(Number(closure.final_achievement_rate))}` : ""}` },
+      { label: "최종 참여자 · 매출", value: closure.final_participant_count != null ? `${num(closure.final_participant_count)}명 · ${won(closure.final_amount)}` : "-" },
+      { label: closure.closed_by_role === "admin" ? "마감한 관리자" : "마감한 제작자", value: `${closure.early_closed_by_name ?? (closure.closed_by_role === "admin" ? "-" : creatorName) ?? "-"}${(closure.early_closed_by_email ?? (closure.closed_by_role === "admin" ? null : creatorEmail)) ? ` · ${closure.early_closed_by_email ?? creatorEmail}` : ""}` },
+      ...(closure.close_reason ? [{ label: "조기 마감 사유", value: closure.close_reason }] : []),
+    ] : [
+      { label: "조기 마감 여부", value: "아니오" },
+      { label: "종료 시간", value: dateTime(closure.closed_at) },
+    ]} />
+  </Panel>
+);
+
 const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | null; onClose: () => void; onChanged: () => void }) => {
   const { can } = useAdminContext();
   const manage = can("fundings.manage");
   const [dialog, setDialog] = useState<ReasonDialogState>(null);
   const reviewValues = useRef({ moq: 0, price: 0 });
+  const showcaseValues = useRef({ visible: true, category: "", rate: "", summary: "" });
   const notifyRef = useRef(true);
   const { data, loading, error, reload } = useAdminQuery(
     () => (fundingId ? adminRpc<Detail>("admin_get_funding_detail", { p_funding_id: fundingId }) : Promise.resolve(null)), [fundingId],
   );
-  const done = () => { void reload(); onChanged(); };
+  const closure = useAdminQuery(
+    async () => (fundingId ? (await fetchFundingClosures([fundingId])).get(fundingId) ?? null : null), [fundingId],
+  );
+  const done = () => { void reload(); void closure.reload(); onChanged(); };
   const f = data?.funding;
   // 제작자의 AI 상세페이지(있으면) — 관리자는 읽기 전용으로 열람
   const detailPage = useAdminQuery(async () => {
@@ -74,6 +99,45 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
         p_moq: reviewValues.current.moq, p_price: reviewValues.current.price,
       }),
       successMessage: "펀딩을 승인했습니다",
+    });
+  };
+
+  // 펀딩 성공팀 노출 설정: 성공(success_at)한 펀딩만 대상. 대표 이미지·브랜드 정보는 기존 펀딩 데이터를 그대로 쓴다.
+  const openSuccessShowcase = (visible: boolean) => {
+    if (!f) return;
+    showcaseValues.current = {
+      visible,
+      category: f.success_showcase_category ?? "",
+      rate: f.success_showcase_rate != null ? String(f.success_showcase_rate) : "",
+      summary: f.success_showcase_summary ?? "",
+    };
+    setDialog({
+      title: "펀딩 성공팀 노출 설정", confirmLabel: "저장", reasonRequired: false, reasonLabel: "변경 메모(선택)",
+      description: "ON 이면 메인페이지 '펀딩 성공팀'에 최근 성공순으로 노출됩니다. 비워 둔 항목은 기존 펀딩 데이터로 표시됩니다.",
+      extra: (
+        <div className="grid gap-3">
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-3 py-2.5 text-sm font-bold">
+            펀딩 성공팀에 노출
+            <Switch defaultChecked={visible} onCheckedChange={(v) => { showcaseValues.current.visible = v; }} />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="grid gap-1 text-xs font-bold text-stone-600">카테고리 표시
+              <Input maxLength={40} placeholder={f.cloth_type} defaultValue={showcaseValues.current.category} onChange={(e) => { showcaseValues.current.category = e.target.value; }} /></label>
+            <label className="grid gap-1 text-xs font-bold text-stone-600">표시 달성률(%)
+              <Input type="number" min={0} step="0.1" placeholder={String(f.moq ? Math.round(((f.final_quantity ?? f.current_orders) / f.moq) * 100) : 0)} defaultValue={showcaseValues.current.rate} onChange={(e) => { showcaseValues.current.rate = e.target.value; }} /></label>
+          </div>
+          <label className="grid gap-1 text-xs font-bold text-stone-600">성공 스토리 소개(선택)
+            <Textarea rows={3} maxLength={1000} defaultValue={showcaseValues.current.summary} onChange={(e) => { showcaseValues.current.summary = e.target.value; }} /></label>
+        </div>
+      ),
+      onConfirm: (reason) => {
+        const { visible: nextVisible, category, rate, summary } = showcaseValues.current;
+        return adminRpc("admin_set_funding_success_showcase", {
+          p_funding_id: f.id, p_visible: nextVisible, p_category: category.trim() || null,
+          p_rate: rate.trim() === "" ? null : Number(rate), p_summary: summary.trim() || null, p_reason: reason || null,
+        });
+      },
+      successMessage: "펀딩 성공팀 노출 설정을 저장했습니다",
     });
   };
 
@@ -119,6 +183,25 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
                     onConfirm: (reason) => adminRpc("admin_close_funding", { p_funding_id: f.id, p_reason: reason }),
                   })}><StopCircle className="mr-1 h-4 w-4" />종료</Button>
                 )}
+                {f.status === "approved" && !f.suspended_at && !closure.data?.early_closed && (
+                  <Button size="sm" variant="outline" className="border-rose-200 text-rose-700" onClick={() => setDialog({
+                    title: "펀딩을 조기 마감하시겠습니까?",
+                    destructive: true,
+                    confirmLabel: f.current_orders < f.moq ? "그래도 조기 마감" : "조기 마감",
+                    reasonLabel: "조기 마감 사유",
+                    placeholder: "예: 목표 달성으로 생산 조기 착수 (Audit Log 에 기록됩니다)",
+                    extra: <EarlyCloseConfirmBody funding={f} asDialogHeader={false} />,
+                    onConfirm: async (reason) => {
+                      const result = await adminRpc<{ result: string; quantity: number; achievement_rate: number; notified_participants: number }>(
+                        "admin_early_close_funding", { p_funding_id: f.id, p_reason: reason },
+                      );
+                      // 대기열에 들어간 참여자 SMS 를 바로 발송(실패해도 기존 예약 발송이 다시 처리한다)
+                      void supabase.functions.invoke("dispatch-notifications", { body: { fundingId: f.id } }).catch(() => undefined);
+                      return { warning: `${result.result === "success" ? "펀딩 성공" : "목표 미달"} · ${num(result.quantity)}장(${pct(Number(result.achievement_rate))}) 확정 · 참여자 ${num(result.notified_participants)}명에게 알림을 보냈습니다.` };
+                    },
+                    successMessage: "펀딩을 조기 마감했습니다",
+                  })}><Flag className="mr-1 h-4 w-4" />펀딩 조기 마감</Button>
+                )}
                 {["approved", "closed"].includes(f.status) && !f.suspended_at && (
                   <Button size="sm" variant="outline" className="text-rose-600" onClick={() => { notifyRef.current = true; setDialog({
                     title: "운영 중단", destructive: true, confirmLabel: "운영 중단", reasonLabel: "중단 사유",
@@ -137,6 +220,22 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
               </div>
             )}
             {f.suspended_at && <Notice>운영 중단 · {dateTime(f.suspended_at)} · 사유: {f.suspension_reason}</Notice>}
+            {closure.data?.close_type && <FundingClosurePanel closure={closure.data} creatorName={data.creator?.display_name ?? null} creatorEmail={data.creator_email} />}
+            {f.success_at && (
+              <Panel title={<div className="flex flex-wrap items-center gap-2"><Trophy className="h-4 w-4 text-[#741b2b]" />펀딩 성공팀 {f.success_showcase_visible !== false ? <StatusBadge tone="wine">노출 중</StatusBadge> : <StatusBadge>미노출</StatusBadge>}</div>}
+                description={`목표 달성 ${dateTime(f.success_at)} · 메인페이지 '펀딩 성공팀' 노출 여부`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <label className="flex items-center gap-3 text-sm font-bold">
+                    <Switch checked={f.success_showcase_visible !== false} disabled={!manage} onCheckedChange={(v) => openSuccessShowcase(v)} />
+                    펀딩 성공팀에 노출
+                  </label>
+                  {manage && <Button size="sm" variant="outline" onClick={() => openSuccessShowcase(f.success_showcase_visible !== false)}>표시 정보 편집</Button>}
+                </div>
+                <p className="mt-2 text-xs text-stone-500">
+                  카테고리 {f.success_showcase_category || f.cloth_type} · 달성률 {f.success_showcase_rate != null ? `${num(Number(f.success_showcase_rate))}% (지정값)` : `${pct(f.moq ? ((f.final_quantity ?? f.current_orders) / f.moq) * 100 : 0)} (자동 계산)`}
+                </p>
+              </Panel>
+            )}
             {data.trademark && data.trademark.decision !== "clear" && <Notice>상표 검수: {data.trademark.decision} — {data.trademark.reason}</Notice>}
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -187,6 +286,36 @@ const FundingSheet = ({ fundingId, onClose, onChanged }: { fundingId: string | n
   );
 };
 
+const EarlyCloseLogPanel = ({ onOpen, refreshKey }: { onOpen: (fundingId: string) => void; refreshKey: unknown }) => {
+  const { data, loading, error, reload } = useAdminQuery(
+    () => adminRpc<EarlyCloseLogRow[]>("admin_list_early_close_logs", { p_limit: 10, p_offset: 0 }), [refreshKey],
+  );
+  const rows = data ?? [];
+  return (
+    <Panel className="mb-4" bodyClassName="p-0" title="조기 마감 기록" description="누가 · 언제 조기 마감했는지와 마감 당시 최종 수치 (최근 10건)">
+      {error && <div className="p-4"><ErrorBanner message={error} onRetry={reload} /></div>}
+      {loading && !data ? <LoadingBlock /> : rows.length === 0 ? <EmptyState title="조기 마감된 펀딩이 없습니다" /> : (
+        <DataTable minWidth={1100} head={["펀딩", "마감 주체", "마감 시간", "원래 종료일", "결과", "최종 수량", "달성률", "참여자", "최종 매출", "사유"]}>
+          {rows.map((row) => (
+            <tr key={row.funding_id} className="cursor-pointer hover:bg-stone-50" onClick={() => onOpen(row.funding_id)}>
+              <Td><p className="max-w-[200px] truncate font-bold">{row.product_name}</p><p className="text-xs text-stone-400">{row.brand_name ?? "브랜드 미지정"}</p></Td>
+              <Td className="text-xs"><StatusBadge tone={row.closed_by_role === "admin" ? "red" : "violet"}>{row.closed_by_role === "admin" ? "관리자" : "제작자"}</StatusBadge><p className="mt-1">{row.closed_by_name}</p></Td>
+              <Td className="text-xs">{dateTime(row.closed_at)}</Td>
+              <Td className="text-xs">{dateOnly(row.original_end_date)}</Td>
+              <Td><StatusBadge tone={row.succeeded ? "green" : "amber"}>{row.succeeded ? "목표 달성" : "목표 미달"}</StatusBadge></Td>
+              <Td className="tabular-nums">{num(row.final_quantity)} / {num(row.target_quantity)}</Td>
+              <Td className="font-bold tabular-nums">{pct(Number(row.final_achievement_rate))}</Td>
+              <Td className="tabular-nums">{num(row.final_participant_count)}</Td>
+              <Td className="font-bold tabular-nums">{won(row.final_amount)}</Td>
+              <Td className="max-w-[220px] truncate text-xs text-stone-500">{row.reason ?? "-"}</Td>
+            </tr>
+          ))}
+        </DataTable>
+      )}
+    </Panel>
+  );
+};
+
 const FundingsPage = () => {
   const [params] = useSearchParams();
   const [search, setSearch] = useState(params.get("q") ?? "");
@@ -198,10 +327,12 @@ const FundingsPage = () => {
     [search, phase, page],
   );
   const rows = data ?? [];
+  const closures = useAdminQuery(() => fetchFundingClosures(rows.map((row) => row.id)), [data]);
 
   return (
     <div>
-      <PageHeader eyebrow="Fundings" title="펀딩 관리" description="승인 대기 펀딩이 목록 상단에 표시됩니다. 행을 눌러 승인·반려·공개·중단을 처리하세요." />
+      <PageHeader eyebrow="Fundings" title="펀딩 관리" description="승인 대기 펀딩이 목록 상단에 표시됩니다. 행을 눌러 승인·반려·공개·중단·조기 마감을 처리하세요." />
+      <EarlyCloseLogPanel onOpen={setSelected} refreshKey={data} />
       <Panel bodyClassName="p-0" title={
         <div className="flex flex-col gap-2">
           <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="펀딩명, 제작자, 브랜드" />
@@ -225,7 +356,7 @@ const FundingsPage = () => {
                 <Td className="font-bold tabular-nums">{won(row.gmv)}</Td>
                 <Td className="text-xs">{dateOnly(row.start_at)}</Td>
                 <Td className="text-xs">{dateOnly(row.end_at)}</Td>
-                <Td><div className="flex flex-wrap gap-1"><MappedBadge map={FUNDING_PHASE} value={row.phase} />{row.is_hidden && <StatusBadge>비공개</StatusBadge>}</div></Td>
+                <Td><div className="flex flex-wrap gap-1"><MappedBadge map={FUNDING_PHASE} value={row.phase} />{closures.data?.get(row.id)?.close_type && <MappedBadge map={FUNDING_CLOSE_TYPE} value={closures.data.get(row.id)!.close_type} />}{row.is_hidden && <StatusBadge>비공개</StatusBadge>}</div></Td>
               </tr>
             ))}
           </DataTable>

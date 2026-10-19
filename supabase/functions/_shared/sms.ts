@@ -13,6 +13,8 @@
  *   SMS_KAKAO_PF_ID                          (선택) 카카오 알림톡 발신 프로필 ID
  *   SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS       (선택) 제작자용 펀딩 성공 알림톡 템플릿 ID
  *   SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS_PARTICIPANT (선택) 참여자용 템플릿 ID
+ *   SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED  (선택) 참여자용 조기 마감 안내 템플릿 ID
+ *   SMS_KAKAO_TEMPLATE_FUNDING_INQUIRY       (선택) 제작자용 새 상품 문의 알림톡 템플릿 ID
  *
  * 새 업체(NHN Cloud, 알리고 등)는 SmsProvider 를 구현해 createSmsProvider 에 추가하면 된다.
  */
@@ -67,6 +69,55 @@ export const buildFundingSuccessCreatorText = ({ fundingName, targetQuantity, qu
     `"${clipName(fundingName)}" 펀딩이 목표 수량 ${targetQuantity}장을 달성했습니다.`,
     `현재 ${participants}명/${quantity}장 참여가 완료되었습니다.`,
     "BRAND-ER에서 펀딩 현황을 확인하고 제작을 준비해주세요.",
+    "brand-er.store",
+  ].join("\n");
+
+/** 조기 마감 결과: success(목표 달성) / unmet(목표 미달) / undefined(결과 구분 전 대기열에 들어간 기존 작업) */
+export type EarlyCloseOutcome = "success" | "unmet";
+
+export const buildFundingEarlyClosedParticipantText = (
+  { fundingName, outcome }: Pick<FundingSuccessSmsInput, "fundingName"> & { outcome?: EarlyCloseOutcome },
+) => {
+  if (outcome === "success") {
+    return [
+      "[브랜더]",
+      `참여하신 "${clipName(fundingName)}" 펀딩이 목표 달성으로 조기 마감되었습니다.`,
+      "제작 준비가 시작될 예정입니다.",
+      "brand-er.store",
+    ].join("\n");
+  }
+  if (outcome === "unmet") {
+    return [
+      "[브랜더]",
+      `참여하신 "${clipName(fundingName)}" 펀딩이 목표 수량에 도달하지 못한 상태로 조기 마감되었습니다.`,
+      "이후 진행 방법은 BRAND-ER 에서 별도로 안내드리겠습니다.",
+      "brand-er.store",
+    ].join("\n");
+  }
+  // 승인된 기존 알림톡 문구(SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED)
+  return [
+    "[브랜더]",
+    `참여하신 "${clipName(fundingName)}" 펀딩이 제작자에 의해 조기 마감되었습니다.`,
+    "현재 참여 결과를 기준으로 이후 제작 절차가 진행됩니다.",
+    "brand-er.store",
+  ].join("\n");
+};
+
+const INQUIRY_TYPE_LABEL: Record<string, string> = {
+  size_fit: "사이즈 및 핏",
+  fabric: "원단 및 소재",
+  production: "제작 및 생산",
+  shipping: "배송 일정",
+  exchange_refund: "교환 및 환불",
+  other: "기타",
+};
+
+/** 새 상품 문의(제작자). 고객 이름·문의 내용은 문자에 넣지 않는다. */
+export const buildFundingInquiryCreatorText = ({ fundingName, inquiryType }: { fundingName: string; inquiryType?: string }) =>
+  [
+    "[BRAND-ER]",
+    `"${clipName(fundingName)}" 펀딩에 새 상품 문의(${INQUIRY_TYPE_LABEL[inquiryType ?? ""] ?? "기타"})가 등록되었습니다.`,
+    "BRAND-ER 펀딩 상세페이지 [상품 문의]에서 답변을 남겨주세요.",
     "brand-er.store",
   ].join("\n");
 
@@ -194,5 +245,42 @@ export async function sendFundingSuccessSMS(
     kakaoTemplateId: (participant
       ? env.get("SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS_PARTICIPANT")
       : env.get("SMS_KAKAO_TEMPLATE_FUNDING_SUCCESS"))?.trim() || undefined,
+  });
+}
+
+/** 펀딩 조기 마감 안내(참여자). 결과별 알림톡 템플릿이 있으면 알림톡, 없으면 문자로 보낸다. */
+export async function sendFundingEarlyClosedSMS(
+  provider: SmsProvider,
+  input: { to: string; fundingName: string; outcome?: EarlyCloseOutcome },
+  env: Env = denoEnv,
+): Promise<SmsSendResult> {
+  const to = normalizeKrPhone(input.to);
+  if (!to) return { ok: false, provider: provider.name, error: "휴대폰 번호 형식 오류" };
+  const templateEnv = input.outcome === "success"
+    ? "SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED_SUCCESS"
+    : input.outcome === "unmet"
+      ? "SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED_UNMET"
+      : "SMS_KAKAO_TEMPLATE_FUNDING_EARLY_CLOSED";
+  return provider.send({
+    to,
+    subject: "[BRAND-ER] 펀딩 조기 마감",
+    text: buildFundingEarlyClosedParticipantText(input),
+    kakaoTemplateId: env.get(templateEnv)?.trim() || undefined,
+  });
+}
+
+/** 새 상품 문의 안내(담당 제작자). */
+export async function sendFundingInquirySMS(
+  provider: SmsProvider,
+  input: { to: string; fundingName: string; inquiryType?: string },
+  env: Env = denoEnv,
+): Promise<SmsSendResult> {
+  const to = normalizeKrPhone(input.to);
+  if (!to) return { ok: false, provider: provider.name, error: "휴대폰 번호 형식 오류" };
+  return provider.send({
+    to,
+    subject: "[BRAND-ER] 새 상품 문의",
+    text: buildFundingInquiryCreatorText(input),
+    kakaoTemplateId: env.get("SMS_KAKAO_TEMPLATE_FUNDING_INQUIRY")?.trim() || undefined,
   });
 }

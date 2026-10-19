@@ -33,6 +33,18 @@ export type DashboardData = {
   phase_breakdown: Record<string, number>;
 };
 
+// admin_get_platform_overview: 권한이 없는 항목은 null
+export type PlatformOverview = {
+  members: number | null;
+  ai_images: number | null;
+  ai_images_today: number | null;
+  fundings: number | null;
+  inquiries: number | null;
+  inquiries_pending: number | null;
+  inquiries_answered: number | null;
+  reviews_hidden: number | null;
+};
+
 export type AnalyticsData = {
   finance_visible: boolean;
   totals: Record<string, number | null>;
@@ -72,6 +84,30 @@ export type FundingRow = Paged & {
   gmv: number; participant_count: number; start_at: string | null; end_at: string | null; status: string; phase: string;
   is_hidden: boolean; suspended_at: string | null; suspension_reason: string | null; production_status: string | null;
   admin_comment: string | null; created_at: string;
+};
+
+export type FundingClosureRow = {
+  funding_id: string; close_type: "period_end" | "creator_early" | "admin_early" | "admin" | null; closed_at: string | null;
+  early_closed: boolean; early_closed_at: string | null; early_closed_quantity: number | null;
+  early_closed_by: string | null; early_closed_by_name: string | null; early_closed_by_email: string | null;
+  target_quantity: number; succeeded: boolean;
+  // 조기 마감 기록(funding_early_close_logs). 기록 이전 데이터는 null 일 수 있다.
+  closed_by_role: "creator" | "admin" | null; close_reason: string | null; original_end_date: string | null;
+  final_participant_count: number | null; final_quantity: number | null; final_amount: number | null;
+  final_achievement_rate: number | null;
+};
+
+export type EarlyCloseLogRow = {
+  funding_id: string; product_name: string; brand_name: string | null; closed_by: string | null; closed_by_name: string;
+  closed_by_role: "creator" | "admin"; reason: string | null; original_end_date: string | null; closed_at: string;
+  target_quantity: number | null; final_participant_count: number; final_quantity: number; final_amount: number;
+  final_achievement_rate: number; succeeded: boolean; notified_participants: number; total_count: number;
+};
+
+export const fetchFundingClosures = async (fundingIds: string[]) => {
+  if (fundingIds.length === 0) return new Map<string, FundingClosureRow>();
+  const rows = await adminRpc<FundingClosureRow[]>("admin_list_funding_closures", { p_funding_ids: fundingIds });
+  return new Map((rows ?? []).map((row) => [row.funding_id, row]));
 };
 
 export type OrderRow = Paged & {

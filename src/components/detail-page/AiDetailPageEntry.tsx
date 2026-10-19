@@ -40,13 +40,13 @@ export const AiDetailPageEntry = ({ fundingId, to }: { fundingId?: string; to?: 
         </div>
         <p className="mt-1 text-sm leading-6 text-gray-500">
           등록된 상품 정보와 의류 이미지로 AI가 카피와 상세페이지용 이미지(대표컷·디테일·원단·룩북·플랫레이)를 만들고 섹션을 구성합니다.
-          편집 내용은 ‘상세페이지 적용’을 눌러야 펀딩 화면에 반영되며, 가격·수량·참여자 정보는 바뀌지 않아요.
+          편집 내용은 ‘상세페이지 등록’(등록 후에는 ‘변경사항 저장’)을 눌러야 펀딩 화면에 반영되며, 가격·수량·참여자 정보는 바뀌지 않아요.
         </p>
       </div>
       <Button asChild className="h-11 shrink-0 rounded-md bg-brand hover:bg-brand-dark">
         <Link to={target}>
           <Sparkles className="mr-1.5 h-4 w-4" />
-          {hasPage ? "✨ AI 상세페이지 편집" : "✨ AI 상세페이지 제작"}
+          {hasPage ? "상세페이지 수정" : "✨ AI 상세페이지 제작"}
         </Link>
       </Button>
     </div>

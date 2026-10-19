@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProgressLine } from "@/components/funding/FundingProductCard";
+import { FundingEarlyCloseButton } from "@/components/funding/FundingEarlyCloseCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -20,6 +21,7 @@ import {
   fetchMyFundings,
   fetchSellerFundingDashboard,
   fetchSellerDashboardTotals,
+  getEarlyCloseResultLabel,
 } from "@/services/funding";
 import type {
   Funding, FundingPaymentStatus, MyFundingParticipation, MyFundingPaymentIntent,
@@ -27,8 +29,9 @@ import type {
 } from "@/types/funding";
 import { PRODUCTION_STAGE_LABEL } from "@/types/funding";
 import {
-  ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, RotateCcw, Settings2,
+  ArrowRight, CalendarDays, Clock3, Loader2, PackageOpen, PenLine, RotateCcw, Settings2,
   ShoppingBag, SquarePen, Trash2, TrendingUp, Truck, Users, WalletCards,
+  Sparkles,
 } from "lucide-react";
 
 const EMPTY_SELLER_TOTALS: SellerDashboardTotals = {
@@ -255,7 +258,7 @@ const MyFundings = () => {
                         <img src={funding.image_url} alt={funding.product_name} className="img-zoom h-full w-full object-contain mix-blend-multiply" />
                       </Link>
                       <div className="pt-5">
-                        <div className="flex items-center justify-between gap-3"><Badge variant="secondary">{fundingStatusLabel[funding.status]}</Badge><span className="font-display text-xs text-stone-400">{new Date(funding.created_at).toLocaleDateString("ko-KR")}</span></div>
+                        <div className="flex items-center justify-between gap-3"><Badge variant="secondary">{funding.early_closed ? getEarlyCloseResultLabel(funding) : fundingStatusLabel[funding.status]}</Badge><span className="font-display text-xs text-stone-400">{new Date(funding.created_at).toLocaleDateString("ko-KR")}</span></div>
                         <Link to={`/fundings/${funding.id}`} className="text-wrap-anywhere mt-3 block text-xl font-semibold tracking-[-0.02em] transition-colors hover:text-brand">{funding.product_name}</Link>
                         <ProgressLine current={funding.current_orders} target={funding.moq} size="md" className="mt-5" caption={`${funding.current_orders} / ${funding.moq}장 · 달성 ${progress}%`} />
                         {dashboardRow && (
@@ -267,7 +270,12 @@ const MyFundings = () => {
                         )}
                         <div className="mt-5 grid grid-cols-2 gap-2">
                           <Button asChild variant="outline"><Link to={`/fundings/${funding.id}/edit`}><SquarePen className="mr-2 h-4 w-4" />정보 수정</Link></Button>
-                          <Button asChild className="bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />참여자 관리</Link></Button>
+                          <Button asChild className="bg-brand hover:bg-brand-dark"><Link to={`/fundings/${funding.id}/manage`}><Settings2 className="mr-2 h-4 w-4" />펀딩 관리</Link></Button>
+                          <Button asChild variant="outline"><Link to={`/fundings/${funding.id}/buyers`}><Users className="mr-2 h-4 w-4" />구매자 관리</Link></Button>
+                          <Button asChild variant="outline"><Link to={`/fundings/${funding.id}/detail-page`}><Sparkles className="mr-2 h-4 w-4" />상세페이지 수정</Link></Button>
+                          {funding.status === "approved" && !funding.early_closed && (
+                            <FundingEarlyCloseButton funding={funding} onClosed={load} className="col-span-2 w-full" />
+                          )}
                           <Button
                             type="button"
                             variant="ghost"
@@ -401,6 +409,10 @@ const PARTICIPATION_CARD_ACTIONS = "col-span-2 flex items-center pb-5 md:col-spa
 const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFundingParticipation; cancelling: boolean; onCancel: () => void }) => {
   const isCancelled = item.status === "cancelled" || ["cancelled", "failed"].includes(item.payment_status);
   const canCancel = item.status !== "fulfilled" && !isCancelled && item.payment_status !== "failed";
+  // 리뷰 작성 조건(서버 _funding_review_block_reason 과 동일): 결제 완료 · 미취소 · 배송 완료.
+  // 이미 작성한 주문인지는 상세페이지 리뷰 탭에서 서버가 다시 판단한다.
+  const canReview = !isCancelled && item.payment_status === "paid"
+    && (item.shipping_status === "delivered" || item.production_stage === "delivered" || item.status === "fulfilled");
   const fundingRate = item.funding_moq > 0 ? Math.round((item.funding_current_orders / item.funding_moq) * 100) : 0;
   return (
     <article className={`border-t border-black/10 ${isCancelled ? "opacity-65" : ""}`}><div className={PARTICIPATION_CARD_GRID}>
@@ -427,7 +439,10 @@ const PaidParticipationCard = ({ item, cancelling, onCancel }: { item: MyFunding
         )}
         <p className="mt-4 flex items-center text-xs text-stone-400"><CalendarDays className="mr-1.5 h-4 w-4" />{new Date(item.created_at).toLocaleString("ko-KR")} 참여</p>
       </div>
-      <div className={PARTICIPATION_CARD_ACTIONS}>{canCancel ? <Button variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50 md:w-auto" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-stone-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}</div>
+      <div className={`${PARTICIPATION_CARD_ACTIONS} flex-col items-stretch gap-2 md:items-end md:justify-center`}>
+        {canReview && <Button asChild className="w-full bg-brand hover:bg-brand-dark md:w-auto"><Link to={`/fundings/${item.funding_id}?tab=reviews`}><PenLine className="mr-2 h-4 w-4" />리뷰 작성하기</Link></Button>}
+        {canCancel ? <Button variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50 md:w-auto" disabled={cancelling} onClick={onCancel}>{cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}취소</Button> : <span className="text-sm text-stone-400">{item.status === "fulfilled" ? "처리 완료" : "취소된 참여"}</span>}
+      </div>
     </div></article>
   );
 };

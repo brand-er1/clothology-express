@@ -6,11 +6,16 @@ import {
   IMAGE_ASPECT_RATIO,
   isDetailImageType,
   isDetailPageStyle,
+  PEOPLE_MODE,
   type DetailImageType,
   type PromptProduct,
 } from "../_shared/detailImagePrompt.ts";
-import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ReferenceImage } from "../_shared/imageProviders.ts";
+import { fetchReferenceImage, getImageProvider, ImageProviderConfigError, type ImageGenerationResult, type ReferenceImage } from "../_shared/imageProviders.ts";
 import { logAiUsage, precheckAiUsage } from "../_shared/aiUsage.ts";
+import { CREATOR_LOGO_REFERENCE_LABEL, findCreatorLogo, parseBrandLogoMode } from "../_shared/brandingPolicy.ts";
+import { designRetryNote, inspectGeneratedImage, REFRAME_ON_RETRY, TEXT_ON_RETRY, textPolicyIssue, violatesPeoplePolicy, type ImageQaResult } from "../_shared/imageQa.ts";
+import { cropBelowHead } from "../_shared/reframeCrop.ts";
+import { createTimeBudget, DETAIL_IMAGE_AI_BUDGET_MS, isTimeBudgetError, runWithinBudget, TIME_BUDGET_MESSAGE, TimeBudgetError } from "../_shared/timeBudget.ts";
 
 /**
  * Generates ONE AI detail-page image from the creator's design (reference image).
@@ -120,7 +125,7 @@ serve(async (req) => {
     if (userError || !user) return json({ error: "로그인이 필요합니다." }, 401);
     userId = user.id;
 
-    const { detailPageId, imageType, style, userInstruction } = await req.json();
+    const { detailPageId, imageType, style, userInstruction, brandLogo } = await req.json();
     if (typeof detailPageId !== "string" || !isDetailImageType(imageType)) {
       return json({ error: "잘못된 요청입니다." }, 400);
     }
@@ -146,9 +151,16 @@ serve(async (req) => {
     const detailPageStyle = isDetailPageStyle(style) ? style : isDetailPageStyle(page.template) ? page.template : "minimal";
     const product = toPromptProduct(source);
     const instruction = typeof userInstruction === "string" ? userInstruction.trim().slice(0, 500) : "";
+    // 브랜드 로고는 제작자가 "내 브랜드 로고 적용"을 고른 경우에만(요청값 또는 상세페이지 설정). 기본은 로고 없음.
+    const brandLogoMode = parseBrandLogoMode(brandLogo ?? source.brandLogoMode);
+    const creatorLogo = brandLogoMode === "creator" ? await findCreatorLogo(admin, user.id) : null;
+    if (brandLogoMode === "creator" && !creatorLogo) {
+      return json({ error: "내 브랜드에 등록된 로고가 없습니다. 마이페이지 > 내 브랜드에서 로고를 등록해주세요." }, 400);
+    }
 
     // 제작자가 올린 참고자료 중 이 이미지 유형에 도움이 되는 사진(최대 2장)
-    const wantedKinds = REFERENCE_KINDS[imageType as DetailImageType];
+    // 로고 참고자료는 로고 적용을 고른 경우에만 쓴다(그 외에는 로고가 복제되지 않도록 제외).
+    const wantedKinds = REFERENCE_KINDS[imageType as DetailImageType].filter((kind) => kind !== "logo" || creatorLogo);
     const { data: referenceRows } = await admin
       .from("detail_page_references")
       .select("kind, url, mime_type")
@@ -164,10 +176,15 @@ serve(async (req) => {
     const designLabel = product.isFrontBackComposite ? "garment design, front (left) and back (right)" : "garment design";
     const prompt = buildProductImagePrompt({
       product,
-      referenceImages: [designLabel, ...orderedRefs.map((ref) => REFERENCE_LABEL[ref.kind] ?? ref.kind)],
+      referenceImages: [
+        designLabel,
+        ...orderedRefs.map((ref) => REFERENCE_LABEL[ref.kind] ?? ref.kind),
+        ...(creatorLogo ? [CREATOR_LOGO_REFERENCE_LABEL] : []),
+      ],
       imageType,
       detailPageStyle,
       userInstruction: instruction,
+      creatorLogo: creatorLogo ? { brandName: creatorLogo.brandName } : null,
     });
 
     const { data: asset, error: assetError } = await admin
@@ -193,8 +210,79 @@ serve(async (req) => {
       const extra = await fetchReferenceImage(ref.url, REFERENCE_LABEL[ref.kind] ?? ref.kind).catch(() => null);
       if (extra) references.push(extra);
     }
+    if (creatorLogo) {
+      const logo = await fetchReferenceImage(creatorLogo.url, CREATOR_LOGO_REFERENCE_LABEL).catch(() => null);
+      if (!logo) throw new Error("내 브랜드 로고 이미지를 불러오지 못했습니다.");
+      references.push(logo);
+    }
 
-    const generated = await provider.generate({ prompt, references, aspectRatio: IMAGE_ASPECT_RATIO[imageType as DetailImageType] });
+    // 생성 → 자동 검수(얼굴·사람·글자/로고·원본 일치).
+    // 착용 컷에 머리가 위쪽에 걸쳐 들어오면 카메라 프레임을 어깨선 아래로 다시 잡고(재구도) 재검수,
+    // 그래도 안 되면 더 엄격한 구도로 한 번 다시 생성한다. 흐림·가림 처리는 하지 않으며,
+    // 끝까지 얼굴/머리가 보이는 결과는 저장하지 않는다.
+    const peopleMode = PEOPLE_MODE[imageType as DetailImageType];
+    const aspectRatio = IMAGE_ASPECT_RATIO[imageType as DetailImageType];
+    const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
+    const qaScope = imageType === "detail" || imageType === "fabric" ? "partial" : "full";
+    // 게이트웨이 150초 제한 전에 이유가 담긴 응답을 돌려주도록 AI 호출(생성 · 검수)은 예산 안에서만 한다.
+    const budget = createTimeBudget(startedAt, DETAIL_IMAGE_AI_BUDGET_MS);
+    const inspect = async (image: ImageGenerationResult) => {
+      const qa = await inspectGeneratedImage(geminiKey, { data: image.base64, mimeType: image.mimeType }, references[0], qaScope, budget.signal());
+      // 시간이 다 돼 검수하지 못한 이미지는 통과시키지 않는다.
+      if (!qa && budget.expired()) throw new TimeBudgetError();
+      return qa;
+    };
+    // 사람 정책을 통과한 뒤 글자 · 디자인을 본다: BRAND-ER 표기는 저장하지 않고, 원본 디자인에 없는 글자 · 숫자
+    // (소품 · 배경 · 캡션)나 원본과 다른 디자인(예: 없던 스트링 추가)은 한 번 다시 생성한다.
+    // 다시 생성할 시간이 없거나 재시도가 더 나쁘면 첫 결과를 쓴다.
+    const allowedBrand = creatorLogo?.brandName ?? null;
+    const judge = (image: ImageGenerationResult, qa: ImageQaResult | null, reframed: boolean) => {
+      const textIssue = textPolicyIssue(qa, allowedBrand);
+      const designDifferences = qa && !qa.matchesReference ? qa.designDifferences : null;
+      return {
+        image, qa, reframed, peopleOk: true, textIssue, designDifferences,
+        ok: !textIssue && !designDifferences, acceptable: textIssue !== "brand_er",
+      };
+    };
+    const settle = async (image: ImageGenerationResult) => {
+      const firstQa = await inspect(image);
+      if (!violatesPeoplePolicy(firstQa, peopleMode)) return judge(image, firstQa, false);
+      if (peopleMode === "faceless_worn" && firstQa && firstQa.personCount <= 1) {
+        const cropped = await cropBelowHead(image.base64, firstQa.headBox);
+        if (cropped) {
+          const reframedImage = { ...image, ...cropped };
+          const croppedQa = await inspect(reframedImage);
+          if (croppedQa && !violatesPeoplePolicy(croppedQa, peopleMode)) return judge(reframedImage, croppedQa, true);
+        }
+      }
+      return { image, qa: firstQa, reframed: false, peopleOk: false, textIssue: null, designDifferences: null, ok: false, acceptable: false };
+    };
+
+    // 재시도 프롬프트는 첫 시도가 걸린 정책에 맞춘다(얼굴/사람 → 재구도, 글자 → 소품 없는 세트, 디자인 → 차이 되돌리기).
+    let retryNote = REFRAME_ON_RETRY;
+    const { result, attempts } = await runWithinBudget(
+      async (retry) => {
+        const settled = await settle(await provider.generate({ prompt: retry ? `${prompt}\n\n${retryNote}` : prompt, references, aspectRatio, signal: budget.signal() }));
+        if (!retry && settled.peopleOk) {
+          retryNote = [
+            settled.textIssue ? TEXT_ON_RETRY : "",
+            settled.designDifferences ? designRetryNote(settled.designDifferences) : "",
+          ].filter(Boolean).join("\n\n");
+        }
+        return settled;
+      },
+      budget,
+    );
+    if (!result.ok && !result.acceptable) {
+      throw new Error(
+        result.peopleOk
+          ? "BRAND-ER 표기가 없는 이미지를 만들지 못했습니다. 다시 생성해 주세요."
+          : "얼굴이 보이지 않는 구도로 이미지를 만들지 못했습니다. 다시 생성해 주세요.",
+      );
+    }
+    const generated = result.image;
+    const qa: ImageQaResult | null = result.qa;
+    const reframed = result.reframed;
 
     // Persist in our own storage so the page never depends on a provider's temporary URL.
     const path = `detail-pages/${user.id}/${page.id}/${imageType}-${Date.now()}.${extensionFor(generated.mimeType)}`;
@@ -212,12 +300,16 @@ serve(async (req) => {
     await logAiUsage(admin, {
       userId: user.id, feature: "detail_image", status: "success", provider: generated.provider, model: generated.model,
       detailPageId: page.id, imageType, latencyMs: Date.now() - startedAt,
-      metadata: { references: references.length, style: detailPageStyle, instruction: Boolean(instruction) },
+      metadata: {
+        references: references.length, style: detailPageStyle, instruction: Boolean(instruction), brandLogo: brandLogoMode,
+        peopleMode, attempts, reframed, textIssue: result.textIssue, designChanged: Boolean(result.designDifferences), qa,
+      },
     });
 
-    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length });
+    return json({ assetId, imageType, url, model: generated.model, style: detailPageStyle, references: references.length, peopleMode, attempts, reframed, textIssue: result.textIssue, qa });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const timedOut = isTimeBudgetError(error);
+    const message = timedOut ? TIME_BUDGET_MESSAGE : error instanceof Error ? error.message : String(error);
     console.error("generate-detail-image error:", message);
     if (assetId) {
       await admin
@@ -231,6 +323,7 @@ serve(async (req) => {
         imageType: requestedType, latencyMs: Date.now() - startedAt, error: message,
       });
     }
-    return json({ error: message, assetId }, 502);
+    // timedOut: 시간 예산 초과(생성 자체는 정상) → 프론트가 한 번 자동으로 다시 요청한다.
+    return json({ error: message, assetId, timedOut }, 502);
   }
 });

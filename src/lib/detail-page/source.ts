@@ -23,6 +23,7 @@ export const EMPTY_USER_PROVIDED: DetailUserProvidedInfo = {
   highlights: "",
   details: "",
   productionNote: "",
+  shippingNote: "",
   emphasis: [],
 };
 
@@ -184,6 +185,24 @@ export const buildDetailSourceFromFunding = (funding: Funding): DetailPageSource
     designId: null,
     ...brandFields(funding.brand ?? null),
     userProvided: { ...EMPTY_USER_PROVIDED, price: funding.price },
+    fundingDays: funding.funding_days,
+  };
+};
+
+/**
+ * 연결된 펀딩의 최신 판매 정보(가격·사이즈·MOQ·기간)를 상세페이지 사실 데이터에 반영한다.
+ * 펀딩 편집 화면에서 값을 바꾼 뒤 상세페이지를 다시 열면 AI 문구와 사양표가 최신 값을 쓴다.
+ * (펀딩 row 는 읽기만 한다)
+ */
+export const refreshFundingInSource = (source: DetailPageSource, funding: Funding | null): DetailPageSource => {
+  if (!funding) return source;
+  return {
+    ...source,
+    targetQuantity: funding.moq,
+    fundingDays: funding.funding_days,
+    sizeOptions: funding.size_options?.length ? funding.size_options : source.sizeOptions,
+    measurements: funding.measurements ?? source.measurements,
+    userProvided: { ...source.userProvided, price: funding.price ?? source.userProvided.price },
   };
 };
 

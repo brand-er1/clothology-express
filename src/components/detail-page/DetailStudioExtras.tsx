@@ -40,11 +40,12 @@ export const EMPHASIS_OPTIONS: Array<{ value: DetailEmphasis; label: string }> =
   { value: "brand_story", label: "브랜드 스토리" },
 ];
 
-const BRIEF_FIELDS: Array<{ key: "oneLiner" | "highlights" | "details" | "productionNote"; label: string; placeholder: string; multiline?: boolean; max: number }> = [
+const BRIEF_FIELDS: Array<{ key: "oneLiner" | "highlights" | "details" | "productionNote" | "shippingNote"; label: string; placeholder: string; multiline?: boolean; max: number }> = [
   { key: "oneLiner", label: "제품 한 줄 소개", placeholder: "예: 매일 입고 싶은 무게감의 오버핏 후드", max: 80 },
   { key: "highlights", label: "강조하고 싶은 특징", placeholder: "예: 등판 대형 자수 로고, 넉넉한 캥거루 포켓", multiline: true, max: 400 },
   { key: "details", label: "디테일 (실제 있는 것만)", placeholder: "예: 등판 자수, 소매 립 조직, YKK 지퍼", multiline: true, max: 400 },
   { key: "productionNote", label: "제작 방식", placeholder: "예: 국내 봉제 공장 소량 생산, 후가공 워싱", max: 200 },
+  { key: "shippingNote", label: "배송 예정 안내", placeholder: "예: 펀딩 종료 후 약 4주 내 순차 발송", max: 200 },
 ];
 
 /**
@@ -302,11 +303,11 @@ export const VersionHistoryDialog = ({
 export const PublishStateBadge = ({ state }: { state: DetailPagePublishState | null }) => {
   if (!state) return null;
   if (!state.publishedVersion) {
-    return <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">미적용 · 고객에게 아직 안 보임</span>;
+    return <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">미등록 · 고객에게 아직 안 보임</span>;
   }
   return (
     <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", state.hasUnpublishedChanges ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700")}>
-      적용본 v{state.publishedVersion}{state.hasUnpublishedChanges ? " · 적용 안 된 수정 있음" : " · 최신"}
+      등록됨 v{state.publishedVersion}{state.hasUnpublishedChanges ? " · 반영 안 된 수정 있음" : " · 최신"}
     </span>
   );
 };

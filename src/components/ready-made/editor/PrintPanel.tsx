@@ -30,7 +30,7 @@ export const PrintPanel = ({ form }: PrintPanelProps) => {
       <h3 className="text-sm font-bold text-stone-950">인쇄</h3>
       <p className="mt-1 text-xs leading-5 text-stone-500">
         위치 1곳당 장당 +{READY_MADE_PRINT_LOCATION_PRICE.toLocaleString("ko-KR")}원. 캔버스에서 직접 옮기거나
-        크기를 바꿔도 돼요.
+        크기·각도를 바꿔도 돼요.
       </p>
 
       <div className="mt-4">

@@ -28,6 +28,7 @@ import {
   returningVisitorGreeting,
   staticMessages,
   type GuideMessage,
+  SAFE_ZONE_SELECTOR,
 } from "./mascotConfig";
 import { useMascotPageContextValue } from "./MascotContext";
 import { useMascotRoam } from "./useMascotRoam";
@@ -134,9 +135,20 @@ export const BrandGuide = () => {
   }, []);
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  // 자동으로 뜬 말풍선이 주문 · 제작 버튼 영역(data-mascot-safezone)을 덮으면 겹치지 않을 때까지 숨긴다.
+  // 태블릿 · PC 에서는 버튼이 화면 가운데에 있어 마스코트 위로 뜨는 말풍선이 'AI 상세페이지 제작' 같은
+  // 버튼을 가렸다. 메뉴에서 직접 고른 말풍선은 그대로 보여 준다.
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const bubbleOpenedByUser = useRef(false);
+  const [bubbleOverCta, setBubbleOverCta] = useState(false);
+  // 도킹한 마스코트가 본문 흐름에 있는 버튼 영역(예: 태블릿에서 화면 아래 오른쪽에 온 '다음 단계')과 겹치면
+  // 그 영역 위로 올리고, 올릴 자리가 없으면 숨긴다.
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dockLift, setDockLift] = useState<number | "hidden">(0);
 
   const showMessage = (candidate: GuideMessage) => {
     hasEngagedWithBubble.current = false;
+    bubbleOpenedByUser.current = false;
     shownKeys.current.add(candidate.key);
     setMessage(candidate);
     setIsDetailOpen(false);
@@ -210,6 +222,66 @@ export const BrandGuide = () => {
       if (showTimer) clearTimeout(showTimer);
     };
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isBubbleOpen) {
+      setBubbleOverCta(false);
+      return;
+    }
+    const check = () => {
+      const bubble = bubbleRef.current;
+      if (!bubble || bubbleOpenedByUser.current) return setBubbleOverCta(false);
+      const box = bubble.getBoundingClientRect();
+      setBubbleOverCta(
+        Array.from(document.querySelectorAll(SAFE_ZONE_SELECTOR)).some((zone) => {
+          const rect = zone.getBoundingClientRect();
+          return rect.width > 0 && rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top;
+        }),
+      );
+    };
+    check();
+    // 스크롤 · 리사이즈 · 마스코트 이동에 따라 다시 판단한다.
+    const interval = setInterval(check, 400);
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [isBubbleOpen, message]);
+
+  useEffect(() => {
+    if (!roam.safeZoneActive) {
+      setDockLift(0);
+      return;
+    }
+    const check = () => {
+      const dock = dockRef.current;
+      if (!dock) return;
+      // 현재 올려 둔 만큼을 되돌린 원래 도킹 위치 기준으로 계산한다.
+      const current = dock.getBoundingClientRect();
+      const applied = typeof dockLift === "number" ? dockLift : 0;
+      const box = { left: current.left, right: current.right, top: current.top + applied, bottom: current.bottom + applied };
+      let lift = 0;
+      for (const zone of Array.from(document.querySelectorAll(SAFE_ZONE_SELECTOR))) {
+        const rect = zone.getBoundingClientRect();
+        if (!rect.width || rect.left >= box.right || rect.right <= box.left || rect.top >= box.bottom || rect.bottom <= box.top) continue;
+        lift = Math.max(lift, box.bottom - rect.top + 12);
+      }
+      const next = lift === 0 ? 0 : box.top - lift < 88 ? "hidden" : Math.round(lift);
+      setDockLift((prev) => (prev === next ? prev : next));
+    };
+    check();
+    const interval = setInterval(check, 400);
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [roam.safeZoneActive, dockLift]);
 
   useEffect(() => {
     if (!isBubbleOpen) return;
@@ -430,6 +502,7 @@ export const BrandGuide = () => {
     engagementCount.current += 1;
     if (choice.next) {
       showMessage(choice.next);
+      bubbleOpenedByUser.current = true;
       return;
     }
     setIsBubbleOpen(false);
@@ -569,7 +642,12 @@ export const BrandGuide = () => {
       )}
 
       {isBubbleOpen && message && !isMenuOpen && (
-        <div className="relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl" style={{ maxWidth: popupMaxWidth }}>
+        <div
+          ref={bubbleRef}
+          aria-hidden={bubbleOverCta || undefined}
+          className={`relative w-72 rounded-2xl border border-black/10 bg-white p-4 pr-8 text-sm leading-6 text-stone-700 shadow-2xl ${bubbleOverCta ? "invisible" : ""}`}
+          style={{ maxWidth: popupMaxWidth }}
+        >
           <button
             type="button"
             onClick={closeBubble}
@@ -649,7 +727,7 @@ export const BrandGuide = () => {
     <div className="pointer-events-auto relative inline-block">
       {characterButton}
       <div
-        className={`absolute flex flex-col gap-3 ${flipPanelBelow ? "top-full mt-3" : "bottom-full mb-3"} ${
+        className={`pointer-events-none absolute flex flex-col gap-3 [&>*]:pointer-events-auto ${flipPanelBelow ? "top-full mt-3" : "bottom-full mb-3"} ${
           flipPanelLeft ? "left-0 items-start" : "right-0 items-end"
         }`}
         style={popupRightInset ? { right: popupRightInset } : undefined}
@@ -662,7 +740,12 @@ export const BrandGuide = () => {
   if (docked) {
     return (
       <>
-        <div data-floating-widget className="pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-6 md:right-6">
+        <div
+          ref={dockRef}
+          data-floating-widget
+          className={`pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-[calc(1.5rem+var(--mobile-cta-h,0px))] md:right-6 ${dockLift === "hidden" ? "invisible" : ""}`}
+          style={typeof dockLift === "number" && dockLift > 0 ? { transform: `translateY(-${dockLift}px)` } : undefined}
+        >
           {panel}
         </div>
         <TutorialFaqDialog open={isFaqOpen} onOpenChange={setIsFaqOpen} />

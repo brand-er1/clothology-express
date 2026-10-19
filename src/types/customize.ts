@@ -3,6 +3,7 @@ import type {
   DecorationLocation,
   UploadedArtworkAnalysis,
 } from "@/types/productionEstimate";
+import type { ArtworkTransform } from "@/lib/artwork-transform";
 
 export interface Material {
   id: string;
@@ -29,12 +30,14 @@ export interface ArtworkReference {
 
 export interface CompositedImageReference {
   base64: string;
-  mimeType: "image/webp";
+  mimeType: "image/webp" | "image/png";
   width: number;
   height: number;
 }
 
-export interface ArtworkPlacement {
+/** Rotation/flip/stretch are optional `ArtworkTransform` fields, so placements created before
+ * rotation existed (and every server payload built from them) keep working unchanged. */
+export interface ArtworkPlacement extends ArtworkTransform {
   location: DecorationLocation;
   size: ArtworkSize;
   xPercent: number;

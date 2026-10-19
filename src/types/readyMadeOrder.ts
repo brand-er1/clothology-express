@@ -54,9 +54,10 @@ export interface ReadyMadeQuoteResult {
  * differences (mobile vs. desktop) can never shift the saved position relative to what the
  * customer actually saw.
  *
- * `scale`/`rotation` are reserved for a future zoom/rotate control — the editor currently sizes
- * artwork purely via `width` (see `ReadyMadeArtworkPlacement`) and has no rotation handle, so
- * these are always 1 and 0 today.
+ * `width`/`height` are the artwork's own (unrotated) size; `rotation` is the clockwise angle in
+ * degrees around the center and `flipX`/`flipY` mirror the artwork, exactly as set in the editor.
+ * `scale` stays 1 — size is carried entirely by `width`/`height`. Orders saved before rotation
+ * existed have `rotation: 0` and no flip fields, which means "not rotated, not flipped".
  */
 export interface ReadyMadeOrderDesignJob {
   id: string;
@@ -69,6 +70,8 @@ export interface ReadyMadeOrderDesignJob {
   height: number;
   scale: number;
   rotation: number;
+  flipX?: boolean;
+  flipY?: boolean;
 }
 
 /** Structured design snapshot saved alongside `front_preview_url`/`back_preview_url` on the

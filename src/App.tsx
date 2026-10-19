@@ -13,6 +13,7 @@ import Fundings from './pages/Fundings';
 import FundingDetail from './pages/FundingDetail';
 import FundingEditor from './pages/FundingEditor';
 import FundingManager from './pages/FundingManager';
+import FundingBuyers from './pages/FundingBuyers';
 import FundingColorStudio from './pages/FundingColorStudio';
 import MyFundings from './pages/MyFundings';
 import KakaoPayResult from './pages/KakaoPayResult';
@@ -49,6 +50,7 @@ import MyBrand from './pages/MyBrand';
 import BrandProfile from './pages/BrandProfile';
 import DetailPageStudio from './pages/DetailPageStudio';
 import FundingDetailPageLauncher from './pages/FundingDetailPageLauncher';
+import SuccessStory from './pages/SuccessStory';
 
 // 관리자 콘솔은 별도 번들로 분리해 일반 사용자에게 내려가는 코드를 늘리지 않는다.
 const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
@@ -139,10 +141,12 @@ function App() {
             <Route path="/magazine" element={<Navigate to="/community" replace />} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
+            <Route path="/success-stories/:fundingId" element={<SuccessStory />} />
             <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />
             <Route path="/fundings/:id/detail-page" element={<AuthGuard requiredAccountType="seller"><FundingDetailPageLauncher /></AuthGuard>} />
             <Route path="/detail-pages/:pageId" element={<AuthGuard><DetailPageStudio /></AuthGuard>} />
             <Route path="/fundings/:id/manage" element={<AuthGuard requiredAccountType="seller"><FundingManager /></AuthGuard>} />
+            <Route path="/fundings/:id/buyers" element={<AuthGuard requiredAccountType="seller"><FundingBuyers /></AuthGuard>} />
             <Route path="/fundings/:id/colors" element={<AuthGuard><FundingColorStudio /></AuthGuard>} />
             <Route path="/my-fundings" element={<AuthGuard><MyFundings /></AuthGuard>} />
             <Route path="/payments/kakaopay/:result" element={<KakaoPayResult />} />

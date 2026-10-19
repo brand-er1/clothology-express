@@ -24,33 +24,39 @@ export type DetailImageSpec = {
   defaultOn: boolean;
 };
 
+/**
+ * 순서 = 생성 우선순위(하루 한도가 모자라면 앞에서부터 생성):
+ * 제품 단독 → 디테일 → 원단/텍스처 → 얼굴 없는 착용. 사람은 핏·기장감이 필요한 착용 컷에만, 얼굴은 프레임 밖.
+ */
 export const DETAIL_IMAGE_SPECS: DetailImageSpec[] = [
-  { type: "hero", number: "01", label: "HERO", description: "대표 이미지 · 메인 비주얼", defaultOn: true },
+  { type: "hero", number: "01", label: "HERO", description: "대표 이미지 · 제품 단독 키 비주얼", defaultOn: true },
   { type: "product_front", number: "02", label: "CLEAN PRODUCT", description: "앞면 제품 단독 컷", defaultOn: true },
   { type: "product_back", number: "03", label: "BACK PRODUCT", description: "뒷면 제품 단독 컷", defaultOn: true },
   { type: "detail", number: "04", label: "DETAIL", description: "프린트·자수·그래픽 클로즈업", defaultOn: true },
-  { type: "editorial", number: "05", label: "LOOKBOOK", description: "룩북 · 에디토리얼 컷", defaultOn: true },
-  { type: "lifestyle", number: "06", label: "LIFESTYLE", description: "모델 착용 컷", defaultOn: true },
-  { type: "mood", number: "07", label: "MOOD", description: "브랜드 무드 컷 (선택)", defaultOn: true },
-  { type: "fabric", number: "08", label: "FABRIC", description: "원단 텍스처 클로즈업 (소재 정보가 있을 때)", defaultOn: false },
-  { type: "flat_lay", number: "09", label: "FLAT LAY", description: "바닥·스튜디오에 자연스럽게 놓인 제품 컷", defaultOn: true },
+  { type: "fabric", number: "05", label: "FABRIC", description: "원단 텍스처 클로즈업", defaultOn: true },
+  { type: "flat_lay", number: "06", label: "FLAT LAY", description: "바닥·스튜디오에 놓인 제품 컷", defaultOn: true },
+  { type: "lifestyle", number: "07", label: "WORN FIT", description: "얼굴 없는 착용 컷 · 핏/기장감 (목 아래 구도)", defaultOn: true },
+  { type: "mood", number: "08", label: "MOOD", description: "제품 무드 컷 · 사람 없음 (선택)", defaultOn: false },
+  { type: "editorial", number: "09", label: "LOOKBOOK", description: "얼굴 없는 착용 룩북 컷 (선택)", defaultOn: false },
 ];
 
 export const getDetailImageSpec = (type: DetailImageType) =>
   DETAIL_IMAGE_SPECS.find((spec) => spec.type === type) ?? DETAIL_IMAGE_SPECS[0];
 
-const readFunctionError = async (error: unknown) => {
+const readFunctionErrorPayload = async (error: unknown): Promise<{ message: string; timedOut: boolean }> => {
   const functionError = error as { message?: string; context?: Response };
   if (functionError?.context && typeof functionError.context.json === "function") {
     try {
       const payload = await functionError.context.json();
-      if (typeof payload?.error === "string") return payload.error;
+      if (typeof payload?.error === "string") return { message: payload.error, timedOut: payload.timedOut === true };
     } catch {
       // fall through
     }
   }
-  return functionError?.message || "이미지 생성에 실패했습니다.";
+  return { message: functionError?.message || "이미지 생성에 실패했습니다.", timedOut: false };
 };
+
+const readFunctionError = async (error: unknown) => (await readFunctionErrorPayload(error)).message;
 
 export type GeneratedDetailImage = { assetId: string; url: string; model: string };
 
@@ -60,16 +66,24 @@ export const requestDetailImage = async (input: {
   imageType: DetailImageType;
   style: DetailPageTemplateId;
   userInstruction?: string;
+  brandLogo?: "none" | "creator";
 }): Promise<GeneratedDetailImage> => {
-  const { data, error } = await supabase.functions.invoke("generate-detail-image", {
-    body: {
-      detailPageId: input.detailPageId,
-      imageType: input.imageType,
-      style: input.style,
-      userInstruction: input.userInstruction || undefined,
-    },
-  });
-  if (error) throw new Error(await readFunctionError(error));
+  const body = {
+    detailPageId: input.detailPageId,
+    imageType: input.imageType,
+    style: input.style,
+    userInstruction: input.userInstruction || undefined,
+    brandLogo: input.brandLogo ?? "none",
+  };
+  let { data, error } = await supabase.functions.invoke("generate-detail-image", { body });
+  if (error) {
+    // 서버가 응답 시간 예산(게이트웨이 150초) 때문에 중단한 경우(timedOut)는 생성 자체는 정상이라
+    // 제작자가 '다시 생성' 을 누르지 않아도 되게 한 번 자동으로 다시 요청한다.
+    const first = await readFunctionErrorPayload(error);
+    if (!first.timedOut) throw new Error(first.message);
+    ({ data, error } = await supabase.functions.invoke("generate-detail-image", { body }));
+    if (error) throw new Error(await readFunctionError(error));
+  }
   // (429: 하루/페이지 생성 한도 초과 메시지가 그대로 전달된다)
   if (!data?.url || !data?.assetId) throw new Error(data?.error || "이미지가 반환되지 않았습니다.");
   return { assetId: data.assetId, url: data.url, model: data.model };

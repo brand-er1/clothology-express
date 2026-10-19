@@ -19,6 +19,8 @@ export type ImageGenerationRequest = {
   prompt: string;
   references: ReferenceImage[];
   aspectRatio: string;
+  /** 호출부의 응답 시간 예산이 끝나면 중단된다(다음 모델로도 넘어가지 않음). */
+  signal?: AbortSignal;
 };
 
 export type ImageGenerationResult = {
@@ -40,7 +42,7 @@ class GeminiImageProvider implements ImageProvider {
   readonly name = "gemini";
   constructor(private apiKey: string, private models: string[]) {}
 
-  async generate({ prompt, references, aspectRatio }: ImageGenerationRequest): Promise<ImageGenerationResult> {
+  async generate({ prompt, references, aspectRatio, signal }: ImageGenerationRequest): Promise<ImageGenerationResult> {
     let lastError = "no_image_returned";
     const parts: Array<Record<string, unknown>> = [];
     references.forEach((reference, index) => {
@@ -50,8 +52,10 @@ class GeminiImageProvider implements ImageProvider {
     parts.push({ text: prompt });
 
     for (const model of this.models) {
+      signal?.throwIfAborted();
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
+        signal,
         headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
         body: JSON.stringify({
           contents: [{ role: "user", parts }],

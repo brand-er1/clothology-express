@@ -51,6 +51,7 @@ DB 금액으로 KSNET 에 직접 건다. 결제창 form 이나 리턴값을 조�
 - 승인 응답의 **주문번호·금액·거래번호**를 확인한다. 거래번호를 먼저 별도 트랜잭션으로 기록하고, 주문 확정 실패나 주문 정보 불일치 시 자동 취소한다. 다른 주문에서 사용한 거래번호는 임의 취소하지 않고 확인 대상으로 남긴다.
 - 승인 또는 취소 응답이 끊기면 결과를 실패로 단정하지 않는다. `review_required`와 거래 기록을 남기고 자동 재시도하지 않는다. 프로세스가 중단돼 `processing`으로 남은 작업도 자동 해제하지 않는다.
 - 같은 구매자가 해당 펀딩의 새 주문을 만드는 것도 기존 승인/환불 결과가 미확정인 동안 차단한다.
+- 승인 처리 중인 주문이 있으면 조기 마감도 중단된다. 승인 결과 확인 후 다시 마감한다. 승인 전 주문만 있는 경우에는 기존 조기 마감대로 주문을 취소하며, 뒤늦은 승인 요청은 차단한다.
 - DB 확정 응답만 유실된 경우에는 저장된 작업 결과를 조회한다. 이미 확정됐다면 자동 환불하지 않는다.
 - 결과 화면은 `ready`를 “결제 확인 중”으로 표시하고 재결제를 권하지 않는다. 내 펀딩에서도 확인 중인 주문을 볼 수 있다.
 - 승인 확정·취소·실패 RPC 및 모의결제 RPC는 `anon`/`authenticated`가 실행할 수 없다. PG 인증 식별자와 작업 기록은 브라우저에 공개하지 않는다.
@@ -59,7 +60,7 @@ DB 금액으로 KSNET 에 직접 건다. 결제창 form 이나 리턴값을 조�
 
 | 구분 | 파일 | 내용 |
 |---|---|---|
-| DB | `supabase/migrations/20261001000000_enable_ksnet_funding_payment.sql` | `create_ksnet_funding_order` · `payment_provider` 에 `ksnet` · 판매자/관리자 실결제 매출 집계를 "모의결제 외 전체"로 |
+| DB | `supabase/migrations/20261018020000_enable_ksnet_funding_payment.sql` | `create_ksnet_funding_order` · `payment_provider` 에 `ksnet` · 판매자/관리자 실결제 매출 집계를 "모의결제 외 전체"로 |
 | DB 보강 | `supabase/migrations/20261019000000_harden_ksnet_payments.sql` | 결제 RPC 권한 제한, 모의결제 차단, 승인·환불 처리 잠금과 복구 기록 |
 | 처리 흐름 | `supabase/functions/_shared/ksnet-payment.ts` | 중복 방지, 자동 취소, 결과 유실 대응 |
 | Edge Function | `supabase/functions/_shared/ksnet.ts` | 결제창 form · 인증 결과 파싱 · 승인 · 취소 (+ `ksnet.test.ts`) |
@@ -95,7 +96,7 @@ PR에서는 테스트·타입 검사만 실행한다. main 반영 시 검사가 
 # 1. 시크릿을 먼저 설정한다
 supabase secrets set KSNET_MID=<인증결제 MID> KSNET_AUTH_HEADER=<pgapi 키> APP_URL=<사이트 주소>
 
-# 2. DB — 20261001000000, 20261019000000 모두 적용
+# 2. DB — 20261018020000, 20261019000000 모두 적용
 supabase db push
 
 # 3. 함수 — ksnet-return 은 반드시 JWT 검증을 끈다 (KSPay 는 Supabase 토큰이 없다)
@@ -115,7 +116,6 @@ supabase functions deploy creator-cancel-participation
 - [ ] **휴대폰**으로 1회 결제 (모바일은 결제창 경로가 다르다)
 - [ ] 사이트를 다른 페이지에 **iframe 으로 임베드**해 쓰는 경우(`public/iframe-embed-example.html`) 그 안에서도 결제 (PC 팝업 / 모바일은 iframe 안에서 결제창으로 이동한다)
 - [ ] 결제창에서 취소 / 결제창 그냥 닫기 → 수량이 늘지 않는다
-- [ ] 무료 반팔 증정 이벤트 문구 정리 (아래 "주의" 참고)
 - [ ] `KSNET_MID` 가 테스트 MID(`2999199999`)가 아닌지
 
 ## 로컬 테스트
@@ -180,7 +180,8 @@ npm test                    # 프론트 Vitest만 실행
 npm run test:payments       # 어댑터 + 승인/환불 회귀 테스트 (외부 PG 호출 없음)
 npm run check:payments      # 결제 Edge Functions 타입 검사
 python3 scripts/payment-db-tests/run.py --container supabase_db_jwmzjszdjlrqrhadbggr
-# 마지막 명령은 로컬 DB 스키마만 임시 DB에 복제해 권한·상태 전이·동시 세션을 검사한다.
+# 마지막 명령은 로컬 DB 스키마와 마이그레이션 이름만 읽어 임시 DB를 만든다.
+# 미적용 마이그레이션을 임시 DB에 적용한 뒤 권한·상태 전이·동시 세션을 검사한다.
 # 테스트 데이터는 자체 생성하며 완료/실패 시 임시 DB를 삭제한다. 원본 DB는 변경하지 않는다.
 ```
 
@@ -188,6 +189,7 @@ python3 scripts/payment-db-tests/run.py --container supabase_db_jwmzjszdjlrqrhad
 
 - 어댑터 16개 + 승인/환불 회귀 19개: 동시 승인, 승인 중/승인 후 취소, 구매자·판매자 동시 환불, 금액/주문번호 불일치, 승인 거절, PG 타임아웃, 확정 실패, 커밋 응답 유실, 환불 실패와 환불 후 DB 실패를 검증한다.
 - PostgreSQL: 비로그인 결제 확정 및 모의결제 권한 차단, 비공개 거래 기록, 금액 계산, 중복 확정 시 수량 1회 반영, 기존 취소 RPC의 잠금 우회 차단, 소유자 검증, 제작자 취소 알림 유지, 자동 취소와 확인 필요 상태를 검증한다. 실제 DB 세션 두 개로 동시 승인 권한 획득이 1회인지 검사한다.
+- 최신 `main` 통합 후 프론트 137개, 결제 35개와 DB 회귀 검사를 실행한다. DB 검사는 최신 마이그레이션 적용 및 조기 마감과 결제 승인 사이의 충돌도 포함한다.
 - **실제 카드 승인·환불·모바일·iframe 검증은 여전히 미완료**다. 위 테스트는 PG를 모의 처리하며 운영 DB에 연결하지 않는다.
 
 ## 최초 연동 테스트 기록 (2026-09-29, 로컬)
@@ -218,10 +220,8 @@ python3 scripts/payment-db-tests/run.py --container supabase_db_jwmzjszdjlrqrhad
 
 ## 주의
 
-- **무료 반팔 증정 이벤트(~10.10).** 홈·펀딩 목록 배너, 상세, 결제 단계에 "모의결제로 참여하면
-  실제 결제 없이 무료로 보내드려요" / "모의결제 0원" 이 나온다(`src/components/funding/FreeTeeEvent.tsx`).
-  실결제로 전환하면 **돈을 받으면서 이 문구가 뜬다.** 프로모션 정책이라 코드는 건드리지 않았다.
-  이벤트 종료 후 전환하거나 문구를 정리해야 한다.
+- **마이그레이션 번호.** 최신 `main`의 상세페이지 마이그레이션과 겹치지 않도록 최초 KSNET
+  마이그레이션을 `20261018020000`으로 변경했다. 고객 운영 DB에는 이 최종 파일을 적용한다.
 - **결제창을 그냥 닫은 참여는 `ready` 로 남는다.** 수량에는 반영되지 않는다. 결제에 성공했는데
   창만 먼저 닫힌 경우와 구분할 수 없어서 자동으로 취소하지 않는다(카카오페이 흐름과 같다).
 - **전액 취소만 있다.** 부분취소는 구현하지 않았다.

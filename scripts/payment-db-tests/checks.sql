@@ -59,6 +59,23 @@ do $$ begin
 end $$;
 select 'PASS legacy mutation blocked during external approval';
 
+-- Latest main can close a funding and cancel its pending orders. It must not
+-- cancel an order whose external approval is already in flight.
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);
+set role authenticated;
+do $$ begin
+  begin
+    perform public.creator_early_close_funding('00000000-0000-4000-8000-000000000004');
+    raise exception 'Early close interrupted external approval';
+  exception when raise_exception then
+    if sqlerrm <> '결제 또는 환불 처리 중에는 주문을 변경할 수 없습니다.' then raise; end if;
+  end;
+end $$;
+reset role;
+select pg_temp.assert_true(status='approved' and not early_closed, 'early close rolls back while a payment is in flight')
+from public.fundings where id='00000000-0000-4000-8000-000000000004';
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
+
 select public.record_ksnet_approval(:'op', 'TEST-TID-1', jsonb_build_object('tid','TEST-TID-1','order_no',:'order_participation_id','amount',4000));
 select public.finish_ksnet_operation(:'op', 'paid');
 select public.finish_ksnet_operation(:'op', 'paid');
@@ -144,3 +161,30 @@ select public.claim_ksnet_operation('00000000-0000-4000-8000-000000000093','refu
 select public.finish_ksnet_operation(:'unpaid_cancel_op','cancelled');
 delete from public.funding_participations where id='00000000-0000-4000-8000-000000000093';
 select pg_temp.assert_true(not exists(select 1 from public.ksnet_payment_operations where id=:'unpaid_cancel_op'), 'unpaid cancelled orders retain existing cleanup behavior');
+
+-- A funding without an active payment operation can still close normally.
+insert into public.fundings(id, creator_id, brand_id, product_name, cloth_type, material, size, image_url, moq, price, status, reviewed_at, color_options, size_options, trademark_screening_required)
+values ('00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003', 'Closing Shirt', '반팔 티셔츠', '면', 'M', '/test.webp', 999, 2000, 'approved', now(), array['black'], array['M'], false);
+insert into public.funding_participations(id,funding_id,participant_id,selected_color,selected_size,quantity,unit_price,status,payment_provider,payment_status)
+values ('00000000-0000-4000-8000-000000000094', '00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000001', 'black', 'M', 1, 2000, 'pledged', 'ksnet', 'ready');
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);
+set role authenticated;
+select public.creator_early_close_funding('00000000-0000-4000-8000-000000000005');
+reset role;
+select pg_temp.assert_true(payment_status='cancelled' and
+  (public.claim_ksnet_operation(id,'confirm','after-close')->>'claimed')::boolean = false,
+  'normal early close cancels pending order and prevents a late charge')
+from public.funding_participations where id='00000000-0000-4000-8000-000000000094';
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
+set role authenticated;
+do $$ begin
+  begin
+    perform public.create_ksnet_funding_order('00000000-0000-4000-8000-000000000005', 'black', 'M', 1,
+      'Buyer', '01000000000', 'buyer@ksnet-test.invalid', 'Buyer', '01000000000', '00000', 'Test', '', '', true);
+    raise exception 'New payment allowed after early close';
+  exception when raise_exception then
+    if sqlerrm <> '현재 참여할 수 없는 펀딩입니다.' then raise; end if;
+  end;
+end $$;
+reset role;
+select 'PASS new checkout is rejected after early close';

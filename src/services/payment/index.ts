@@ -9,7 +9,7 @@ const providers: Record<PaymentProviderType, PaymentProvider> = {
   ksnet: ksnetProvider,
 };
 
-/** 현재 활성 결제 수단. 모의결제로 되돌리려면 'mock' 으로 바꿉니다. */
+/** 현재 활성 결제 수단. 운영 전환 후 모의결제 RPC는 DB에서 차단됩니다. */
 export const ACTIVE_PAYMENT_PROVIDER: PaymentProviderType = "ksnet";
 
 export const PaymentService = {

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test payment RPCs in a disposable database on a LOCAL Supabase container.
 
-Copies schema only; never resets or writes to the source database.
+Copies schema and migration names only; never resets or writes to the source database.
 """
 import argparse
 import concurrent.futures
@@ -32,9 +32,25 @@ def sql(statement, user='postgres'):
 
 
 try:
+    migrations = sorted((root / 'supabase/migrations').glob('*.sql'))
+    versions = [path.name.split('_', 1)[0] for path in migrations]
+    if len(versions) != len(set(versions)):
+        raise RuntimeError('Duplicate migration versions would prevent deployment')
+    applied = set(command([
+        'psql', '-X', '-U', 'postgres', '-d', 'postgres', '-At', '-v', 'ON_ERROR_STOP=1',
+        '-c', "select version || '_' || name from supabase_migrations.schema_migrations"
+    ]).splitlines())
     schema = command(['pg_dump', '-U', 'postgres', '-d', 'postgres', '--schema-only'])
     command(['createdb', '-U', 'postgres', database])
     sql(schema, user='supabase_admin')
+    # Bring an older local schema up to date inside the disposable DB only.
+    # Match both version and name: a pre-release KSNET migration was renumbered
+    # when main added a different migration under its original version.
+    hardening = '20261019000000_harden_ksnet_payments'
+    for migration in migrations:
+        if migration.stem != hardening and migration.stem not in applied:
+            sql(migration.read_text())
+            print('Applied in disposable database: ' + migration.name, flush=True)
     # Permit repeated tests even if the source local DB already has this migration.
     sql('''
       drop trigger if exists guard_ksnet_operation on public.funding_participations;
@@ -46,7 +62,7 @@ try:
       drop function if exists public.get_ksnet_operation(uuid);
       drop function if exists public.guard_ksnet_operation();
     ''')
-    sql((root / 'supabase/migrations/20261019000000_harden_ksnet_payments.sql').read_text())
+    sql((root / 'supabase/migrations' / (hardening + '.sql')).read_text())
     output = sql((Path(__file__).parent / 'checks.sql').read_text())
     print('\n'.join(line for line in output.splitlines() if line.startswith('PASS')))
 

@@ -62,9 +62,9 @@ This project is built with .
 
 GitHub `main` is the source of truth for the production build. Changes are validated locally and pushed directly to the repository.
 
-### Funding participation and KakaoPay
+### Funding participation and KakaoPay (legacy)
 
-The funding flow uses KakaoPay checkout.
+KakaoPay handlers remain available for existing payments. New funding checkout uses KSNET below.
 
 1. Apply the funding migrations through `20260719020000_enable_kakaopay_funding_participation.sql`.
 2. Deploy `kakaopay-ready`, `kakaopay-approve`, and `kakaopay-cancel` with JWT verification enabled.
@@ -72,6 +72,23 @@ The funding flow uses KakaoPay checkout.
 4. A signed-in participant must save a phone number and shipping address before checkout.
 5. Only paid quantities count toward the funding goal. Participants can cancel and refund eligible payments from `/my-fundings`.
 6. Only the funding creator and admins can view participant contact and shipping information.
+
+### Funding participation and KSNET (active)
+
+`ACTIVE_PAYMENT_PROVIDER` in `src/services/payment/index.ts` is `ksnet`. The checkout opens the KSPay card window; `ksnet-return` confirms the approval with KSNET using the **amount stored in the DB** and only then marks the participation paid.
+
+1. Configure the Edge Function secrets before applying migrations:
+   - `KSNET_MID` — 10-digit store ID for card (인증결제) payments.
+   - `KSNET_AUTH_HEADER` — refund API key from KStA → PG 상점정보 → pgapi (`base64(MID:key)`, the `pgapi ` prefix is optional). Without it refunds fail instead of being marked refunded.
+   - `APP_URL` — site origin the buyer returns to (`/payments/ksnet/result`).
+   - Optional: `KSNET_RETURN_URL` (defaults to `${SUPABASE_URL}/functions/v1/ksnet-return`, must stay ≤ 100 chars with its query) and `KSNET_API_BASE` (refund API host, defaults to production `https://pay.ksnet.co.kr`).
+2. Apply `20261018020000_enable_ksnet_funding_payment.sql` and `20261019000000_harden_ksnet_payments.sql`. The latter blocks browser calls to payment finalizers and mock checkout, and stores approval/refund operations durably.
+3. Deploy `ksnet-ready` (JWT verification on) and `ksnet-return` (**JWT verification off** — KSPay posts back from the browser). Redeploy `kakaopay-approve`, `kakaopay-cancel`, and `creator-cancel-participation`, then deploy the frontend.
+4. The minimum KSPay amount is 1,000원. Verify a small real card payment, full refund, and mobile checkout before opening payments to customers.
+
+PR checks only run tests and type checking. Merging to `main` runs deployment in the order above. See [the KSNET guide](docs/KSNET_PAYMENT.md) for local tests and recovery of uncertain payment results.
+
+Local test setup uses KSNET's sample store ID `2999199999` with `KSNET_API_BASE=https://paydev.ksnet.co.kr`. Never deploy with the sample ID.
 
 ## I want to use a custom domain - is that possible?
 

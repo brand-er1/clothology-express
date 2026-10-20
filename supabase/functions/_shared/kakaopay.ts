@@ -1,4 +1,4 @@
-import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,8 +52,8 @@ const getKakaoPaySecretKey = () => {
 
 export const getSupabaseClients = async (req: Request): Promise<{
   user: User;
-  userClient: ReturnType<typeof createClient>;
-  serviceClient: ReturnType<typeof createClient>;
+  userClient: SupabaseClient;
+  serviceClient: SupabaseClient;
 }> => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";

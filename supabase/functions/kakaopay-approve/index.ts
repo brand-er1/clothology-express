@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
       .select("id, funding_id, participant_id, partner_order_id, payment_tid, payment_status, total_amount")
       .eq("id", body.participationId)
       .eq("participant_id", user.id)
+      .eq("payment_provider", "kakaopay")
       .single();
     if (error || !participation) throw new Error("결제할 펀딩 참여 내역을 찾을 수 없습니다.");
 

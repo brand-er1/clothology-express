@@ -6,6 +6,7 @@ import {
   getSupabaseClients,
   jsonResponse,
 } from "../_shared/kakaopay.ts";
+import { cancelKsnetOrder } from "../_shared/ksnet-payment.ts";
 
 type CancelRequest = {
   participationId?: string;
@@ -30,6 +31,13 @@ Deno.serve(async (req) => {
       .eq("participant_id", user.id)
       .single();
     if (error || !participation) throw new Error("취소할 펀딩 참여 내역을 찾을 수 없습니다.");
+
+    if (participation.payment_provider === "ksnet") {
+      return jsonResponse(await cancelKsnetOrder(serviceClient, {
+        participationId: participation.id, actorId: user.id, source: "participant",
+        reason: body.reason || "사용자 펀딩 참여 취소",
+      }));
+    }
 
     if (participation.status === "fulfilled") {
       throw new Error("이미 제작 처리가 완료된 참여 건은 취소할 수 없습니다.");

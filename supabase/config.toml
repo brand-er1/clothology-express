@@ -57,6 +57,11 @@ verify_jwt = true
 verify_jwt = true
 [functions.kakaopay-cancel]
 verify_jwt = true
+[functions.ksnet-ready]
+verify_jwt = true
+# KSPay 결제창이 브라우저 POST 로 돌아오는 곳이라 Supabase JWT 가 없다.
+[functions.ksnet-return]
+verify_jwt = false
 [functions.creator-cancel-participation]
 verify_jwt = true
 [functions.delete-funding]

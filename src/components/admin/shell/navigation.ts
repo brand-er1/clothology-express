@@ -1,6 +1,6 @@
 import {
   BarChart3, BellRing, Building2, ClipboardList, Contact, CreditCard, Factory, Flag, Images, LayoutDashboard, Megaphone,
-  MessageCircleQuestion, Palette, ReceiptText, RotateCcw, ScrollText, Settings, ShieldCheck, Sparkles, Star, Truck, Users,
+  MessageCircleQuestion, Newspaper, Palette, ReceiptText, RotateCcw, ScrollText, Settings, ShieldCheck, Sparkles, Star, Truck, Users,
   WalletCards, Wrench,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/admin/permissions";
@@ -51,6 +51,7 @@ export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
     { path: "shipping", label: "배송 관리", icon: Truck, anyOf: ["shipping.view"] },
   ] },
   { group: "커뮤니케이션", items: [
+    { path: "magazine", label: "매거진 관리", icon: Newspaper, anyOf: ["content.view"] },
     { path: "content", label: "콘텐츠/신고", icon: Flag, anyOf: ["content.view", "reports.manage", "cs.view"] },
     { path: "notifications", label: "공지/알림", icon: Megaphone, anyOf: ["notifications.send"] },
     { path: "notification-logs", label: "알림 발송 내역", icon: BellRing, anyOf: ["notifications.send"] },

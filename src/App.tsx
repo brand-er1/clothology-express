@@ -50,6 +50,7 @@ import BrandProfile from './pages/BrandProfile';
 import DetailPageStudio from './pages/DetailPageStudio';
 import FundingDetailPageLauncher from './pages/FundingDetailPageLauncher';
 import SuccessStory from './pages/SuccessStory';
+import MagazineArticle from './pages/MagazineArticle';
 
 // 관리자 콘솔은 별도 번들로 분리해 일반 사용자에게 내려가는 코드를 늘리지 않는다.
 const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
@@ -138,6 +139,7 @@ function App() {
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
             <Route path="/magazine" element={<Navigate to="/community" replace />} />
+            <Route path="/magazine/:slug" element={<MagazineArticle />} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
             <Route path="/success-stories/:fundingId" element={<SuccessStory />} />

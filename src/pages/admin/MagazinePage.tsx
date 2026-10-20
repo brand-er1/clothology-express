@@ -43,7 +43,8 @@ const emptyForm = (): FormState => ({
   thumbnail_path: null,
   thumbnail_credit: "",
   external_url: "",
-  is_published: false,
+  // 새 기사는 바로 매거진에 보이도록 공개로 시작한다(초안으로 두려면 끄면 된다).
+  is_published: true,
 });
 
 const toForm = (row: AdminMagazineArticle): FormState => ({
@@ -155,7 +156,12 @@ const ArticleEditor = ({ article, open, onClose, onSaved }: {
         await removeMagazineImage(article.thumbnail_path).catch(() => undefined);
       }
       uploadedPath.current = null;
-      toast({ title: article ? "기사를 수정했습니다" : "기사를 등록했습니다" });
+      toast(form.is_published
+        ? { title: article ? "기사를 수정했습니다" : "기사를 등록했습니다" }
+        : {
+            title: article ? "기사를 수정했습니다 (비공개)" : "기사를 비공개로 등록했습니다",
+            description: "비공개 기사는 매거진에 보이지 않습니다. 목록에서 ‘공개’를 눌러 노출하세요.",
+          });
       onSaved();
       onClose();
     } catch (error) {

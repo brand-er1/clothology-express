@@ -58,7 +58,10 @@ export async function fetchMagazineArticles(): Promise<MagazineArticle[]> {
     .eq("is_published", true)
     .order("published_at", { ascending: false })
     .order("created_at", { ascending: false });
-  if (error || !data) return sortMagazineArticles(fallbackArticles);
+  if (error || !data) {
+    console.warn("[magazine] DB 조회 실패 — 정적 목록으로 대체합니다.", error);
+    return sortMagazineArticles(fallbackArticles);
+  }
   return (data as MagazineRow[]).map(toArticle);
 }
 
@@ -70,7 +73,10 @@ export async function fetchMagazineArticle(slug: string): Promise<MagazineArticl
     .eq("slug", slug)
     .eq("is_published", true)
     .maybeSingle();
-  if (error) return fallbackArticles.find((article) => article.slug === slug) ?? null;
+  if (error) {
+    console.warn("[magazine] DB 조회 실패 — 정적 목록에서 찾습니다.", error);
+    return fallbackArticles.find((article) => article.slug === slug) ?? null;
+  }
   return data ? toArticle(data as MagazineRow) : null;
 }
 

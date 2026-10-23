@@ -170,3 +170,28 @@ reset role;
 set role anon;
 select t_eq('public reads seo fields', $$select seo_title || '/' || category from magazine_articles where slug='creator-interview-alpha'$$, '알파 인터뷰 | BRAND-ER/creator_interview');
 reset role;
+
+-- ---------------------------------------------------------------------------
+-- 관리자 제작 의뢰
+-- ---------------------------------------------------------------------------
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000b001',false); set role authenticated;
+select t_fail('member cannot list production requests', $$select admin_list_production_requests()$$, '권한');
+select t_fail('member cannot change production request', $$select admin_set_production_request_status('00000000-0000-0000-0000-00000000d001','approved')$$, '권한');
+reset role;
+
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000a003',false); set role authenticated;
+select t_eq('cs admin lists (draft excluded) with counts', $$select (r->'counts'->>'all') || '/' || (r->'counts'->>'pending') || '/' || (r->>'total') || '/' || (r->>'can_manage') from (select admin_list_production_requests() r) x$$, '3/2/2/false');
+select t_eq('source filter', $$select admin_list_production_requests('all','ready_made_group_wear')->'rows'->0->>'request_title'$$, '3학년 반티');
+select t_eq('search by title', $$select admin_list_production_requests('all','all','브랜드')->'rows'->0->>'id'$$, '00000000-0000-0000-0000-00000000d002');
+select t_fail('cs admin cannot change status', $$select admin_set_production_request_status('00000000-0000-0000-0000-00000000d001','approved')$$, '권한');
+reset role;
+
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000a001',false); set role authenticated;
+select t_eq('super admin sees guest contact', $$select (e->>'guest_phone') || '/' || (e->>'customer_name') || '/' || (e->>'is_guest') from jsonb_array_elements(admin_list_production_requests('all','ready_made_group_wear')->'rows') e$$, '010-7777-8888/홍길동/true');
+select t_fail('reject needs reason', $$select admin_set_production_request_status('00000000-0000-0000-0000-00000000d001','rejected','')$$, '사유');
+select t_fail('cannot touch draft', $$select admin_set_production_request_status('00000000-0000-0000-0000-00000000d004','approved')$$, '찾을 수 없');
+select t_ok('super admin approves', $$select admin_set_production_request_status('00000000-0000-0000-0000-00000000d001','approved','원단 확인 후 견적 안내')::text$$);
+select t_eq('approved count updated', $$select admin_list_production_requests()->'counts'->>'approved'$$, '2');
+reset role;
+select t_eq('approval stored with reviewer', $$select status::text || '/' || (reviewed_by = '00000000-0000-0000-0000-00000000a001')::text || '/' || admin_comment from orders where id='00000000-0000-0000-0000-00000000d001'$$, 'approved/true/원단 확인 후 견적 안내');
+select t_eq('approval audited once', $$select count(*)::text from admin_audit_logs where target_id='00000000-0000-0000-0000-00000000d001'$$, '1');

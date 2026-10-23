@@ -42,3 +42,10 @@ values ('00000000-0000-0000-0000-00000005e001','00000000-0000-0000-0000-0000000f
 -- 비공개 문의(판매자 A 펀딩)
 insert into public.funding_inquiries (id, funding_id, author_id, nickname, inquiry_type, title, content, is_private)
 values ('00000000-0000-0000-0000-00000001a001','00000000-0000-0000-0000-0000000f000a','00000000-0000-0000-0000-00000000b001','김*매','size_fit','사이즈 문의','M 사이즈 어깨 너비가 궁금합니다.', true);
+
+-- 제작 의뢰(public.orders): AI 디자인 · 업로드 · 비회원 단체복 · 임시저장(목록 제외)
+insert into public.orders (id, user_id, cloth_type, material, detail_description, size, status, request_source, request_title, requested_quantity, guest_name, guest_phone, created_at) values
+ ('00000000-0000-0000-0000-00000000d001','00000000-0000-0000-0000-00000000b001','hoodie','cotton','오버핏 후드 30장','M','pending','ai_design','동아리 후드',30,null,null, now()-interval '3 days'),
+ ('00000000-0000-0000-0000-00000000d002','00000000-0000-0000-0000-00000000b002','shirt','linen','업로드한 도식화','L','approved','design_upload','브랜드 셔츠',50,null,null, now()-interval '2 days'),
+ ('00000000-0000-0000-0000-00000000d003',null,'tshirt','cotton','반티','FREE','pending','ready_made_group_wear','3학년 반티',25,'홍길동','010-7777-8888', now()-interval '1 day'),
+ ('00000000-0000-0000-0000-00000000d004','00000000-0000-0000-0000-00000000b001','pants','denim','임시저장','M','draft','ai_design',null,null,null,null, now());

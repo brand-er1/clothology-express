@@ -63,7 +63,9 @@ const SettlementSheet = ({ row, onClose, onChanged }: { row: SettlementRow | nul
             <p className="mt-1 text-lg font-extrabold">{row.product_name}</p>
             <p className="text-xs text-stone-500">{row.brand_name ?? "-"} · {row.creator_name ?? "-"} · 정산 예정일 {dateOnly(row.scheduled_date)}</p>
           </div>
-          {row.mock_amount > 0 && <Notice>모의결제 금액 {won(row.mock_amount)} 이 포함되어 있습니다. 모의결제는 실제 입금이 없으므로 실제 지급 대상이 아닙니다.</Notice>}
+          {row.mock_amount > 0 && (calc.mock_excluded
+            ? <Notice>모의결제 금액 {won(row.mock_amount)} 은 실제 입금이 없으므로 거래액 · 정산금 계산에서 제외했습니다(참고용 표시).</Notice>
+            : <Notice>이전 기준으로 계산되어 모의결제 금액 {won(row.mock_amount)} 이 포함되어 있습니다. 모의결제는 실제 지급 대상이 아닙니다.</Notice>)}
           <Panel title="계산 근거">
             <Line label={`총 거래액 (결제 ${num(calc.paid_orders as number)}건 + 환불 ${num(calc.refunded_orders as number)}건)`} value={row.gross_amount} />
             <Line label="취소/환불 금액" value={row.refund_amount} minus />

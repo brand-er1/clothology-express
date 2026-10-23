@@ -32,7 +32,8 @@ import { FundingInquiriesPanel } from "@/components/funding/FundingInquiriesPane
 import { fetchFundingReviews, type ReviewSummary } from "@/services/fundingReviews";
 import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
-import { ACTIVE_PAYMENT_PROVIDER } from "@/services/payment";
+import { PAYMENT } from "@/services/payment";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { fetchDetailPage, fetchDetailPageForFunding, fetchMyDetailPageForFunding } from "@/services/detailPage";
 import type { ProductDetailPage } from "@/types/detailPage";
 import {
@@ -306,6 +307,16 @@ const FundingDetail = () => {
         <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
       </Link>
     </Button>
+  ) : !isPreview && !PAYMENT.enabled ? (
+    // 결제 미오픈(VITE_PAYMENT_MODE=disabled): 결제 API 를 부르지 않는다. 구매 예약은 아래 버튼으로 계속 받는다.
+    <Button
+      disabled
+      aria-disabled
+      className={`${heightClassName} w-full rounded-[2px] bg-stone-500 text-base font-semibold text-white disabled:opacity-100`}
+      data-tutorial="funding-detail-participate"
+    >
+      <WalletCards className="mr-2 h-5 w-5" /> 결제 오픈 준비 중
+    </Button>
   ) : (
     <Button
       disabled={isPreview || !funding.price}
@@ -555,8 +566,8 @@ const FundingDetail = () => {
                 </AlertDialogContent>
               </AlertDialog>
 
-              {ACTIVE_PAYMENT_PROVIDER === "mock" && (
-                <p className="text-center text-[11px] font-medium text-amber-700">현재 모의결제 모드이며 실제 금액은 청구되지 않습니다.</p>
+              {PAYMENT.notice && !isClosed && (
+                <p className={`text-center text-[11px] font-medium ${PAYMENT.isMock ? "text-amber-700" : PAYMENT.isTest ? "text-sky-700" : "text-stone-500"}`}>{PAYMENT.notice}</p>
               )}
               <p className="flex items-center justify-center text-[11px] text-stone-400">
                 <ShieldCheck className="mr-1 h-3.5 w-3.5" /> 결제 완료 수량만 반영되며 주문 내역에서 취소·환불할 수 있습니다.
@@ -736,15 +747,18 @@ const FundingDetail = () => {
         </div>
       </div>
 
-      <FundingCheckoutDialog
-        open={checkoutOpen}
-        onOpenChange={setCheckoutOpen}
-        funding={funding}
-        color={selectedColor}
-        size={selectedSize}
-        quantity={quantity}
-        prefill={shippingPrefill}
-      />
+      {/* 결제 영역 오류는 결제 창만 닫고 상품 페이지는 그대로 둔다. */}
+      <ErrorBoundary scope="funding-checkout" resetKey={checkoutOpen}>
+        <FundingCheckoutDialog
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          funding={funding}
+          color={selectedColor}
+          size={selectedSize}
+          quantity={quantity}
+          prefill={shippingPrefill}
+        />
+      </ErrorBoundary>
     </div>
   );
 };

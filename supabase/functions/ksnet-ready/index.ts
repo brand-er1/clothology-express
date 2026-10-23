@@ -1,5 +1,6 @@
 import { corsHeaders, errorMessage, getSupabaseClients, jsonResponse } from "../_shared/kakaopay.ts";
 import { buildKspayForm, getKsnetMid, KSNET_MIN_AMOUNT } from "../_shared/ksnet.ts";
+import { assertKsnetCheckoutAllowed, PaymentModeError } from "../_shared/payment-mode.ts";
 
 type ShippingInput = {
   ordererName?: string;
@@ -39,8 +40,12 @@ Deno.serve(async (req) => {
     const { user, userClient } = clients;
     userId = user.id;
     serviceClient = clients.serviceClient;
-    // 설정이 빠졌으면 참여를 만들기 전에 멈춘다.
-    getKsnetMid();
+    // 설정이 빠졌거나 결제 미오픈(PAYMENT_MODE=disabled)이면 참여를 만들기 전에 멈춘다.
+    assertKsnetCheckoutAllowed({
+      mode: Deno.env.get("PAYMENT_MODE"),
+      mid: getKsnetMid(),
+      apiBase: Deno.env.get("KSNET_API_BASE"),
+    });
 
     const body = (await req.json()) as ReadyRequest;
     const shipping = body.shipping;
@@ -91,6 +96,10 @@ Deno.serve(async (req) => {
       kspay_form: kspayForm,
     });
   } catch (error) {
+    if (error instanceof PaymentModeError) {
+      // 참여를 만들기 전 단계라 정리할 주문이 없다.
+      return jsonResponse({ error: error.message, code: "payment_unavailable" }, 503);
+    }
     console.error("ksnet-ready", error);
     if (participationId && userId && serviceClient) {
       try {

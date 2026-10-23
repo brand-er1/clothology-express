@@ -20,7 +20,7 @@ const ProductCard = ({ product }: { product: SellerProduct }) => (
       {product.image_url
         ? <img src={product.image_url} alt={product.product_name} loading="lazy" className="h-full w-full object-cover" />
         : <div className="flex h-full items-center justify-center text-xs text-stone-400">이미지 없음</div>}
-      <span className="absolute left-3 top-3"><MappedBadge map={FUNDING_PHASE} value={product.phase} /></span>
+      <span className="absolute left-3 top-3 rounded-full bg-white shadow-sm"><MappedBadge map={FUNDING_PHASE} value={product.phase} /></span>
     </div>
     <div className="flex flex-1 flex-col gap-3 p-4">
       <div className="min-w-0">

@@ -135,7 +135,7 @@ const FundingRow = ({ product, onAdvance, onLogs, onChanged }: {
 }) => {
   const daysLeft = product.end_at ? Math.ceil((new Date(product.end_at).getTime() - Date.now()) / 86_400_000) : null;
   return (
-    <article className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.04)] sm:p-5">
+    <article className="min-w-0 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.04)] sm:p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         {product.image_url && <img src={product.image_url} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-stone-200" />}
         <div className="min-w-0 flex-1">

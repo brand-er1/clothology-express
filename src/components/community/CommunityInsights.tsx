@@ -40,7 +40,10 @@ const CommunityInsights = () => {
             BRAND-ER NEWS
           </h2>
         </div>
-        <p className="hidden text-xs font-medium text-stone-500 sm:block">기사를 누르면 BRAND-ER 뉴스룸 요약과 원문 링크를 볼 수 있습니다.</p>
+        <div className="flex flex-col items-end gap-1">
+          <p className="hidden text-xs font-medium text-stone-500 sm:block">기사를 누르면 BRAND-ER 뉴스룸 요약과 원문 링크를 볼 수 있습니다.</p>
+          <Link to="/magazine" className="text-sm font-semibold text-stone-700 underline-offset-4 hover:text-brand hover:underline">카테고리별 전체 기사</Link>
+        </div>
       </div>
 
       {!articles ? <LoadingGrid /> : (

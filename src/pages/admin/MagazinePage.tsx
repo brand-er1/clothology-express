@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, ImageUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowUpRight, DownloadCloud, ImageUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,9 +14,9 @@ import {
 import { ReasonDialog, type ReasonDialogState } from "@/components/admin/shell/ReasonDialog";
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { MagazineThumbnail } from "@/components/magazine/MagazineThumbnail";
-import { formatMagazineDate, MAGAZINE_CATEGORY_LABEL, magazineArticlePath, type MagazineCategory } from "@/data/magazineArticles";
+import { formatMagazineDate, MAGAZINE_CATEGORIES, MAGAZINE_CATEGORY_LABEL, magazineArticlePath, type MagazineCategory } from "@/data/magazineArticles";
 import {
-  deleteMagazineArticle, listAdminMagazineArticles, removeMagazineImage, resolveThumbnail, saveMagazineArticle,
+  deleteMagazineArticle, importArticleMeta, listAdminMagazineArticles, removeMagazineImage, resolveThumbnail, saveMagazineArticle,
   setMagazineArticlePublished, uploadMagazineImage, type AdminMagazineArticle, type MagazineArticleInput,
 } from "@/services/magazine";
 
@@ -28,7 +28,25 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
-type FormState = Omit<MagazineArticleInput, "key_points"> & { key_points_text: string };
+type FormState = Omit<MagazineArticleInput, "key_points" | "body" | "seo_title" | "seo_description" | "author_name"> & {
+  key_points_text: string;
+  body: string;
+  seo_title: string;
+  seo_description: string;
+  author_name: string;
+};
+
+/** 영문 · 숫자만 남겨 slug 후보를 만든다: 2026-10-21-youtuberworld-4253327 */
+const suggestSlug = (date: string, url: string) => {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").split(".")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+    const id = (parsed.search.match(/\d{3,}/) ?? parsed.pathname.match(/\d{3,}/))?.[0] ?? "";
+    return [date, host, id].filter(Boolean).join("-").replace(/-+/g, "-");
+  } catch {
+    return date;
+  }
+};
 
 const emptyForm = (): FormState => ({
   slug: "",
@@ -43,6 +61,10 @@ const emptyForm = (): FormState => ({
   thumbnail_path: null,
   thumbnail_credit: "",
   external_url: "",
+  body: "",
+  seo_title: "",
+  seo_description: "",
+  author_name: "",
   // 새 기사는 바로 매거진에 보이도록 공개로 시작한다(초안으로 두려면 끄면 된다).
   is_published: true,
 });
@@ -60,13 +82,18 @@ const toForm = (row: AdminMagazineArticle): FormState => ({
   thumbnail_path: row.thumbnail_path,
   thumbnail_credit: row.thumbnail_credit ?? "",
   external_url: row.external_url ?? "",
+  body: row.body ?? "",
+  seo_title: row.seo_title ?? "",
+  seo_description: row.seo_description ?? "",
+  author_name: row.author_name ?? "",
   is_published: row.is_published,
 });
 
 const validate = (form: FormState): string | null => {
   if (!SLUG_PATTERN.test(form.slug.trim())) return "주소(slug)는 영문 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다.";
   if (!form.title.trim()) return "기사 제목을 입력해주세요.";
-  if (!form.publisher.trim()) return "언론사 이름을 입력해주세요.";
+  if (!form.publisher.trim()) return "출처(언론사 또는 BRAND-ER)를 입력해주세요.";
+  if (form.category === "press" && !form.external_url.trim()) return "언론 보도는 원문 기사 URL 을 입력해주세요.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.published_at)) return "발행일을 입력해주세요.";
   if (form.external_url.trim() && !URL_PATTERN.test(form.external_url.trim())) return "원문 URL 은 http:// 또는 https:// 로 시작해야 합니다.";
   if (form.thumbnail_url.trim() && !URL_PATTERN.test(form.thumbnail_url.trim())) return "썸네일 URL 은 http:// 또는 https:// 로 시작해야 합니다.";
@@ -101,6 +128,40 @@ const ArticleEditor = ({ article, open, onClose, onSaved }: {
   }, [open, article]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((prev) => ({ ...prev, [key]: value }));
+  const [importing, setImporting] = useState(false);
+
+  // 원문 URL 의 공개 메타데이터로 빈 칸을 채운다. 이미 입력한 값은 덮어쓰지 않는다. 대표 이미지는 저작권 때문에 자동으로 넣지 않는다.
+  const importFromUrl = async () => {
+    const url = form.external_url.trim();
+    if (!URL_PATTERN.test(url)) {
+      toast({ title: "원문 기사 URL 을 먼저 입력해주세요", variant: "destructive" });
+      return;
+    }
+    setImporting(true);
+    try {
+      const meta = await importArticleMeta(url);
+      setForm((prev) => {
+        const publishedAt = meta.published_at ?? prev.published_at;
+        return {
+          ...prev,
+          title: prev.title.trim() ? prev.title : meta.title ?? "",
+          publisher: prev.publisher.trim() ? prev.publisher : meta.site_name ?? "",
+          published_at: publishedAt,
+          summary: prev.summary.trim() ? prev.summary : meta.description ?? "",
+          author_name: prev.author_name.trim() ? prev.author_name : meta.author ?? "",
+          slug: prev.slug.trim() ? prev.slug : suggestSlug(publishedAt, url),
+        };
+      });
+      toast({
+        title: "기사 정보를 불러왔습니다",
+        description: `제목 · 발행일 · 출처를 원문과 대조해 확인하세요. 요약은 BRAND-ER 문장으로 다듬어 주세요.${meta.image ? " 원문 대표 이미지는 사용 허락이 확인된 경우에만 URL 칸에 직접 넣으세요." : ""}`,
+      });
+    } catch (error) {
+      toast({ title: "기사 정보를 불러오지 못했습니다", description: errorMessage(error), variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const discardUpload = async () => {
     if (uploadedPath.current) await removeMagazineImage(uploadedPath.current).catch(() => undefined);
@@ -148,6 +209,10 @@ const ArticleEditor = ({ article, open, onClose, onSaved }: {
       const { key_points_text, ...rest } = form;
       await saveMagazineArticle(article?.id ?? null, {
         ...rest,
+        body: rest.body.trim() || null,
+        seo_title: rest.seo_title.trim() || null,
+        seo_description: rest.seo_description.trim() || null,
+        author_name: rest.author_name.trim() || null,
         slug: rest.slug.trim(),
         key_points: key_points_text.split("\n").map((line) => line.trim()).filter(Boolean),
       });
@@ -191,7 +256,7 @@ const ArticleEditor = ({ article, open, onClose, onSaved }: {
             <Field label="주소(slug)" required hint={`/magazine/${form.slug || "2026-10-20-publisher-topic"} · 영문 소문자·숫자·하이픈`}>
               <Input value={form.slug} onChange={(e) => set("slug", e.target.value.toLowerCase())} maxLength={120} placeholder="2026-10-20-publisher-topic" />
             </Field>
-            <Field label="언론사" required>
+            <Field label="출처 (언론사 · BRAND-ER)" required>
               <Input value={form.publisher} onChange={(e) => set("publisher", e.target.value)} maxLength={80} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -204,14 +269,19 @@ const ArticleEditor = ({ article, open, onClose, onSaved }: {
                   onChange={(e) => set("category", e.target.value as MagazineCategory)}
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  {Object.entries(MAGAZINE_CATEGORY_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {MAGAZINE_CATEGORIES.map((value) => <option key={value} value={value}>{MAGAZINE_CATEGORY_LABEL[value]}</option>)}
                 </select>
               </Field>
             </div>
           </div>
 
-          <Field label="외부 원문 URL" hint="상세페이지의 ‘원문 기사 보기’ 버튼이 이 주소로 연결됩니다.">
-            <Input value={form.external_url ?? ""} onChange={(e) => set("external_url", e.target.value)} placeholder="https://" />
+          <Field label="외부 원문 URL" required={form.category === "press"} hint="상세페이지의 ‘원문 기사 보기’ 버튼이 이 주소로 연결됩니다. ‘불러오기’는 원문의 제목 · 발행일 · 출처 · 소개 문구만 빈 칸에 채웁니다(본문은 가져오지 않음).">
+            <div className="flex gap-2">
+              <Input value={form.external_url ?? ""} onChange={(e) => set("external_url", e.target.value)} placeholder="https://" />
+              <Button type="button" variant="outline" className="shrink-0" disabled={importing} onClick={() => void importFromUrl()}>
+                {importing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <DownloadCloud className="mr-1.5 h-4 w-4" />}불러오기
+              </Button>
+            </div>
           </Field>
 
           <Field label="간략 소개(요약)" hint="목록 카드와 상세페이지 상단, 검색 결과 설명(description)에 쓰입니다. 1~2문장.">
@@ -225,6 +295,26 @@ const ArticleEditor = ({ article, open, onClose, onSaved }: {
           <Field label="BRAND-ER 관련 핵심 내용" hint="상세페이지에서 강조 블록으로 표시됩니다.">
             <Textarea value={form.brand_highlight ?? ""} onChange={(e) => set("brand_highlight", e.target.value)} rows={3} maxLength={1000} />
           </Field>
+
+          <Field label="본문" hint={form.category === "press"
+            ? "언론 보도는 원문 전문을 옮기지 마세요. 필요하면 BRAND-ER 의 짧은 코멘트만 적습니다."
+            : "브랜드 스토리 · 인터뷰 · 인사이트 본문. 빈 줄로 문단을 나눕니다(최대 20,000자)."}>
+            <Textarea value={form.body} onChange={(e) => set("body", e.target.value)} rows={form.category === "press" ? 3 : 10} maxLength={20000} />
+          </Field>
+
+          <Field label="작성자 · 기자" hint="선택. 상세페이지 출처 영역에 표시됩니다.">
+            <Input value={form.author_name} onChange={(e) => set("author_name", e.target.value)} maxLength={80} />
+          </Field>
+
+          <div className="grid gap-4 rounded-xl border border-stone-200 p-4">
+            <p className="text-xs font-bold text-stone-600">SEO 메타태그 <span className="font-normal text-stone-400">— 비워 두면 제목 · 요약을 사용합니다</span></p>
+            <Field label={`SEO 제목 (${form.seo_title.length}/120)`}>
+              <Input value={form.seo_title} onChange={(e) => set("seo_title", e.target.value)} maxLength={120} placeholder={`${form.title || "기사 제목"} | BRAND-ER 매거진`} />
+            </Field>
+            <Field label={`SEO 설명 (${form.seo_description.length}/300)`}>
+              <Textarea value={form.seo_description} onChange={(e) => set("seo_description", e.target.value)} rows={2} maxLength={300} placeholder={form.summary || "검색 결과에 보일 설명"} />
+            </Field>
+          </div>
 
           <div className="grid gap-4 rounded-xl border border-stone-200 p-4 sm:grid-cols-[180px_1fr]">
             <div className="overflow-hidden rounded-lg bg-stone-100">
@@ -263,7 +353,7 @@ const ArticleEditor = ({ article, open, onClose, onSaved }: {
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={close} disabled={saving || uploading}>취소</Button>
+          <Button variant="outline" onClick={close} disabled={saving || uploading || importing}>취소</Button>
           <Button onClick={() => void save()} disabled={saving || uploading} className="bg-[#741b2b] hover:bg-[#5b1522]">
             {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{article ? "수정 저장" : "등록"}
           </Button>
@@ -312,7 +402,7 @@ const MagazinePage = () => {
       <PageHeader
         eyebrow="Magazine"
         title="매거진 관리"
-        description="매거진(BRAND-ER NEWS)에 노출되는 언론보도 · 브랜드 뉴스 기사입니다. 최신 발행일 순으로 정렬됩니다."
+        description="BRAND-ER NEWS · 언론 보도 · 브랜드 스토리 · 제작자 인터뷰 · 패션 및 제조 인사이트 기사입니다. 저장하면 매거진에 바로 반영되며 최신 발행일 순으로 정렬됩니다."
         actions={canManage ? (
           <Button onClick={() => setEditing({ open: true, article: null })} className="bg-[#741b2b] hover:bg-[#5b1522]">
             <Plus className="mr-1.5 h-4 w-4" />기사 등록

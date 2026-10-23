@@ -7,13 +7,14 @@ import {
   formatMagazineDate,
   MAGAZINE_CATEGORY_LABEL,
   magazineArticlePath,
+  pickRelatedArticles,
   type MagazineArticle as Article,
 } from "@/data/magazineArticles";
 import { fetchMagazineArticle, fetchMagazineArticles } from "@/services/magazine";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { getAppUrl } from "@/utils/appUrl";
 
-const MAGAZINE_LIST_PATH = "/community";
+const MAGAZINE_LIST_PATH = "/magazine";
 
 type State = { status: "loading" } | { status: "missing" } | { status: "ready"; article: Article };
 
@@ -47,23 +48,28 @@ const MagazineArticlePage = () => {
     let active = true;
     setState({ status: "loading" });
     window.scrollTo(0, 0);
-    void fetchMagazineArticle(slug).then((article) => {
+    const articleRequest = fetchMagazineArticle(slug);
+    void articleRequest.then((article) => {
       if (active) setState(article ? { status: "ready", article } : { status: "missing" });
     });
-    void fetchMagazineArticles().then((rows) => {
-      if (active) setRelated(rows.filter((row) => row.slug !== slug).slice(0, 3));
+    // 관련 기사: 같은 카테고리를 먼저, 그다음 최신순
+    void Promise.all([articleRequest, fetchMagazineArticles()]).then(([article, rows]) => {
+      if (!active) return;
+      setRelated(article ? pickRelatedArticles(article, rows) : rows.filter((row) => row.slug !== slug).slice(0, 3));
     });
     return () => { active = false; };
   }, [slug]);
 
   const article = state.status === "ready" ? state.article : null;
-  const category = article ? MAGAZINE_CATEGORY_LABEL[article.category] ?? "언론보도" : "";
+  const category = article ? MAGAZINE_CATEGORY_LABEL[article.category] ?? "언론 보도" : "";
+  const isPress = article?.category === "press";
+  const paragraphs = (article?.body ?? "").split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
 
   useDocumentMeta(
     article
       ? {
-          title: `${article.title} | BRAND-ER 매거진`,
-          description: article.summary || `${article.publisher} ${formatMagazineDate(article.publishedAt)} 보도. BRAND-ER 뉴스룸에서 요약을 확인하세요.`,
+          title: article.seoTitle || `${article.title} | BRAND-ER 매거진`,
+          description: article.seoDescription || article.summary || `${article.publisher} ${formatMagazineDate(article.publishedAt)} 보도. BRAND-ER 뉴스룸에서 요약을 확인하세요.`,
           image: article.thumbnail,
           url: getAppUrl(magazineArticlePath(article.slug)),
           type: "article",
@@ -111,6 +117,7 @@ const MagazineArticlePage = () => {
               <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-stone-600">
                 <span className="rounded-full border border-brand/30 bg-brand/5 px-2.5 py-0.5 text-[11px] font-semibold text-brand">{category}</span>
                 <span className="font-semibold text-stone-950">{article.publisher}</span>
+                {article.authorName && <span className="text-stone-500">{article.authorName}</span>}
                 <span className="text-stone-300">|</span>
                 <time dateTime={article.publishedAt} className="font-display">{formatMagazineDate(article.publishedAt)}</time>
               </div>
@@ -153,6 +160,15 @@ const MagazineArticlePage = () => {
                   </section>
                 )}
 
+                {paragraphs.length > 0 && (
+                  <section className="mt-12 border-t border-stone-300 pt-8">
+                    <h2 className="sr-only">본문</h2>
+                    <div className="space-y-6 text-[16px] leading-[1.95] tracking-[-0.01em] text-stone-800">
+                      {paragraphs.map((paragraph, index) => <p key={index} className="whitespace-pre-line">{paragraph}</p>)}
+                    </div>
+                  </section>
+                )}
+
                 {article.brandHighlight && (
                   <section className="mt-12 border-l-2 border-brand bg-white px-6 py-7 sm:px-8">
                     <h2 className="eyebrow">Why it matters for BRAND-ER</h2>
@@ -172,17 +188,20 @@ const MagazineArticlePage = () => {
                       </>
                     )}
                   </p>
-                  <p className="mt-1">
-                    본 페이지는 원문을 복제하지 않고 BRAND-ER가 핵심 내용을 요약·재구성했습니다. 기사 본문과 이미지의 저작권은 {article.publisher}에 있으며, 전체 기사는 원문에서 확인해 주세요.
-                  </p>
+                  {isPress && (
+                    <p className="mt-1">
+                      본 페이지는 원문을 복제하지 않고 BRAND-ER가 핵심 내용을 요약·재구성했습니다. 기사 본문과 이미지의 저작권은 {article.publisher}에 있으며, 전체 기사는 원문에서 확인해 주세요.
+                    </p>
+                  )}
                 </section>
               </div>
 
               <aside className="lg:col-span-4">
                 <div className="lg:sticky lg:top-28">
                   <dl className="divide-y divide-stone-200 border-y border-stone-950 text-sm">
-                    <div className="flex justify-between gap-4 py-3"><dt className="text-stone-500">언론사</dt><dd className="text-right font-semibold text-stone-950">{article.publisher}</dd></div>
-                    <div className="flex justify-between gap-4 py-3"><dt className="text-stone-500">발행일</dt><dd className="font-display font-semibold text-stone-950">{formatMagazineDate(article.publishedAt)}</dd></div>
+                    <div className="flex justify-between gap-4 py-3"><dt className="text-stone-500">{isPress ? "언론사" : "출처"}</dt><dd className="text-right font-semibold text-stone-950">{article.publisher}</dd></div>
+                    {article.authorName && <div className="flex justify-between gap-4 py-3"><dt className="text-stone-500">작성</dt><dd className="text-right font-semibold text-stone-950">{article.authorName}</dd></div>}
+                    <div className="flex justify-between gap-4 py-3"><dt className="text-stone-500">{isPress ? "발행일" : "게시일"}</dt><dd className="font-display font-semibold text-stone-950">{formatMagazineDate(article.publishedAt)}</dd></div>
                     <div className="flex justify-between gap-4 py-3"><dt className="text-stone-500">분류</dt><dd className="font-semibold text-brand">{category}</dd></div>
                   </dl>
                   <div className="mt-6 grid gap-3">
@@ -198,7 +217,7 @@ const MagazineArticlePage = () => {
         {state.status !== "loading" && related.length > 0 && (
           <section className="mt-20 border-t border-stone-950 pt-6">
             <div className="flex items-end justify-between gap-4">
-              <h2 className="text-xl font-semibold tracking-[-0.03em] text-stone-950 sm:text-2xl">다른 BRAND-ER 소식</h2>
+              <h2 className="text-xl font-semibold tracking-[-0.03em] text-stone-950 sm:text-2xl">관련 기사</h2>
               <Link to={MAGAZINE_LIST_PATH} className="link-draw text-sm font-semibold text-stone-700 hover:text-brand">전체 보기</Link>
             </div>
             <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -208,7 +227,7 @@ const MagazineArticlePage = () => {
                     <MagazineThumbnail src={item.thumbnail} publisher={item.publisher} alt={`${item.publisher} 기사 이미지`} className="img-zoom aspect-[16/10]" />
                   </div>
                   <p className="mt-4 text-[11px] font-semibold text-stone-500">
-                    <span className="text-brand">{item.publisher}</span> · <time dateTime={item.publishedAt}>{formatMagazineDate(item.publishedAt)}</time>
+                    <span className="text-brand">{MAGAZINE_CATEGORY_LABEL[item.category] ?? item.publisher}</span> · {item.publisher} · <time dateTime={item.publishedAt}>{formatMagazineDate(item.publishedAt)}</time>
                   </p>
                   <h3 className="mt-2 line-clamp-2 text-base font-semibold leading-snug tracking-[-0.02em] text-stone-950 group-hover:text-brand">{item.title}</h3>
                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-stone-700 group-hover:text-brand">자세히 보기 <ArrowUpRight className="h-3.5 w-3.5" /></span>

@@ -29,6 +29,8 @@ interface OrderReviewDialogProps {
   isSaving: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateStatus: (status: 'approved' | 'rejected', comment: string) => Promise<void>;
+  /** 조회 전용(orders.manage 권한 없음): 상태 변경 버튼을 숨긴다. 서버도 다시 거부한다. */
+  readOnly?: boolean;
 }
 
 interface RequestUserProfile {
@@ -51,6 +53,7 @@ export const OrderReviewDialog = ({
   isSaving,
   onOpenChange,
   onUpdateStatus,
+  readOnly = false,
 }: OrderReviewDialogProps) => {
   const [adminComment, setAdminComment] = useState(order?.admin_comment || "");
   const [imageError, setImageError] = useState(false);
@@ -409,6 +412,7 @@ export const OrderReviewDialog = ({
                 onChange={(e) => setAdminComment(e.target.value)}
                 placeholder="제작 가능 여부, 확인할 내용 또는 진행 불가 사유를 입력하세요"
                 className="min-h-[80px] md:min-h-[100px] text-sm"
+                readOnly={readOnly}
               />
             </div>
           </div>
@@ -423,6 +427,7 @@ export const OrderReviewDialog = ({
           >
             취소
           </Button>
+          {!readOnly && (<>
           <Button
             variant="destructive"
             onClick={() => onUpdateStatus('rejected', adminComment)}
@@ -438,6 +443,7 @@ export const OrderReviewDialog = ({
           >
             제작 상담 접수
           </Button>
+          </>)}
         </DialogFooter>
       </DialogContent>
     </Dialog>

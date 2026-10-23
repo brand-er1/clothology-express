@@ -301,12 +301,6 @@ const FundingDetail = () => {
     >
       <Flag className="mr-2 h-5 w-5" /> {isEarlyClosed ? "조기 마감" : "펀딩 종료"}
     </Button>
-  ) : !isPreview && funding.price && !currentUserId ? (
-    <Button asChild className={`${heightClassName} w-full rounded-[2px] bg-brand text-base font-semibold text-white hover:bg-brand-dark`} data-tutorial="funding-detail-participate">
-      <Link to={loginReturnTo}>
-        <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
-      </Link>
-    </Button>
   ) : !isPreview && !PAYMENT.enabled ? (
     // 결제 미오픈(VITE_PAYMENT_MODE=disabled): 결제 API 를 부르지 않는다. 구매 예약은 아래 버튼으로 계속 받는다.
     <Button
@@ -316,6 +310,12 @@ const FundingDetail = () => {
       data-tutorial="funding-detail-participate"
     >
       <WalletCards className="mr-2 h-5 w-5" /> 결제 오픈 준비 중
+    </Button>
+  ) : !isPreview && funding.price && !currentUserId ? (
+    <Button asChild className={`${heightClassName} w-full rounded-[2px] bg-brand text-base font-semibold text-white hover:bg-brand-dark`} data-tutorial="funding-detail-participate">
+      <Link to={loginReturnTo}>
+        <WalletCards className="mr-2 h-5 w-5" /> 로그인하고 주문하기
+      </Link>
     </Button>
   ) : (
     <Button

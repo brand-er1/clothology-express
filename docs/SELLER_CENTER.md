@@ -27,7 +27,10 @@
 | `disabled` (운영 기본) | 결제 버튼 → "결제 오픈 준비 중", 구매 예약은 유지. 판매자 · 리뷰 · 매거진 · 회원 기능 정상 | `ksnet-ready` 가 503 으로 거절 (Edge 시크릿 `PAYMENT_MODE=disabled` 일 때) |
 | `test` | 결제 단계에 "테스트 결제" 표시 | `KSNET_API_BASE` 가 운영 주소면 거절. **운영 DB 에 쓰지 말 것** — 시험 결제도 `ksnet` 실결제로 저장된다 |
 | `live` | 실제 결제 | 명시하면 샘플 MID(`2999199999`) · 시험 API 주소를 거절 |
-| `mock` | 로컬 개발 기본값. 운영 빌드에서는 항상 `disabled` 로 바뀐다 | DB 가 브라우저의 모의결제 RPC 실행을 막는다(20261019) |
+| `mock` | 명시할 때만. 운영 빌드에서는 항상 `disabled` 로 바뀐다 | DB 가 브라우저의 모의결제 RPC 실행을 막는다(20261019). 로컬에서 쓰려면 **로컬 DB 에서만** `grant execute on function public.create_mock_funding_order(uuid, text, text, integer, text, text, text, text, text, text, text, text, text, boolean) to authenticated;` |
+
+값을 주지 않으면 로컬 · 운영 모두 `disabled` 다. 로컬 KSNET 시험은 `.env.local` 에 `VITE_PAYMENT_MODE="test"`(docs/KSNET_PAYMENT.md).
+판매자 · 관리자 화면을 개발할 때 쓸 테스트 주문(실결제 · 모의결제 · 환불 · 결제 대기 섞임)은 `scripts/seller-db-tests/10_seed.sql` 을 로컬 DB 에 넣으면 된다.
 
 - 프론트: GitHub 저장소 **Settings → Variables → `PAYMENT_MODE`** (없으면 `disabled`). 빌드 시 `VITE_PAYMENT_MODE` 로 들어간다.
 - 서버: `supabase secrets set PAYMENT_MODE=<값>` (선택, 같은 값 권장). 미설정이면 기존 KSNET 동작 그대로.

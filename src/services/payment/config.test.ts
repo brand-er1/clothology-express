@@ -19,10 +19,11 @@ describe("resolvePaymentMode", () => {
     expect(resolvePaymentMode("disabled", true)).toBe("disabled");
   });
 
-  it("defaults local development to mock so features work without PG settings", () => {
-    expect(resolvePaymentMode(undefined, false)).toBe("mock");
-    expect(resolvePaymentMode("nonsense", false)).toBe("mock");
-    expect(resolvePaymentMode("live", false)).toBe("live");
+  it("keeps local development payment-free unless a mode is chosen explicitly", () => {
+    expect(resolvePaymentMode(undefined, false)).toBe("disabled");
+    expect(resolvePaymentMode("nonsense", false)).toBe("disabled");
+    expect(resolvePaymentMode("mock", false)).toBe("mock");
+    expect(resolvePaymentMode("test", false)).toBe("test");
   });
 });
 

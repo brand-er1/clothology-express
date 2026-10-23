@@ -8,9 +8,10 @@ import type { PaymentProviderType } from "./types";
  * - `live`     : 실제 운영 결제(KSNET).
  * - `disabled` : 결제 미오픈. 결제 버튼 대신 "결제 오픈 준비 중" 을 보여주고 결제 API 를 부르지 않는다.
  *
- * 운영 빌드(`import.meta.env.PROD`)에서 `mock` 이나 알 수 없는 값은 `disabled` 로 바뀐다. 운영에서 모의결제가
- * 실제 결제처럼 보이거나 결제 완료 주문을 만드는 일을 막기 위해서다(DB 도 브라우저의 모의결제 RPC 실행을 막는다).
- * 운영 빌드에서 값을 주지 않으면 `disabled` 다 — PG 설정 없이도 나머지 기능을 그대로 배포할 수 있다.
+ * 값을 주지 않거나 알 수 없는 값이면 어느 환경이든 `disabled` 다 — PG 설정 없이도 나머지 기능을 그대로 개발 · 배포할 수 있다.
+ * 운영 빌드(`import.meta.env.PROD`)에서는 `mock` 도 `disabled` 로 바뀐다. 운영에서 모의결제가 실제 결제처럼 보이거나
+ * 결제 완료 주문을 만드는 일을 막기 위해서다(DB 도 20261019 마이그레이션부터 브라우저의 모의결제 RPC 실행을 막는다).
+ * 로컬에서 mock 을 쓰려면 로컬 DB 에서만 create_mock_funding_order 실행 권한을 직접 열어야 한다(docs/SELLER_CENTER.md).
  */
 export type PaymentMode = "mock" | "test" | "live" | "disabled";
 
@@ -23,7 +24,7 @@ export const resolvePaymentMode = (raw: string | undefined | null, isProduction:
     if (!known || value === "mock") return "disabled";
     return value;
   }
-  return known ? value : "mock";
+  return known ? value : "disabled";
 };
 
 export const PAYMENT_MODE: PaymentMode = resolvePaymentMode(import.meta.env.VITE_PAYMENT_MODE, import.meta.env.PROD);

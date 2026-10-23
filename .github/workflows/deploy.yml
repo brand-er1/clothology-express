@@ -19,6 +19,10 @@ concurrency:
 env:
   SUPABASE_PROJECT_ID: jwmzjszdjlrqrhadbggr
   APP_BASE_URL: https://brand-er1.github.io/clothology-express
+  # 결제 운영 모드 (src/services/payment/config.ts). 저장소 Settings → Variables 의 PAYMENT_MODE 로 바꾼다.
+  # disabled(기본): 결제 미오픈 — PG 시크릿 없이도 나머지 기능을 배포한다. live: KSNET 실결제. test: PG 시험 환경.
+  # 운영 빌드에서 mock 은 항상 disabled 로 처리된다.
+  PAYMENT_MODE: ${{ vars.PAYMENT_MODE || 'disabled' }}
 
 jobs:
   verify:
@@ -37,6 +41,7 @@ jobs:
       - run: npm test
       - run: npm run test:payments
       - run: npm run check:payments
+      - run: npm run test:functions
       - run: npx tsc --noEmit -p tsconfig.app.json
 
   backend:
@@ -59,7 +64,9 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
 
-      - name: Check required payment secrets before disabling mock checkout
+      - name: Check required payment secrets when online payment is enabled
+        # 결제를 열 때(live/test)만 PG 시크릿을 요구한다. 결제 미오픈(disabled)이면 PG 설정 없이 배포한다.
+        if: env.PAYMENT_MODE == 'live' || env.PAYMENT_MODE == 'test'
         shell: bash
         run: |
           names="$(supabase secrets list --project-ref "$SUPABASE_PROJECT_ID" -o json | jq -r '.[].name')"
@@ -99,6 +106,7 @@ jobs:
           supabase functions deploy generate-color-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy edit-ai-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy get-fashion-trends --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+          supabase functions deploy fetch-article-meta --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Allow GitHub Pages auth callback
         continue-on-error: true
@@ -147,6 +155,8 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.app.json
 
       - name: Build
+        env:
+          VITE_PAYMENT_MODE: ${{ env.PAYMENT_MODE }}
         run: npm run build
 
       - name: Add SPA fallback

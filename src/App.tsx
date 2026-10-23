@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { ErrorBoundary, PageErrorFallback } from './components/ErrorBoundary';
 import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
 import NotFound from './pages/NotFound';
@@ -52,14 +53,27 @@ import DetailPageStudio from './pages/DetailPageStudio';
 import FundingDetailPageLauncher from './pages/FundingDetailPageLauncher';
 import SuccessStory from './pages/SuccessStory';
 import MagazineArticle from './pages/MagazineArticle';
+import MagazineList from './pages/MagazineList';
 
 // 관리자 콘솔은 별도 번들로 분리해 일반 사용자에게 내려가는 코드를 늘리지 않는다.
 const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
+const SellerApp = lazy(() => import('./pages/seller/SellerApp'));
+
+// 한 화면의 렌더링 오류가 사이트 전체 장애로 번지지 않게 막는다. 다른 주소로 이동하면 자동으로 풀린다.
+const RouteErrorBoundary = ({ children }: { children: ReactNode }) => {
+  const location = useLocation();
+  return (
+    <ErrorBoundary scope="route" resetKey={location.pathname} fallback={(reset) => <PageErrorFallback onRetry={reset} />}>
+      {children}
+    </ErrorBoundary>
+  );
+};
 
 // /admin 에서는 서비스용 푸터·하단 내비·가이드 위젯 등을 숨기고 관리자 레이아웃만 보여준다.
 const PublicChrome = ({ children }: { children: ReactNode }) => {
   const { pathname } = useLocation();
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) return null;
+  // 관리자 콘솔 · 판매자 센터는 자체 사이드바를 쓰므로 공개 사이트의 푸터 · 하단 탭 · 위젯을 숨긴다.
+  if (['/admin', '/seller'].some((base) => pathname === base || pathname.startsWith(`${base}/`))) return null;
   return <>{children}</>;
 };
 
@@ -122,7 +136,7 @@ function App() {
       <BrowserRouter basename={routerBasename}>
         <MascotProvider><TutorialProvider>
           <SiteVisitTracker /><PublicChrome><VisitDataNotice /><WelcomeNotification /></PublicChrome>
-          <Routes>
+          <RouteErrorBoundary><Routes>
             <Route path="/" element={<Index />} />
             <Route path="/index.html" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -139,7 +153,7 @@ function App() {
             <Route path="/my-outfits" element={<Navigate to="/closet" replace />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
-            <Route path="/magazine" element={<Navigate to="/community" replace />} />
+            <Route path="/magazine" element={<MagazineList />} />
             <Route path="/magazine/:slug" element={<MagazineArticle />} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
@@ -161,9 +175,10 @@ function App() {
             <Route path="/community/profile/:userId" element={<CommunityProfile />} />
             <Route path="/community/:postId" element={<CommunityPostDetail />} />
             <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
+            <Route path="/seller/*" element={<AuthGuard requiredAccountType="seller"><Suspense fallback={<div className="min-h-screen bg-[#f6f3ef]" />}><SellerApp /></Suspense></AuthGuard>} />
             <Route path="/admin/*" element={<AuthGuard><Suspense fallback={<div className="min-h-screen bg-[#f6f3ef]" />}><AdminApp /></Suspense></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
+          </Routes></RouteErrorBoundary>
           <PublicChrome><Footer /><BrandGuide /><TutorialOverlay /><BottomNav /><KakaoCommunityWidget /></PublicChrome>
         </TutorialProvider></MascotProvider>
       </BrowserRouter>

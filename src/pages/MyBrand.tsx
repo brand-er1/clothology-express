@@ -32,7 +32,11 @@ const EMPTY_FORM: BrandProfileInput = {
   websiteUrl: "",
 };
 
-const MyBrand = () => {
+/**
+ * 내 브랜드 등록 · 수정. `embedded` 이면 판매자 센터(/seller/brand) 안에 헤더 없이 들어간다.
+ * 같은 화면 · 같은 저장 경로(save_my_brand_profile)를 쓰므로 브랜드 데이터는 한 곳에서만 관리된다.
+ */
+const MyBrand = ({ embedded = false, onSaved }: { embedded?: boolean; onSaved?: () => void | Promise<void> } = {}) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [brand, setBrand] = useState<BrandWithCreator | null>(null);
@@ -135,6 +139,7 @@ const MyBrand = () => {
       const saved = await saveMyBrand(form);
       setBrand(saved);
       setAvailability("available");
+      await onSaved?.();
       toast({ title: brand ? "브랜드 프로필을 수정했습니다" : "내 브랜드를 등록했습니다" });
       const requested = searchParams.get("returnTo");
       const safeReturn = requested?.startsWith("/") && !requested.startsWith("//") ? requested : null;
@@ -146,16 +151,15 @@ const MyBrand = () => {
     }
   };
 
+  if (loading && embedded) {
+    return <div className="flex items-center justify-center py-14 text-sm text-stone-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" />브랜드 정보를 불러오는 중입니다</div>;
+  }
   if (loading) {
     return <div className="min-h-screen bg-[#f4f0ea]"><Header /><div className="flex min-h-screen items-center justify-center text-stone-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" />브랜드 정보를 불러오는 중입니다</div></div>;
   }
 
-  return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f4f0ea] text-[#211b1c]">
-      <Header />
-      <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-24 sm:px-6">
-        <Link to="/profile" className="inline-flex items-center text-sm text-stone-500 hover:text-brand"><ArrowLeft className="mr-1 h-4 w-4" />마이페이지</Link>
-        <div className="mt-6 grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+  const body = (
+        <div className={`${embedded ? "" : "mt-6 "}grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]`}>
           <div className="min-w-0 space-y-6">
           <form onSubmit={handleSubmit} className="min-w-0 space-y-6">
             <div>
@@ -216,6 +220,16 @@ const MyBrand = () => {
             </div>
           </aside>
         </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-[#f4f0ea] text-[#211b1c]">
+      <Header />
+      <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-24 sm:px-6">
+        <Link to="/profile" className="inline-flex items-center text-sm text-stone-500 hover:text-brand"><ArrowLeft className="mr-1 h-4 w-4" />마이페이지</Link>
+        {body}
       </main>
     </div>
   );

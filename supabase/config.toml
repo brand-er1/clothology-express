@@ -80,3 +80,5 @@ verify_jwt = true
 verify_jwt = true
 [functions.generate-color-image]
 verify_jwt = true
+[functions.fetch-article-meta]
+verify_jwt = true

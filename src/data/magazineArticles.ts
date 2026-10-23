@@ -12,7 +12,7 @@
  */
 import seedArticles from "./magazine-articles.json";
 
-export type MagazineCategory = "press" | "brand_news";
+export type MagazineCategory = "brand_news" | "press" | "brand_story" | "creator_interview" | "insight";
 
 export type MagazineArticle = {
   slug: string;
@@ -27,11 +27,30 @@ export type MagazineArticle = {
   thumbnail: string | null;
   thumbnailCredit: string | null;
   externalUrl: string | null;
+  /** BRAND-ER 가 직접 쓴 본문(브랜드 스토리 · 인터뷰 · 인사이트). 언론 보도는 비워 두고 요약 + 원문 링크로 운영한다. */
+  body?: string | null;
+  authorName?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
 };
 
+/** 표시 순서 = 매거진 카테고리 탭 순서 */
+export const MAGAZINE_CATEGORIES: MagazineCategory[] = ["brand_news", "press", "brand_story", "creator_interview", "insight"];
+
 export const MAGAZINE_CATEGORY_LABEL: Record<MagazineCategory, string> = {
-  press: "언론보도",
-  brand_news: "브랜드 뉴스",
+  brand_news: "BRAND-ER NEWS",
+  press: "언론 보도",
+  brand_story: "브랜드 스토리",
+  creator_interview: "제작자 인터뷰",
+  insight: "패션 및 제조 인사이트",
+};
+
+/** 같은 카테고리를 먼저, 그다음 최신순으로 관련 기사를 고른다. */
+export const pickRelatedArticles = (current: MagazineArticle, all: MagazineArticle[], limit = 3) => {
+  const others = sortMagazineArticles(all.filter((article) => article.slug !== current.slug));
+  const same = others.filter((article) => article.category === current.category);
+  const rest = others.filter((article) => article.category !== current.category);
+  return [...same, ...rest].slice(0, limit);
 };
 
 export const magazineArticles = seedArticles as MagazineArticle[];

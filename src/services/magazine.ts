@@ -9,8 +9,14 @@ import {
 
 export const MAGAZINE_BUCKET = "magazine";
 
-const PUBLIC_COLUMNS =
+const LEGACY_COLUMNS =
   "slug, category, title, publisher, published_at, summary, key_points, brand_highlight, thumbnail_url, thumbnail_path, thumbnail_credit, external_url";
+// 20261023030000 마이그레이션의 본문 · SEO 컬럼
+const PUBLIC_COLUMNS = `${LEGACY_COLUMNS}, body, seo_title, seo_description, author_name`;
+
+/** 새 컬럼이 아직 없는 DB(마이그레이션 배포 전)면 기존 컬럼으로 다시 읽는다. */
+const isMissingColumn = (error: { code?: string; message?: string } | null) =>
+  Boolean(error && (error.code === "42703" || /column .* does not exist/i.test(error.message ?? "")));
 
 type MagazineRow = {
   slug: string;
@@ -25,6 +31,10 @@ type MagazineRow = {
   thumbnail_path: string | null;
   thumbnail_credit: string | null;
   external_url: string | null;
+  body?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  author_name?: string | null;
 };
 
 export const magazineImageUrl = (path: string) => supabase.storage.from(MAGAZINE_BUCKET).getPublicUrl(path).data.publicUrl;
@@ -45,6 +55,10 @@ const toArticle = (row: MagazineRow): MagazineArticle => ({
   thumbnail: resolveThumbnail(row),
   thumbnailCredit: row.thumbnail_credit,
   externalUrl: row.external_url,
+  body: row.body ?? null,
+  seoTitle: row.seo_title ?? null,
+  seoDescription: row.seo_description ?? null,
+  authorName: row.author_name ?? null,
 });
 
 /**
@@ -52,32 +66,36 @@ const toArticle = (row: MagazineRow): MagazineArticle => ({
  * 백엔드 배포 상태와 관계없이 기존 매거진 콘텐츠가 사라지지 않게 한다.
  */
 export async function fetchMagazineArticles(): Promise<MagazineArticle[]> {
-  const { data, error } = await supabase
+  const query = (columns: string) => supabase
     .from("magazine_articles")
-    .select(PUBLIC_COLUMNS)
+    .select(columns)
     .eq("is_published", true)
     .order("published_at", { ascending: false })
     .order("created_at", { ascending: false });
+  let { data, error } = await query(PUBLIC_COLUMNS);
+  if (isMissingColumn(error)) ({ data, error } = await query(LEGACY_COLUMNS));
   if (error || !data) {
     console.warn("[magazine] DB 조회 실패 — 정적 목록으로 대체합니다.", error);
     return sortMagazineArticles(fallbackArticles);
   }
-  return (data as MagazineRow[]).map(toArticle);
+  return (data as unknown as MagazineRow[]).map(toArticle);
 }
 
 /** 공개 기사 1건. 없거나 비공개면 null. DB 오류 시에만 정적 목록에서 찾는다. */
 export async function fetchMagazineArticle(slug: string): Promise<MagazineArticle | null> {
-  const { data, error } = await supabase
+  const query = (columns: string) => supabase
     .from("magazine_articles")
-    .select(PUBLIC_COLUMNS)
+    .select(columns)
     .eq("slug", slug)
     .eq("is_published", true)
     .maybeSingle();
+  let { data, error } = await query(PUBLIC_COLUMNS);
+  if (isMissingColumn(error)) ({ data, error } = await query(LEGACY_COLUMNS));
   if (error) {
     console.warn("[magazine] DB 조회 실패 — 정적 목록에서 찾습니다.", error);
     return fallbackArticles.find((article) => article.slug === slug) ?? null;
   }
-  return data ? toArticle(data as MagazineRow) : null;
+  return data ? toArticle(data as unknown as MagazineRow) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -101,6 +119,34 @@ export type MagazineArticleInput = Omit<MagazineRow, "key_points"> & {
   key_points: string[];
   is_published: boolean;
 };
+
+export type ImportedArticleMeta = {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  site_name: string | null;
+  published_at: string | null;
+  author: string | null;
+  image_license_notice: string;
+};
+
+/**
+ * 기사 URL 의 공개 메타데이터(og:title · og:description · 발행일 · og:image)를 서버에서 읽어 온다.
+ * 본문은 가져오지 않는다. 가져온 값은 폼에 채워질 뿐이고 관리자가 확인 후 저장한다.
+ */
+export async function importArticleMeta(url: string): Promise<ImportedArticleMeta> {
+  const { data, error } = await supabase.functions.invoke("fetch-article-meta", { body: { url } });
+  if (error) {
+    let message = "기사 정보를 불러오지 못했습니다.";
+    try {
+      const body = await (error as { context?: Response }).context?.json();
+      if (body?.error) message = body.error;
+    } catch { /* 응답 본문이 JSON 이 아니면 기본 문구 */ }
+    throw new Error(message);
+  }
+  return data as ImportedArticleMeta;
+}
 
 export const listAdminMagazineArticles = (status: string, search: string) =>
   adminRpc<AdminMagazineList>("admin_list_magazine_articles", { p_status: status, p_search: search || null });

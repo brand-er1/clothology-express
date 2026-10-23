@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
-import { ACTIVE_PAYMENT_PROVIDER, PaymentService } from "@/services/payment";
+import { PAYMENT, PaymentService } from "@/services/payment";
 import { clearKspayLayer, openKspayWindow, watchKspayWindow } from "@/services/payment/kspay";
 import { getFundingErrorMessage } from "@/services/funding";
 import type { Funding, ShippingDetails } from "@/types/funding";
@@ -39,8 +39,9 @@ const emptyShipping: ShippingDetails = {
   agreePrivacy: false,
 };
 
-const IS_MOCK_PAYMENT = ACTIVE_PAYMENT_PROVIDER === "mock";
-const PAYMENT_LABEL = IS_MOCK_PAYMENT ? "모의결제" : "결제";
+const IS_MOCK_PAYMENT = PAYMENT.isMock;
+const IS_TEST_PAYMENT = PAYMENT.isTest;
+const PAYMENT_LABEL = PAYMENT.label;
 
 const STEPS: { key: Step; label: string }[] = [
   { key: "shipping", label: "배송정보" },
@@ -421,6 +422,13 @@ export const FundingCheckoutDialog = ({
                 </p>
               </section>}
 
+              {IS_TEST_PAYMENT && <section className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+                <p className="flex items-center gap-2 text-sm font-bold text-sky-900"><ShieldAlert className="h-4 w-4 shrink-0" /> 테스트 결제</p>
+                <p className="mt-2 text-xs leading-5 text-sky-800">
+                  PG 테스트 환경입니다. 실제 운영 결제가 아니므로 테스트 용도로만 결제해주세요.
+                </p>
+              </section>}
+
               <section className="space-y-2 rounded-xl bg-stone-50 p-4 text-xs leading-5">
                 <SummaryRow label="배송지">{addressLine}</SummaryRow>
                 <SummaryRow label="수령인">{shipping.recipientName} ({shipping.recipientPhone})</SummaryRow>
@@ -477,7 +485,7 @@ export const FundingCheckoutDialog = ({
                 className="h-12 min-w-0 flex-1 rounded-none bg-brand px-3 text-base font-bold hover:bg-brand-dark"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {IS_MOCK_PAYMENT ? "모의결제 후 펀딩 참여" : "결제하고 펀딩 참여"}
+                {IS_MOCK_PAYMENT ? "모의결제 후 펀딩 참여" : IS_TEST_PAYMENT ? "테스트 결제하고 펀딩 참여" : "결제하고 펀딩 참여"}
               </Button>
             </div>
           )}

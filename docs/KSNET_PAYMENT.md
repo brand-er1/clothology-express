@@ -148,10 +148,12 @@ done
 docker exec -i supabase_db_jwmzjszdjlrqrhadbggr psql -U postgres < docs/local-dev/seed_ksnet_demo.sql
 
 # 5. 프론트가 로컬 DB 를 보게 한다 (*.local 은 gitignore 대상)
+#    VITE_PAYMENT_MODE 를 주지 않으면 결제 버튼이 '결제 오픈 준비 중' 으로 꺼진다(docs/SELLER_CENTER.md)
 cat > .env.local <<EOF
 VITE_SUPABASE_PROJECT_ID="local"
 VITE_SUPABASE_URL="$API_URL"
 VITE_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
+VITE_PAYMENT_MODE="test"
 EOF
 
 # 6. Edge Function 환경변수 — KSNET 매뉴얼 샘플 테스트 상점아이디

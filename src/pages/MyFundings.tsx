@@ -230,6 +230,12 @@ const MyFundings = () => {
               </div>
             )}
             {createdFundings.length > 0 && (
+              <p className="mt-6 text-sm text-stone-500">
+                실결제 매출 · 주문 · 리뷰 · 문의 · 정산을 한곳에서 관리하려면{" "}
+                <Link to="/seller" className="font-semibold text-brand underline-offset-4 hover:underline">판매자 센터</Link>를 이용하세요.
+              </p>
+            )}
+            {createdFundings.length > 0 && (
               <div className="mt-12 flex max-w-full gap-6 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {([
                   ["all", "전체"],

@@ -73,9 +73,19 @@ KakaoPay handlers remain available for existing payments. New funding checkout u
 5. Only paid quantities count toward the funding goal. Participants can cancel and refund eligible payments from `/my-fundings`.
 6. Only the funding creator and admins can view participant contact and shipping information.
 
-### Funding participation and KSNET (active)
+### Payment mode (PG is decoupled from every other feature)
 
-`ACTIVE_PAYMENT_PROVIDER` in `src/services/payment/index.ts` is `ksnet`. The checkout opens the KSPay card window; `ksnet-return` confirms the approval with KSNET using the **amount stored in the DB** and only then marks the participation paid.
+The checkout provider is chosen by `VITE_PAYMENT_MODE` (`mock | test | live | disabled`, see `src/services/payment/config.ts`).
+Production builds turn `mock` or a missing value into `disabled`: the product page shows "결제 오픈 준비 중" and never calls a payment API,
+while the seller center, reviews, magazine and membership keep working. Set the repository variable `PAYMENT_MODE` (Settings → Variables)
+to `live` only after the KSNET secrets below exist — the deploy workflow checks those secrets only for `live`/`test`, so a missing PG setup
+no longer blocks database, function and frontend deploys. The optional Edge secret `PAYMENT_MODE` adds the same switch on the server
+(`ksnet-ready` refuses checkout when `disabled`; with `live` it rejects the sample MID and the test API host).
+See [docs/SELLER_CENTER.md](docs/SELLER_CENTER.md) and the PG review in [docs/PG_PR160_REVIEW.md](docs/PG_PR160_REVIEW.md).
+
+### Funding participation and KSNET (active when `PAYMENT_MODE=live`)
+
+With `PAYMENT_MODE=live` (or `test`) the active provider in `src/services/payment/index.ts` is `ksnet`. The checkout opens the KSPay card window; `ksnet-return` confirms the approval with KSNET using the **amount stored in the DB** and only then marks the participation paid.
 
 1. Configure the Edge Function secrets before applying migrations:
    - `KSNET_MID` — 10-digit store ID for card (인증결제) payments.

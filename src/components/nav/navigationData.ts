@@ -79,6 +79,7 @@ export const getMyItems = (ctx: NavContext): NavLinkItem[] => {
   if (!ctx.isAuthenticated) return [];
   const items: (NavLinkItem & { visible: boolean })[] = [
     { to: "/community/notifications", label: "알림", visible: true },
+    { to: "/seller", label: "판매자 센터", visible: isSignedInSeller(ctx) },
     { to: "/my-fundings", label: "내 펀딩", visible: true },
     { to: "/orders", label: "제작 관리", visible: isSignedInSeller(ctx) },
     { to: ctx.userId ? `/community/profile/${ctx.userId}` : "/community", label: "내 디자인", visible: true },

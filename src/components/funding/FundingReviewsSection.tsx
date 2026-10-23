@@ -10,9 +10,9 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
-  MAX_REVIEW_IMAGES, REVIEW_BLOCK_LABEL, createFundingReview, deleteMyFundingReview,
-  fetchFundingReviews, fetchMyReviewEligibility, reviewImageUrl, validateReviewImage,
-  type FundingReview, type ReviewEligibility, type ReviewSort, type ReviewSummary,
+  FIT_LABEL, MAX_REVIEW_IMAGES, REVIEW_BLOCK_LABEL, createFundingReview, deleteMyFundingReview,
+  fetchFundingReviews, fetchMyReviewEligibility, reviewImageUrl, updateMyFundingReview, validateReviewImage,
+  type FitRating, type FundingReview, type ReviewEligibility, type ReviewSort, type ReviewSummary,
 } from "@/services/fundingReviews";
 
 const PAGE_SIZE = 10;
@@ -50,19 +50,51 @@ export const ReviewSummaryInline = ({ summary, onClick }: { summary: ReviewSumma
 // 리뷰 작성
 // ---------------------------------------------------------------------------
 
-const ReviewWriteDialog = ({ order, onClose, onCreated }: {
-  order: ReviewEligibility | null; onClose: () => void; onCreated: () => void;
+type WriteTarget = { mode: "create"; order: ReviewEligibility } | { mode: "edit"; review: FundingReview };
+
+const FIT_OPTIONS: FitRating[] = ["small", "true_to_size", "large"];
+
+/** 작은 별점 선택(원단·품질, 배송 만족도). 선택 사항이라 같은 값을 다시 누르면 해제된다. */
+const MiniStarInput = ({ label, value, onChange }: { label: string; value: number | null; onChange: (value: number | null) => void }) => (
+  <div className="flex flex-wrap items-center gap-2">
+    <span className="w-24 shrink-0 text-xs font-semibold text-stone-600">{label}</span>
+    <div className="flex items-center" role="radiogroup" aria-label={label}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${label} ${n}점`}
+          onClick={() => onChange(value === n ? null : n)} className="rounded p-0.5">
+          <Star className={cn("h-5 w-5", value !== null && n <= value ? "fill-brand text-brand" : "fill-stone-200 text-stone-300")} />
+        </button>
+      ))}
+    </div>
+    <span className="text-[11px] text-stone-400">{value ? `${value}점` : "선택 안 함"}</span>
+  </div>
+);
+
+const ReviewWriteDialog = ({ target, onClose, onSaved }: {
+  target: WriteTarget | null; onClose: () => void; onSaved: () => void;
 }) => {
+  const editing = target?.mode === "edit" ? target.review : null;
+  const order = target?.mode === "create" ? target.order : null;
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [keepPaths, setKeepPaths] = useState<string[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [fit, setFit] = useState<FitRating | null>(null);
+  const [quality, setQuality] = useState<number | null>(null);
+  const [delivery, setDelivery] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setRating(0); setContent(""); setFiles([]);
-  }, [order]);
+    setRating(editing?.rating ?? 0);
+    setContent(editing?.content ?? "");
+    setFiles([]);
+    setKeepPaths(editing?.image_paths ?? []);
+    setFit(editing?.fit_rating ?? null);
+    setQuality(editing?.quality_rating ?? null);
+    setDelivery(editing?.delivery_rating ?? null);
+  }, [target, editing]);
 
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file));
@@ -70,13 +102,15 @@ const ReviewWriteDialog = ({ order, onClose, onCreated }: {
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [files]);
 
+  const imageCount = keepPaths.length + files.length;
+
   const addFiles = (list: FileList | null) => {
     if (!list) return;
     const next = [...files];
     for (const file of Array.from(list)) {
       const invalid = validateReviewImage(file);
       if (invalid) { toast({ title: invalid, variant: "destructive" }); continue; }
-      if (next.length >= MAX_REVIEW_IMAGES) { toast({ title: `사진은 최대 ${MAX_REVIEW_IMAGES}장까지 첨부할 수 있습니다.`, variant: "destructive" }); break; }
+      if (keepPaths.length + next.length >= MAX_REVIEW_IMAGES) { toast({ title: `사진은 최대 ${MAX_REVIEW_IMAGES}장까지 첨부할 수 있습니다.`, variant: "destructive" }); break; }
       next.push(file);
     }
     setFiles(next);
@@ -87,27 +121,33 @@ const ReviewWriteDialog = ({ order, onClose, onCreated }: {
   const invalid = rating < 1 || trimmed.length < 10 || trimmed.length > 2000;
 
   const submit = async () => {
-    if (!order || invalid) return;
+    if (!target || invalid) return;
     setSaving(true);
+    const details = { fitRating: fit, qualityRating: quality, deliveryRating: delivery };
     try {
-      await createFundingReview({ participationId: order.participation_id, rating, content: trimmed, images: files });
-      toast({ title: "리뷰를 등록했습니다", description: "소중한 구매 후기 감사합니다." });
-      onCreated();
+      if (editing) {
+        await updateMyFundingReview({ reviewId: editing.id, rating, content: trimmed, keepPaths, images: files, details });
+        toast({ title: "리뷰를 수정했습니다" });
+      } else if (order) {
+        await createFundingReview({ participationId: order.participation_id, rating, content: trimmed, images: files, details });
+        toast({ title: "리뷰를 등록했습니다", description: "소중한 구매 후기 감사합니다." });
+      }
+      onSaved();
       onClose();
     } catch (error) {
-      toast({ title: "리뷰를 등록하지 못했습니다", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+      toast({ title: editing ? "리뷰를 수정하지 못했습니다" : "리뷰를 등록하지 못했습니다", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={Boolean(order)} onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
+    <Dialog open={Boolean(target)} onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
       <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-none border-black/10 bg-[#f6f3ee]">
         <DialogHeader>
-          <DialogTitle>리뷰 작성하기</DialogTitle>
+          <DialogTitle>{editing ? "리뷰 수정하기" : "리뷰 작성하기"}</DialogTitle>
           <DialogDescription>
-            구매 옵션 · {order?.selected_color} / {order?.selected_size} · {order?.quantity}장
+            구매 옵션 · {(order ?? editing)?.selected_color} / {(order ?? editing)?.selected_size} · {(order ?? editing)?.quantity}장
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-5">
@@ -130,6 +170,23 @@ const ReviewWriteDialog = ({ order, onClose, onCreated }: {
               <span className="ml-2 text-sm text-stone-500">{rating ? `${rating}점` : "선택해주세요"}</span>
             </div>
           </div>
+          <div className="grid gap-2.5 border-y border-black/10 py-4">
+            <p className="text-sm font-semibold">세부 평가 <span className="font-normal text-stone-400">(선택)</span></p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="w-24 shrink-0 text-xs font-semibold text-stone-600">사이즈 · 핏</span>
+              <div className="flex gap-1" role="radiogroup" aria-label="사이즈 · 핏">
+                {FIT_OPTIONS.map((option) => (
+                  <button key={option} type="button" role="radio" aria-checked={fit === option} onClick={() => setFit(fit === option ? null : option)}
+                    className={cn("min-h-8 border px-3 text-xs font-semibold transition",
+                      fit === option ? "border-brand bg-brand text-white" : "border-black/15 bg-white text-stone-600 hover:border-brand")}>
+                    {FIT_LABEL[option]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <MiniStarInput label="원단 · 품질" value={quality} onChange={setQuality} />
+            <MiniStarInput label="배송 만족도" value={delivery} onChange={setDelivery} />
+          </div>
           <div>
             <label htmlFor="review-content" className="text-sm font-semibold">리뷰 내용 <span className="text-red-600">*</span></label>
             <Textarea
@@ -147,6 +204,19 @@ const ReviewWriteDialog = ({ order, onClose, onCreated }: {
           <div>
             <p className="text-sm font-semibold">사진 첨부 <span className="font-normal text-stone-400">(선택 · 최대 {MAX_REVIEW_IMAGES}장 · 장당 5MB)</span></p>
             <div className="mt-2 flex flex-wrap gap-2">
+              {keepPaths.map((path, index) => (
+                <div key={path} className="relative h-20 w-20 overflow-hidden border border-black/10 bg-white">
+                  <img src={reviewImageUrl(path)} alt={`기존 사진 ${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`기존 사진 ${index + 1} 삭제`}
+                    onClick={() => setKeepPaths((current) => current.filter((item) => item !== path))}
+                    className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
               {previews.map((url, index) => (
                 <div key={url} className="relative h-20 w-20 overflow-hidden border border-black/10 bg-white">
                   <img src={url} alt={`첨부 사진 ${index + 1}`} className="h-full w-full object-cover" />
@@ -160,7 +230,7 @@ const ReviewWriteDialog = ({ order, onClose, onCreated }: {
                   </button>
                 </div>
               ))}
-              {files.length < MAX_REVIEW_IMAGES && (
+              {imageCount < MAX_REVIEW_IMAGES && (
                 <button
                   type="button"
                   onClick={() => fileInput.current?.click()}
@@ -176,7 +246,7 @@ const ReviewWriteDialog = ({ order, onClose, onCreated }: {
         <DialogFooter className="gap-2">
           <Button variant="outline" className="rounded-none" disabled={saving} onClick={onClose}>취소</Button>
           <Button className="rounded-none bg-brand hover:bg-brand-dark" disabled={saving || invalid} onClick={() => void submit()}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}리뷰 등록
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "수정 완료" : "리뷰 등록"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -188,13 +258,19 @@ const ReviewWriteDialog = ({ order, onClose, onCreated }: {
 // 리뷰 목록
 // ---------------------------------------------------------------------------
 
-const ReviewItem = ({ review, onDelete }: { review: FundingReview; onDelete: (review: FundingReview) => void }) => (
-  <li className="border-b border-black/10 py-6">
+const ReviewItem = ({ review, onDelete, onEdit }: {
+  review: FundingReview; onDelete: (review: FundingReview) => void; onEdit: (review: FundingReview) => void;
+}) => (
+  <li id={`review-${review.id}`} className="border-b border-black/10 py-6">
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <Stars value={review.rating} />
-      {review.verified_purchase && (
+      {review.verified_purchase ? (
         <span className="inline-flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700">
           <BadgeCheck className="h-3.5 w-3.5" />구매 인증
+        </span>
+      ) : (
+        <span className="bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700" title="결제 검증이 없는 모의결제(체험) 주문으로 받은 상품의 리뷰입니다">
+          모의결제 주문
         </span>
       )}
     </div>
@@ -202,10 +278,18 @@ const ReviewItem = ({ review, onDelete }: { review: FundingReview; onDelete: (re
       <span className="font-semibold text-[#211b1c]">{review.nickname}</span>
       <span aria-hidden>·</span>
       <time dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString("ko-KR")}</time>
+      {review.edited_at && <span className="text-stone-400">(수정됨)</span>}
     </div>
     <p className="mt-1 text-xs text-stone-500">
       구매 옵션 · 컬러 {review.selected_color ?? "-"} · 사이즈 {review.selected_size ?? "-"}{review.quantity ? ` · ${review.quantity}장` : ""}
     </p>
+    {(review.fit_rating || review.quality_rating || review.delivery_rating) && (
+      <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {review.fit_rating && <div className="flex gap-1"><dt className="text-stone-500">사이즈 · 핏</dt><dd className="font-semibold">{FIT_LABEL[review.fit_rating]}</dd></div>}
+        {review.quality_rating && <div className="flex gap-1"><dt className="text-stone-500">원단 · 품질</dt><dd className="font-semibold">{review.quality_rating}/5</dd></div>}
+        {review.delivery_rating && <div className="flex gap-1"><dt className="text-stone-500">배송</dt><dd className="font-semibold">{review.delivery_rating}/5</dd></div>}
+      </dl>
+    )}
     <p className="text-wrap-anywhere mt-3 whitespace-pre-wrap text-sm leading-7 text-[#211b1c]">{review.content}</p>
     {review.image_paths.length > 0 && (
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -216,12 +300,43 @@ const ReviewItem = ({ review, onDelete }: { review: FundingReview; onDelete: (re
         ))}
       </div>
     )}
+    {review.seller_reply && (
+      <div className="mt-4 border-l-2 border-brand bg-brand/[0.04] px-4 py-3">
+        <p className="flex flex-wrap items-center gap-x-2 text-xs font-bold text-brand">
+          <MessageSquareText className="h-3.5 w-3.5" />판매자 공식 답변
+          <span className="font-normal text-stone-400">
+            {new Date(review.seller_reply.updated_at ?? review.seller_reply.replied_at).toLocaleDateString("ko-KR")}
+            {review.seller_reply.updated_at ? " (수정)" : ""}
+          </span>
+        </p>
+        <p className="text-wrap-anywhere mt-1.5 whitespace-pre-wrap text-sm leading-6 text-[#211b1c]">{review.seller_reply.content}</p>
+      </div>
+    )}
     {review.is_mine && (
-      <button type="button" onClick={() => onDelete(review)} className="mt-3 inline-flex items-center gap-1 text-xs text-stone-400 hover:text-red-600">
-        <Trash2 className="h-3.5 w-3.5" />내 리뷰 삭제
-      </button>
+      <div className="mt-3 flex gap-3">
+        <button type="button" onClick={() => onEdit(review)} className="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-brand">
+          <PenLine className="h-3.5 w-3.5" />내 리뷰 수정
+        </button>
+        <button type="button" onClick={() => onDelete(review)} className="inline-flex items-center gap-1 text-xs text-stone-400 hover:text-red-600">
+          <Trash2 className="h-3.5 w-3.5" />내 리뷰 삭제
+        </button>
+      </div>
     )}
   </li>
+);
+
+/** 사진 리뷰 갤러리: 사진을 누르면 해당 리뷰로 이동한다. */
+const PhotoGallery = ({ photos, onOpen }: { photos: { review_id: string; path: string }[]; onOpen: (reviewId: string) => void }) => (
+  <div className="mt-6">
+    <p className="text-sm font-semibold">사진 리뷰</p>
+    <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+      {photos.map((photo, index) => (
+        <button key={`${photo.review_id}-${photo.path}`} type="button" onClick={() => onOpen(photo.review_id)} className="shrink-0" aria-label={`사진 리뷰 ${index + 1} 보기`}>
+          <img src={reviewImageUrl(photo.path)} alt="" loading="lazy" className="h-20 w-20 border border-black/10 object-cover transition hover:opacity-80 sm:h-24 sm:w-24" />
+        </button>
+      ))}
+    </div>
+  </div>
 );
 
 export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
@@ -234,7 +349,9 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
   const [loadingMore, setLoadingMore] = useState(false);
   const [eligibility, setEligibility] = useState<ReviewEligibility[]>([]);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [writing, setWriting] = useState<ReviewEligibility | null>(null);
+  const [writing, setWriting] = useState<WriteTarget | null>(null);
+  const [photoOnly, setPhotoOnly] = useState(false);
+  const [listTotal, setListTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -242,11 +359,12 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
     setError(null);
     try {
       const [result, mine, session] = await Promise.all([
-        fetchFundingReviews(fundingId, sort, PAGE_SIZE, 0),
+        fetchFundingReviews(fundingId, sort, PAGE_SIZE, 0, photoOnly),
         fetchMyReviewEligibility(fundingId).catch(() => [] as ReviewEligibility[]),
         supabase.auth.getSession(),
       ]);
       setRows(result.rows);
+      setListTotal(Number(result.total ?? result.summary.count ?? 0));
       setSummary(result.summary);
       onSummary?.(result.summary);
       setEligibility(mine);
@@ -256,14 +374,14 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
     } finally {
       setLoading(false);
     }
-  }, [fundingId, sort, onSummary]);
+  }, [fundingId, sort, photoOnly, onSummary]);
 
   useEffect(() => { void load(); }, [load]);
 
   const loadMore = async () => {
     setLoadingMore(true);
     try {
-      const result = await fetchFundingReviews(fundingId, sort, PAGE_SIZE, rows.length);
+      const result = await fetchFundingReviews(fundingId, sort, PAGE_SIZE, rows.length, photoOnly);
       setRows((current) => [...current, ...result.rows]);
     } catch (moreError) {
       toast({ title: "리뷰를 더 불러오지 못했습니다", description: moreError instanceof Error ? moreError.message : undefined, variant: "destructive" });
@@ -287,6 +405,16 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
   const blocked = eligibility.filter((order) => !order.can_review && order.block_reason);
   const count = Number(summary?.count ?? 0);
   const average = Number(summary?.average ?? 0);
+  const fit = summary?.fit;
+  const fitTotal = fit ? fit.small + fit.true_to_size + fit.large : 0;
+  const photos = summary?.photos ?? [];
+
+  const openReview = (reviewId: string) => {
+    const element = document.getElementById(`review-${reviewId}`);
+    if (element) { element.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    // 현재 목록에 없으면 사진 리뷰만 보기로 전환한다.
+    setPhotoOnly(true);
+  };
 
   return (
     <div>
@@ -296,6 +424,20 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
             <Star className="h-8 w-8 fill-brand text-brand" />{formatRating(average)}
           </p>
           <p className="mt-1 text-sm text-stone-500">리뷰 {count.toLocaleString("ko-KR")}개 · 실제 구매자만 작성할 수 있습니다</p>
+          {count > 0 && (
+            <dl className="mt-4 grid gap-1 text-xs text-stone-600">
+              {fitTotal > 0 && fit && (
+                <div className="flex flex-wrap gap-x-2"><dt className="text-stone-400">사이즈 · 핏</dt>
+                  <dd>{(["small", "true_to_size", "large"] as FitRating[]).map((key) => `${FIT_LABEL[key]} ${Math.round((fit[key] / fitTotal) * 100)}%`).join(" · ")}</dd>
+                </div>
+              )}
+              {summary?.quality_average != null && <div className="flex gap-2"><dt className="text-stone-400">원단 · 품질</dt><dd className="font-semibold">{Number(summary.quality_average).toFixed(1)} / 5</dd></div>}
+              {summary?.delivery_average != null && <div className="flex gap-2"><dt className="text-stone-400">배송 만족도</dt><dd className="font-semibold">{Number(summary.delivery_average).toFixed(1)} / 5</dd></div>}
+              {summary?.verified_count !== undefined && summary.verified_count < count && (
+                <div className="flex gap-2"><dt className="text-stone-400">구매 인증</dt><dd>{summary.verified_count}개 · 모의결제 주문 {count - summary.verified_count}개</dd></div>
+              )}
+            </dl>
+          )}
         </div>
         <ul className="grid gap-1.5" aria-label="별점 분포">
           {[5, 4, 3, 2, 1].map((score) => {
@@ -319,7 +461,7 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
               <li key={order.participation_id} className="flex flex-wrap items-center justify-between gap-2 bg-white/70 px-3 py-2 text-sm">
                 <span className="min-w-0 text-stone-600">{order.selected_color} · {order.selected_size} · {order.quantity}장
                   <span className="ml-2 font-mono text-[11px] text-stone-400">{order.order_number}</span></span>
-                <Button size="sm" className="rounded-none bg-brand hover:bg-brand-dark" onClick={() => setWriting(order)}>
+                <Button size="sm" className="rounded-none bg-brand hover:bg-brand-dark" onClick={() => setWriting({ mode: "create", order })}>
                   <PenLine className="mr-1.5 h-4 w-4" />리뷰 작성하기
                 </Button>
               </li>
@@ -345,6 +487,8 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
         </p>
       )}
 
+      {photos.length > 0 && <PhotoGallery photos={photos} onOpen={openReview} />}
+
       <div className="mt-6 flex flex-wrap gap-1.5" role="group" aria-label="리뷰 정렬">
         {SORTS.map((option) => (
           <button
@@ -358,6 +502,13 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
             {option.label}
           </button>
         ))}
+        {Number(summary?.photo_count ?? 0) > 0 && (
+          <button type="button" aria-pressed={photoOnly} onClick={() => setPhotoOnly((value) => !value)}
+            className={cn("min-h-9 px-3.5 text-sm font-semibold transition",
+              photoOnly ? "bg-brand text-white" : "border border-black/10 bg-white/60 text-stone-600 hover:bg-white")}>
+            사진 리뷰만 ({Number(summary?.photo_count ?? 0)})
+          </button>
+        )}
       </div>
 
       {error ? (
@@ -368,22 +519,26 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
         <div className="flex items-center justify-center py-12 text-sm text-stone-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />리뷰를 불러오는 중입니다</div>
       ) : rows.length === 0 ? (
         <div className="py-14 text-center text-sm text-stone-500">
-          <MessageSquareText className="mx-auto mb-3 h-8 w-8 text-brand/40" />아직 작성된 리뷰가 없습니다.
+          <MessageSquareText className="mx-auto mb-3 h-8 w-8 text-brand/40" />
+          {photoOnly ? "사진 리뷰가 없습니다." : "아직 작성된 리뷰가 없습니다."}
+          {!photoOnly && <p className="mt-1 text-xs text-stone-400">배송을 받은 구매 고객의 첫 리뷰를 기다리고 있어요.</p>}
         </div>
       ) : (
         <>
-          <ul>{rows.map((review) => <ReviewItem key={review.id} review={review} onDelete={(item) => void remove(item)} />)}</ul>
-          {rows.length < count && (
+          <ul>{rows.map((review) => (
+            <ReviewItem key={review.id} review={review} onDelete={(item) => void remove(item)} onEdit={(item) => setWriting({ mode: "edit", review: item })} />
+          ))}</ul>
+          {rows.length < listTotal && (
             <div className="mt-6 text-center">
               <Button variant="outline" className="rounded-none border-black/20 bg-transparent" disabled={loadingMore} onClick={() => void loadMore()}>
-                {loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}리뷰 더보기 ({rows.length}/{count})
+                {loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}리뷰 더보기 ({rows.length}/{listTotal})
               </Button>
             </div>
           )}
         </>
       )}
 
-      <ReviewWriteDialog order={writing} onClose={() => setWriting(null)} onCreated={() => void load()} />
+      <ReviewWriteDialog target={writing} onClose={() => setWriting(null)} onSaved={() => void load()} />
     </div>
   );
 };

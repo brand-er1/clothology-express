@@ -1,4 +1,5 @@
-import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
+import { useState, useEffect, Suspense, type ReactNode } from 'react';
+import { lazyWithReload } from './lib/lazyWithReload';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ErrorBoundary, PageErrorFallback } from './components/ErrorBoundary';
 import { Toaster } from "@/components/ui/toaster"
@@ -56,14 +57,21 @@ import MagazineArticle from './pages/MagazineArticle';
 import MagazineList from './pages/MagazineList';
 
 // 관리자 콘솔은 별도 번들로 분리해 일반 사용자에게 내려가는 코드를 늘리지 않는다.
-const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
-const SellerApp = lazy(() => import('./pages/seller/SellerApp'));
+const AdminApp = lazyWithReload(() => import('./pages/admin/AdminApp'));
+const SellerApp = lazyWithReload(() => import('./pages/seller/SellerApp'));
+
+/** 관리자 · 판매자 콘솔 코드를 받는 동안 빈 화면 대신 진행 표시를 보여준다. */
+const ConsoleLoading = ({ label }: { label: string }) => (
+  <div role="status" className="flex min-h-screen items-center justify-center gap-2 bg-[#f6f3ef] text-sm text-stone-500">
+    <span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-300 border-t-[#741b2b]" aria-hidden />{label}
+  </div>
+);
 
 // 한 화면의 렌더링 오류가 사이트 전체 장애로 번지지 않게 막는다. 다른 주소로 이동하면 자동으로 풀린다.
 const RouteErrorBoundary = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   return (
-    <ErrorBoundary scope="route" resetKey={location.pathname} fallback={(reset) => <PageErrorFallback onRetry={reset} />}>
+    <ErrorBoundary scope="route" resetKey={location.pathname} fallback={() => <PageErrorFallback onRetry={() => window.location.reload()} />}>
       {children}
     </ErrorBoundary>
   );
@@ -175,8 +183,8 @@ function App() {
             <Route path="/community/profile/:userId" element={<CommunityProfile />} />
             <Route path="/community/:postId" element={<CommunityPostDetail />} />
             <Route path="/visit-data-policy" element={<VisitDataPolicy />} />
-            <Route path="/seller/*" element={<AuthGuard requiredAccountType="seller"><Suspense fallback={<div className="min-h-screen bg-[#f6f3ef]" />}><SellerApp /></Suspense></AuthGuard>} />
-            <Route path="/admin/*" element={<AuthGuard><Suspense fallback={<div className="min-h-screen bg-[#f6f3ef]" />}><AdminApp /></Suspense></AuthGuard>} />
+            <Route path="/seller/*" element={<AuthGuard requiredAccountType="seller"><Suspense fallback={<ConsoleLoading label="판매자 센터를 불러오는 중..." />}><SellerApp /></Suspense></AuthGuard>} />
+            <Route path="/admin/*" element={<AuthGuard><Suspense fallback={<ConsoleLoading label="관리자 화면을 불러오는 중..." />}><AdminApp /></Suspense></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes></RouteErrorBoundary>
           <PublicChrome><Footer /><BrandGuide /><TutorialOverlay /><BottomNav /><KakaoCommunityWidget /></PublicChrome>

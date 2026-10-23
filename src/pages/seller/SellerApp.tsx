@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
+import { lazyWithReload } from "@/lib/lazyWithReload";
 import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { ArrowUpRight, Building2, Loader2, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -10,14 +11,14 @@ import { PAYMENT } from "@/services/payment";
 import type { BrandWithCreator } from "@/types/brand";
 import { SELLER_NAV, SellerContext } from "./sellerContext";
 
-const DashboardPage = lazy(() => import("./DashboardPage"));
-const ProductsPage = lazy(() => import("./ProductsPage"));
-const FundingsPage = lazy(() => import("./FundingsPage"));
-const OrdersPage = lazy(() => import("./OrdersPage"));
-const ReviewsPage = lazy(() => import("./ReviewsPage"));
-const InquiriesPage = lazy(() => import("./InquiriesPage"));
-const SettlementsPage = lazy(() => import("./SettlementsPage"));
-const BrandPage = lazy(() => import("./BrandPage"));
+const DashboardPage = lazyWithReload(() => import("./DashboardPage"));
+const ProductsPage = lazyWithReload(() => import("./ProductsPage"));
+const FundingsPage = lazyWithReload(() => import("./FundingsPage"));
+const OrdersPage = lazyWithReload(() => import("./OrdersPage"));
+const ReviewsPage = lazyWithReload(() => import("./ReviewsPage"));
+const InquiriesPage = lazyWithReload(() => import("./InquiriesPage"));
+const SettlementsPage = lazyWithReload(() => import("./SettlementsPage"));
+const BrandPage = lazyWithReload(() => import("./BrandPage"));
 
 const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => (
   <nav className="grid gap-0.5" aria-label="판매자 메뉴">

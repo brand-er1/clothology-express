@@ -380,3 +380,34 @@ body:has([role="alertdialog"][data-state="open"]) [data-floating-widget] {
     user-select: none;
   }
 }
+
+/*
+ * Mobile bottom chrome. `--bottom-nav-h` is measured by the BottomNav (tab bar + safe area + any
+ * in-app browser toolbar overlay); before the first measurement it falls back to the tab bar's
+ * nominal 56px plus the home-indicator inset. Bottom-pinned bars and floating widgets stack on it.
+ */
+:root {
+  --bottom-nav-offset: var(--bottom-nav-h, calc(56px + env(safe-area-inset-bottom, 0px)));
+}
+
+/*
+ * `100vh` on iOS Safari and in-app browsers is the height with the toolbars collapsed, so
+ * full-height screens overflow the visible area. Use the dynamic viewport height where supported.
+ */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+  .h-screen {
+    height: 100dvh;
+  }
+  .max-h-screen {
+    max-height: 100dvh;
+  }
+}
+
+/* viewport-fit=cover lets the page reach under the notch in landscape; keep content clear of it. */
+body {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}

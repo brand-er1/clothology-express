@@ -945,7 +945,7 @@ const DetailPageStudio = () => {
         <div
           ref={stickyRef}
           data-mascot-safezone
-          className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:sticky md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="fixed inset-x-0 bottom-[var(--bottom-nav-offset)] z-40 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:sticky md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           <div className="mx-auto flex max-w-[960px] items-center gap-3">
             <p className="hidden min-w-0 flex-1 truncate text-sm text-stone-500 sm:block">
@@ -1431,7 +1431,7 @@ const DetailPageStudio = () => {
             setEditorTab("section");
             setMobileView("edit");
           }}
-          className="fixed bottom-[calc(132px+env(safe-area-inset-bottom))] right-4 z-40 inline-flex h-11 items-center gap-1.5 rounded-full bg-stone-900 px-4 text-xs font-bold text-white shadow-lg md:hidden"
+          className="fixed bottom-[calc(var(--bottom-nav-offset)+76px)] right-4 z-40 inline-flex h-11 items-center gap-1.5 rounded-full bg-stone-900 px-4 text-xs font-bold text-white shadow-lg md:hidden"
         >
           <SlidersHorizontal className="h-4 w-4" /> {SECTION_META[selectedSection.type].label} 섹션 설정
         </button>
@@ -1441,7 +1441,7 @@ const DetailPageStudio = () => {
       <div
         ref={stickyRef}
         data-mascot-safezone
-        className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white/95 px-3 py-2.5 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-[var(--bottom-nav-offset)] z-40 border-t border-stone-200 bg-white/95 px-3 py-2.5 backdrop-blur md:hidden"
       >
         <div className="mx-auto flex max-w-lg items-center gap-1.5">
           <button type="button" className="flex h-12 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-stone-300 text-[10px] font-semibold text-stone-700" onClick={() => void handleManualSave()}>

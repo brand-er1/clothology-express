@@ -731,19 +731,22 @@ const FundingDetail = () => {
         )}
       </main>
 
-      {/* Mobile order bar: sits directly above the bottom tab bar (which owns the safe-area inset),
-          and publishes its height so floating helpers and the page's bottom padding clear it. */}
+      {/* Mobile order bar: sits directly above the measured bottom tab bar (which owns the safe-area
+          and in-app toolbar insets), and publishes its height so floating helpers and the app shell's
+          bottom padding clear it — the footer's policy links stay reachable at the end of the page. */}
       <div
         ref={stickyCtaRef}
         data-mascot-safezone
-        className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-black/10 bg-[#f6f3ee]/95 px-4 py-2.5 backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-[var(--bottom-nav-offset)] z-40 border-t border-black/10 bg-[#f6f3ee]/95 px-4 py-2 backdrop-blur-md md:hidden"
       >
+        {/* Compact single row (≈60px) so the bar plus the tab bar never eat more than ~1/5 of an
+            iPhone SE screen; the price block may shrink and truncate rather than wrap to a 2nd row. */}
         <div className="mx-auto flex max-w-lg items-center gap-3">
-          <div className="min-w-0 shrink-0 basis-[34%]">
-            <p className="text-[11px] font-semibold text-stone-500">총 {quantity}장 · {selectedSize}</p>
-            <p className="text-wrap-anywhere text-base font-extrabold leading-tight">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "준비 중"}</p>
+          <div className="min-w-0 max-w-[40%] shrink">
+            <p className="truncate text-[11px] font-semibold leading-4 text-stone-500">총 {quantity}장 · {selectedSize}</p>
+            <p className="truncate text-base font-extrabold leading-tight">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "준비 중"}</p>
           </div>
-          <div className="min-w-0 flex-1">{renderPurchaseButton("h-12")}</div>
+          <div className="min-w-0 flex-1">{renderPurchaseButton("h-11")}</div>
         </div>
       </div>
 

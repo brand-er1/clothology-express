@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, Sparkles, Users, WalletCards, CircleUserRound } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useBottomNavMetrics } from "@/hooks/useBottomNavMetrics";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/lib/supabase";
 import { fetchUnreadCommunityNotificationCount } from "@/services/community";
@@ -21,6 +22,7 @@ export const BottomNav = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const navRef = useBottomNavMetrics();
 
   useEffect(() => {
     let active = true;
@@ -46,7 +48,8 @@ export const BottomNav = () => {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-black/10 bg-[#f6f3ee]/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
+      ref={navRef}
+      className="fixed inset-x-0 bottom-[var(--viewport-bottom-inset,0px)] z-40 flex border-t border-black/10 bg-[#f6f3ee]/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg md:hidden"
       aria-label="주요 메뉴"
     >
       {navItems.map(({ to, label, icon: Icon, end }) => (
@@ -79,4 +82,9 @@ export const BottomNav = () => {
   );
 };
 
-export const BOTTOM_NAV_SPACER_CLASSNAME = "pb-[calc(56px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] md:pb-0";
+/**
+ * Bottom padding for the app shell: the measured tab bar height (`--bottom-nav-h`, 0 when no tab bar
+ * is rendered, e.g. admin/seller consoles) plus the page's pinned CTA bar (`--mobile-cta-h`), so the
+ * last footer links can always be scrolled fully above both fixed bars.
+ */
+export const BOTTOM_NAV_SPACER_CLASSNAME = "pb-[calc(var(--bottom-nav-h,0px)+var(--mobile-cta-h,0px))] md:pb-0";

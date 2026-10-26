@@ -123,6 +123,8 @@ export type FundingSuccessStory = {
   fundingId: string;
   brandName: string;
   brandLogo: string | null;
+  /** 제작자(크리에이터 프로필) 이름. 브랜드에 연결된 프로필이 없으면 null. */
+  creatorName: string | null;
   productName: string;
   thumbnail: string;
   category: string;
@@ -130,6 +132,10 @@ export type FundingSuccessStory = {
   fundingRate: number;
   fundingAmount: number | null;
   participantCount: number | null;
+  /** 최종(없으면 현재) 주문 수량. */
+  quantity: number;
+  /** 공개용 제작·배송 단계 라벨(예: '본생산', '배송 완료'). */
+  productionLabel: string;
   /** 성공 시각(success_at). 최신순 정렬 기준. */
   completedAt: string;
   description: string | null;

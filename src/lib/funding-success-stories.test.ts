@@ -70,3 +70,22 @@ describe("funding success stories", () => {
     ]);
   });
 });
+
+describe("public production label", () => {
+  it("reads the recorded production stage for buyers", async () => {
+    const { getPublicProductionLabel, getFundingDetailHref } = await import("./funding-success-stories");
+    expect(getPublicProductionLabel({ production_status: null })).toBe("제작 준비 중");
+    expect(getPublicProductionLabel({ production_status: "funding_success" })).toBe("제작 준비 중");
+    expect(getPublicProductionLabel({ production_status: "mass_production" })).toBe("본생산");
+    expect(getPublicProductionLabel({ production_status: "shipping" })).toBe("배송 중");
+    expect(getPublicProductionLabel({ production_status: "delivered" })).toBe("배송 완료");
+    expect(getFundingDetailHref("f1", "reviews")).toBe("/fundings/f1?tab=reviews");
+  });
+
+  it("exposes creator name, quantity and production label on the story", () => {
+    const story = toFundingSuccessStory(funding({ production_status: "inspection_packing" }))!;
+    expect(story.quantity).toBe(50);
+    expect(story.creatorName).toBeNull();
+    expect(story.productionLabel).toBe("검수/포장");
+  });
+});

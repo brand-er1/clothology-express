@@ -1,4 +1,5 @@
 import type { Funding, FundingSuccessStory } from "@/types/funding";
+import { PRODUCTION_STAGES } from "@/lib/admin/format";
 
 /** 성공 판정은 서버가 기록한 success_at 으로만 한다(프론트엔드에서 수량을 비교하지 않음). */
 export const isFundingSucceeded = (funding: Pick<Funding, "success_at" | "funding_status">) =>
@@ -11,6 +12,22 @@ export const getSuccessFundingRate = (funding: Funding) => {
   return funding.moq > 0 ? Math.round((getSuccessQuantity(funding) / funding.moq) * 100) : 0;
 };
 
+/**
+ * 구매자에게 보여줄 제작·배송 단계. 관리자/제작자가 기록한 production_status 를 그대로 읽고,
+ * 아직 단계가 없거나 '펀딩 성공' 단계면 제작 준비 중으로 안내한다.
+ */
+export const getPublicProductionLabel = (funding: Pick<Funding, "production_status">) => {
+  const key = funding.production_status;
+  if (!key || key === "funding_success") return "제작 준비 중";
+  if (key === "delivered") return "배송 완료";
+  if (key === "shipping") return "배송 중";
+  return PRODUCTION_STAGES.find((stage) => stage.key === key)?.label ?? "제작 준비 중";
+};
+
+/** 성공 사례 카드 → 펀딩 상세의 해당 탭으로 바로 연다(중간 '성공 스토리' 페이지 없음). */
+export const getFundingDetailHref = (fundingId: string, tab?: "reviews" | "process") =>
+  tab ? `/fundings/${fundingId}?tab=${tab}` : `/fundings/${fundingId}`;
+
 export const toFundingSuccessStory = (funding: Funding): FundingSuccessStory | null => {
   if (!funding.success_at || !isFundingSucceeded(funding)) return null;
   const quantity = getSuccessQuantity(funding);
@@ -19,12 +36,15 @@ export const toFundingSuccessStory = (funding: Funding): FundingSuccessStory | n
     fundingId: funding.id,
     brandName: funding.brand?.brand_name ?? "BRAND-ER",
     brandLogo: funding.brand?.brand_logo_url ?? null,
+    creatorName: funding.brand?.creator_profile?.display_name?.trim() || null,
     productName: funding.product_name,
     thumbnail: funding.image_url,
     category: funding.success_showcase_category?.trim() || funding.cloth_type,
     fundingRate: getSuccessFundingRate(funding),
     fundingAmount: funding.price ? funding.price * quantity : null,
     participantCount: funding.success_participant_count ?? null,
+    quantity,
+    productionLabel: getPublicProductionLabel(funding),
     completedAt: funding.success_at,
     description:
       funding.success_showcase_summary?.trim() ||
@@ -89,7 +109,9 @@ export const buildSuccessTimeline = (funding: Funding): SuccessTimelineStep[] =>
     {
       key: "production",
       title: "제작 진행",
-      description: "펀딩으로 모인 수량만큼 샘플 검수를 거쳐 본생산을 진행합니다.",
+      description: productionDone
+        ? "펀딩으로 모인 수량만큼 샘플 검수를 거쳐 본생산을 마쳤습니다."
+        : `펀딩으로 모인 수량만큼 샘플 검수를 거쳐 본생산을 진행합니다. 현재 단계: ${getPublicProductionLabel(funding)}`,
       date: funding.production_updated_at ?? null,
       state: productionDone ? "done" : "current",
     },

@@ -743,7 +743,7 @@ export const BrandGuide = () => {
         <div
           ref={dockRef}
           data-floating-widget
-          className={`pointer-events-none fixed bottom-[calc(76px+env(safe-area-inset-bottom)+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-[calc(1.5rem+var(--mobile-cta-h,0px))] md:right-6 ${dockLift === "hidden" ? "invisible" : ""}`}
+          className={`pointer-events-none fixed bottom-[calc(var(--bottom-nav-offset)+20px+var(--mobile-cta-h,0px))] right-4 z-[60] md:bottom-[calc(1.5rem+var(--mobile-cta-h,0px))] md:right-6 ${dockLift === "hidden" ? "invisible" : ""}`}
           style={typeof dockLift === "number" && dockLift > 0 ? { transform: `translateY(-${dockLift}px)` } : undefined}
         >
           {panel}

@@ -530,7 +530,7 @@ const CommunityPostDetail = () => {
       {/* Phones: sits above the bottom tab bar (which owns the safe-area inset) instead of under it. */}
       <div
         ref={commentBarRef}
-        className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-stone-200 bg-white px-4 py-3 md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="fixed inset-x-0 bottom-[var(--bottom-nav-offset)] z-40 border-t border-stone-200 bg-white px-4 py-3 md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
         {replyTarget && (
           <div className="mb-1.5 flex items-center justify-between text-xs text-stone-500">

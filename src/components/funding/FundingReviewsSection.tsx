@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, ImagePlus, Loader2, MessageSquareText, PenLine, Star, Trash2, X } from "lucide-react";
+import { BadgeCheck, ChevronLeft, ChevronRight, ImagePlus, Loader2, MessageSquareText, PenLine, Star, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -255,11 +255,94 @@ const ReviewWriteDialog = ({ target, onClose, onSaved }: {
 };
 
 // ---------------------------------------------------------------------------
+// 리뷰 사진 뷰어: 모바일은 좌우로 넘기는 슬라이드, PC 는 이전/다음 버튼
+// ---------------------------------------------------------------------------
+
+type ViewerPhoto = { path: string; reviewId?: string };
+
+const ReviewPhotoViewer = ({ photos, startIndex, onClose, onOpenReview }: {
+  photos: ViewerPhoto[]; startIndex: number | null; onClose: () => void; onOpenReview?: (reviewId: string) => void;
+}) => {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [index, setIndex] = useState(0);
+  const open = startIndex !== null;
+
+  // 열릴 때 누른 사진으로 바로 이동한다(애니메이션 없이).
+  const attachTrack = useCallback((node: HTMLDivElement | null) => {
+    trackRef.current = node;
+    if (node && startIndex !== null) {
+      node.scrollLeft = node.clientWidth * startIndex;
+      setIndex(startIndex);
+    }
+  }, [startIndex]);
+
+  const goTo = (next: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const clamped = Math.max(0, Math.min(photos.length - 1, next));
+    track.scrollTo({ left: track.clientWidth * clamped, behavior: "smooth" });
+  };
+
+  const current = photos[index];
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl gap-3 rounded-none border-black/10 bg-[#f6f3ee] p-3 sm:p-5">
+        <DialogHeader className="pr-8 text-left">
+          <DialogTitle className="text-base">구매자 리뷰 사진</DialogTitle>
+          <DialogDescription className="text-xs">{photos.length > 0 ? `${index + 1} / ${photos.length}` : ""}</DialogDescription>
+        </DialogHeader>
+        <div className="relative">
+          <div
+            ref={attachTrack}
+            onScroll={(event) => {
+              const track = event.currentTarget;
+              if (track.clientWidth) setIndex(Math.round(track.scrollLeft / track.clientWidth));
+            }}
+            className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {photos.map((photo, photoIndex) => (
+              <div key={`${photo.reviewId ?? ""}-${photo.path}`} className="flex w-full shrink-0 snap-center items-center justify-center bg-black/[0.04]">
+                <img
+                  src={reviewImageUrl(photo.path)}
+                  alt={`리뷰 사진 ${photoIndex + 1}`}
+                  loading={Math.abs(photoIndex - (startIndex ?? 0)) <= 1 ? "eager" : "lazy"}
+                  className="max-h-[min(70dvh,640px)] w-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
+          {photos.length > 1 && (
+            <>
+              <button type="button" aria-label="이전 사진" disabled={index === 0} onClick={() => goTo(index - 1)}
+                className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow disabled:opacity-30 sm:flex">
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button type="button" aria-label="다음 사진" disabled={index === photos.length - 1} onClick={() => goTo(index + 1)}
+                className="absolute right-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow disabled:opacity-30 sm:flex">
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
+          )}
+        </div>
+        {current?.reviewId && onOpenReview && (
+          <Button type="button" variant="outline" className="h-11 rounded-none border-black/20 bg-transparent"
+            onClick={() => { const reviewId = current.reviewId!; onClose(); onOpenReview(reviewId); }}>
+            이 사진의 리뷰 보기
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // 리뷰 목록
 // ---------------------------------------------------------------------------
 
-const ReviewItem = ({ review, onDelete, onEdit }: {
+const ReviewItem = ({ review, onDelete, onEdit, onViewPhoto }: {
   review: FundingReview; onDelete: (review: FundingReview) => void; onEdit: (review: FundingReview) => void;
+  onViewPhoto: (review: FundingReview, index: number) => void;
 }) => (
   <li id={`review-${review.id}`} className="border-b border-black/10 py-6">
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -292,11 +375,11 @@ const ReviewItem = ({ review, onDelete, onEdit }: {
     )}
     <p className="text-wrap-anywhere mt-3 whitespace-pre-wrap text-sm leading-7 text-[#211b1c]">{review.content}</p>
     {review.image_paths.length > 0 && (
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+      <div className="mt-3 flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {review.image_paths.map((path, index) => (
-          <a key={path} href={reviewImageUrl(path)} target="_blank" rel="noreferrer" className="shrink-0">
-            <img src={reviewImageUrl(path)} alt={`${review.nickname}님의 리뷰 사진 ${index + 1}`} loading="lazy" className="h-24 w-24 border border-black/10 object-cover" />
-          </a>
+          <button key={path} type="button" onClick={() => onViewPhoto(review, index)} className="shrink-0 snap-start" aria-label={`${review.nickname}님의 리뷰 사진 ${index + 1} 크게 보기`}>
+            <img src={reviewImageUrl(path)} alt={`${review.nickname}님의 리뷰 사진 ${index + 1}`} loading="lazy" className="h-24 w-24 border border-black/10 object-cover transition hover:opacity-80" />
+          </button>
         ))}
       </div>
     )}
@@ -325,14 +408,14 @@ const ReviewItem = ({ review, onDelete, onEdit }: {
   </li>
 );
 
-/** 사진 리뷰 갤러리: 사진을 누르면 해당 리뷰로 이동한다. */
-const PhotoGallery = ({ photos, onOpen }: { photos: { review_id: string; path: string }[]; onOpen: (reviewId: string) => void }) => (
+/** 구매자 사진 갤러리: 모바일은 좌우 스와이프, 사진을 누르면 크게 넘겨 보는 뷰어가 열린다. */
+const PhotoGallery = ({ photos, onOpen }: { photos: { review_id: string; path: string }[]; onOpen: (index: number) => void }) => (
   <div className="mt-6">
-    <p className="text-sm font-semibold">사진 리뷰</p>
-    <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+    <p className="text-sm font-semibold">구매자 실물 사진 <span className="font-normal text-stone-500">{photos.length}</span></p>
+    <div className="-mx-4 mt-2 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
       {photos.map((photo, index) => (
-        <button key={`${photo.review_id}-${photo.path}`} type="button" onClick={() => onOpen(photo.review_id)} className="shrink-0" aria-label={`사진 리뷰 ${index + 1} 보기`}>
-          <img src={reviewImageUrl(photo.path)} alt="" loading="lazy" className="h-20 w-20 border border-black/10 object-cover transition hover:opacity-80 sm:h-24 sm:w-24" />
+        <button key={`${photo.review_id}-${photo.path}`} type="button" onClick={() => onOpen(index)} className="shrink-0 snap-start" aria-label={`구매자 사진 ${index + 1} 크게 보기`}>
+          <img src={reviewImageUrl(photo.path)} alt="" loading="lazy" className="h-28 w-28 border border-black/10 object-cover transition hover:opacity-80 sm:h-32 sm:w-32" />
         </button>
       ))}
     </div>
@@ -353,6 +436,7 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
   const [photoOnly, setPhotoOnly] = useState(false);
   const [listTotal, setListTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<{ photos: ViewerPhoto[]; index: number } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -487,7 +571,9 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
         </p>
       )}
 
-      {photos.length > 0 && <PhotoGallery photos={photos} onOpen={openReview} />}
+      {photos.length > 0 && (
+        <PhotoGallery photos={photos} onOpen={(index) => setViewer({ photos: photos.map((photo) => ({ path: photo.path, reviewId: photo.review_id })), index })} />
+      )}
 
       <div className="mt-6 flex flex-wrap gap-1.5" role="group" aria-label="리뷰 정렬">
         {SORTS.map((option) => (
@@ -520,13 +606,19 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
       ) : rows.length === 0 ? (
         <div className="py-14 text-center text-sm text-stone-500">
           <MessageSquareText className="mx-auto mb-3 h-8 w-8 text-brand/40" />
-          {photoOnly ? "사진 리뷰가 없습니다." : "아직 작성된 리뷰가 없습니다."}
+          {photoOnly ? "사진 리뷰가 없습니다." : "아직 등록된 리뷰가 없습니다."}
           {!photoOnly && <p className="mt-1 text-xs text-stone-400">배송을 받은 구매 고객의 첫 리뷰를 기다리고 있어요.</p>}
         </div>
       ) : (
         <>
           <ul>{rows.map((review) => (
-            <ReviewItem key={review.id} review={review} onDelete={(item) => void remove(item)} onEdit={(item) => setWriting({ mode: "edit", review: item })} />
+            <ReviewItem
+              key={review.id}
+              review={review}
+              onDelete={(item) => void remove(item)}
+              onEdit={(item) => setWriting({ mode: "edit", review: item })}
+              onViewPhoto={(item, index) => setViewer({ photos: item.image_paths.map((path) => ({ path })), index })}
+            />
           ))}</ul>
           {rows.length < listTotal && (
             <div className="mt-6 text-center">
@@ -539,6 +631,7 @@ export const FundingReviewsPanel = ({ fundingId, loginReturnTo, onSummary }: {
       )}
 
       <ReviewWriteDialog target={writing} onClose={() => setWriting(null)} onSaved={() => void load()} />
+      <ReviewPhotoViewer photos={viewer?.photos ?? []} startIndex={viewer?.index ?? null} onClose={() => setViewer(null)} onOpenReview={openReview} />
     </div>
   );
 };

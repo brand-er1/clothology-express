@@ -29,6 +29,9 @@ import { DetailPageRenderer } from "@/components/detail-page/DetailPageRenderer"
 import { FundingColorGallery } from "@/components/funding/FundingColorGallery";
 import { FundingReviewsPanel, ReviewSummaryInline } from "@/components/funding/FundingReviewsSection";
 import { FundingInquiriesPanel } from "@/components/funding/FundingInquiriesPanel";
+import { FundingProcessPanel } from "@/components/funding/FundingProcessPanel";
+import { FundingSuccessBadge } from "@/components/funding/FundingSuccessShowcase";
+import { getPublicProductionLabel, isFundingSucceeded } from "@/lib/funding-success-stories";
 import { fetchFundingReviews, type ReviewSummary } from "@/services/fundingReviews";
 import { orderableColorNames, type FundingColor } from "@/lib/funding-colors";
 import { fetchFundingColors } from "@/services/fundingColors";
@@ -49,6 +52,7 @@ import {
   Shirt,
   Sparkles,
   SquarePen,
+  Star,
   Truck,
   Users,
   WalletCards,
@@ -70,6 +74,9 @@ const getCustomerDescription = (funding: Funding) => {
 
 const isParticipationClosed = (funding: Funding) => funding.status === "closed" || Boolean(funding.early_closed);
 
+type DetailTab = "detail" | "reviews" | "process" | "inquiry";
+const DETAIL_TABS: readonly DetailTab[] = ["detail", "reviews", "process", "inquiry"];
+
 const FundingDetail = () => {
   const { id } = useParams();
   // 상세페이지 편집기의 "미리보기": 등록 전 편집본(초안)을 실제 펀딩 화면 그대로 보여준다(작성자 본인만).
@@ -90,11 +97,11 @@ const FundingDetail = () => {
   const [detailPage, setDetailPage] = useState<ProductDetailPage | null>(null);
   // 컬러 옵션(컬러별 상품 이미지). 상단 갤러리 · 구매 옵션 · 상세페이지 컬러 섹션이 공유한다.
   const [fundingColors, setFundingColors] = useState<FundingColor[]>([]);
-  // 하단 [상세정보] [리뷰] [상품 문의]
-  // ?tab=reviews|inquiry 로 들어오면(내 펀딩의 "리뷰 작성하기" 등) 해당 탭을 바로 연다.
+  // 하단 [상품 정보] [구매자 리뷰] [제작 과정(성공 펀딩만)] [문의]
+  // ?tab=reviews|process|inquiry 로 들어오면(성공 사례 카드, 내 펀딩의 "리뷰 작성하기" 등) 해당 탭을 바로 연다.
   const initialTab = searchParams.get("tab");
-  const [detailTab, setDetailTab] = useState<"detail" | "reviews" | "inquiry">(
-    initialTab === "reviews" || initialTab === "inquiry" ? initialTab : "detail",
+  const [detailTab, setDetailTab] = useState<DetailTab>(
+    DETAIL_TABS.includes(initialTab as DetailTab) ? (initialTab as DetailTab) : "detail",
   );
   const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
 
@@ -267,7 +274,23 @@ const FundingDetail = () => {
   const loginReturnTo = `/auth?returnTo=${encodeURIComponent(`/fundings/${funding.id}`)}`;
   const customerDescription = getCustomerDescription(funding);
 
-  const openDetailTab = (tab: "detail" | "reviews" | "inquiry") => {
+  const isSucceeded = !isPreview && isFundingSucceeded(funding);
+  // 제작 과정 탭은 실제로 성공한 펀딩에만 있다. 링크로 들어와도 아니면 상품 정보로 보여준다.
+  const activeTab: DetailTab = detailTab === "process" && !isSucceeded ? "detail" : detailTab;
+  const reviewCount = Number(reviewSummary?.count ?? 0);
+  const successQuantity = funding.final_quantity ?? funding.current_orders;
+  const detailTabs: { key: DetailTab; label: string; shortLabel: string }[] = [
+    { key: "detail", label: "상품 정보", shortLabel: "상품 정보" },
+    {
+      key: "reviews",
+      label: `구매자 리뷰${reviewSummary ? ` ${reviewCount.toLocaleString("ko-KR")}` : ""}`,
+      shortLabel: `리뷰${reviewSummary ? ` ${reviewCount.toLocaleString("ko-KR")}` : ""}`,
+    },
+    ...(isSucceeded ? [{ key: "process" as const, label: "제작 과정", shortLabel: "제작 과정" }] : []),
+    { key: "inquiry", label: "상품 문의", shortLabel: "문의" },
+  ];
+
+  const openDetailTab = (tab: DetailTab) => {
     setDetailTab(tab);
     window.requestAnimationFrame(() => document.getElementById("funding-detail-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
@@ -375,6 +398,59 @@ const FundingDetail = () => {
           </div>
         </div>
 
+        {isSucceeded && (
+          // 펀딩 성공 상품: 성과 · 제작 상태 · 구매자 리뷰를 첫 화면에서 바로 확인하고 탭으로 이동한다.
+          <section aria-label="펀딩 성공 요약" className="mb-6 border border-brand/20 bg-white/70 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <FundingSuccessBadge />
+              <span className="bg-[#211b1c] px-2 py-1 text-[10px] font-semibold tracking-[0.04em] text-white">
+                {getPublicProductionLabel(funding)}
+              </span>
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              <div className="min-w-0">
+                <dt className="text-[11px] text-stone-500">목표 달성률</dt>
+                <dd className="mt-0.5 font-display text-2xl font-semibold leading-none tracking-[-0.04em] text-brand">
+                  {fundingRateActual.toLocaleString("ko-KR")}<span className="text-sm">%</span>
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[11px] text-stone-500">참여</dt>
+                <dd className="mt-0.5 truncate text-base font-semibold tabular-nums">
+                  {funding.success_participant_count != null
+                    ? `${funding.success_participant_count.toLocaleString("ko-KR")}명 · ${successQuantity.toLocaleString("ko-KR")}장`
+                    : `${successQuantity.toLocaleString("ko-KR")}장`}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[11px] text-stone-500">펀딩 금액</dt>
+                <dd className="mt-0.5 truncate text-base font-semibold tabular-nums">
+                  {funding.price ? `${(funding.price * successQuantity).toLocaleString("ko-KR")}원` : "-"}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[11px] text-stone-500">구매자 평점</dt>
+                <dd className="mt-0.5 flex items-center gap-1 text-base font-semibold">
+                  {reviewCount > 0 ? (
+                    <><Star className="h-4 w-4 fill-brand text-brand" />{Number(reviewSummary?.average ?? 0).toFixed(1)}
+                      <span className="text-xs font-normal text-stone-500">({reviewCount.toLocaleString("ko-KR")})</span></>
+                  ) : (
+                    <span className="text-sm font-normal text-stone-500">리뷰 대기 중</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button type="button" onClick={() => openDetailTab("reviews")} className="h-11 min-w-0 whitespace-nowrap rounded-none px-2 bg-brand text-sm font-semibold text-white hover:bg-brand-dark">
+                <Star className="mr-1.5 h-4 w-4" /> 구매자 리뷰{reviewCount > 0 ? ` ${reviewCount.toLocaleString("ko-KR")}` : ""}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => openDetailTab("process")} className="h-11 min-w-0 whitespace-nowrap rounded-none px-2 border-black/20 bg-transparent text-sm font-semibold">
+                <PackageCheck className="mr-1.5 h-4 w-4" /> 제작 과정
+              </Button>
+            </div>
+          </section>
+        )}
+
         <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:gap-12 xl:gap-16">
           <FundingColorGallery
             colors={fundingColors}
@@ -448,6 +524,9 @@ const FundingDetail = () => {
             </div>
 
             <div className="mt-7 space-y-6">
+              {/* 모집이 끝난 펀딩은 옵션 선택 · 수량 · 금액 · 구매 예약이 의미가 없어 접어 두고,
+                  상태 안내와 리뷰로 바로 내려갈 수 있게 한다(결제는 서버도 status = 'approved' 만 허용). */}
+              {!isClosed && (<>
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <p className="font-display text-xs font-semibold tracking-[0.18em]">COLOR</p>
@@ -505,6 +584,7 @@ const FundingDetail = () => {
                 <span className="text-sm text-stone-500">총 주문 금액</span>
                 <strong className="text-wrap-anywhere text-2xl">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "가격 준비 중"}</strong>
               </div>
+              </>)}
 
               {isClosed && (
                 <div
@@ -534,6 +614,7 @@ const FundingDetail = () => {
                 <Shirt className="mr-2 h-4 w-4" /> 이 옷을 가상 마네킹에 입혀보기
               </Button>
 
+              {!isClosed && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -565,6 +646,7 @@ const FundingDetail = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              )}
 
               {PAYMENT.notice && !isClosed && (
                 <p className={`text-center text-[11px] font-medium ${PAYMENT.isMock ? "text-amber-700" : PAYMENT.isTest ? "text-sky-700" : "text-stone-500"}`}>{PAYMENT.notice}</p>
@@ -599,28 +681,25 @@ const FundingDetail = () => {
 
         {!isPreview && (
           <div id="funding-detail-tabs" className="sticky top-14 z-20 -mx-4 mt-16 scroll-mt-14 border-b border-black/10 bg-[#f6f3ee]/95 px-4 backdrop-blur-md sm:top-16 sm:mx-0 sm:px-0">
-            <div role="tablist" aria-label="펀딩 상세 메뉴" className="grid grid-cols-3">
-              {([
-                ["detail", "상세정보"],
-                ["reviews", `리뷰${reviewSummary ? ` ${Number(reviewSummary.count).toLocaleString("ko-KR")}` : ""}`],
-                ["inquiry", "상품 문의"],
-              ] as const).map(([key, label]) => (
+            <div role="tablist" aria-label="펀딩 상세 메뉴" className={`grid ${detailTabs.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
+              {detailTabs.map(({ key, label, shortLabel }) => (
                 <button
                   key={key}
                   type="button"
                   role="tab"
-                  aria-selected={detailTab === key}
+                  aria-selected={activeTab === key}
                   onClick={() => openDetailTab(key)}
-                  className={`min-h-12 border-b-2 text-sm font-semibold transition ${detailTab === key ? "border-[#211b1c] text-[#211b1c]" : "border-transparent text-stone-500 hover:text-[#211b1c]"}`}
+                  className={`min-h-12 min-w-0 whitespace-nowrap border-b-2 px-1 text-[13px] font-semibold transition sm:text-sm ${activeTab === key ? "border-[#211b1c] text-[#211b1c]" : "border-transparent text-stone-500 hover:text-[#211b1c]"}`}
                 >
-                  {label}
+                  <span className="sm:hidden">{shortLabel}</span>
+                  <span className="hidden sm:inline">{label}</span>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {detailTab === "detail" && (
+        {activeTab === "detail" && (
         <>
         {(funding.sample_image_url || funding.sample_note) && (
           <section className="mt-24 grid gap-8 md:grid-cols-12 md:gap-8">
@@ -719,12 +798,17 @@ const FundingDetail = () => {
         </>
         )}
 
-        {!isPreview && detailTab === "reviews" && (
-          <section className="mt-10" aria-label="리뷰">
+        {!isPreview && activeTab === "reviews" && (
+          <section className="mt-10" aria-label="구매자 리뷰">
             <FundingReviewsPanel fundingId={funding.id} loginReturnTo={loginReturnTo} onSummary={setReviewSummary} />
           </section>
         )}
-        {!isPreview && detailTab === "inquiry" && (
+        {isSucceeded && activeTab === "process" && (
+          <section className="mt-10" aria-label="제작 과정">
+            <FundingProcessPanel funding={funding} />
+          </section>
+        )}
+        {!isPreview && activeTab === "inquiry" && (
           <section className="mt-10" aria-label="상품 문의">
             <FundingInquiriesPanel fundingId={funding.id} loginReturnTo={loginReturnTo} />
           </section>
@@ -742,11 +826,26 @@ const FundingDetail = () => {
         {/* Compact single row (≈60px) so the bar plus the tab bar never eat more than ~1/5 of an
             iPhone SE screen; the price block may shrink and truncate rather than wrap to a 2nd row. */}
         <div className="mx-auto flex max-w-lg items-center gap-3">
-          <div className="min-w-0 max-w-[40%] shrink">
-            <p className="truncate text-[11px] font-semibold leading-4 text-stone-500">총 {quantity}장 · {selectedSize}</p>
-            <p className="truncate text-base font-extrabold leading-tight">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "준비 중"}</p>
+          {isClosed && !isPreview ? (
+            <div className="min-w-0 max-w-[40%] shrink">
+              <p className="truncate text-[11px] font-semibold leading-4 text-stone-500">{closedLabel}</p>
+              <p className="flex items-center gap-1 truncate text-base font-extrabold leading-tight">
+                {reviewCount > 0 ? <><Star className="h-4 w-4 shrink-0 fill-brand text-brand" />{Number(reviewSummary?.average ?? 0).toFixed(1)}</> : `${fundingRateActual}% 달성`}
+              </p>
+            </div>
+          ) : (
+            <div className="min-w-0 max-w-[40%] shrink">
+              <p className="truncate text-[11px] font-semibold leading-4 text-stone-500">총 {quantity}장 · {selectedSize}</p>
+              <p className="truncate text-base font-extrabold leading-tight">{funding.price ? `${totalPrice.toLocaleString("ko-KR")}원` : "준비 중"}</p>
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            {isClosed && !isPreview ? (
+              <Button type="button" onClick={() => openDetailTab("reviews")} className="h-11 w-full whitespace-nowrap rounded-[2px] bg-brand px-3 text-[15px] font-semibold text-white hover:bg-brand-dark">
+                <Star className="mr-1.5 h-4 w-4 shrink-0" /> {reviewCount > 0 ? `리뷰 ${reviewCount.toLocaleString("ko-KR")}개 보기` : "구매자 리뷰 보기"}
+              </Button>
+            ) : renderPurchaseButton("h-11")}
           </div>
-          <div className="min-w-0 flex-1">{renderPurchaseButton("h-11")}</div>
         </div>
       </div>
 

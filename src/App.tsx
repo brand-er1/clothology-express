@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, type ReactNode } from 'react';
 import { lazyWithReload } from './lib/lazyWithReload';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { ErrorBoundary, PageErrorFallback } from './components/ErrorBoundary';
 import { Toaster } from "@/components/ui/toaster"
 import Index from './pages/Index';
@@ -52,7 +52,7 @@ import MyBrand from './pages/MyBrand';
 import BrandProfile from './pages/BrandProfile';
 import DetailPageStudio from './pages/DetailPageStudio';
 import FundingDetailPageLauncher from './pages/FundingDetailPageLauncher';
-import SuccessStory from './pages/SuccessStory';
+import { getFundingDetailHref } from './lib/funding-success-stories';
 import MagazineArticle from './pages/MagazineArticle';
 import MagazineList from './pages/MagazineList';
 
@@ -78,6 +78,13 @@ const RouteErrorBoundary = ({ children }: { children: ReactNode }) => {
 };
 
 // /admin 에서는 서비스용 푸터·하단 내비·가이드 위젯 등을 숨기고 관리자 레이아웃만 보여준다.
+// 예전 '펀딩 성공 상세보기' 중간 페이지. 성공 정보 · 구매자 리뷰 · 제작 과정이 펀딩 상세로 합쳐져
+// 기존 링크는 해당 펀딩의 구매자 리뷰 탭으로 바로 보낸다.
+const SuccessStoryRedirect = () => {
+  const { fundingId } = useParams<{ fundingId: string }>();
+  return <Navigate to={fundingId ? getFundingDetailHref(fundingId, 'reviews') : '/fundings'} replace />;
+};
+
 const PublicChrome = ({ children }: { children: ReactNode }) => {
   const { pathname } = useLocation();
   // 관리자 콘솔 · 판매자 센터는 자체 사이드바를 쓰므로 공개 사이트의 푸터 · 하단 탭 · 위젯을 숨긴다.
@@ -165,7 +172,7 @@ function App() {
             <Route path="/magazine/:slug" element={<MagazineArticle />} />
             <Route path="/fundings" element={<Fundings />} />
             <Route path="/fundings/:id" element={<FundingDetail />} />
-            <Route path="/success-stories/:fundingId" element={<SuccessStory />} />
+            <Route path="/success-stories/:fundingId" element={<SuccessStoryRedirect />} />
             <Route path="/fundings/:id/edit" element={<AuthGuard requiredAccountType="seller"><FundingEditor /></AuthGuard>} />
             <Route path="/fundings/:id/detail-page" element={<AuthGuard requiredAccountType="seller"><FundingDetailPageLauncher /></AuthGuard>} />
             <Route path="/detail-pages/:pageId" element={<AuthGuard><DetailPageStudio /></AuthGuard>} />

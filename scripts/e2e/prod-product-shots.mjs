@@ -110,6 +110,14 @@ await step("원본 의류 디자인 생성 + 디자인 저장", async () => {
   return `design ${designId}`;
 });
 
+// 원본 디자인이 없으면 이후 단계는 모두 같은 이유로 실패하므로 중단한다(원인이 한 줄로 보이도록).
+if (!ctx.sourceUrl || !ctx.designId) {
+  results.push("STOP  원본 디자인을 만들지 못해 상세 컷 단계를 실행하지 않았습니다.");
+  fs.writeFileSync(`${OUT}/results.txt`, results.join("\n") + "\n");
+  console.log("\n" + results.join("\n"));
+  process.exit(1);
+}
+
 await step("권한: 비로그인 · 외부 URL · 남의 컷 접근 거부", async () => {
   try {
     await invoke("generate-product-shot", { action: "generate", sourceImageUrl: ctx.sourceUrl, shotType: "front" }, anon);

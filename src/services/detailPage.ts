@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { compressImage, fetchMyBrand } from "@/services/brand";
+import { listDesignShots, shotLabel, type DesignShot } from "@/services/productShots";
 import { createFundingDraft } from "@/services/funding";
 import { screenTrademarkImage } from "@/services/trademarkScreening";
 import { buildFallbackCopy } from "@/lib/detail-page/fallbackCopy";
@@ -701,7 +702,7 @@ export const fetchDetailImageLibrary = async (input: {
     result.push(image);
   };
 
-  const [{ data: assets }, references] = await Promise.all([
+  const [{ data: assets }, references, designShots] = await Promise.all([
     db
       .from("generated_assets")
       .select("id, image_type, generated_image, created_at")
@@ -710,6 +711,10 @@ export const fetchDetailImageLibrary = async (input: {
       .order("created_at", { ascending: false })
       .limit(60),
     listDetailPageReferences(input.pageId).catch(() => [] as DetailReference[]),
+    // 디자인 단계에서 만든 상세 컷 · 디테일 컷(같은 원본 디자인)도 불러올 수 있게 한다.
+    input.source.designId || input.source.imageUrl
+      ? listDesignShots({ designId: input.source.designId, sourceImageUrl: input.source.imageUrl }).catch(() => [] as DesignShot[])
+      : Promise.resolve([] as DesignShot[]),
   ]);
   for (const asset of (assets ?? []) as Array<{ id: string; image_type: string; generated_image: string | null }>) {
     if (asset.generated_image) {
@@ -721,6 +726,17 @@ export const fetchDetailImageLibrary = async (input: {
         source: "generated",
         slot: asset.image_type as DetailLibraryImage["slot"],
         assetId: asset.id,
+      });
+    }
+  }
+  for (const shot of designShots) {
+    if (shot.status === "succeeded" && shot.image_url) {
+      push({
+        key: `shot-${shot.id}`,
+        url: shot.image_url,
+        label: `상세 컷 · ${shotLabel(shot.shot_type)}${shot.is_inferred ? " (참고)" : ""}`,
+        group: "generated",
+        source: "generated",
       });
     }
   }

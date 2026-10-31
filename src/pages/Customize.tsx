@@ -8,6 +8,7 @@ import { MaterialStep } from "@/components/customize/MaterialStep";
 import { DetailStep } from "@/components/customize/DetailStep";
 import { ImageStep } from "@/components/customize/ImageStep";
 import { ModifyImageStep } from "@/components/customize/ModifyImageStep";
+import { ProductShotStudio } from "@/components/product-shots/ProductShotStudio";
 import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
@@ -89,6 +90,7 @@ const Customize = () => {
     designId,
     isSavingDesign,
     handleGoToEstimate,
+    goToFundingStep,
   } = useCustomizeForm();
 
   const stepContent = [
@@ -303,6 +305,22 @@ const Customize = () => {
                 designId={designId}
                 isSavingDesign={isSavingDesign}
                 onGoToEstimate={() => void handleGoToEstimate()}
+              />
+            )}
+
+            {(currentStep === 4 || currentStep === 5) && generatedImageUrls && generatedImageUrls.length > 0 && (
+              <ProductShotStudio
+                sourceImageUrl={fittingImageUrl}
+                designId={designId}
+                isSavingDesign={isSavingDesign}
+                selectedType={selectedType}
+                selectedMaterial={selectedMaterial}
+                designContext={[generatedPrompt, selectedDetail].filter(Boolean).join("\n")}
+                fitLabel={selectedFit}
+                productLabel={selectedDetail.split("\n")[0]?.slice(0, 24) || "내가 만든 디자인"}
+                onGoToEstimate={() => void handleGoToEstimate()}
+                onProceedToFunding={goToFundingStep}
+                disabled={isSubmitting || imageLoading || imageModifying}
               />
             )}
 

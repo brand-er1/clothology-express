@@ -6,7 +6,7 @@
  * clients can neither skip nor forge usage. Failures to log never fail the user's request.
  */
 
-export type AiFeature = "detail_copy" | "detail_image" | "color_image";
+export type AiFeature = "detail_copy" | "detail_image" | "color_image" | "product_shot" | "product_shot_analysis";
 
 export const precheckAiUsage = async (
   admin: any,
@@ -42,9 +42,13 @@ export const logAiUsage = async (
     latencyMs?: number | null;
     error?: string | null;
     metadata?: Record<string, unknown>;
+    /** 실제 이미지 생성 호출 수(재시도 포함). 지정할 때만 전달 — 기존 기능은 이전처럼 1건 = 1단위. */
+    units?: number;
+    /** 검수 · 분석 같은 텍스트(비전) 호출 수. */
+    secondaryUnits?: number;
   },
-) => {
-  const { error } = await admin.rpc("log_ai_usage", {
+): Promise<number | null> => {
+  const { data, error } = await admin.rpc("log_ai_usage", {
     p_user_id: entry.userId,
     p_feature: entry.feature,
     p_status: entry.status,
@@ -56,6 +60,12 @@ export const logAiUsage = async (
     p_error: entry.error ?? null,
     p_metadata: entry.metadata ?? {},
     p_funding_id: entry.fundingId ?? null,
+    ...(entry.units !== undefined ? { p_units: entry.units } : {}),
+    ...(entry.secondaryUnits !== undefined ? { p_secondary_units: entry.secondaryUnits } : {}),
   });
-  if (error) console.error("log_ai_usage failed", error.message);
+  if (error) {
+    console.error("log_ai_usage failed", error.message);
+    return null;
+  }
+  return typeof data === "number" ? data : data == null ? null : Number(data);
 };

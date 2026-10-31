@@ -105,6 +105,7 @@ jobs:
           supabase functions deploy dispatch-notifications --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy generate-color-image --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy edit-ai-image --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy generate-product-shot --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy get-fashion-trends --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
           supabase functions deploy fetch-article-meta --project-ref "$SUPABASE_PROJECT_ID"
 

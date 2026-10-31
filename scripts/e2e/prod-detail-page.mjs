@@ -12,7 +12,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 
 const SUPABASE_URL = "https://jwmzjszdjlrqrhadbggr.supabase.co";
-const ANON_KEY = fs.readFileSync(new URL("../../src/lib/supabase.ts", import.meta.url), "utf8").match(/supabaseAnonKey = '([^']+)'/)[1];
+const ANON_KEY = fs.readFileSync(new URL("../../src/lib/supabase.ts", import.meta.url), "utf8").match(/supabaseAnonKey = [^\n]*?'(eyJ[^']+)'/)[1];
 const SITE = process.env.E2E_SITE_URL || "https://brand-er1.github.io/clothology-express";
 const SHOTS = process.env.E2E_SHOTS || "e2e-shots";
 const EMAIL = process.env.E2E_CREATOR_EMAIL;

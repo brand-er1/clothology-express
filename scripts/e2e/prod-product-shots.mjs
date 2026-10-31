@@ -9,7 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 
 const SUPABASE_URL = "https://jwmzjszdjlrqrhadbggr.supabase.co";
-const ANON_KEY = fs.readFileSync(new URL("../../src/lib/supabase.ts", import.meta.url), "utf8").match(/supabaseAnonKey = '([^']+)'/)[1];
+const ANON_KEY = fs.readFileSync(new URL("../../src/lib/supabase.ts", import.meta.url), "utf8").match(/supabaseAnonKey = [^\n]*?'(eyJ[^']+)'/)[1];
 const OUT = process.env.E2E_SHOTS || "e2e-shots";
 const EMAIL = process.env.E2E_CREATOR_EMAIL;
 const PASSWORD = process.env.E2E_CREATOR_PASSWORD;

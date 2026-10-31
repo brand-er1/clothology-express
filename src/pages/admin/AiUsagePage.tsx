@@ -84,7 +84,7 @@ const AiUsagePage = () => {
                 <ul className="divide-y divide-stone-100">
                   {data.recent_failures.map((row, index) => (
                     <li key={index} className="px-4 py-2.5 text-xs">
-                      <p className="font-semibold">{row.feature === "detail_image" ? `이미지 · ${row.image_type ?? "-"}` : "카피"} · {dateTime(row.created_at)}</p>
+                      <p className="font-semibold">{row.feature === "detail_image" ? `이미지 · ${row.image_type ?? "-"}` : row.feature === "product_shot" ? `상세 컷 · ${row.image_type ?? "-"}` : row.feature === "product_shot_analysis" ? "상세 컷 분석" : row.feature === "color_image" ? "컬러 이미지" : "카피"} · {dateTime(row.created_at)}</p>
                       <p className="truncate text-stone-500" title={row.error ?? ""}>{row.model ?? ""} {row.error}</p>
                     </li>
                   ))}

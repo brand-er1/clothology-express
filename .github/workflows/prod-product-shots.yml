@@ -1,0 +1,45 @@
+name: Prod E2E - AI product shots
+
+# 운영 Edge Function(generate-product-shot)으로 AI 의류 디자인 하나를 만든 뒤, 그 디자인을 원본 참조 이미지로 상세 컷(기본 상품 촬영 세트 5장)
+# · 사용자 지정 영역 디테일 컷 · 다시 생성을 실제 AI API 로 생성하고 권한 · 저장 · 비용 기록을 확인한다. 결과 이미지는 artifact 로 올린다.
+# E2E_CREATOR_EMAIL / E2E_CREATOR_PASSWORD 필요.
+# 실제 AI 비용이 들고 운영 데이터를 잠시 만들므로 수동 실행만: Actions 탭 → "Prod E2E - AI product shots" → Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-e2e-product-shots
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run production E2E
+        env:
+          E2E_CREATOR_EMAIL: ${{ secrets.E2E_CREATOR_EMAIL }}
+          E2E_CREATOR_PASSWORD: ${{ secrets.E2E_CREATOR_PASSWORD }}
+          E2E_SHOTS: e2e-shots
+        run: node scripts/e2e/prod-product-shots.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-e2e-product-shots
+          path: e2e-shots
+          if-no-files-found: ignore

@@ -1096,6 +1096,13 @@ export const useCustomizeForm = () => {
   const handleBack = () => {
     setCurrentStep(prev => prev - 1);
   };
+
+  // 상세 컷 갤러리의 "펀딩 등록하기": 디자인이 있으면 생산 정보(사이즈 · 수량) 단계로 바로 이동한다.
+  const goToFundingStep = () => {
+    if (!generatedImageUrls || generatedImageUrls.length === 0) return;
+    setCurrentStep(TOTAL_STEPS);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   
   const handleSizeTableChange = (updatedItem: SizeTableItem) => {
     setSizeTableData(prev => {
@@ -1193,5 +1200,6 @@ export const useCustomizeForm = () => {
     designId,
     isSavingDesign,
     handleGoToEstimate,
+    goToFundingStep,
   };
 };

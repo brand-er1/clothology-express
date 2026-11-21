@@ -40,6 +40,27 @@ export const LAB_SIZES = [
 
 export type LabSize = (typeof LAB_SIZES)[number]["value"];
 
+/** 제작 목적 (필수, 하나 선택) */
+export const LAB_PURPOSES = [
+  { value: "personal", label: "개인 소장" },
+  { value: "gift", label: "선물" },
+  { value: "brand_launch", label: "브랜드 창업 준비" },
+  { value: "team", label: "팀 · 단체 · 동아리" },
+  { value: "content", label: "콘텐츠 · 굿즈" },
+  { value: "other", label: "기타" },
+] as const;
+
+export type LabPurpose = (typeof LAB_PURPOSES)[number]["value"];
+
+/** 향후 추가 생산 의향 (선택) */
+export const LAB_FUTURE_PRODUCTION = [
+  { value: "yes", label: "추가 생산 의향 있음" },
+  { value: "considering", label: "샘플을 보고 결정" },
+  { value: "no", label: "샘플 1벌이면 충분" },
+] as const;
+
+export type LabFutureProduction = (typeof LAB_FUTURE_PRODUCTION)[number]["value"];
+
 export const LAB_STATUSES = [
   { value: "received", label: "신청 접수" },
   { value: "reviewing", label: "검토 중" },
@@ -55,6 +76,29 @@ export type LabStatus = (typeof LAB_STATUSES)[number]["value"];
 
 export const labGarmentLabel = (value: string) => LAB_GARMENT_TYPES.find((item) => item.value === value)?.label ?? value;
 export const labStatusLabel = (value: string) => LAB_STATUSES.find((item) => item.value === value)?.label ?? value;
+export const labPurposeLabel = (value: string | null | undefined) => (value ? LAB_PURPOSES.find((item) => item.value === value)?.label ?? value : "");
+export const labFutureProductionLabel = (value: string | null | undefined) =>
+  (value ? LAB_FUTURE_PRODUCTION.find((item) => item.value === value)?.label ?? value : "");
+
+/**
+ * 관리자 화면용: 하나의 진행 상태를 '검토 상태 · 선정 여부 · 제작 진행 상태' 세 가지 관점으로 풀어 보여준다.
+ * 상태값은 하나(lab_applications.status)로 관리해 서로 어긋나지 않게 한다.
+ */
+export const labStatusStages = (status: string) => {
+  const reviewed = !["received", "reviewing"].includes(status);
+  const selected = !["received", "reviewing", "not_selected"].includes(status);
+  const production: Record<string, string> = {
+    filming_scheduled: "제작 준비(촬영 예정)",
+    in_production: "제작 진행 중",
+    production_done: "제작 완료",
+    content_published: "완성품 공개",
+  };
+  return {
+    review: status === "received" ? "미검토" : status === "reviewing" ? "검토 중" : "검토 완료",
+    selection: !reviewed ? "대기" : selected ? "선정" : "미선정",
+    production: production[status] ?? (selected ? "제작 대기" : "-"),
+  };
+};
 
 // ---------------------------------------------------------------------------
 // 한도
@@ -69,6 +113,7 @@ export const LAB_LIMITS = {
   designMax: 2000,
   sizeOtherMax: 50,
   reasonMax: 1000,
+  purposeOtherMin: 2,
   maxImages: 5,
   maxImageBytes: 10 * 1024 * 1024,
 } as const;
@@ -98,7 +143,7 @@ export const LAB_CONTACT = {
 // 동의 문구 (버전 관리)
 // ---------------------------------------------------------------------------
 
-export const LAB_CONSENT_VERSION = "2026-11-21.v1";
+export const LAB_CONSENT_VERSION = "2026-11-22.v1";
 
 export type LabConsentKey = "participation" | "filming" | "privacy" | "marketing";
 
@@ -111,7 +156,7 @@ export type LabConsentDocument = {
 };
 
 export const LAB_PRIVACY_NOTICE = {
-  items: "(필수) 이름 또는 닉네임, 휴대폰 번호, 인스타그램 아이디, 희망 의류 종류·디자인 설명·사이즈 / (선택) 이메일 주소, 참고 이미지, 제작 희망 이유 / (자동 수집) 신청 일시, 중복·부정 신청 방지를 위한 접속 정보(IP 주소의 암호화 값, 브라우저 정보)",
+  items: "(필수) 이름, 휴대폰 번호, 이메일 주소, 제작하고 싶은 의류 종류·설명, 제작 목적 / (선택) 인스타그램 아이디, 디자인 참고 이미지, 제작 목적 상세, 향후 추가 생산 의향 / (자동 수집) 신청한 회원 계정 식별값, 신청 일시, 중복·부정 신청 방지를 위한 접속 정보(IP 주소의 암호화 값, 브라우저 정보)",
   purpose: "신청 접수 및 신청자 확인, 참여자 선정 및 결과 안내, 제작·촬영 일정 협의를 위한 연락, 중복·부정 신청 방지",
   retention: "접수일로부터 1년간 보관 후 파기합니다. 선정되어 콘텐츠가 게시된 경우 게시 완료일로부터 1년간 보관합니다. 보유 기간이 지나거나 삭제를 요청하시면 지체 없이 파기합니다.",
   refusal: "개인정보 수집·이용 동의를 거부할 권리가 있습니다. 다만 필수 항목에 동의하지 않으시면 신청 접수와 참여자 선정이 불가능합니다.",
@@ -123,7 +168,7 @@ export const LAB_CONSENT_DOCUMENTS: readonly LabConsentDocument[] = [
     version: LAB_CONSENT_VERSION,
     required: true,
     title: "프로젝트 참여 및 제작 과정 공개 동의",
-    body: "본인은 무료 의류 제작 프로젝트의 진행 방식에 대해 안내받았으며, 선정 시 신청한 디자인의 제작 과정 및 완성품이 브랜더의 콘텐츠로 소개될 수 있음에 동의합니다.",
+    body: "본인은 브랜더 LAB 무료 샘플 제작 프로젝트의 진행 방식에 대해 안내받았으며, 선정 시 신청한 디자인의 제작 과정 및 완성품이 브랜더의 콘텐츠로 소개될 수 있음에 동의합니다.",
   },
   {
     key: "filming",
@@ -209,7 +254,9 @@ export type LabApplicationInput = {
   designDescription: string;
   size: string;
   sizeOther: string;
+  purpose: string;
   reason: string;
+  futureProduction: string;
 };
 
 export type LabApplicationField = keyof LabApplicationInput;
@@ -217,14 +264,16 @@ export type LabApplicationField = keyof LabApplicationInput;
 export type LabApplicationValue = {
   applicantName: string;
   phone: string;
-  email: string | null;
-  instagramId: string;
+  email: string;
+  instagramId: string | null;
   garmentTypes: LabGarmentType[];
   garmentTypeOther: string | null;
   designDescription: string;
-  size: LabSize;
+  size: LabSize | null;
   sizeOther: string | null;
+  purpose: LabPurpose;
   reason: string | null;
+  futureProduction: LabFutureProduction | null;
 };
 
 export type LabValidationResult =
@@ -233,12 +282,14 @@ export type LabValidationResult =
 
 const garmentValues = new Set<string>(LAB_GARMENT_TYPES.map((item) => item.value));
 const sizeValues = new Set<string>(LAB_SIZES.map((item) => item.value));
+const purposeValues = new Set<string>(LAB_PURPOSES.map((item) => item.value));
+const futureValues = new Set<string>(LAB_FUTURE_PRODUCTION.map((item) => item.value));
 
 export const validateLabApplication = (raw: Partial<Record<LabApplicationField, unknown>>): LabValidationResult => {
   const errors: Partial<Record<LabApplicationField, string>> = {};
 
   const applicantName = cleanText(raw.applicantName).replace(/\s+/g, " ");
-  if (!applicantName) errors.applicantName = "이름 또는 닉네임을 입력해주세요.";
+  if (!applicantName) errors.applicantName = "이름을 입력해주세요.";
   else if (charLength(applicantName) > LAB_LIMITS.nameMax) errors.applicantName = `${LAB_LIMITS.nameMax}자 이내로 입력해주세요.`;
 
   const phoneText = cleanText(raw.phone);
@@ -247,14 +298,12 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
   else if (!phone) errors.phone = "휴대폰 번호 형식을 확인해주세요. (예: 010-1234-5678)";
 
   const emailText = cleanText(raw.email).toLowerCase();
-  if (emailText && (emailText.length > LAB_LIMITS.emailMax || !EMAIL_PATTERN.test(emailText))) {
-    errors.email = "이메일 주소 형식을 확인해주세요.";
-  }
+  if (!emailText) errors.email = "선정 안내를 받으실 이메일 주소를 입력해주세요.";
+  else if (emailText.length > LAB_LIMITS.emailMax || !EMAIL_PATTERN.test(emailText)) errors.email = "이메일 주소 형식을 확인해주세요.";
 
   const instagramText = cleanText(raw.instagramId);
   const instagramId = normalizeInstagramId(instagramText);
-  if (!instagramText) errors.instagramId = "인스타그램 아이디를 입력해주세요.";
-  else if (!instagramId) errors.instagramId = "영문 · 숫자 · 마침표(.) · 밑줄(_)로 된 30자 이내 아이디를 입력해주세요.";
+  if (instagramText && !instagramId) errors.instagramId = "영문 · 숫자 · 마침표(.) · 밑줄(_)로 된 30자 이내 아이디를 입력해주세요.";
 
   const garmentTypes = Array.from(new Set(Array.isArray(raw.garmentTypes) ? raw.garmentTypes.filter((v): v is string => typeof v === "string") : []));
   const garmentTypeOther = cleanText(raw.garmentTypeOther);
@@ -272,17 +321,25 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
 
   const size = cleanText(raw.size);
   const sizeOther = cleanText(raw.sizeOther);
-  if (!size) errors.size = "희망 사이즈를 선택해주세요.";
-  else if (!sizeValues.has(size)) errors.size = "선택할 수 없는 사이즈입니다.";
+  // 희망 사이즈는 선택 항목이다(선정 후 개별 확인). 보낸 경우에만 검사한다.
+  if (size && !sizeValues.has(size)) errors.size = "선택할 수 없는 사이즈입니다.";
   if (size === "OTHER") {
     if (!sizeOther) errors.sizeOther = "희망 사이즈를 직접 입력해주세요.";
     else if (charLength(sizeOther) > LAB_LIMITS.sizeOtherMax) errors.sizeOther = `${LAB_LIMITS.sizeOtherMax}자 이내로 입력해주세요.`;
   }
 
+  const purpose = cleanText(raw.purpose);
+  if (!purpose) errors.purpose = "제작 목적을 선택해주세요.";
+  else if (!purposeValues.has(purpose)) errors.purpose = "선택할 수 없는 제작 목적입니다.";
+
   const reason = cleanText(raw.reason);
   if (charLength(reason) > LAB_LIMITS.reasonMax) errors.reason = `${LAB_LIMITS.reasonMax.toLocaleString("ko-KR")}자 이내로 입력해주세요.`;
+  else if (purpose === "other" && charLength(reason) < LAB_LIMITS.purposeOtherMin) errors.reason = "기타 제작 목적을 간단히 적어주세요.";
 
-  if (Object.keys(errors).length > 0 || !phone || !instagramId) return { ok: false, value: null, errors };
+  const futureProduction = cleanText(raw.futureProduction);
+  if (futureProduction && !futureValues.has(futureProduction)) errors.futureProduction = "선택할 수 없는 항목입니다.";
+
+  if (Object.keys(errors).length > 0 || !phone) return { ok: false, value: null, errors };
 
   return {
     ok: true,
@@ -290,14 +347,16 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
     value: {
       applicantName,
       phone,
-      email: emailText || null,
-      instagramId,
+      email: emailText,
+      instagramId: instagramId ?? null,
       garmentTypes: garmentTypes as LabGarmentType[],
       garmentTypeOther: garmentTypes.includes("other") ? garmentTypeOther : null,
       designDescription,
-      size: size as LabSize,
+      size: size ? (size as LabSize) : null,
       sizeOther: size === "OTHER" ? sizeOther : null,
+      purpose: purpose as LabPurpose,
       reason: reason || null,
+      futureProduction: futureProduction ? (futureProduction as LabFutureProduction) : null,
     },
   };
 };

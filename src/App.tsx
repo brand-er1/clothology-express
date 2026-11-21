@@ -26,6 +26,7 @@ import Closet from './pages/Closet';
 import Portfolio from './pages/Portfolio';
 import QuickGroupWear from './pages/QuickGroupWear';
 import BranderLab from './pages/BranderLab';
+import { PhoneRequiredGate } from './components/auth/PhoneRequiredGate';
 import { supabase } from './lib/supabase';
 import { claimGuestSession } from './services/designs';
 import { toast } from '@/components/ui/use-toast';
@@ -151,7 +152,7 @@ function App() {
     <div className={`${isMobile ? 'mobile-view' : 'desktop-view'} ${BOTTOM_NAV_SPACER_CLASSNAME}`}>
       <BrowserRouter basename={routerBasename}>
         <MascotProvider><TutorialProvider>
-          <SiteVisitTracker /><PublicChrome><VisitDataNotice /><WelcomeNotification /></PublicChrome>
+          <SiteVisitTracker /><PhoneRequiredGate /><PublicChrome><VisitDataNotice /><WelcomeNotification /></PublicChrome>
           <RouteErrorBoundary><Routes>
             <Route path="/" element={<Index />} />
             <Route path="/index.html" element={<Index />} />
@@ -171,6 +172,8 @@ function App() {
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
             <Route path="/lab" element={<BranderLab />} />
             <Route path="/lab/apply" element={<BranderLab />} />
+            <Route path="/brander-lab" element={<Navigate to="/lab" replace />} />
+            <Route path="/brander-lab/apply" element={<Navigate to="/lab/apply" replace />} />
             <Route path="/free-making" element={<Navigate to="/lab" replace />} />
             <Route path="/magazine" element={<MagazineList />} />
             <Route path="/magazine/:slug" element={<MagazineArticle />} />

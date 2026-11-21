@@ -15,6 +15,7 @@ import {
 } from "@/utils/authUtils";
 import { handleLogin } from "@/utils/loginUtils";
 import { getAppUrl } from "@/utils/appUrl";
+import { formatMobilePhone, MOBILE_PHONE_ERROR, normalizeMobilePhone } from "@/utils/phone";
 import { getAccountLandingPath, syncAccountTypeToProfile, type AccountType } from "@/utils/accountRouting";
 
 export const useAuthForm = () => {
@@ -195,6 +196,10 @@ export const useAuthForm = () => {
           formData.accountType,
         );
         
+        // 전화번호 필수 (한국 휴대폰 번호)
+        const phoneDigits = normalizeMobilePhone(formData.phoneNumber);
+        if (!phoneDigits) throw new Error(MOBILE_PHONE_ERROR);
+
         // Height와 Weight 값이 유효한 숫자인지 확인
         const height = formData.height ? parseFloat(formData.height) : null;
         const weight = formData.weight ? parseFloat(formData.weight) : null;
@@ -215,7 +220,7 @@ export const useAuthForm = () => {
               username: formData.username,
               brand_name: null,
               full_name: formData.fullName,
-              phone_number: formData.phoneNumber,
+              phone_number: formatMobilePhone(phoneDigits),
               address: fullAddress,
               height: height,
               weight: weight,

@@ -16,7 +16,7 @@ import {
 } from "@/services/labAdmin";
 import { LAB_STATUS_TONE } from "./labAdminFormat";
 import {
-  formatLabPhone, LAB_CONSENT_DOCUMENTS, LAB_STATUSES, labStatusLabel, type LabStatus,
+  formatLabPhone, LAB_CONSENT_DOCUMENTS, LAB_STATUSES, labFutureProductionLabel, labPurposeLabel, labStatusLabel, labStatusStages, type LabStatus,
 } from "../../../../supabase/functions/_shared/labApplication";
 
 const METHOD_LABEL: Record<LabFilmingAgreement["agreement_method"], string> = {
@@ -187,6 +187,14 @@ export const LabApplicationDetail = ({ applicationId, onClose, onChanged }: Prop
                     <Input type="date" value={retention} onChange={(e) => setRetention(e.target.value)} disabled={!canManage || saving} className="h-9 text-sm" />
                   </label>
                 </div>
+                <dl className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-stone-200 bg-stone-50 p-3 text-xs">
+                  {([["검토 상태", "review"], ["선정 여부", "selection"], ["제작 진행 상태", "production"]] as const).map(([label, key]) => (
+                    <div key={key}>
+                      <dt className="text-[11px] font-bold text-stone-400">{label}</dt>
+                      <dd className="mt-0.5 font-semibold text-stone-800">{labStatusStages(status)[key]}</dd>
+                    </div>
+                  ))}
+                </dl>
                 <label className="mt-3 grid gap-1 text-xs font-bold text-stone-600">관리자 메모 <span className="font-normal text-stone-400">(신청자에게 보이지 않습니다)</span>
                   <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={4} maxLength={5000} disabled={!canManage || saving}
                     placeholder="연락 내역, 선정 사유, 제작 메모 등" />
@@ -205,23 +213,25 @@ export const LabApplicationDetail = ({ applicationId, onClose, onChanged }: Prop
 
               <Section title="신청자 정보">
                 <DefinitionGrid items={[
-                  { label: "이름 · 닉네임", value: app.applicant_name },
+                  { label: "이름", value: app.applicant_name },
                   { label: "연락처", value: <a className="underline-offset-2 hover:underline" href={`tel:${app.phone}`}>{formatLabPhone(app.phone)}</a> },
                   { label: "이메일", value: app.email ? <a className="underline-offset-2 hover:underline" href={`mailto:${app.email}`}>{app.email}</a> : "-" },
-                  { label: "인스타그램", value: <a className="inline-flex items-center gap-1 underline-offset-2 hover:underline" href={`https://www.instagram.com/${app.instagram_id}/`} target="_blank" rel="noreferrer noopener">@{app.instagram_id}<ExternalLink className="h-3 w-3" /></a> },
+                  { label: "인스타그램", value: app.instagram_id ? <a className="inline-flex items-center gap-1 underline-offset-2 hover:underline" href={`https://www.instagram.com/${app.instagram_id}/`} target="_blank" rel="noreferrer noopener">@{app.instagram_id}<ExternalLink className="h-3 w-3" /></a> : "-" },
                   { label: "회원 여부", value: app.is_member ? "회원 신청" : "비회원 신청" },
                   { label: "보유 기한", value: dateOnly(app.retention_until) },
                 ]} />
               </Section>
 
-              <Section title="희망 의류 · 디자인">
+              <Section title="제작 희망 의류 · 신청 내용">
                 <DefinitionGrid items={[
                   { label: "희망 의류 종류", value: labGarmentText(app.garment_types, app.garment_type_other) },
-                  { label: "희망 사이즈", value: labSizeText(app.size, app.size_other) },
+                  { label: "제작 목적", value: labPurposeLabel(app.purpose) || "-" },
+                  { label: "향후 추가 생산 의향", value: labFutureProductionLabel(app.future_production) || "-" },
+                  ...(app.size ? [{ label: "희망 사이즈", value: labSizeText(app.size, app.size_other) }] : []),
                 ]} />
                 <p className="mt-4 text-[11px] font-bold text-stone-400">디자인 설명</p>
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-stone-800">{app.design_description}</p>
-                <p className="mt-4 text-[11px] font-bold text-stone-400">제작하고 싶은 이유</p>
+                <p className="mt-4 text-[11px] font-bold text-stone-400">제작 목적 상세</p>
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-stone-800">{app.reason || "-"}</p>
               </Section>
 

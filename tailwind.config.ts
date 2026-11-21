@@ -31,6 +31,12 @@ export default {
           light: "#902f43",
           dark: "#551220",
         },
+        // BRAND-ER LAB 전용 버건디(로고 원단 색). /lab 페이지에서만 쓴다.
+        lab: {
+          DEFAULT: "#7a0415",
+          dark: "#5c0310",
+          soft: "#f6e8ea",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

@@ -14,12 +14,15 @@ export type LabListRow = {
   applicant_name: string;
   phone: string;
   email: string | null;
-  instagram_id: string;
+  instagram_id: string | null;
   garment_types: string[];
   garment_type_other: string | null;
-  size: string;
+  size: string | null;
   size_other: string | null;
   design_description: string;
+  /** 2026-11-22 이전 신청은 없을 수 있다 */
+  purpose: string | null;
+  future_production: string | null;
   image_paths: string[];
   status: LabStatus;
   status_changed_at: string;

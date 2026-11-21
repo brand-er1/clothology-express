@@ -4,11 +4,11 @@ import {
 } from "../_shared/labApplication.ts";
 
 /**
- * BRAND-ER LAB 무료 의류 제작 신청 접수 (비회원 가능).
+ * BRAND-ER LAB 무료 샘플 제작 신청 접수 (로그인한 회원만 가능).
  *
  * 요청: multipart/form-data
- *   payload : JSON 문자열 { submissionKey, applicantName, phone, email, instagramId, garmentTypes, garmentTypeOther,
- *             designDescription, size, sizeOther, reason, consents: [{ key, version, agreed }] }
+ *   payload : JSON 문자열 { submissionKey, applicantName, phone, email, instagramId?, garmentTypes, garmentTypeOther,
+ *             designDescription, size?, sizeOther?, purpose, reason?, futureProduction?, consents: [{ key, version, agreed }] }
  *   images  : 참고 이미지 0~5개 (JPG · PNG · WEBP, 각 10MB 이하)
  *
  * 1) 입력 · 동의 · 이미지를 서버에서 다시 검증한다(파일 형식은 내용으로 판별).
@@ -45,7 +45,7 @@ const clientIp = (req: Request) =>
   ?? null;
 
 // lab_create_application 의 'LAB_<CODE>: 안내 문구' 오류를 HTTP 응답으로 바꾼다.
-const DB_ERROR_STATUS: Record<string, number> = { LAB_RATE_LIMITED: 429, LAB_DUPLICATE: 409, LAB_CONSENT: 400, LAB_INVALID: 400 };
+const DB_ERROR_STATUS: Record<string, number> = { LAB_RATE_LIMITED: 429, LAB_DUPLICATE: 409, LAB_CONSENT: 400, LAB_INVALID: 400, LAB_LOGIN_REQUIRED: 401 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -55,6 +55,14 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!supabaseUrl || !serviceKey) return fail(500, "CONFIG", "신청 서버 설정이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+  // 로그인한 회원만 신청할 수 있다. 비로그인 요청은 anon 키 토큰이라 사용자가 없다 → 401.
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const { data: authData } = token
+    ? await admin.auth.getUser(token).catch(() => ({ data: { user: null } }))
+    : { data: { user: null } };
+  const userId = authData?.user?.id ?? null;
+  if (!userId) return fail(401, "LOGIN_REQUIRED", "로그인한 회원만 신청할 수 있습니다. 로그인 후 다시 신청해주세요.");
 
   const declaredLength = Number(req.headers.get("content-length") ?? "0");
   if (declaredLength > MAX_REQUEST_BYTES) return fail(413, "TOO_LARGE", "첨부한 이미지 용량이 너무 큽니다. 이미지당 10MB, 최대 5장까지 올릴 수 있습니다.");
@@ -80,7 +88,7 @@ Deno.serve(async (req) => {
 
   // 이미 접수된 신청서(더블 클릭 · 응답 유실 후 재시도)는 이미지를 다시 올리지 않고 기존 결과를 돌려준다.
   const { data: existing, error: existingError } = await admin
-    .from("lab_applications").select("application_no, created_at").eq("submission_key", submissionKey).maybeSingle();
+    .from("lab_applications").select("application_no, created_at").eq("submission_key", submissionKey).eq("user_id", userId).maybeSingle();
   if (existingError) {
     console.error("lab: lookup failed", existingError.message);
     return fail(500, "SAVE_FAILED", "신청을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.");
@@ -104,14 +112,6 @@ Deno.serve(async (req) => {
     const type = detectLabImageType(bytes);
     if (!type) return fail(400, "IMAGES", "JPG · PNG · WEBP 이미지만 올릴 수 있습니다.");
     images.push({ bytes, type });
-  }
-
-  // 회원이 로그인한 채 신청했다면 계정을 연결한다(선택). 비회원은 anon 키 토큰이라 사용자 없음.
-  let userId: string | null = null;
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (token) {
-    const { data } = await admin.auth.getUser(token).catch(() => ({ data: { user: null } }));
-    userId = data?.user?.id ?? null;
   }
 
   const ip = clientIp(req);

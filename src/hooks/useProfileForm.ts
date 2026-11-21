@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { AuthFormData } from "@/types/auth";
+import { formatMobilePhone, MOBILE_PHONE_ERROR, normalizeMobilePhone } from "@/utils/phone";
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
@@ -100,6 +101,9 @@ export const useProfileForm = () => {
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user;
       if (!user) throw new Error("로그인이 필요합니다.");
+      // 전화번호는 필수 (비우거나 형식이 틀리면 저장하지 않는다)
+      const phoneDigits = normalizeMobilePhone(formData.phoneNumber);
+      if (!phoneDigits) throw new Error(MOBILE_PHONE_ERROR);
 
       const fullAddress = formData.addressDetail 
         ? `${formData.address} ${formData.addressDetail} (${formData.postcode})`
@@ -109,7 +113,7 @@ export const useProfileForm = () => {
         .from('profiles')
         .update({
           username: formData.username,
-          phone_number: formData.phoneNumber,
+          phone_number: formatMobilePhone(phoneDigits),
           address: fullAddress,
           height: formData.height ? Number(formData.height) : null,
           weight: formData.weight ? Number(formData.weight) : null,

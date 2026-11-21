@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildLabCsv, type LabExportRow } from "./lab-export";
 import { hasPermission, ROLE_PERMISSIONS } from "./admin/permissions";
-import { LAB_CONSENT_DOCUMENTS, LAB_CONSENT_VERSION } from "../../supabase/functions/_shared/labApplication";
+import { LAB_CONSENT_DOCUMENTS, LAB_CONSENT_VERSION, labStatusStages, validateLabApplication } from "../../supabase/functions/_shared/labApplication";
 
 // 화면에 보이는 동의 문구와 DB(lab_consent_documents)에 저장되는 문구가 같아야 동의 이력이 유효하다.
 const migrationsDir = resolve(__dirname, "../../supabase/migrations");
@@ -49,6 +49,8 @@ const row: LabExportRow = {
   size_other: "상의 XL",
   design_description: "검은색 후드티, \"큰\" 그래픽\n앞면 자수",
   reason: null,
+  purpose: "brand_launch",
+  future_production: "yes",
   image_count: 2,
   admin_memo: "-메모",
   retention_until: "2027-11-21T01:00:00Z",
@@ -79,7 +81,51 @@ describe("buildLabCsv", () => {
     expect(line).toContain("철회 2026-11-22 10:00");
   });
 
+  it("includes review / selection / production stages, purpose and future production intent", () => {
+    expect(header).toContain("검토 상태,선정 여부,제작 진행 상태");
+    expect(line).toContain("선정,검토 완료,선정,제작 대기");
+    expect(line).toContain("브랜드 창업 준비");
+    expect(line).toContain("추가 생산 의향 있음");
+  });
+
+  it("leaves optional legacy fields blank instead of printing null", () => {
+    const legacy = buildLabCsv([{ ...row, instagram_id: null, size: null, size_other: null, purpose: null, future_production: null }]);
+    expect(legacy).not.toContain("null");
+  });
+
   it("keeps multi-line descriptions inside one quoted cell", () => {
     expect(csv).toContain('"검은색 후드티, ""큰"" 그래픽\n앞면 자수"');
+  });
+});
+
+describe("BRAND-ER LAB form rules (v2)", () => {
+  const base = {
+    applicantName: "홍길동", phone: "010-1234-5678", email: "a@b.co", instagramId: "", garmentTypes: ["hoodie"], garmentTypeOther: "",
+    designDescription: "검은색 오버핏 후드티에 등판 그래픽", size: "", sizeOther: "", purpose: "personal", reason: "", futureProduction: "",
+  };
+
+  it("requires email and purpose, keeps instagram / size / future production optional", () => {
+    expect(validateLabApplication(base).ok).toBe(true);
+    const missing = validateLabApplication({ ...base, email: "", purpose: "" });
+    expect(missing.ok).toBe(false);
+    expect(Object.keys(missing.errors).sort()).toEqual(["email", "purpose"]);
+  });
+
+  it("maps a single status onto review / selection / production views", () => {
+    expect(labStatusStages("received")).toEqual({ review: "미검토", selection: "대기", production: "-" });
+    expect(labStatusStages("not_selected")).toEqual({ review: "검토 완료", selection: "미선정", production: "-" });
+    expect(labStatusStages("in_production")).toEqual({ review: "검토 완료", selection: "선정", production: "제작 진행 중" });
+  });
+});
+
+describe("phone helpers", () => {
+  it("accepts Korean mobile numbers and formats them", async () => {
+    const { normalizeMobilePhone, formatMobilePhone, isPhoneMissing } = await import("@/utils/phone");
+    expect(normalizeMobilePhone("010 1234 5678")).toBe("01012345678");
+    expect(normalizeMobilePhone("02-123-4567")).toBeNull();
+    expect(formatMobilePhone("01012345678")).toBe("010-1234-5678");
+    expect(isPhoneMissing("")).toBe(true);
+    expect(isPhoneMissing(null)).toBe(true);
+    expect(isPhoneMissing("010-1234-5678")).toBe(false);
   });
 });

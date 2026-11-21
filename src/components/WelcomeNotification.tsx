@@ -50,6 +50,9 @@ export const WelcomeNotification = () => {
         
         console.log("프로필 정보:", profile);
         
+        // 전화번호가 없으면 PhoneRequiredGate 가 먼저 등록 창을 띄우므로 여기서는 겹쳐 띄우지 않는다.
+        if (!profile?.phone_number) return;
+
         // 전화번호, 키, 몸무게 중 하나라도 비어있는지 확인
         const isMissingInfo = !isProfileComplete(profile);
         

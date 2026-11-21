@@ -190,7 +190,7 @@ export const SignUpForm = ({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="phoneNumber">전화번호</Label>
+        <Label htmlFor="phoneNumber">휴대폰 번호 <span className="text-xs font-medium text-brand">필수</span></Label>
         <Input
           id="phoneNumber"
           name="phoneNumber"
@@ -200,9 +200,11 @@ export const SignUpForm = ({
           value={formData.phoneNumber}
           onChange={handleChange}
           required
-          placeholder="010-0000-0000"
+          maxLength={16}
+          placeholder="010-1234-5678"
           className="h-12 rounded-xl bg-[#fbfaf8]"
         />
+        <p className="text-xs leading-5 text-stone-500">주문 · 제작 · 배송 안내 연락에 사용되며 공개되지 않습니다.</p>
       </div>
       <AddressFields
         formData={formData}

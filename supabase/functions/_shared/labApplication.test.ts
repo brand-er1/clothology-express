@@ -9,14 +9,16 @@ import {
 const valid = {
   applicantName: "  홍길동 ",
   phone: "010-1234-5678",
-  email: "",
+  email: " Gil@Example.com ",
   instagramId: "@Gil.Dong_",
   garmentTypes: ["hoodie", "hoodie"],
   garmentTypeOther: "무시됨",
   designDescription: "검은색 오버핏 후드티에 등판 그래픽",
   size: "L",
   sizeOther: "무시됨",
+  purpose: "brand_launch",
   reason: "",
+  futureProduction: "considering",
 };
 
 const consents = (overrides: Record<string, boolean> = {}) =>
@@ -28,14 +30,16 @@ Deno.test("normalizes a valid application for storage", () => {
   assertEquals(result.value, {
     applicantName: "홍길동",
     phone: "01012345678",
-    email: null,
+    email: "gil@example.com",
     instagramId: "gil.dong_",
     garmentTypes: ["hoodie"],
     garmentTypeOther: null,
     designDescription: "검은색 오버핏 후드티에 등판 그래픽",
     size: "L",
     sizeOther: null,
+    purpose: "brand_launch",
     reason: null,
+    futureProduction: "considering",
   });
 });
 
@@ -64,11 +68,30 @@ Deno.test("other garment type and other size require text", () => {
 });
 
 Deno.test("rejects unknown options and missing required fields", () => {
-  const result = validateLabApplication({ garmentTypes: ["cape"], size: "XXXL", designDescription: "짧음" });
+  const result = validateLabApplication({ garmentTypes: ["cape"], size: "XXXL", designDescription: "짧음", futureProduction: "maybe" });
   assert(!result.ok);
-  for (const field of ["applicantName", "phone", "instagramId", "garmentTypes", "designDescription", "size"]) {
+  for (const field of ["applicantName", "phone", "email", "garmentTypes", "designDescription", "size", "purpose", "futureProduction"]) {
     assert(field in result.errors, field);
   }
+  assert(!("instagramId" in result.errors), "instagram is optional");
+});
+
+Deno.test("instagram, size and future production are optional; an invalid instagram id is still rejected", () => {
+  const result = validateLabApplication({ ...valid, instagramId: "", size: "", sizeOther: "", futureProduction: "" });
+  assert(result.ok);
+  assertEquals(result.value.instagramId, null);
+  assertEquals(result.value.size, null);
+  assertEquals(result.value.futureProduction, null);
+  const bad = validateLabApplication({ ...valid, instagramId: "브랜더" });
+  assert(!bad.ok);
+  assert(bad.errors.instagramId);
+});
+
+Deno.test("purpose 'other' needs a short description", () => {
+  const missing = validateLabApplication({ ...valid, purpose: "other", reason: "" });
+  assert(!missing.ok);
+  assert(missing.errors.reason);
+  assert(validateLabApplication({ ...valid, purpose: "other", reason: "졸업 작품 전시용" }).ok);
 });
 
 Deno.test("optional marketing consent may be declined, required ones may not", () => {

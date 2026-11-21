@@ -15,7 +15,7 @@ export type AdminNavItem = {
   badge?: "lab_new";
 };
 
-// 메뉴 순서: 1 대시보드 · (BRAND-ER LAB 무료 제작 신청) · 2 회원 · 3 제작자 및 브랜드 · 4 펀딩 · 5 고객 문의 · 6 AI 디자인 · 7 주문 및 결제 · 8 리뷰,
+// 메뉴 순서: 1 대시보드 · (BRAND-ER LAB 샘플 신청 관리) · 2 회원 · 3 제작자 및 브랜드 · 4 펀딩 · 5 고객 문의 · 6 AI 디자인 · 7 주문 및 결제 · 8 리뷰,
 // 그 밖의 기존 운영 메뉴는 아래 그룹에 그대로 둔다(중복 메뉴 없음).
 export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
   { group: "대시보드", items: [
@@ -24,7 +24,7 @@ export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
   ] },
   // 운영팀이 매일 확인하는 신청함이라 대시보드 바로 아래에 둔다. 새 신청 건수 배지가 붙는다.
   { group: "BRAND-ER LAB", items: [
-    { path: "lab-applications", label: "무료 제작 신청", icon: FlaskConical, anyOf: ["lab.view"], badge: "lab_new" },
+    { path: "lab-applications", label: "LAB 샘플 신청 관리", icon: FlaskConical, anyOf: ["lab.view"], badge: "lab_new" },
   ] },
   { group: "회원 관리", items: [
     { path: "members", label: "회원 관리", icon: Users, anyOf: ["members.view"] },

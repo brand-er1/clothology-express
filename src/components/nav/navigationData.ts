@@ -71,7 +71,7 @@ export const getShopItems = (): NavLinkItem[] => [
 ];
 
 export const getDiscoverItems = (): NavLinkItem[] => [
-  { to: "/lab", label: "무료 의류 제작 신청" },
+  { to: "/lab", label: "BRAND-ER LAB" },
   { to: "/community", label: "매거진" },
   { to: "/portfolio", label: "제작 포트폴리오" },
 ];

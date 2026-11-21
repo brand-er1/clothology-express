@@ -11,12 +11,12 @@ import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { LabApplicationDetail } from "@/components/admin/lab/LabApplicationDetail";
 import { LAB_STATUS_TONE } from "@/components/admin/lab/labAdminFormat";
 import { dateOnly, dateTime, errorMessage } from "@/lib/admin/format";
-import { buildLabCsv, labGarmentText, labSizeText, type LabConsentSnapshot } from "@/lib/lab-export";
+import { buildLabCsv, labGarmentText, type LabConsentSnapshot } from "@/lib/lab-export";
 import { exportFileDate } from "@/lib/order-export";
 import {
   deleteLabApplications, exportLabApplications, listLabApplications, signLabImages, type LabListFilter, type LabListRow,
 } from "@/services/labAdmin";
-import { formatLabPhone, LAB_STATUSES, labStatusLabel, type LabStatus } from "../../../supabase/functions/_shared/labApplication";
+import { formatLabPhone, LAB_STATUSES, labPurposeLabel, labStatusLabel, type LabStatus } from "../../../supabase/functions/_shared/labApplication";
 
 const PAGE_SIZE = 30;
 
@@ -33,7 +33,7 @@ const ConsentCell = ({ consents, keys }: { consents: LabConsentSnapshot; keys: s
   );
 };
 
-/** BRAND-ER LAB 무료 의류 제작 신청 관리 */
+/** BRAND-ER LAB 무료 샘플 제작 신청 관리 */
 const LabApplicationsPage = () => {
   // 대시보드 카드 · 사이드바에서 ?status=received, ?retention=expired 로 바로 들어올 수 있다.
   const [searchParams] = useSearchParams();
@@ -107,8 +107,8 @@ const LabApplicationsPage = () => {
 
   return (
     <div>
-      <PageHeader eyebrow="BRAND-ER LAB" title="무료 제작 신청"
-        description="무료 의류 제작 프로젝트 신청 목록입니다. 상세에서 디자인 · 참고 이미지 · 동의 이력을 확인하고 상태와 메모를 관리합니다."
+      <PageHeader eyebrow="BRAND-ER LAB" title="LAB 샘플 신청 관리"
+        description="BRAND-ER LAB 무료 샘플 제작 신청 목록입니다. 일반 제작 문의와 따로 관리됩니다. 상세에서 신청 내용 · 참고 이미지 · 동의 이력을 확인하고 검토 · 선정 · 제작 진행 상태와 메모를 관리합니다."
         actions={<Button variant="outline" size="sm" onClick={() => void downloadCsv()} disabled={exporting}>
           {exporting ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}CSV 다운로드
         </Button>} />
@@ -154,7 +154,7 @@ const LabApplicationsPage = () => {
           <>
             <DataTable minWidth={1240} head={[
               canManage ? <input type="checkbox" aria-label="이 페이지 전체 선택" checked={allOnPageChecked} onChange={toggleAll} className="h-4 w-4 accent-[#741b2b]" /> : "",
-              "접수일", "상태", "신청자", "희망 의류 · 사이즈", "디자인 설명", "이미지", "촬영·게시 동의", "개인정보 동의", "보유 기한",
+              "접수일", "상태", "신청자", "희망 의류 · 제작 목적", "디자인 설명", "이미지", "촬영·게시 동의", "개인정보 동의", "보유 기한",
             ]}>
               {rows.map((row) => {
                 const expired = new Date(row.retention_until) <= new Date();
@@ -177,11 +177,12 @@ const LabApplicationsPage = () => {
                     <Td className="whitespace-nowrap text-xs">
                       <p className="font-semibold text-stone-800">{row.applicant_name}</p>
                       <p className="tabular-nums text-stone-500">{formatLabPhone(row.phone)}</p>
-                      <p className="text-stone-500">@{row.instagram_id}</p>
+                      {row.instagram_id && <p className="text-stone-500">@{row.instagram_id}</p>}
                     </Td>
                     <Td className="text-xs">
                       <p className="max-w-[180px] font-semibold text-stone-800">{labGarmentText(row.garment_types, row.garment_type_other)}</p>
-                      <p className="text-stone-500">{labSizeText(row.size, row.size_other)}</p>
+                      {row.purpose && <p className="text-stone-500">{labPurposeLabel(row.purpose)}</p>}
+                      {row.future_production === "yes" && <p className="mt-0.5 text-[10px] font-bold text-[#741b2b]">추가 생산 의향 있음</p>}
                     </Td>
                     <Td><p className="line-clamp-3 max-w-[280px] text-xs leading-5 text-stone-600">{row.design_description}</p></Td>
                     <Td>

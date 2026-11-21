@@ -1,17 +1,51 @@
-# BRAND-ER LAB 무료 의류 제작 신청
+# BRAND-ER LAB
 
-일반 고객이 만들고 싶은 옷을 신청하면 브랜더가 참여자를 선정해 의류 샘플을 무료로 제작하고, 과정을 인스타그램 릴스로 소개하는 프로젝트의 신청 · 관리 기능입니다.
+BRAND-ER 안에서 운영하는 별도 프로젝트(패션 콘텐츠 · 의류 제작 실험실)입니다. 자체 로고 · 톤을 쓰지만 헤더 · 푸터 · 회원 · 관리자 콘솔은 BRAND-ER와 공유합니다.
+
+- **LEARN** — 원단, GSM, 봉제, 프린팅, 샘플 제작 등 의류 지식 공유 (FASHION KNOWLEDGE 카드)
+- **CREATE / MAKE** — 신청자의 아이디어를 선정해 무료 샘플로 제작하고, 과정과 완성품을 콘텐츠로 소개
+
+무료 샘플 신청은 일반 제작 문의(`/design-quote`)와 별도 테이블(`lab_applications`)에 저장 · 관리됩니다.
+
+## 페이지 구성 (`/lab`)
+
+| # | 섹션 | 비고 |
+| --- | --- | --- |
+| 01 | 메인 화면 — 로고(`public/lab/brander-lab-logo-*.webp`), "당신의 상상이 옷이 되는 실험실." | 버튼: 무료 샘플 제작 신청하기 · BRAND-ER LAB 소개 |
+| 02 | WHAT IS BRAND-ER LAB? — LEARN · CREATE · MAKE | `#about` |
+| 03 | YOUR IDEA, OUR PRODUCTION. | 신청 버튼 → 신청서로 스크롤 |
+| 04 | 무료 샘플 제작 신청 폼 | `#apply`, `/lab/apply` 로 바로 진입 |
+| 05 | FASHION KNOWLEDGE — 카드 6개, 누르면 상세 창 | 내용: `src/components/lab/labContent.ts` |
+| 06 | HOW IT WORKS — 5단계 | 같은 파일의 `LAB_STEPS` |
+| 07 | 버건디 배경 마지막 신청 유도 | |
+| 모바일 | 하단 고정 신청 버튼 | 신청서가 보이는 동안 숨김 |
+
+### 지식 콘텐츠에 릴스 · 글 연결하기
+
+`labContent.ts` 의 각 항목에 `reelUrl`(인스타그램 릴스 주소)이나 `links`(사이트 내 글)를 넣으면 상세 창에 버튼이 생깁니다. 비워 두면 "관련 릴스 준비 중"으로 보입니다. 현재 연결된 링크는 실제로 있는 가이드(`/guides/printing.html`, `/guides/process.html`)뿐입니다.
+
+### 신청서 항목 (2026-11-22 v2)
+
+| 구분 | 항목 | 필수 |
+| --- | --- | --- |
+| 기본 정보 | 이름 · 연락처 · 이메일 | 필수 |
+| | 인스타그램 아이디 | 선택 |
+| 제작 정보 | 의류 종류 · 의류 설명 · 제작 목적(선택지) | 필수 |
+| | 참고 이미지(최대 5장) · 제작 목적 상세(목적이 '기타'면 필수) · 향후 추가 생산 의향 | 선택 |
+| 동의 | 참여 · 촬영 게시 · 개인정보(필수), 홍보 활용(선택) | |
+
+희망 사이즈는 신청서에서 뺐습니다(선정 후 개별 확인). 이전 신청의 사이즈 값은 관리자 화면에 그대로 보입니다.
 
 ## 구성
 
 | 구분 | 위치 | 설명 |
 | --- | --- | --- |
-| 신청 페이지 | `/lab` (`/free-making` 은 `/lab` 으로 이동) | `src/pages/BranderLab.tsx`, `src/components/lab/*`. 비회원 신청 가능 |
-| 진입점 | 메인 배너, 상단 메뉴, 모바일 전체 메뉴, 푸터 | `LabHomeBanner`, `Header`, `FullMenuSheet`, `Footer` |
+| 신청 페이지 | `/lab` (`/brander-lab`, `/free-making` 은 `/lab` 으로 이동) | `src/pages/BranderLab.tsx`, `src/components/lab/*`. 페이지는 누구나 볼 수 있고, **신청은 로그인한 회원만** 가능(비로그인 시 신청서 자리에 로그인 · 회원가입 안내, 로그인 후 `/lab/apply` 로 복귀) |
+| 진입점 | 메인 배너, 상단 메뉴 'BRAND-ER LAB', 모바일 전체 메뉴, 푸터 | `LabHomeBanner`, `Header`, `FullMenuSheet`, `Footer` |
 | 입력 규칙 · 동의 문구 | `supabase/functions/_shared/labApplication.ts` | 화면 · Edge Function · 테스트가 같이 쓰는 단일 기준 |
 | 접수 API | Edge Function `submit-lab-application` | 서버 재검증, 이미지 내용 검사, 중복 · 과다 신청 차단, 저장 실패 시 이미지 정리 |
-| DB | `supabase/migrations/20261121000000_brander_lab_applications.sql` | 신청서 · 동의 이력 · 촬영 세부 동의 · 처리 이력 · 비공개 이미지 버킷 · 관리자 RPC |
-| 관리자 | `/admin/lab-applications` (메뉴: BRAND-ER LAB → 무료 제작 신청) | 목록 · 검색 · 정렬 · 상태 · 메모 · 상세 · CSV · 동의 이력 · 보유 기간 · 삭제 |
+| DB | `supabase/migrations/20261121000000_brander_lab_applications.sql`, `20261122000000_brander_lab_v2_form.sql`(v2 항목 · 동의 버전) | 신청서 · 동의 이력 · 촬영 세부 동의 · 처리 이력 · 비공개 이미지 버킷 · 관리자 RPC |
+| 관리자 | `/admin/lab-applications` (메뉴: BRAND-ER LAB → LAB 샘플 신청 관리) | 목록 · 검색 · 정렬 · 상태 · 메모 · 상세 · CSV · 동의 이력 · 보유 기간 · 삭제. 상세 · CSV 에 검토 상태 / 선정 여부 / 제작 진행 상태, 제작 목적, 추가 생산 의향 표시 |
 
 ### 권한
 
@@ -24,6 +58,18 @@
 - 신청 테이블과 이미지 버킷(`lab-applications`, 비공개)은 일반 사용자 · 비회원이 직접 읽거나 쓸 수 없습니다. 신청자 본인도 다른 사람의 신청을 볼 수 없습니다.
 - 관리자 데이터는 모두 `admin_*` RPC 가 서버에서 권한을 다시 확인합니다. 이미지는 권한이 있는 관리자에게만 10분짜리 서명 URL 로 열립니다.
 - 상세 열람 · CSV 다운로드 · 변경 · 동의 기록 · 삭제는 Audit Log 에 남습니다(개인정보 접속 기록).
+
+### 로그인 필수
+
+- 화면: 비로그인 방문자에게는 신청서 대신 로그인 안내(`LoginGate`)를 보여줍니다.
+- Edge Function: 요청의 로그인 토큰으로 회원을 확인하고, 없으면 401(`LOGIN_REQUIRED`)로 거절합니다.
+- DB: `lab_create_application` 이 `p_user_id` 없이 호출되면 `LAB_LOGIN_REQUIRED` 로 거절합니다. 신청은 회원 계정(`user_id`)에 연결됩니다. (2026-11-22 이전 비회원 신청은 `user_id` 가 비어 있는 채로 남습니다)
+
+### 회원 전화번호 필수 (사이트 공통)
+
+- 이메일 회원가입: 휴대폰 번호 필수 · 형식 검사(010 등 한국 휴대폰), `010-1234-5678` 형태로 저장
+- 카카오 · 구글 가입 회원과 전화번호 없이 가입한 기존 회원: 로그인하면 닫을 수 없는 **전화번호 등록 창**(`PhoneRequiredGate`)이 뜹니다. 등록하거나 로그아웃할 수 있습니다.
+- 프로필 수정에서도 전화번호를 비우거나 형식이 틀리면 저장되지 않습니다.
 
 ### 중복 제출 · 오류 처리
 
@@ -58,7 +104,9 @@
 
 배포 후 확인
 
-- [ ] 비로그인 상태로 `/lab` 에서 이미지 1장과 함께 신청 → 완료 화면과 접수 번호
+- [ ] 비로그인 상태로 `/lab/apply` → 로그인 안내가 보이고 신청서는 보이지 않는지
+- [ ] 로그인 후 `/lab/apply` 에서 이미지 1장과 함께 신청 → 완료 화면과 접수 번호
+- [ ] 전화번호가 없는 계정(카카오 · 구글 가입)으로 로그인 → 전화번호 등록 창이 뜨고, 등록 후 닫히는지
 - [ ] `/admin/lab-applications` 에서 신청 · 이미지 · 동의 시각 확인, 상태 · 메모 변경, CSV 다운로드
 - [ ] CS 관리자 계정은 조회만 되는지, 일반 회원은 `/admin` 에서 막히는지
 
@@ -76,14 +124,14 @@ Cafe24 관리자 → 디자인 → 메인 화면 HTML 편집에서 원하는 위
   <p style="margin:0;font-size:11px;letter-spacing:.22em;color:#c999a4;font-weight:600;">BRAND-ER LAB</p>
   <h2 style="margin:14px 0 0;font-size:clamp(26px,5vw,40px);line-height:1.2;font-weight:600;letter-spacing:-.03em;">상상하던 옷, 브랜더가 만들어드립니다.</h2>
   <p style="max-width:520px;margin:16px auto 0;font-size:15px;line-height:1.75;color:#d6d3d1;">평소 만들고 싶었던 옷이 있으신가요? 원하는 디자인을 알려주세요. 선정된 분께 브랜더가 무료로 의류 샘플을 제작해드립니다.</p>
-  <a href="https://brand-er1.github.io/clothology-express/lab" style="display:inline-block;margin-top:28px;padding:16px 28px;background:#741b2b;color:#fff;font-size:15px;font-weight:600;text-decoration:none;border-radius:2px;">무료 제작 신청하기 →</a>
+  <a href="https://brand-er1.github.io/clothology-express/lab" style="display:inline-block;margin-top:28px;padding:16px 28px;background:#741b2b;color:#fff;font-size:15px;font-weight:600;text-decoration:none;border-radius:2px;">BRAND-ER LAB 바로가기 →</a>
 </section>
 ```
 
 상단 메뉴: Cafe24 관리자 → 디자인 → 메뉴(또는 레이아웃 HTML)에 링크를 추가합니다.
 
 ```html
-<li><a href="https://brand-er1.github.io/clothology-express/lab">무료 의류 제작 신청</a></li>
+<li><a href="https://brand-er1.github.io/clothology-express/lab">BRAND-ER LAB</a></li>
 ```
 
 ## 운영 전 법적 검토 항목

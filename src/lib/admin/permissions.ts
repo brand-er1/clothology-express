@@ -22,7 +22,8 @@ export type AdminPermission =
   | "admins.manage" | "audit.view"
   | "settings.view" | "settings.manage"
   | "legacy.tools" | "legacy.settings"
-  | "ai_usage.view";
+  | "ai_usage.view"
+  | "lab.view" | "lab.manage";
 
 const OPERATIONS: AdminPermission[] = [
   "dashboard.view",
@@ -38,6 +39,7 @@ const OPERATIONS: AdminPermission[] = [
   "notifications.send",
   "analytics.view",
   "legacy.tools",
+  "lab.view", "lab.manage",
 ];
 
 const CS: AdminPermission[] = [
@@ -49,6 +51,7 @@ const CS: AdminPermission[] = [
   "refunds.view", "refunds.request",
   "content.view", "reports.manage",
   "cs.view", "cs.manage",
+  "lab.view",
 ];
 
 const SUPER: AdminPermission[] = [
@@ -77,8 +80,8 @@ export const ROLE_LABEL: Record<AdminRole, string> = {
 
 export const ROLE_DESCRIPTION: Record<AdminRole, string> = {
   super_admin: "모든 관리자 기능, 관리자 계정·권한, 결제·정산, 시스템 설정",
-  operations_admin: "회원·제작자·브랜드·펀딩·주문·제작·배송·콘텐츠 운영과 운영 통계",
-  cs_admin: "회원·주문·배송 조회, 문의/신고 처리, 취소·환불 요청 접수",
+  operations_admin: "회원·제작자·브랜드·펀딩·주문·제작·배송·콘텐츠 운영, 무료 제작 신청 관리와 운영 통계",
+  cs_admin: "회원·주문·배송·무료 제작 신청 조회, 문의/신고 처리, 취소·환불 요청 접수",
 };
 
 export const hasPermission = (permissions: readonly string[] | undefined, permission: AdminPermission) =>

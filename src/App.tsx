@@ -25,6 +25,7 @@ import DesignQuote from './pages/DesignQuote';
 import Closet from './pages/Closet';
 import Portfolio from './pages/Portfolio';
 import QuickGroupWear from './pages/QuickGroupWear';
+import BranderLab from './pages/BranderLab';
 import { supabase } from './lib/supabase';
 import { claimGuestSession } from './services/designs';
 import { toast } from '@/components/ui/use-toast';
@@ -168,6 +169,9 @@ function App() {
             <Route path="/my-outfits" element={<Navigate to="/closet" replace />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
+            <Route path="/lab" element={<BranderLab />} />
+            <Route path="/lab/apply" element={<BranderLab />} />
+            <Route path="/free-making" element={<Navigate to="/lab" replace />} />
             <Route path="/magazine" element={<MagazineList />} />
             <Route path="/magazine/:slug" element={<MagazineArticle />} />
             <Route path="/fundings" element={<Fundings />} />

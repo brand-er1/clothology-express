@@ -1,5 +1,5 @@
 import {
-  BarChart3, BellRing, Building2, ClipboardList, Contact, CreditCard, Factory, Flag, Images, LayoutDashboard, Megaphone,
+  BarChart3, BellRing, Building2, ClipboardList, Contact, CreditCard, Factory, Flag, FlaskConical, Images, LayoutDashboard, Megaphone,
   MessageCircleQuestion, Newspaper, PackageCheck, Palette, ReceiptText, RotateCcw, ScrollText, Settings, ShieldCheck, Sparkles, Star, Truck, Users,
   WalletCards, Wrench,
 } from "lucide-react";
@@ -46,6 +46,9 @@ export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
   ] },
   { group: "리뷰 관리", items: [
     { path: "reviews", label: "리뷰 관리", icon: Star, anyOf: ["content.view"] },
+  ] },
+  { group: "BRAND-ER LAB", items: [
+    { path: "lab-applications", label: "무료 제작 신청", icon: FlaskConical, anyOf: ["lab.view"] },
   ] },
   { group: "풀필먼트", items: [
     { path: "production", label: "제작 관리", icon: Factory, anyOf: ["production.view"] },

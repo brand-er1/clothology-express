@@ -11,6 +11,7 @@ import { NewDropEventBanner, NEW_DROP_BRAND, useNewDropCountdown, useNewDropIds 
 import { FundingProductCard } from "@/components/funding/FundingProductCard";
 import { FundingSuccessShowcase } from "@/components/funding/FundingSuccessShowcase";
 import { Reveal, RevealImage } from "@/components/portfolio/ScrollReveal";
+import { LabHomeBanner } from "@/components/lab/LabHomeBanner";
 
 type CollectionItem = Pick<
   Funding,
@@ -252,6 +253,9 @@ const Index = () => {
         </section>
 
         <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
+
+        {/* BRAND-ER LAB — 무료 의류 제작 신청 진입 배너 */}
+        <LabHomeBanner />
 
         {/* NOW FUNDING — commerce grid set with an editorial stagger. */}
         <section

@@ -14,6 +14,7 @@ const siteLinks = [
   { to: "/customize", label: "디자인 시작하기" },
   { to: "/design-quote", label: "제작 견적" },
   { to: "/portfolio", label: "포트폴리오" },
+  { to: "/lab", label: "무료 의류 제작 신청" },
   { to: "/community", label: "매거진" },
 ];
 

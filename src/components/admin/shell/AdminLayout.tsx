@@ -6,9 +6,12 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { ROLE_LABEL } from "@/lib/admin/permissions";
 import { useAdminContext } from "./AdminContext";
-import { ADMIN_NAV } from "./navigation";
+import { ADMIN_NAV, type AdminNavItem } from "./navigation";
+import { useLabSummary } from "@/components/admin/lab/useLabSummary";
 
-const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
+type NavBadges = Partial<Record<NonNullable<AdminNavItem["badge"]>, number>>;
+
+const SidebarNav = ({ onNavigate, badges }: { onNavigate?: () => void; badges: NavBadges }) => {
   const { can } = useAdminContext();
   return (
     <nav className="grid gap-3" aria-label="관리자 메뉴">
@@ -22,15 +25,28 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
               <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">{group.group}</p>
             )}
             <div className="grid gap-0.5">
-              {items.map(({ path, label, icon: Icon }) => (
+              {items.map(({ path, label, icon: Icon, badge }) => {
+                const count = badge ? badges[badge] ?? 0 : 0;
+                return (
                 <NavLink key={path} to={path ? `/admin/${path}` : "/admin"} end={!path} onClick={onNavigate}
                   className={({ isActive }) => cn(
                     "flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition",
                     isActive ? "bg-[#741b2b] text-white shadow-sm" : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
                   )}>
-                  <Icon className="h-4 w-4 shrink-0" />{label}
+                  {({ isActive }) => (
+                    <>
+                      <Icon className="h-4 w-4 shrink-0" />{label}
+                      {count > 0 && (
+                        <span aria-label={`새 신청 ${count}건`} className={cn(
+                          "ml-auto min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[10px] font-black tabular-nums",
+                          isActive ? "bg-white text-[#741b2b]" : "bg-[#741b2b] text-white",
+                        )}>{count > 99 ? "99+" : count}</span>
+                      )}
+                    </>
+                  )}
                 </NavLink>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
@@ -53,6 +69,8 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
   const { context } = useAdminContext();
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const labSummary = useLabSummary();
+  const badges: NavBadges = { lab_new: labSummary?.new_count ?? 0 };
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -63,7 +81,7 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
     <div className="min-h-screen bg-[#f6f3ef] text-stone-900">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-stone-200/80 bg-white lg:flex">
         <div className="flex h-16 items-center border-b border-stone-100"><Brand /></div>
-        <div className="flex-1 overflow-y-auto px-3 py-4"><SidebarNav /></div>
+        <div className="flex-1 overflow-y-auto px-3 py-4"><SidebarNav badges={badges} /></div>
         <div className="border-t border-stone-100 p-3 text-xs text-stone-500">
           <Link to="/" className="flex items-center gap-1 rounded-lg px-2 py-1.5 font-semibold hover:bg-stone-100">서비스 화면으로 <ArrowUpRight className="h-3.5 w-3.5" /></Link>
         </div>
@@ -73,7 +91,7 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
         <SheetContent side="left" className="w-72 overflow-y-auto p-0">
           <SheetTitle className="sr-only">관리자 메뉴</SheetTitle>
           <div className="flex h-16 items-center border-b border-stone-100"><Brand /></div>
-          <div className="px-3 py-4"><SidebarNav onNavigate={() => setOpen(false)} /></div>
+          <div className="px-3 py-4"><SidebarNav badges={badges} onNavigate={() => setOpen(false)} /></div>
         </SheetContent>
       </Sheet>
 

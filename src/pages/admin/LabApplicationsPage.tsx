@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ArrowDownUp, Download, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -34,7 +35,17 @@ const ConsentCell = ({ consents, keys }: { consents: LabConsentSnapshot; keys: s
 
 /** BRAND-ER LAB 무료 의류 제작 신청 관리 */
 const LabApplicationsPage = () => {
-  const [filter, setFilter] = useState<LabListFilter>({ status: "all", search: "", sort: "newest", retention: "all" });
+  // 대시보드 카드 · 사이드바에서 ?status=received, ?retention=expired 로 바로 들어올 수 있다.
+  const [searchParams] = useSearchParams();
+  const [filter, setFilter] = useState<LabListFilter>(() => {
+    const status = searchParams.get("status");
+    return {
+      status: LAB_STATUSES.some((item) => item.value === status) ? status as LabStatus : "all",
+      search: "",
+      sort: "newest",
+      retention: searchParams.get("retention") === "expired" ? "expired" : "all",
+    };
+  });
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [checked, setChecked] = useState<Record<string, LabListRow>>({});

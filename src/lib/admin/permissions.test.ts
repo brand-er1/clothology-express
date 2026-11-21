@@ -45,8 +45,9 @@ describe("admin RBAC matrix", () => {
 
   it("new customer-data menus follow the requested order and permissions", () => {
     const order = ADMIN_NAV.map((g) => g.group);
-    expect(order.slice(0, 8)).toEqual([
-      "대시보드", "회원 관리", "제작자 및 브랜드 관리", "펀딩 관리", "고객 문의 관리", "AI 디자인 관리", "주문 및 결제 관리", "리뷰 관리",
+    // BRAND-ER LAB 신청함은 매일 확인하도록 대시보드 바로 아래에 둔다.
+    expect(order.slice(0, 9)).toEqual([
+      "대시보드", "BRAND-ER LAB", "회원 관리", "제작자 및 브랜드 관리", "펀딩 관리", "고객 문의 관리", "AI 디자인 관리", "주문 및 결제 관리", "리뷰 관리",
     ]);
     // 메뉴 경로는 중복되지 않는다
     const paths = ADMIN_NAV.flatMap((g) => g.items).map((i) => i.path);

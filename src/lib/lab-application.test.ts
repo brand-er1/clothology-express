@@ -117,3 +117,15 @@ describe("BRAND-ER LAB form rules (v2)", () => {
     expect(labStatusStages("in_production")).toEqual({ review: "검토 완료", selection: "선정", production: "제작 진행 중" });
   });
 });
+
+describe("phone helpers", () => {
+  it("accepts Korean mobile numbers and formats them", async () => {
+    const { normalizeMobilePhone, formatMobilePhone, isPhoneMissing } = await import("@/utils/phone");
+    expect(normalizeMobilePhone("010 1234 5678")).toBe("01012345678");
+    expect(normalizeMobilePhone("02-123-4567")).toBeNull();
+    expect(formatMobilePhone("01012345678")).toBe("010-1234-5678");
+    expect(isPhoneMissing("")).toBe(true);
+    expect(isPhoneMissing(null)).toBe(true);
+    expect(isPhoneMissing("010-1234-5678")).toBe(false);
+  });
+});

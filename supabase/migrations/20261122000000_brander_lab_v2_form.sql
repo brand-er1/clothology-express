@@ -7,6 +7,7 @@
 --  * 제작 목적(purpose, 필수 선택지) · 향후 추가 생산 의향(future_production, 선택) 추가
 --    기존 reason 컬럼은 '제작 목적 상세'로 쓴다.
 --  * 개인정보 수집 항목이 바뀌어 동의 문구 버전을 2026-11-22.v1 로 올린다(이전 버전 행은 그대로 보관).
+--  * 로그인한 회원만 신청할 수 있다(p_user_id 필수). 기존 비회원 신청은 user_id 가 비어 있는 채로 남는다.
 
 -- ---------------------------------------------------------------------------
 -- 1. 신청서 컬럼 · 제약
@@ -104,9 +105,12 @@ begin
   if v_key is null then
     raise exception 'LAB_INVALID: 신청서 식별값이 올바르지 않습니다.';
   end if;
+  if p_user_id is null then
+    raise exception 'LAB_LOGIN_REQUIRED: 로그인한 회원만 신청할 수 있습니다.';
+  end if;
 
   -- 같은 신청서를 다시 보낸 경우(더블 클릭 · 네트워크 재시도) 기존 접수 결과를 돌려준다.
-  select * into v_existing from public.lab_applications where submission_key = v_key;
+  select * into v_existing from public.lab_applications where submission_key = v_key and user_id = p_user_id;
   if found then
     return jsonb_build_object('id', v_existing.id, 'application_no', v_existing.application_no,
       'created_at', v_existing.created_at, 'duplicate', true);
@@ -195,7 +199,7 @@ begin
       raise exception 'LAB_INVALID: 입력값을 다시 확인해주세요. (%)', sqlerrm;
     when unique_violation then
       -- 같은 submission_key 가 동시에 두 번 들어온 경우
-      select * into v_existing from public.lab_applications where submission_key = v_key;
+      select * into v_existing from public.lab_applications where submission_key = v_key and user_id = p_user_id;
       if found then
         return jsonb_build_object('id', v_existing.id, 'application_no', v_existing.application_no,
           'created_at', v_existing.created_at, 'duplicate', true);

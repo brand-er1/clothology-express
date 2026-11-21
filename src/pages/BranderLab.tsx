@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { AlertCircle, ArrowDown, ArrowRight, BookOpen, Check, Loader2, PenTool, Shirt } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowRight, BookOpen, Check, Loader2, Lock, PenTool, Shirt } from "lucide-react";
 import { Header } from "@/components/Header";
 import { LabConsentPanel, emptyLabConsents, type LabConsentState } from "@/components/lab/LabConsentPanel";
 import { LabImagePicker, type LabPickedImage } from "@/components/lab/LabImagePicker";
@@ -8,6 +8,7 @@ import { LabKnowledgeSection } from "@/components/lab/LabKnowledgeSection";
 import { LAB_STEPS } from "@/components/lab/labContent";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { LabSubmitError, submitLabApplication, type LabSubmitResult } from "@/services/labApplications";
 import { getAppPath, getAppUrl } from "@/utils/appUrl";
@@ -120,6 +121,30 @@ const ApplyButton = ({ tone = "lab", className, onClick }: { tone?: "lab" | "lig
   </a>
 );
 
+const APPLY_RETURN_TO = encodeURIComponent("/lab/apply");
+
+/** 비로그인 방문자에게 신청서 대신 보여준다. 로그인 · 회원가입 후 신청서(/lab/apply)로 돌아온다. */
+const LoginGate = () => (
+  <div className="flex flex-col items-center px-2 py-10 text-center sm:py-14">
+    <span className="lab-stitch-card lab-stitch-light flex h-16 w-16 items-center justify-center rounded-[16px] bg-lab text-white"><Lock className="h-7 w-7" strokeWidth={1.6} /></span>
+    <h3 className="mt-6 text-[22px] font-bold tracking-[-0.03em] sm:text-[26px]">로그인 후 신청할 수 있어요</h3>
+    <p className="mt-3 max-w-md text-[14.5px] leading-7 text-stone-600">
+      BRAND-ER LAB 무료 샘플 제작은 BRAND-ER 회원을 대상으로 진행합니다.<br className="hidden sm:inline" />
+      로그인하면 이 신청서로 바로 돌아옵니다.
+    </p>
+    <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+      <Link to={`/auth?mode=login&returnTo=${APPLY_RETURN_TO}`}
+        className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-lab px-8 text-[15px] font-bold text-white transition hover:bg-lab-dark">
+        로그인하고 신청하기 <ArrowRight className="h-4 w-4" />
+      </Link>
+      <Link to={`/auth?mode=signup&returnTo=${APPLY_RETURN_TO}`}
+        className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-lab/30 px-8 text-[15px] font-bold text-lab transition hover:border-lab hover:bg-lab-soft">
+        회원가입
+      </Link>
+    </div>
+  </div>
+);
+
 // ---------------------------------------------------------------------------
 // 신청 완료
 // ---------------------------------------------------------------------------
@@ -160,7 +185,8 @@ const Complete = ({ result }: { result: LabSubmitResult }) => (
 /**
  * BRAND-ER LAB (/lab, 별칭 /brander-lab).
  * BRAND-ER 안에서 운영하는 패션 콘텐츠 · 의류 제작 실험 프로젝트 페이지. 공통 헤더 · 푸터를 그대로 쓰고,
- * 무료 샘플 제작 신청은 일반 제작 문의와 따로 lab_applications 에 저장된다(비회원 신청 가능).
+ * 무료 샘플 제작 신청은 일반 제작 문의와 따로 lab_applications 에 저장된다. 신청은 로그인한 회원만 할 수 있다
+ * (소개 · 지식 콘텐츠는 누구나 볼 수 있고, 비로그인 방문자에게는 신청서 자리에 로그인 안내가 나온다).
  */
 const BranderLab = () => {
   const [input, setInput] = useState<LabApplicationInput>(emptyInput);
@@ -173,9 +199,12 @@ const BranderLab = () => {
   const [serverErrors, setServerErrors] = useState<Partial<Record<LabApplicationField, string>>>({});
   const [result, setResult] = useState<LabSubmitResult | null>(null);
   const [formVisible, setFormVisible] = useState(false);
+  // undefined: 확인 중, null: 비로그인
+  const [userId, setUserId] = useState<string | null | undefined>(undefined);
   // 신청서 하나에 고정된 키. 응답을 놓쳐 다시 보내도 서버가 한 건으로 처리한다.
   const submissionKey = useRef(newSubmissionKey());
   const formRef = useRef<HTMLFormElement>(null);
+  const applyRef = useRef<HTMLElement>(null);
   const stickyCtaRef = useMobileStickyCtaOffset();
 
   useDocumentMeta({
@@ -185,21 +214,35 @@ const BranderLab = () => {
     url: getAppUrl("/lab"),
   });
 
+  // 로그인 상태. 로그인하면 계정 이메일을 신청서 이메일 칸에 미리 채운다(비어 있을 때만).
+  useEffect(() => {
+    let active = true;
+    const apply = (session: { user: { id: string; email?: string | null } } | null) => {
+      if (!active) return;
+      setUserId(session?.user.id ?? null);
+      const email = session?.user.email;
+      if (email) setInput((current) => (current.email ? current : { ...current, email }));
+    };
+    supabase.auth.getSession().then(({ data }) => apply(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => apply(session));
+    return () => { active = false; subscription.unsubscribe(); };
+  }, []);
+
   // 바로가기 링크(/lab/apply, /lab#apply)로 들어오면 소개를 건너뛰고 신청서 위치에서 시작한다.
   const location = useLocation();
   const directToForm = location.pathname.replace(/\/$/, "").endsWith("/apply") || location.hash === "#apply";
   useEffect(() => {
     if (!directToForm) return;
     const frame = window.requestAnimationFrame(() => {
-      formRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start" });
+      applyRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [directToForm]);
+  }, [directToForm, userId]);
   useEffect(() => { if (result) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); }, [result]);
 
   // 신청서가 화면에 보이는 동안에는 모바일 고정 신청 버튼을 숨긴다.
   useEffect(() => {
-    const form = formRef.current;
+    const form = applyRef.current;
     if (!form || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(([entry]) => setFormVisible(entry.isIntersecting), { rootMargin: "0px 0px -15% 0px" });
     observer.observe(form);
@@ -337,7 +380,7 @@ const BranderLab = () => {
                   </div>
                   <ApplyButton onClick={goApply} className="mt-8 w-full sm:w-auto" />
                   <ul className="mt-8 grid gap-2 text-[13px] leading-6 text-stone-500">
-                    <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />신청 비용 없음 · 비회원도 신청 가능</li>
+                    <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />신청 비용 없음 · BRAND-ER 회원 로그인 후 신청</li>
                     <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />선정된 신청자에게 의류 샘플 제작 지원</li>
                     <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />선정 여부와 일정은 개별 안내</li>
                   </ul>
@@ -346,14 +389,19 @@ const BranderLab = () => {
             </section>
 
             {/* SECTION 04 — 무료 샘플 제작 신청 폼 */}
-            <section aria-labelledby="lab-apply-title" className="bg-[#f4f2f1] py-16 sm:py-24">
-              <form ref={formRef} id="apply" onSubmit={handleSubmit} noValidate className="page-shell scroll-mt-20">
+            <section ref={applyRef} id="apply" aria-labelledby="lab-apply-title" className="scroll-mt-16 bg-[#f4f2f1] py-16 sm:py-24">
+              <div className="page-shell">
                 <div className="mx-auto max-w-3xl">
                   <p className="eyebrow text-lab">04 · Apply</p>
                   <h2 id="lab-apply-title" className="mt-4 text-[clamp(1.8rem,3.4vw,2.6rem)] font-extrabold tracking-[-0.04em]">무료 샘플 제작 신청</h2>
                   <p className="mt-3 text-[14.5px] leading-7 text-stone-600">일반 의류 제작 문의는 <Link to="/design-quote" className="font-semibold text-lab underline underline-offset-4">제작 견적</Link>에서 따로 받고 있습니다. 이 신청서는 BRAND-ER LAB 무료 샘플 프로젝트 전용입니다.</p>
 
-                  <div className="mt-12 space-y-14 rounded-[22px] bg-white p-5 sm:p-10">
+                  {userId === undefined ? (
+                    <div className="mt-12 flex justify-center rounded-[22px] bg-white py-16"><Loader2 className="h-6 w-6 animate-spin text-lab" aria-label="로그인 상태 확인 중" /></div>
+                  ) : userId === null ? (
+                    <div className="mt-12 rounded-[22px] bg-white p-5 sm:p-10"><LoginGate /></div>
+                  ) : (
+                  <form ref={formRef} onSubmit={handleSubmit} noValidate className="mt-12 space-y-14 rounded-[22px] bg-white p-5 sm:p-10">
                     {/* 기본 정보 */}
                     <section className="space-y-6">
                       <FormGroupTitle index="STEP 01" title="기본 정보" description="선정 결과와 일정 안내를 위해 연락드릴 정보입니다. 공개되지 않습니다." />
@@ -465,9 +513,10 @@ const BranderLab = () => {
                       )}
                       <p className="mt-3 text-[12.5px] leading-6 text-stone-400">신청은 무료이며 결제가 발생하지 않습니다. 신청이 곧 무료 샘플 제작 확정을 의미하지는 않습니다.</p>
                     </section>
-                  </div>
+                  </form>
+                  )}
                 </div>
-              </form>
+              </div>
             </section>
 
             {/* SECTION 05 — 의류 지식 콘텐츠 */}

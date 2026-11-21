@@ -171,6 +171,8 @@ function App() {
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
             <Route path="/lab" element={<BranderLab />} />
             <Route path="/lab/apply" element={<BranderLab />} />
+            <Route path="/brander-lab" element={<Navigate to="/lab" replace />} />
+            <Route path="/brander-lab/apply" element={<Navigate to="/lab/apply" replace />} />
             <Route path="/free-making" element={<Navigate to="/lab" replace />} />
             <Route path="/magazine" element={<MagazineList />} />
             <Route path="/magazine/:slug" element={<MagazineArticle />} />

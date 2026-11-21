@@ -15,7 +15,7 @@ export const LabSummaryCard = () => {
         <span className="min-w-0">
           <span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#741b2b]">BRAND-ER LAB</span>
           <span className="block text-base font-extrabold tracking-[-0.02em] text-stone-900 sm:text-lg">
-            새 무료 제작 신청 <span className={hasNew ? "text-[#741b2b]" : "text-stone-400"}>{num(summary.new_count)}건</span>
+            새 LAB 샘플 신청 <span className={hasNew ? "text-[#741b2b]" : "text-stone-400"}>{num(summary.new_count)}건</span>
           </span>
           <span className="block text-xs text-stone-500">{hasNew ? "아직 검토하지 않은 '신청 접수' 상태의 신청입니다." : "검토를 기다리는 신청이 없습니다."}</span>
         </span>

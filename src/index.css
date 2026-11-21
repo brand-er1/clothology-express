@@ -299,6 +299,24 @@
     transform: translateX(4px);
   }
 
+  /* BRAND-ER LAB: 로고의 봉제선(스티치) 디테일을 카드 · 버튼 안쪽 점선으로 표현한다. */
+  .lab-stitch-card {
+    position: relative;
+  }
+  .lab-stitch-card::after {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 1.5px dashed rgba(122, 4, 21, 0.18);
+    border-radius: 12px;
+    pointer-events: none;
+    transition: border-color 300ms ease;
+  }
+  .lab-stitch-card:hover::after,
+  .lab-stitch-light::after {
+    border-color: rgba(255, 255, 255, 0.55);
+  }
+
   /* Image that settles slightly larger on hover of its .group parent. */
   .img-zoom {
     transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);

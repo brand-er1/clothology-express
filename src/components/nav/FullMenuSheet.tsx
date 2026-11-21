@@ -132,7 +132,7 @@ export const FullMenuSheet = ({
             </Accordion>
             <BigNavLink to="/portfolio" label="포트폴리오" onNavigate={close} />
             <BigNavLink to="/community" label="매거진" onNavigate={close} />
-            <BigNavLink to="/lab" label="무료 의류 제작 신청" onNavigate={close} />
+            <BigNavLink to="/lab" label="BRAND-ER LAB" onNavigate={close} />
             {isAuthenticated ? (
               <Accordion type="single" collapsible>
                 <AccordionSection value="my" title="MY" items={myItems} onNavigate={close} />

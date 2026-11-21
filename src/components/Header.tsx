@@ -83,6 +83,7 @@ export const Header = () => {
           <MakeMegaMenu items={makeItems} />
           <NavLink to="/portfolio" className={navLinkClassName}>포트폴리오</NavLink>
           <NavLink to="/community" className={navLinkClassName}>매거진</NavLink>
+          <NavLink to="/lab" className={navLinkClassName}>무료 의류 제작 신청</NavLink>
         </nav>
         <div className="ml-auto hidden items-center gap-5 md:flex lg:gap-6" data-tutorial="header-account">
           <DropdownMenu>

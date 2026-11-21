@@ -33,6 +33,7 @@ const AiDesignsPage = lazyWithReload(() => import("./AiDesignsPage"));
 const ReviewsPage = lazyWithReload(() => import("./ReviewsPage"));
 const MagazinePage = lazyWithReload(() => import("./MagazinePage"));
 const ProductionRequestsPage = lazyWithReload(() => import("./ProductionRequestsPage"));
+const LabApplicationsPage = lazyWithReload(() => import("./LabApplicationsPage"));
 
 // 메뉴 가드는 UX 용이다. 실제 데이터 접근은 각 RPC 가 서버에서 다시 거부한다.
 const Guard = ({ anyOf, children }: { anyOf: AdminPermission[]; children: ReactNode }) => {
@@ -74,6 +75,7 @@ const AdminRoutes = () => {
           <Route path="reviews" element={<Guard anyOf={["content.view"]}><ReviewsPage /></Guard>} />
           <Route path="production-requests" element={<Guard anyOf={["orders.view"]}><ProductionRequestsPage /></Guard>} />
           <Route path="orders" element={<Guard anyOf={["orders.view"]}><OrdersPage /></Guard>} />
+          <Route path="lab-applications" element={<Guard anyOf={["lab.view"]}><LabApplicationsPage /></Guard>} />
           <Route path="buyers" element={<Guard anyOf={["orders.pii"]}><BuyersPage /></Guard>} />
           <Route path="payments" element={<Guard anyOf={["payments.view"]}><PaymentsPage /></Guard>} />
           <Route path="refunds" element={<Guard anyOf={["refunds.view"]}><RefundsPage /></Guard>} />

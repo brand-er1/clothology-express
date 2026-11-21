@@ -84,3 +84,6 @@ verify_jwt = true
 verify_jwt = true
 [functions.generate-product-shot]
 verify_jwt = true
+# BRAND-ER LAB 무료 의류 제작 신청: 비회원은 anon 키 JWT 로 호출한다(서버에서 service_role 로 저장).
+[functions.submit-lab-application]
+verify_jwt = true

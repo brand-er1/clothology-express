@@ -108,6 +108,7 @@ jobs:
           supabase functions deploy generate-product-shot --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy get-fashion-trends --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
           supabase functions deploy fetch-article-meta --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy submit-lab-application --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Allow GitHub Pages auth callback
         continue-on-error: true

@@ -1,0 +1,88 @@
+// BRAND-ER LAB 신청 검증 단위 테스트.
+// 실행: deno test --no-lock --allow-net=jsr.io supabase/functions/_shared/labApplication.test.ts
+
+import { assert, assertEquals } from "jsr:@std/assert@1";
+import {
+  detectLabImageType, LAB_CONSENT_DOCUMENTS, normalizeInstagramId, normalizeLabPhone, validateLabApplication, validateLabConsents,
+} from "./labApplication.ts";
+
+const valid = {
+  applicantName: "  홍길동 ",
+  phone: "010-1234-5678",
+  email: "",
+  instagramId: "@Gil.Dong_",
+  garmentTypes: ["hoodie", "hoodie"],
+  garmentTypeOther: "무시됨",
+  designDescription: "검은색 오버핏 후드티에 등판 그래픽",
+  size: "L",
+  sizeOther: "무시됨",
+  reason: "",
+};
+
+const consents = (overrides: Record<string, boolean> = {}) =>
+  LAB_CONSENT_DOCUMENTS.map((doc) => ({ key: doc.key, version: doc.version, agreed: overrides[doc.key] ?? true }));
+
+Deno.test("normalizes a valid application for storage", () => {
+  const result = validateLabApplication(valid);
+  assert(result.ok);
+  assertEquals(result.value, {
+    applicantName: "홍길동",
+    phone: "01012345678",
+    email: null,
+    instagramId: "gil.dong_",
+    garmentTypes: ["hoodie"],
+    garmentTypeOther: null,
+    designDescription: "검은색 오버핏 후드티에 등판 그래픽",
+    size: "L",
+    sizeOther: null,
+    reason: null,
+  });
+});
+
+Deno.test("instagram id is accepted with or without @ and as a profile URL", () => {
+  assertEquals(normalizeInstagramId("brand_er"), "brand_er");
+  assertEquals(normalizeInstagramId("@brand_er"), "brand_er");
+  assertEquals(normalizeInstagramId(" @@Brand.ER "), "brand.er");
+  assertEquals(normalizeInstagramId("https://www.instagram.com/brand.er/?hl=ko"), "brand.er");
+  assertEquals(normalizeInstagramId("brand..er"), null);
+  assertEquals(normalizeInstagramId(".brand"), null);
+  assertEquals(normalizeInstagramId("브랜더"), null);
+  assertEquals(normalizeInstagramId("a".repeat(31)), null);
+});
+
+Deno.test("phone accepts Korean mobile numbers only", () => {
+  assertEquals(normalizeLabPhone("+82 10-1234-5678"), "01012345678");
+  assertEquals(normalizeLabPhone("011-123-4567"), "0111234567");
+  assertEquals(normalizeLabPhone("02-123-4567"), null);
+});
+
+Deno.test("other garment type and other size require text", () => {
+  const result = validateLabApplication({ ...valid, garmentTypes: ["other"], garmentTypeOther: "", size: "OTHER", sizeOther: " " });
+  assert(!result.ok);
+  assert(result.errors.garmentTypeOther);
+  assert(result.errors.sizeOther);
+});
+
+Deno.test("rejects unknown options and missing required fields", () => {
+  const result = validateLabApplication({ garmentTypes: ["cape"], size: "XXXL", designDescription: "짧음" });
+  assert(!result.ok);
+  for (const field of ["applicantName", "phone", "instagramId", "garmentTypes", "designDescription", "size"]) {
+    assert(field in result.errors, field);
+  }
+});
+
+Deno.test("optional marketing consent may be declined, required ones may not", () => {
+  assert(validateLabConsents(consents({ marketing: false })).ok);
+  assert(!validateLabConsents(consents({ filming: false })).ok);
+  assert(!validateLabConsents(consents().slice(1)).ok);
+  assert(!validateLabConsents(consents().map((c) => ({ ...c, version: "old" }))).ok);
+  assert(!validateLabConsents([...consents(), consents()[0]]).ok);
+});
+
+Deno.test("image type is detected from content, not the name", () => {
+  assertEquals(detectLabImageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0])), "image/jpeg");
+  assertEquals(detectLabImageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), "image/png");
+  assertEquals(detectLabImageType(new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 ")), "image/webp");
+  assertEquals(detectLabImageType(new TextEncoder().encode("<svg onload=alert(1)>")), null);
+  assertEquals(detectLabImageType(new TextEncoder().encode("GIF89a")), null);
+});

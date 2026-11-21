@@ -10,6 +10,7 @@ import { PeriodFilter, usePeriod } from "@/components/admin/shell/PeriodFilter";
 import { TrendChart } from "@/components/admin/shell/TrendChart";
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { useAdminContext } from "@/components/admin/shell/AdminContext";
+import { LabSummaryCard } from "@/components/admin/lab/LabSummaryCard";
 
 const DashboardPage = () => {
   const periodState = usePeriod("30d");
@@ -42,6 +43,7 @@ const DashboardPage = () => {
       {error && <ErrorBanner message={error} onRetry={reload} />}
       {loading && !data ? <LoadingBlock /> : data && (
         <div className="grid gap-5">
+          <LabSummaryCard />
           {todo.length > 0 && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
               {todo.map(({ label, value, to, icon: Icon }) => (

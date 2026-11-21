@@ -125,3 +125,8 @@ export async function deleteLabApplications(rows: { id: string; image_paths: str
   }
   return { deleted: rows.length };
 }
+
+export type LabSummary = { new_count: number; today_count: number; total_count: number; expired_count: number };
+
+/** 사이드바 배지 · 대시보드 카드용 건수(개인정보 없음). */
+export const getLabSummary = () => adminRpc<LabSummary>("admin_lab_application_summary");

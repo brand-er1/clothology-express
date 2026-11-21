@@ -65,7 +65,8 @@
 ## 기존 웹사이트(brand-er.store, Cafe24) 연결
 
 신청 페이지 주소: `https://brand-er1.github.io/clothology-express/lab`
-(커스텀 도메인을 연결했다면 그 도메인 + `/lab`)
+신청서 바로가기: `https://brand-er1.github.io/clothology-express/lab/apply` — 소개를 건너뛰고 신청서 첫 칸에서 시작합니다. 인스타그램 프로필 링크 · 릴스 캡션 · DM 안내에 쓰세요. (`/lab#apply` 도 같습니다)
+(커스텀 도메인을 연결했다면 그 도메인 + `/lab`, `/lab/apply`)
 
 Cafe24 관리자 → 디자인 → 메인 화면 HTML 편집에서 원하는 위치에 아래 배너를 넣습니다.
 

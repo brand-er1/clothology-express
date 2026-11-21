@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { AlertCircle, ArrowDown, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { LabConsentPanel, emptyLabConsents, type LabConsentState } from "@/components/lab/LabConsentPanel";
@@ -139,6 +139,17 @@ const BranderLab = () => {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => { document.title = "무료 의류 제작 신청 | BRAND-ER LAB"; }, []);
+
+  // 바로가기 링크(/lab/apply, /lab#apply)로 들어오면 소개를 건너뛰고 신청서 위치에서 시작한다.
+  const location = useLocation();
+  const directToForm = location.pathname.replace(/\/$/, "").endsWith("/apply") || location.hash === "#apply";
+  useEffect(() => {
+    if (!directToForm) return;
+    const frame = window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [directToForm]);
   useEffect(() => { if (result) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); }, [result]);
 
   const validation = useMemo(() => validateLabApplication(input), [input]);

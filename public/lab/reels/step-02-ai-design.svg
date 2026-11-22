@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="태블릿 화면에서 인터뷰 키워드로 AI가 후드티 디자인을 시각화하는 일러스트">
+  <title>STEP 02 · AI DESIGN</title>
+  <defs>
+    <path id="hoodie" d="M70 40 Q100 12 130 40 L162 56 L192 112 L170 124 L156 98 L156 184 L44 184 L44 98 L30 124 L8 112 L38 56 Z"/>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0 H0 V32" fill="none" stroke="#e7e1df" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="1000" fill="#1f191a"/>
+  <!-- 태블릿 -->
+  <rect x="90" y="170" width="620" height="700" rx="44" fill="#3a3133"/>
+  <rect x="118" y="198" width="564" height="644" rx="24" fill="#ffffff"/>
+  <rect x="118" y="198" width="564" height="644" rx="24" fill="url(#grid)"/>
+  <!-- 상단 바 -->
+  <g font-family="Pretendard, 'Apple SD Gothic Neo', Arial, sans-serif">
+    <circle cx="156" cy="236" r="9" fill="#7a0415"/><circle cx="184" cy="236" r="9" fill="#c999a4"/><circle cx="212" cy="236" r="9" fill="#e2dcda"/>
+    <text x="646" y="244" text-anchor="end" font-size="22" font-weight="800" fill="#7a0415" letter-spacing="2">AI DESIGN</text>
+  </g>
+  <!-- 디자인 시안: 와이어 → 컬러 -->
+  <g transform="translate(176 300) scale(1.25)">
+    <use href="#hoodie" fill="none" stroke="#c999a4" stroke-width="3" stroke-dasharray="8 6"/>
+  </g>
+  <g transform="translate(330 290) scale(1.55)">
+    <use href="#hoodie" fill="#7a0415"/>
+    <path d="M82 48 Q100 30 118 48 Q100 72 82 48 Z" fill="#5c0310"/>
+    <path d="M70 144 H130 L120 168 H80 Z" fill="#5c0310"/>
+    <path d="M92 62 V94 M108 62 V94" stroke="#f3eee8" stroke-width="3" stroke-linecap="round"/>
+    <!-- 가슴 자수 포인트 -->
+    <path d="M100 104 l4 9 9 4 -9 4 -4 9 -4 -9 -9 -4 9 -4 z" fill="#f3eee8"/>
+    <path d="M48 98 V182 M152 98 V182" stroke="#f3eee8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="5 5"/>
+  </g>
+  <!-- 생성 화살표 -->
+  <path d="M300 430 Q318 410 336 430" fill="none" stroke="#7a0415" stroke-width="5" stroke-linecap="round"/>
+  <path d="M330 418 L338 432 L322 434" fill="none" stroke="#7a0415" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 인터뷰 키워드 칩 -->
+  <g font-family="Pretendard, 'Apple SD Gothic Neo', Arial, sans-serif" font-size="24" font-weight="700">
+    <rect x="160" y="660" width="140" height="52" rx="26" fill="#f6e8ea"/>
+    <text x="230" y="694" text-anchor="middle" fill="#7a0415"># 오버핏</text>
+    <rect x="316" y="660" width="140" height="52" rx="26" fill="#7a0415"/>
+    <text x="386" y="694" text-anchor="middle" fill="#ffffff"># 버건디</text>
+    <rect x="472" y="660" width="164" height="52" rx="26" fill="#f6e8ea"/>
+    <text x="554" y="694" text-anchor="middle" fill="#7a0415"># 별 자수</text>
+    <rect x="160" y="730" width="476" height="60" rx="14" fill="#f4f2f1"/>
+    <rect x="178" y="752" width="300" height="16" rx="8" fill="#7a0415"/>
+    <rect x="178" y="752" width="430" height="16" rx="8" fill="#7a0415" fill-opacity=".18"/>
+  </g>
+  <!-- 반짝임 -->
+  <g fill="#c999a4">
+    <path d="M640 110 l12 28 28 12 -28 12 -12 28 -12 -28 -28 -12 28 -12 z"/>
+    <path d="M110 900 l8 18 18 8 -18 8 -8 18 -8 -18 -18 -8 18 -8 z"/>
+    <path d="M700 920 l6 13 13 6 -13 6 -6 13 -6 -13 -13 -6 13 -6 z"/>
+  </g>
+  <g font-family="Pretendard, 'Apple SD Gothic Neo', Arial, sans-serif" font-weight="800">
+    <rect x="48" y="48" width="172" height="52" rx="26" fill="#ffffff"/>
+    <text x="134" y="82" text-anchor="middle" font-size="22" fill="#7a0415" letter-spacing="2">STEP 02</text>
+  </g>
+</svg>

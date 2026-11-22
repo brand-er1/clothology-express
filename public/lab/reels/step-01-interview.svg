@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="길거리에서 마이크를 든 촬영팀이 참여자에게 입고 싶은 옷을 인터뷰하는 일러스트">
+  <title>STEP 01 · STREET INTERVIEW</title>
+  <defs>
+    <path id="hoodie" d="M70 40 Q100 12 130 40 L162 56 L192 112 L170 124 L156 98 L156 184 L44 184 L44 98 L30 124 L8 112 L38 56 Z"/>
+  </defs>
+  <rect width="800" height="1000" fill="#efeceb"/>
+  <!-- 거리 배경 -->
+  <g fill="#e2dcda">
+    <rect x="0" y="150" width="150" height="560"/>
+    <rect x="165" y="230" width="120" height="480"/>
+    <rect x="560" y="190" width="240" height="520"/>
+  </g>
+  <g fill="#efeceb">
+    <rect x="30" y="200" width="36" height="48" rx="3"/><rect x="86" y="200" width="36" height="48" rx="3"/>
+    <rect x="30" y="280" width="36" height="48" rx="3"/><rect x="86" y="280" width="36" height="48" rx="3"/>
+    <rect x="30" y="360" width="36" height="48" rx="3"/><rect x="86" y="360" width="36" height="48" rx="3"/>
+    <rect x="190" y="280" width="30" height="40" rx="3"/><rect x="236" y="280" width="30" height="40" rx="3"/>
+    <rect x="190" y="350" width="30" height="40" rx="3"/><rect x="236" y="350" width="30" height="40" rx="3"/>
+    <rect x="600" y="240" width="44" height="56" rx="3"/><rect x="670" y="240" width="44" height="56" rx="3"/><rect x="740" y="240" width="44" height="56" rx="3"/>
+    <rect x="600" y="330" width="44" height="56" rx="3"/><rect x="670" y="330" width="44" height="56" rx="3"/><rect x="740" y="330" width="44" height="56" rx="3"/>
+  </g>
+  <rect x="0" y="710" width="800" height="290" fill="#d9d2d0"/>
+  <g stroke="#efeceb" stroke-width="10" stroke-dasharray="60 40"><line x1="0" y1="840" x2="800" y2="840"/></g>
+
+  <!-- 참여자 -->
+  <g>
+    <rect x="430" y="740" width="44" height="170" rx="18" fill="#1f191a"/>
+    <rect x="490" y="740" width="44" height="170" rx="18" fill="#1f191a"/>
+    <ellipse cx="452" cy="914" rx="38" ry="16" fill="#f3eee8"/>
+    <ellipse cx="512" cy="914" rx="38" ry="16" fill="#f3eee8"/>
+    <path d="M400 520 Q482 470 564 520 L590 760 L374 760 Z" fill="#c999a4"/>
+    <path d="M400 530 L350 690 L384 702 L428 580 Z" fill="#c999a4"/>
+    <path d="M564 530 L596 640 L548 690 L526 664 L556 630 L540 580 Z" fill="#c999a4"/>
+    <circle cx="482" cy="440" r="62" fill="#e8c6b0"/>
+    <path d="M420 430 Q424 362 486 366 Q548 370 546 432 Q520 400 482 404 Q446 404 420 430 Z" fill="#1f191a"/>
+    <circle cx="462" cy="448" r="6" fill="#1f191a"/>
+    <circle cx="504" cy="448" r="6" fill="#1f191a"/>
+    <path d="M466 476 Q483 490 500 476" stroke="#1f191a" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- 인터뷰어 손 + 마이크 -->
+  <g>
+    <path d="M0 640 L220 590 Q246 584 254 606 Q262 630 236 640 L0 700 Z" fill="#1f191a"/>
+    <rect x="236" y="560" width="120" height="30" rx="14" transform="rotate(-18 296 575)" fill="#2b2425"/>
+    <circle cx="372" cy="534" r="36" fill="#3a3133"/>
+    <g fill="#5a4e50"><circle cx="360" cy="524" r="4"/><circle cx="376" cy="520" r="4"/><circle cx="364" cy="540" r="4"/><circle cx="380" cy="536" r="4"/></g>
+    <rect x="262" y="548" width="56" height="44" rx="6" transform="rotate(-18 290 570)" fill="#7a0415"/>
+    <text x="290" y="577" transform="rotate(-18 290 570)" text-anchor="middle" font-family="Pretendard, 'Apple SD Gothic Neo', Arial, sans-serif" font-size="15" font-weight="800" fill="#ffffff">LAB</text>
+  </g>
+
+  <!-- 말풍선: 입고 싶은 옷 -->
+  <g>
+    <path d="M470 110 H740 Q770 110 770 140 V300 Q770 330 740 330 H610 L570 372 L576 330 H470 Q440 330 440 300 V140 Q440 110 470 110 Z" fill="#ffffff"/>
+    <rect x="456" y="126" width="298" height="188" rx="22" fill="none" stroke="#7a0415" stroke-opacity=".3" stroke-width="3" stroke-dasharray="10 8"/>
+    <g transform="translate(505 130) scale(0.95)">
+      <use href="#hoodie" fill="#7a0415"/>
+      <path d="M82 48 Q100 30 118 48 Q100 72 82 48 Z" fill="#5c0310"/>
+      <path d="M70 144 H130 L120 168 H80 Z" fill="#5c0310"/>
+      <path d="M92 62 V92 M108 62 V92" stroke="#f3eee8" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g fill="#7a0415">
+      <path d="M720 150 l7 16 16 7 -16 7 -7 16 -7 -16 -16 -7 16 -7 z"/>
+      <path d="M478 266 l5 11 11 5 -11 5 -5 11 -5 -11 -11 -5 11 -5 z"/>
+    </g>
+  </g>
+
+  <!-- 단계 라벨 -->
+  <g font-family="Pretendard, 'Apple SD Gothic Neo', Arial, sans-serif" font-weight="800">
+    <rect x="48" y="48" width="172" height="52" rx="26" fill="#7a0415"/>
+    <text x="134" y="82" text-anchor="middle" font-size="22" fill="#ffffff" letter-spacing="2">STEP 01</text>
+  </g>
+</svg>

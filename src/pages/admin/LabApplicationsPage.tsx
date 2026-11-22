@@ -16,7 +16,7 @@ import { exportFileDate } from "@/lib/order-export";
 import {
   deleteLabApplications, exportLabApplications, listLabApplications, signLabImages, type LabListFilter, type LabListRow,
 } from "@/services/labAdmin";
-import { formatLabPhone, LAB_STATUSES, labPurposeLabel, labStatusLabel, type LabStatus } from "../../../supabase/functions/_shared/labApplication";
+import { formatLabPhone, LAB_STATUSES, labFilmingAvailabilityLabel, labPurposeLabel, labStatusLabel, type LabStatus } from "../../../supabase/functions/_shared/labApplication";
 
 const PAGE_SIZE = 30;
 
@@ -183,6 +183,7 @@ const LabApplicationsPage = () => {
                       <p className="max-w-[180px] font-semibold text-stone-800">{labGarmentText(row.garment_types, row.garment_type_other)}</p>
                       {row.purpose && <p className="text-stone-500">{labPurposeLabel(row.purpose)}</p>}
                       {row.future_production === "yes" && <p className="mt-0.5 text-[10px] font-bold text-[#741b2b]">추가 생산 의향 있음</p>}
+                      {row.filming_availability && <p className="mt-0.5 text-[10px] text-stone-500">{labFilmingAvailabilityLabel(row.filming_availability)}</p>}
                     </Td>
                     <Td><p className="line-clamp-3 max-w-[280px] text-xs leading-5 text-stone-600">{row.design_description}</p></Td>
                     <Td>

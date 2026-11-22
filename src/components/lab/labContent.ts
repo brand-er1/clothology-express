@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ClipboardCheck, Lightbulb, PencilRuler, Scissors, Sparkles } from "lucide-react";
+import { Clapperboard, ClipboardCheck, Lightbulb, Mic, PencilRuler, Scissors, Sparkles, Wand2 } from "lucide-react";
 
 /**
  * BRAND-ER LAB 페이지 콘텐츠.
@@ -128,4 +128,75 @@ export const LAB_STEPS: LabStep[] = [
   { title: "디자인 구체화", body: "원단, 컬러, 핏, 프린팅 · 자수 위치 등을 함께 정리해 실제 제작 가능한 디자인으로 다듬습니다.", icon: PencilRuler },
   { title: "의류 샘플 제작", body: "패턴 제작부터 재단 · 봉제 · 프린팅까지, 브랜더의 제작 공정으로 실제 샘플을 만듭니다.", icon: Scissors },
   { title: "완성품 공개", body: "완성된 옷을 전달하고, 제작 과정과 결과물을 BRAND-ER LAB 콘텐츠로 소개합니다.", icon: Sparkles },
+];
+
+// ---------------------------------------------------------------------------
+// 릴스 촬영 프로젝트 (STREET INTERVIEW × AI DESIGN × REAL PRODUCTION)
+// ---------------------------------------------------------------------------
+
+/**
+ * BRAND-ER LAB 공식 인스타그램 주소. 확정되면 "https://www.instagram.com/아이디/" 형태로 넣는다.
+ * 비워 두면 릴스 안내 섹션의 인스타그램 버튼이 '공식 계정 준비 중'으로 보인다.
+ */
+export const LAB_INSTAGRAM_URL = "";
+
+/**
+ * 카드 미리보기 이미지 · 영상. 파일을 public/lab/reels/ 에 넣고 경로를 적으면 플레이스홀더 대신 보인다.
+ * - image: { type: "image", src: "/lab/reels/interview.webp", alt: "..." }
+ * - video: { type: "video", src: "/lab/reels/interview.mp4", poster: "/lab/reels/interview.webp", alt: "..." }
+ *   (소리 없이 반복 재생, '동작 줄이기' 설정 사용자에게는 정지 화면(poster)만 보인다. 10초 이내 · 3MB 이하 권장)
+ */
+export type LabReelsMedia =
+  | { type: "image"; src: string; alt: string }
+  | { type: "video"; src: string; poster?: string; alt: string };
+
+export type LabReelsStep = {
+  key: string;
+  /** 영문 단계명 (카드 상단) */
+  label: string;
+  title: string;
+  body: string;
+  icon: LucideIcon;
+  /** 비워 두면 교체 가능한 플레이스홀더 */
+  media?: LabReelsMedia;
+};
+
+export const LAB_REELS_STEPS: LabReelsStep[] = [
+  {
+    key: "interview",
+    label: "STREET INTERVIEW",
+    title: "길거리 인터뷰",
+    body: "브랜더랩 촬영팀이 길거리에서 직접 섭외한 분께 평소 입고 싶었던 옷, 나만의 디자인 아이디어를 인터뷰합니다.",
+    icon: Mic,
+  },
+  {
+    key: "ai-design",
+    label: "AI DESIGN",
+    title: "AI 의류 디자인",
+    body: "인터뷰에서 나온 아이디어와 키워드를 바탕으로 AI를 활용해 세상에 하나뿐인 의류 디자인을 시각화합니다.",
+    icon: Wand2,
+  },
+  {
+    key: "production",
+    label: "REAL PRODUCTION",
+    title: "실제 의류 제작",
+    body: "완성된 디자인으로 원단 선정, 프린팅, 봉제까지 브랜더의 실제 의류 제작 공정을 거쳐 샘플을 만듭니다.",
+    icon: Scissors,
+  },
+  {
+    key: "reels",
+    label: "REELS CONTENT",
+    title: "완성품 전달 및 릴스 촬영",
+    body: "완성된 옷을 참여자에게 전달하고, 처음 마주하는 반응과 착용 모습을 촬영해 인스타그램 릴스로 공개합니다.",
+    icon: Clapperboard,
+  },
+];
+
+/** 릴스 촬영 안내 사항 */
+export const LAB_REELS_NOTICES: string[] = [
+  "길거리 인터뷰 및 의류 제작 과정 촬영",
+  "완성품 전달 및 착용 장면 촬영",
+  "인스타그램 릴스 콘텐츠 제작",
+  "참여자의 촬영 및 게시 동의 확인",
+  "실제 프로젝트 선정 및 제작 가능 여부는 별도 안내",
 ];

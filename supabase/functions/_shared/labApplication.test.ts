@@ -19,6 +19,7 @@ const valid = {
   purpose: "brand_launch",
   reason: "",
   futureProduction: "considering",
+  filmingAvailability: "discuss",
 };
 
 const consents = (overrides: Record<string, boolean> = {}) =>
@@ -40,6 +41,7 @@ Deno.test("normalizes a valid application for storage", () => {
     purpose: "brand_launch",
     reason: null,
     futureProduction: "considering",
+    filmingAvailability: "discuss",
   });
 });
 
@@ -70,7 +72,7 @@ Deno.test("other garment type and other size require text", () => {
 Deno.test("rejects unknown options and missing required fields", () => {
   const result = validateLabApplication({ garmentTypes: ["cape"], size: "XXXL", designDescription: "짧음", futureProduction: "maybe" });
   assert(!result.ok);
-  for (const field of ["applicantName", "phone", "email", "garmentTypes", "designDescription", "size", "purpose", "futureProduction"]) {
+  for (const field of ["applicantName", "phone", "email", "garmentTypes", "designDescription", "size", "purpose", "futureProduction", "filmingAvailability"]) {
     assert(field in result.errors, field);
   }
   assert(!("instagramId" in result.errors), "instagram is optional");
@@ -94,9 +96,11 @@ Deno.test("purpose 'other' needs a short description", () => {
   assert(validateLabApplication({ ...valid, purpose: "other", reason: "졸업 작품 전시용" }).ok);
 });
 
-Deno.test("optional marketing consent may be declined, required ones may not", () => {
+Deno.test("optional filming / marketing consents may be declined, required ones may not", () => {
   assert(validateLabConsents(consents({ marketing: false })).ok);
-  assert(!validateLabConsents(consents({ filming: false })).ok);
+  assert(validateLabConsents(consents({ filming: false, marketing: false })).ok);
+  assert(!validateLabConsents(consents({ privacy: false })).ok);
+  assert(!validateLabConsents(consents({ participation: false })).ok);
   assert(!validateLabConsents(consents().slice(1)).ok);
   assert(!validateLabConsents(consents().map((c) => ({ ...c, version: "old" }))).ok);
   assert(!validateLabConsents([...consents(), consents()[0]]).ok);

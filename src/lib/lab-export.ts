@@ -1,5 +1,5 @@
 import { formatKst } from "@/lib/order-export";
-import { formatLabPhone, labFutureProductionLabel, labGarmentLabel, labPurposeLabel, labStatusLabel, labStatusStages } from "../../supabase/functions/_shared/labApplication";
+import { formatLabPhone, labFilmingAvailabilityLabel, labFutureProductionLabel, labGarmentLabel, labPurposeLabel, labStatusLabel, labStatusStages } from "../../supabase/functions/_shared/labApplication";
 
 export type LabConsentSnapshot = Partial<Record<string, { agreed: boolean; at: string; version: string; action: string }>>;
 
@@ -20,6 +20,7 @@ export type LabExportRow = {
   reason: string | null;
   purpose?: string | null;
   future_production?: string | null;
+  filming_availability?: string | null;
   image_count: number;
   admin_memo: string | null;
   retention_until: string;
@@ -46,7 +47,7 @@ const safeCell = (value: unknown) => {
 
 export const LAB_CSV_HEADER = [
   "접수번호", "신청 접수일", "신청 상태", "검토 상태", "선정 여부", "제작 진행 상태", "이름", "연락처", "이메일", "인스타그램",
-  "희망 의류 종류", "희망 사이즈", "디자인 설명", "제작 목적", "제작 목적 상세", "추가 생산 의향", "참고 이미지 수", "프로젝트 참여 동의", "촬영·게시 동의", "개인정보 동의", "홍보 활용 동의(선택)",
+  "희망 의류 종류", "희망 사이즈", "디자인 설명", "제작 목적", "제작 목적 상세", "추가 생산 의향", "촬영 참여 가능 여부", "참고 이미지 수", "프로젝트 참여 동의", "촬영·게시 동의", "개인정보 동의", "홍보 활용 동의(선택)",
   "관리자 메모", "보유 기한",
 ];
 
@@ -71,6 +72,7 @@ export const buildLabCsv = (rows: LabExportRow[]) => {
     labPurposeLabel(row.purpose),
     row.reason ?? "",
     labFutureProductionLabel(row.future_production),
+    labFilmingAvailabilityLabel(row.filming_availability),
     row.image_count,
     consentText(row.consents, "participation"),
     consentText(row.consents, "filming"),

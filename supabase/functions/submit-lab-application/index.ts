@@ -8,7 +8,7 @@ import {
  *
  * 요청: multipart/form-data
  *   payload : JSON 문자열 { submissionKey, applicantName, phone, email, instagramId?, garmentTypes, garmentTypeOther,
- *             designDescription, size?, sizeOther?, purpose, reason?, futureProduction?, consents: [{ key, version, agreed }] }
+ *             designDescription, size?, sizeOther?, purpose, reason?, futureProduction?, filmingAvailability, consents: [{ key, version, agreed }] }
  *   images  : 참고 이미지 0~5개 (JPG · PNG · WEBP, 각 10MB 이하)
  *
  * 1) 입력 · 동의 · 이미지를 서버에서 다시 검증한다(파일 형식은 내용으로 판별).

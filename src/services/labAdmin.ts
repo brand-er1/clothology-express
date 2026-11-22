@@ -23,6 +23,8 @@ export type LabListRow = {
   /** 2026-11-22 이전 신청은 없을 수 있다 */
   purpose: string | null;
   future_production: string | null;
+  /** 촬영 참여 가능 여부(2026-11-23 이후 신청). 촬영 · 게시 동의와는 별개 */
+  filming_availability?: string | null;
   image_paths: string[];
   status: LabStatus;
   status_changed_at: string;

@@ -16,7 +16,7 @@ import {
 } from "@/services/labAdmin";
 import { LAB_STATUS_TONE } from "./labAdminFormat";
 import {
-  formatLabPhone, LAB_CONSENT_DOCUMENTS, LAB_STATUSES, labFutureProductionLabel, labPurposeLabel, labStatusLabel, labStatusStages, type LabStatus,
+  formatLabPhone, LAB_CONSENT_DOCUMENTS, LAB_STATUSES, labFilmingAvailabilityLabel, labFutureProductionLabel, labPurposeLabel, labStatusLabel, labStatusStages, type LabStatus,
 } from "../../../../supabase/functions/_shared/labApplication";
 
 const METHOD_LABEL: Record<LabFilmingAgreement["agreement_method"], string> = {
@@ -227,6 +227,7 @@ export const LabApplicationDetail = ({ applicationId, onClose, onChanged }: Prop
                   { label: "희망 의류 종류", value: labGarmentText(app.garment_types, app.garment_type_other) },
                   { label: "제작 목적", value: labPurposeLabel(app.purpose) || "-" },
                   { label: "향후 추가 생산 의향", value: labFutureProductionLabel(app.future_production) || "-" },
+                  { label: "촬영 참여 가능 여부", value: labFilmingAvailabilityLabel(app.filming_availability) || "-" },
                   ...(app.size ? [{ label: "희망 사이즈", value: labSizeText(app.size, app.size_other) }] : []),
                 ]} />
                 <p className="mt-4 text-[11px] font-bold text-stone-400">디자인 설명</p>
@@ -294,6 +295,11 @@ export const LabApplicationDetail = ({ applicationId, onClose, onChanged }: Prop
               <Section title="촬영 세부 동의 (촬영 전 별도 동의)" actions={canManage && !showAgreementForm ? (
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAgreementForm(true)}>세부 동의 기록</Button>
               ) : undefined}>
+                {!data.consents.filming?.agreed && (
+                  <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold leading-5 text-amber-800">
+                    신청자가 [선택] 인스타그램 릴스 촬영 및 게시 동의를 하지 않았습니다{app.filming_availability ? ` (촬영 참여 가능 여부: ${labFilmingAvailabilityLabel(app.filming_availability)})` : ""}. 촬영 전 반드시 개별 동의를 새로 받고, 동의가 없으면 촬영 없이 제작만 진행하세요.
+                  </p>
+                )}
                 <p className="mb-3 text-[11px] leading-5 text-stone-500">실제 촬영 전 신청자에게 촬영 범위 · 게시 매체 · 이용 기간 · 편집 및 재사용 범위를 안내하고 받은 동의를 기록합니다. 동의서 원본은 별도로 보관하고 보관 위치를 남겨주세요.</p>
                 {showAgreementForm && (
                   <div className="mb-4 grid gap-2 rounded-xl border border-stone-200 p-3">

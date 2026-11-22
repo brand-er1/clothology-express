@@ -9,16 +9,33 @@ BRAND-ER 안에서 운영하는 별도 프로젝트(패션 콘텐츠 · 의류 �
 
 ## 페이지 구성 (`/lab`)
 
-| # | 섹션 | 비고 |
-| --- | --- | --- |
-| 01 | 메인 화면 — 로고(`public/lab/brander-lab-logo-*.webp`), "당신의 상상이 옷이 되는 실험실." | 버튼: 무료 샘플 제작 신청하기 · BRAND-ER LAB 소개 |
-| 02 | WHAT IS BRAND-ER LAB? — LEARN · CREATE · MAKE | `#about` |
-| 03 | YOUR IDEA, OUR PRODUCTION. | 신청 버튼 → 신청서로 스크롤 |
-| 04 | 무료 샘플 제작 신청 폼 | `#apply`, `/lab/apply` 로 바로 진입 |
-| 05 | FASHION KNOWLEDGE — 카드 6개, 누르면 상세 창 | 내용: `src/components/lab/labContent.ts` |
-| 06 | HOW IT WORKS — 5단계 | 같은 파일의 `LAB_STEPS` |
-| 07 | 버건디 배경 마지막 신청 유도 | |
-| 모바일 | 하단 고정 신청 버튼 | 신청서가 보이는 동안 숨김 |
+방문자가 5초 안에 ① 아이디어를 실제 옷으로 만든다 ② 인터뷰부터 완성품 전달까지 릴스로 촬영한다 ③ 참여 신청을 할 수 있다 — 를 알 수 있도록 메인 화면에 세 가지를 모두 넣었습니다.
+
+| # | 섹션 | 앵커 | 비고 |
+| --- | --- | --- | --- |
+| 01 (A) | 메인 소개 — "당신이 상상한 옷, 우리가 만들어드립니다." · 배지 STREET INTERVIEW × AI DESIGN × REAL PRODUCTION · 핵심 3줄 | | 버튼: 릴스 촬영 프로젝트 참여하기(→ 신청서) · 프로젝트 알아보기(→ `#process`). 모바일은 글이 먼저, 로고는 아래 |
+| 02 (B) | 프로젝트 진행 과정 — 4개 카드 (STREET INTERVIEW · AI DESIGN · REAL PRODUCTION · REELS CONTENT) | `#process` | 데스크톱 4열 · 태블릿 2열 · 모바일 1열. 카드마다 이미지/영상 미리보기 자리 |
+| 03 (C) | 릴스 촬영 안내 — 촬영 · 게시 범위, 안내 사항 5개 | `#reels` | 인스타그램 버튼(주소 미입력 시 '공식 계정 준비 중') |
+| 04 | WHAT IS BRAND-ER LAB? — LEARN · CREATE · MAKE | `#about` | 기존 |
+| 05 (D) | 참여 신청 — "당신의 아이디어가 다음 릴스의 주인공이 될 수 있습니다." | `#join` | 버튼: 브랜더랩 프로젝트 신청하기(→ 기존 신청서) |
+| 06 | 무료 샘플 제작(브랜더랩 프로젝트) 신청 폼 | `#apply`, `/lab/apply` | 기존 신청서 재사용 + 촬영 참여 가능 여부 · 선택 촬영 동의 |
+| 07 | FASHION KNOWLEDGE | `#knowledge` | 기존 |
+| 08 | 신청 절차 (HOW IT WORKS 5단계) | | 기존 |
+| 09 | 마지막 신청 유도 | | 기존 |
+| 모바일 | 하단 고정 '브랜더랩 프로젝트 신청하기' | | 신청서가 보이는 동안 숨김 |
+
+`/lab#process`, `/lab#reels`, `/lab#join`, `/lab#knowledge` 처럼 앵커를 붙인 링크로 들어오면 해당 섹션에서 시작합니다.
+
+### 릴스 프로젝트 카드 이미지 · 영상 교체
+
+`src/components/lab/labContent.ts` 의 `LAB_REELS_STEPS` 각 항목에 `media` 를 넣으면 플레이스홀더 대신 보입니다. 파일은 `public/lab/reels/` 에 둡니다.
+
+```ts
+media: { type: "image", src: "/lab/reels/interview.webp", alt: "길거리 인터뷰 장면" }
+media: { type: "video", src: "/lab/reels/interview.mp4", poster: "/lab/reels/interview.webp", alt: "길거리 인터뷰 장면" }
+```
+
+영상은 소리 없이 반복 재생되며(10초 이내 · 3MB 이하 권장), '동작 줄이기' 설정 사용자에게는 자동 재생하지 않습니다. 공식 인스타그램 주소는 같은 파일의 `LAB_INSTAGRAM_URL` 에 넣습니다.
 
 ### 지식 콘텐츠에 릴스 · 글 연결하기
 
@@ -32,7 +49,8 @@ BRAND-ER 안에서 운영하는 별도 프로젝트(패션 콘텐츠 · 의류 �
 | | 인스타그램 아이디 | 선택 |
 | 제작 정보 | 의류 종류 · 의류 설명 · 제작 목적(선택지) | 필수 |
 | | 참고 이미지(최대 5장) · 제작 목적 상세(목적이 '기타'면 필수) · 향후 추가 생산 의향 | 선택 |
-| 동의 | 참여 · 촬영 게시 · 개인정보(필수), 홍보 활용(선택) | |
+| 촬영 | 촬영 참여 가능 여부(가능 / 범위 안내 후 결정 / 촬영 없이 제작만) | 필수 응답 (2026-11-23~) — 촬영 동의가 아님 |
+| 동의 | 참여 · 개인정보(필수), **촬영 및 SNS 게시(선택)**, 홍보 활용(선택) | |
 
 희망 사이즈는 신청서에서 뺐습니다(선정 후 개별 확인). 이전 신청의 사이즈 값은 관리자 화면에 그대로 보입니다.
 
@@ -79,7 +97,8 @@ BRAND-ER 안에서 운영하는 별도 프로젝트(패션 콘텐츠 · 의류 �
 
 ### 동의 · 개인정보
 
-- 동의 4개(필수 3, 선택 1)는 각각 독립 체크박스이고, 전체 동의 후에도 개별 해제가 가능합니다. 선택 동의 없이 신청할 수 있습니다.
+- 동의 4개(필수 2, 선택 2)는 각각 독립 체크박스입니다. **'필수 항목 전체 동의'는 필수 항목만 체크**하고, 촬영 · SNS 게시 동의는 별도 상자에서 따로 체크해야 합니다.
+- 촬영 · 게시 동의(2026-11-23.v1 부터 선택)는 개인정보 수집 동의와 분리되어 있습니다. 동의하지 않아도 신청 · 제작 검토가 가능하고, 촬영 없이 일반 제작만 원하면 `/design-quote` 로 안내합니다. 신청서 제출만으로 촬영 동의로 처리하지 않으며, 관리자 상세 화면은 촬영 동의가 없으면 경고를 띄웁니다.
 - 신청마다 어떤 **문구 버전**에 언제 동의했는지 `lab_consent_records` 에 추가 전용으로 남습니다. 문구는 `lab_consent_documents` 에 버전별로 보관되며 수정할 수 없습니다.
 - 동의 철회 요청(전화 · 이메일 등)은 관리자 상세 화면의 **철회 기록**으로 새 이력을 남깁니다.
 - 실제 촬영 전 별도 동의(촬영 범위 · 게시 매체 · 이용 기간 · 편집/재사용 범위 · 동의 방법 · 증빙 위치)는 상세 화면 **촬영 세부 동의 기록**에 남깁니다. 동의서 원본은 별도 보관하세요.
@@ -119,14 +138,21 @@ BRAND-ER 안에서 운영하는 별도 프로젝트(패션 콘텐츠 · 의류 �
 Cafe24 관리자 → 디자인 → 메인 화면 HTML 편집에서 원하는 위치에 아래 배너를 넣습니다.
 
 ```html
-<!-- BRAND-ER LAB 무료 의류 제작 신청 배너 -->
-<section style="background:#1d1718;color:#f3eee8;padding:56px 20px;text-align:center;font-family:Pretendard,'Apple SD Gothic Neo',sans-serif;">
-  <p style="margin:0;font-size:11px;letter-spacing:.22em;color:#c999a4;font-weight:600;">BRAND-ER LAB</p>
-  <h2 style="margin:14px 0 0;font-size:clamp(26px,5vw,40px);line-height:1.2;font-weight:600;letter-spacing:-.03em;">상상하던 옷, 브랜더가 만들어드립니다.</h2>
-  <p style="max-width:520px;margin:16px auto 0;font-size:15px;line-height:1.75;color:#d6d3d1;">평소 만들고 싶었던 옷이 있으신가요? 원하는 디자인을 알려주세요. 선정된 분께 브랜더가 무료로 의류 샘플을 제작해드립니다.</p>
-  <a href="https://brand-er1.github.io/clothology-express/lab" style="display:inline-block;margin-top:28px;padding:16px 28px;background:#741b2b;color:#fff;font-size:15px;font-weight:600;text-decoration:none;border-radius:2px;">BRAND-ER LAB 바로가기 →</a>
+<!-- BRAND-ER LAB 릴스 촬영 프로젝트 배너 (외부 라이브러리 없음, 인라인 스타일만 사용) -->
+<section style="background:#1d1718;color:#f3eee8;padding:56px 20px;text-align:center;font-family:Pretendard,'Apple SD Gothic Neo',sans-serif;word-break:keep-all;">
+  <p style="display:inline-block;margin:0;padding:6px 12px;border:1px solid rgba(201,153,164,.5);border-radius:999px;font-size:10px;letter-spacing:.12em;color:#c999a4;font-weight:700;">STREET INTERVIEW × AI DESIGN × REAL PRODUCTION</p>
+  <h2 style="margin:16px 0 0;font-size:clamp(26px,5vw,40px);line-height:1.25;font-weight:800;letter-spacing:-.03em;">당신이 상상한 옷,<br>우리가 만들어드립니다.</h2>
+  <p style="max-width:540px;margin:16px auto 0;font-size:15px;line-height:1.75;color:#d6d3d1;">길거리 인터뷰부터 AI 의류 디자인, 실제 샘플 제작, 완성품 전달까지 모든 과정을 릴스 영상으로 기록하는 BRAND-ER LAB 프로젝트입니다.</p>
+  <div style="margin-top:28px;">
+    <a href="https://brand-er1.github.io/clothology-express/lab/apply" target="_top" style="display:inline-block;margin:4px;padding:16px 28px;background:#741F36;color:#fff;font-size:15px;font-weight:700;text-decoration:none;border-radius:999px;">릴스 촬영 프로젝트 참여하기 →</a>
+    <a href="https://brand-er1.github.io/clothology-express/lab#process" target="_top" style="display:inline-block;margin:4px;padding:15px 27px;border:1px solid rgba(255,255,255,.35);color:#fff;font-size:15px;font-weight:700;text-decoration:none;border-radius:999px;">프로젝트 알아보기</a>
+  </div>
+  <p style="margin:14px 0 0;font-size:12px;color:#a8a29e;">신청 비용 없음 · 촬영 및 SNS 게시 동의는 별도 선택</p>
 </section>
 ```
+
+- 링크에 `target="_top"` 을 넣어 두면 배너를 iframe(외부 HTML 모듈)으로 넣은 경우에도 새 창이 아닌 전체 화면으로 이동합니다.
+- 신청서는 로그인 · 개인정보 동의 · 이미지 업로드가 필요해 **Cafe24 페이지 안 iframe 으로 넣지 말고 링크로 연결**하세요(제3자 쿠키 차단 브라우저에서 로그인이 풀립니다).
 
 상단 메뉴: Cafe24 관리자 → 디자인 → 메뉴(또는 레이아웃 HTML)에 링크를 추가합니다.
 

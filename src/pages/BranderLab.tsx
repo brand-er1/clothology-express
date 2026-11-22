@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { AlertCircle, ArrowDown, ArrowRight, BookOpen, Check, Loader2, Lock, PenTool, Shirt } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowRight, BookOpen, Check, Clapperboard, ClipboardPen, Loader2, Lock, PenTool, Shirt } from "lucide-react";
 import { Header } from "@/components/Header";
 import { LabConsentPanel, emptyLabConsents, type LabConsentState } from "@/components/lab/LabConsentPanel";
 import { LabImagePicker, type LabPickedImage } from "@/components/lab/LabImagePicker";
 import { LabKnowledgeSection } from "@/components/lab/LabKnowledgeSection";
+import { LabReelsFilmingSection, LabReelsProcessSection } from "@/components/lab/LabReelsSections";
 import { LAB_STEPS } from "@/components/lab/labContent";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { LabSubmitError, submitLabApplication, type LabSubmitResult } from "@/services/labApplications";
 import { getAppPath, getAppUrl } from "@/utils/appUrl";
 import {
-  LAB_CONSENT_DOCUMENTS, LAB_CONTACT, LAB_FUTURE_PRODUCTION, LAB_GARMENT_TYPES, LAB_LIMITS, LAB_PURPOSES, formatLabPhone, validateLabApplication,
+  LAB_CONSENT_DOCUMENTS, LAB_CONTACT, LAB_FILMING_AVAILABILITY, LAB_FUTURE_PRODUCTION, LAB_GARMENT_TYPES, LAB_LIMITS, LAB_PURPOSES, formatLabPhone, validateLabApplication,
   type LabApplicationField, type LabApplicationInput,
 } from "../../supabase/functions/_shared/labApplication";
 
@@ -32,13 +33,14 @@ const newSubmissionKey = () => {
 
 const emptyInput: LabApplicationInput = {
   applicantName: "", phone: "", email: "", instagramId: "", garmentTypes: [], garmentTypeOther: "",
-  designDescription: "", size: "", sizeOther: "", purpose: "", reason: "", futureProduction: "",
+  designDescription: "", size: "", sizeOther: "", purpose: "", reason: "", futureProduction: "", filmingAvailability: "",
 };
 
 const FIELD_LABEL: Record<LabApplicationField, string> = {
   applicantName: "이름", phone: "연락처", email: "이메일", instagramId: "인스타그램 아이디",
   garmentTypes: "의류 종류", garmentTypeOther: "기타 의류 종류", designDescription: "의류 설명",
   size: "희망 사이즈", sizeOther: "기타 사이즈", purpose: "제작 목적", reason: "제작 목적 상세", futureProduction: "추가 생산 의향",
+  filmingAvailability: "촬영 참여 가능 여부",
 };
 
 const LOGO_720 = getAppPath("/lab/brander-lab-logo-720.webp");
@@ -49,6 +51,16 @@ const PILLARS = [
   { key: "CREATE", title: "아이디어를 디자인하다", body: "머릿속에만 있던 옷을 함께 구체화합니다. 디자인을 배운 적이 없어도 괜찮습니다.", icon: PenTool },
   { key: "MAKE", title: "실제 의류로 제작하다", body: "브랜더의 제작 공정으로 아이디어를 실제 샘플로 만들어 손에 쥘 수 있게 합니다.", icon: Shirt },
 ] as const;
+
+/** 메인 화면에서 5초 안에 전달할 세 가지 */
+const HERO_POINTS = [
+  { icon: Shirt, text: "사람들의 아이디어를 실제 옷으로 제작합니다" },
+  { icon: Clapperboard, text: "인터뷰부터 완성품 전달까지 릴스로 촬영합니다" },
+  { icon: ClipboardPen, text: "지금 프로젝트 참여 신청을 받고 있습니다" },
+] as const;
+
+/** 페이지 안 이동이 가능한 섹션 id (/lab#process 처럼 링크로 바로 들어올 수 있다) */
+const SECTION_IDS = ["process", "reels", "about", "join", "apply", "knowledge"] as const;
 
 const scrollToId = (id: string) => (event?: { preventDefault: () => void }) => {
   event?.preventDefault();
@@ -107,7 +119,9 @@ const Chip = ({ selected, onClick, children, role, disabled }: { selected: boole
 );
 
 /** 무료 샘플 제작 신청 버튼(페이지 곳곳에서 같은 모양). */
-const ApplyButton = ({ tone = "lab", className, onClick }: { tone?: "lab" | "light"; className?: string; onClick: (event: { preventDefault: () => void }) => void }) => (
+const ApplyButton = ({ tone = "lab", className, onClick, label = "무료 샘플 제작 신청하기" }: {
+  tone?: "lab" | "light"; className?: string; onClick: (event: { preventDefault: () => void }) => void; label?: string;
+}) => (
   <a
     href="#apply"
     onClick={onClick}
@@ -117,7 +131,7 @@ const ApplyButton = ({ tone = "lab", className, onClick }: { tone?: "lab" | "lig
       className,
     )}
   >
-    무료 샘플 제작 신청하기 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+    {label} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
   </a>
 );
 
@@ -149,7 +163,7 @@ const LoginGate = () => (
 // 신청 완료
 // ---------------------------------------------------------------------------
 
-const Complete = ({ result }: { result: LabSubmitResult }) => (
+const Complete = ({ result, filmingAgreed }: { result: LabSubmitResult; filmingAgreed: boolean }) => (
   <section className="page-shell py-16 sm:py-24" aria-live="polite">
     <div className="mx-auto max-w-xl">
       <img src={LOGO_720} alt="BRAND-ER LAB" width={720} height={720} className="h-28 w-28 rounded-2xl object-cover" />
@@ -159,6 +173,11 @@ const Complete = ({ result }: { result: LabSubmitResult }) => (
       </h1>
       <p className="mt-5 text-[15px] leading-7 text-stone-700">신청 내용을 검토한 후 선정 대상자에게 개별 연락드리겠습니다.</p>
       <p className="mt-2 text-[13.5px] font-medium text-lab">※ 신청이 곧 무료 샘플 제작 확정을 의미하지는 않습니다.</p>
+      <p className="mt-2 text-[13.5px] leading-6 text-stone-600">
+        {filmingAgreed
+          ? "릴스 촬영 · 게시에 동의하셨습니다. 선정되면 촬영 전에 촬영 범위와 게시 기간을 안내드리고 개별 동의를 다시 받습니다."
+          : "릴스 촬영 · 게시에는 동의하지 않으셨습니다. 선정되더라도 동의 없이 촬영하거나 게시하지 않습니다."}
+      </p>
       <dl className="mt-8 grid grid-cols-[6.5rem_1fr] gap-y-2 border-y border-black/10 py-5 text-[14px]">
         <dt className="text-stone-500">접수 번호</dt>
         <dd className="font-display font-semibold tracking-[0.02em] text-[#211b1c]">{result.applicationNo}</dd>
@@ -208,8 +227,8 @@ const BranderLab = () => {
   const stickyCtaRef = useMobileStickyCtaOffset();
 
   useDocumentMeta({
-    title: "BRAND-ER LAB | 당신의 상상이 옷이 되는 실험실",
-    description: "의류 제작 전문 기업 BRAND-ER가 운영하는 패션 프로젝트. 옷에 관한 지식을 나누고, 선정된 신청자의 아이디어를 무료 의류 샘플로 제작합니다.",
+    title: "BRAND-ER LAB | 당신이 상상한 옷, 우리가 만들어드립니다",
+    description: "길거리 인터뷰부터 AI 의류 디자인, 실제 샘플 제작, 완성품 전달까지 모든 과정을 릴스로 기록하는 BRAND-ER LAB 의류 제작 프로젝트. 지금 참여 신청을 받습니다.",
     image: getAppUrl("/lab/brander-lab-logo-1254.webp"),
     url: getAppUrl("/lab"),
   });
@@ -231,13 +250,15 @@ const BranderLab = () => {
   // 바로가기 링크(/lab/apply, /lab#apply)로 들어오면 소개를 건너뛰고 신청서 위치에서 시작한다.
   const location = useLocation();
   const directToForm = location.pathname.replace(/\/$/, "").endsWith("/apply") || location.hash === "#apply";
+  const hashTarget = (SECTION_IDS as readonly string[]).find((id) => location.hash === `#${id}`) ?? null;
   useEffect(() => {
-    if (!directToForm) return;
+    if (!directToForm && !hashTarget) return;
     const frame = window.requestAnimationFrame(() => {
-      applyRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start" });
+      const target = directToForm ? applyRef.current : document.getElementById(hashTarget!);
+      target?.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [directToForm, userId]);
+  }, [directToForm, hashTarget, userId]);
   useEffect(() => { if (result) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); }, [result]);
 
   // 신청서가 화면에 보이는 동안에는 모바일 고정 신청 버튼을 숨긴다.
@@ -301,12 +322,12 @@ const BranderLab = () => {
     <div className="min-h-screen bg-white text-[#211b1c]">
       <Header />
       <main className="pt-16 sm:pt-[72px]">
-        {result ? <Complete result={result} /> : (
+        {result ? <Complete result={result} filmingAgreed={consents.filming} /> : (
           <>
-            {/* SECTION 01 — 메인 화면 */}
+            {/* SECTION 01 (A) — 메인 소개: 5초 안에 "아이디어 → 실제 옷 · 릴스 촬영 · 참여 신청" 전달 */}
             <section aria-labelledby="lab-hero-title" className="overflow-hidden bg-white">
               <div className="page-shell grid items-center gap-6 pb-14 pt-6 sm:pb-20 lg:grid-cols-12 lg:gap-10 lg:pb-24 lg:pt-10">
-                <div className="mx-auto w-full max-w-[560px] lg:col-span-6 lg:max-w-none">
+                <div className="order-2 mx-auto w-full max-w-[220px] sm:max-w-[360px] lg:order-1 lg:col-span-6 lg:max-w-none">
                   <img
                     src={LOGO_720}
                     srcSet={`${LOGO_720} 720w, ${LOGO_1254} 1254w`}
@@ -320,31 +341,50 @@ const BranderLab = () => {
                     draggable={false}
                   />
                 </div>
-                <div className="lg:col-span-6 lg:pl-4">
-                  <p className="eyebrow text-lab">BRAND-ER LAB · Fashion Lab Project</p>
-                  <h1 id="lab-hero-title" className="mt-5 text-[clamp(2.2rem,5vw,4.4rem)] font-extrabold leading-[1.08] tracking-[-0.045em] text-[#1f191a]">
-                    당신의 상상이<br />옷이 되는 실험실<span className="text-lab">.</span>
-                  </h1>
-                  <p className="mt-6 max-w-md text-[16px] leading-8 text-stone-600 sm:text-[17px]">
-                    옷에 관한 모든 궁금증부터,<br />당신이 상상한 옷을 실제로 만드는 순간까지.
+                <div className="order-1 lg:order-2 lg:col-span-6 lg:pl-4">
+                  <p className="inline-flex flex-wrap items-center gap-x-1.5 rounded-full border border-lab/25 bg-lab-soft px-3 py-1.5 font-display text-[9.5px] font-bold tracking-[0.06em] text-lab sm:px-3.5 sm:text-[11.5px] sm:tracking-[0.14em]">
+                    STREET INTERVIEW × AI DESIGN × REAL PRODUCTION
                   </p>
-                  <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                    <ApplyButton onClick={goApply} />
-                    <a href="#about" onClick={scrollToId("about")}
+                  <h1 id="lab-hero-title" className="mt-5 text-[clamp(1.85rem,3.7vw,3.5rem)] font-extrabold leading-[1.15] tracking-[-0.045em] text-[#1f191a]">
+                    <span className="whitespace-nowrap">당신이 상상한 옷,</span><br /><span className="whitespace-nowrap">우리가 만들어드립니다<span className="text-lab">.</span></span>
+                  </h1>
+                  <p className="mt-5 text-[17px] font-bold leading-7 tracking-[-0.02em] text-[#211b1c] sm:text-[19px]">
+                    길거리에서 만난 사람들의 아이디어가<br className="sm:hidden" /> 실제 옷이 되는 순간.
+                  </p>
+                  <p className="mt-3 max-w-xl break-keep text-[15px] leading-7 text-stone-600 sm:text-[16px] sm:leading-8">
+                    BRAND-ER LAB은 길거리 인터뷰부터 AI 의류 디자인, 실제 샘플 제작, 완성품 전달까지 모든 과정을 릴스 영상으로 기록하는 의류 제작 프로젝트입니다.
+                  </p>
+                  <ul className="mt-6 grid gap-2" aria-label="BRAND-ER LAB 한눈에 보기">
+                    {HERO_POINTS.map(({ icon: Icon, text }) => (
+                      <li key={text} className="flex items-center gap-3 text-[14.5px] font-semibold text-[#211b1c]">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lab text-white"><Icon className="h-4 w-4" /></span>
+                        {text}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <ApplyButton onClick={goApply} label="릴스 촬영 프로젝트 참여하기" />
+                    <a href="#process" onClick={scrollToId("process")}
                       className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-full border border-lab/30 px-7 text-[15px] font-bold text-lab transition hover:border-lab hover:bg-lab-soft">
-                      BRAND-ER LAB 소개 <ArrowDown className="h-4 w-4" />
+                      프로젝트 알아보기 <ArrowDown className="h-4 w-4" />
                     </a>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* SECTION 02 — 브랜더 LAB 소개 */}
+            {/* SECTION 02 (B) — 프로젝트 진행 과정 (4단계) */}
+            <LabReelsProcessSection />
+
+            {/* SECTION 03 (C) — 릴스 촬영 안내 */}
+            <LabReelsFilmingSection onApply={goApply} />
+
+            {/* SECTION 04 — 브랜더 LAB 소개 (LEARN · CREATE · MAKE) */}
             <section id="about" aria-labelledby="lab-about-title" className="scroll-mt-20 bg-[#f4f2f1] py-16 sm:py-24">
               <div className="page-shell">
                 <div className="grid gap-8 lg:grid-cols-12">
                   <div className="lg:col-span-6">
-                    <p className="eyebrow text-lab">02 · About</p>
+                    <p className="eyebrow text-lab">04 · About</p>
                     <h2 id="lab-about-title" className="mt-4 font-display text-[clamp(2rem,4.4vw,3.6rem)] font-extrabold leading-none tracking-[-0.04em] text-lab">WHAT IS<br />BRAND-ER LAB?</h2>
                   </div>
                   <div className="space-y-4 text-[16px] leading-8 text-stone-700 lg:col-span-5 lg:col-start-8 lg:pt-10">
@@ -365,36 +405,37 @@ const BranderLab = () => {
               </div>
             </section>
 
-            {/* SECTION 03 — 무료 샘플 제작 프로젝트 */}
-            <section aria-labelledby="lab-project-title" className="bg-white py-16 sm:py-24">
+            {/* SECTION 05 (D) — 참여 신청 (기존 무료 샘플 제작 안내와 연결) */}
+            <section id="join" aria-labelledby="lab-project-title" className="scroll-mt-20 bg-white py-16 sm:py-24">
               <div className="page-shell grid gap-10 lg:grid-cols-12 lg:items-center">
                 <div className="lg:col-span-7">
-                  <p className="eyebrow text-lab">03 · Free Sample Project</p>
-                  <p className="mt-4 font-display text-[clamp(2rem,5vw,4.2rem)] font-extrabold leading-[0.98] tracking-[-0.045em] text-lab">YOUR IDEA,<br />OUR PRODUCTION.</p>
-                  <h2 id="lab-project-title" className="mt-6 text-[clamp(1.4rem,2.6vw,2rem)] font-bold tracking-[-0.03em]">당신이 상상한 옷을 만들어드립니다.</h2>
+                  <p className="eyebrow text-lab">05 · Join the Project</p>
+                  <p className="mt-4 font-display text-[clamp(2rem,5vw,4.2rem)] font-extrabold leading-[0.98] tracking-[-0.045em] text-lab">YOUR IDEA,<br />NEXT REELS.</p>
+                  <h2 id="lab-project-title" className="mt-6 text-[clamp(1.4rem,2.6vw,2rem)] font-bold leading-snug tracking-[-0.03em]">당신의 아이디어가<br className="sm:hidden" /> 다음 릴스의 주인공이 될 수 있습니다.</h2>
                 </div>
                 <div className="lg:col-span-5">
                   <div className="space-y-3 text-[16px] leading-8 text-stone-700">
-                    <p>평소 만들어보고 싶었던 옷이 있으신가요?<br />디자인을 전문적으로 배운 적이 없어도 괜찮습니다.</p>
-                    <p>당신이 생각한 디자인과 아이디어를 알려주세요.<br />브랜더 LAB에서 신청 내용을 검토하고, 선정된 프로젝트의 의류 샘플 제작을 지원합니다.</p>
+                    <p>평소 만들고 싶었던 옷이 있다면 브랜더랩에 아이디어를 남겨주세요.</p>
+                    <p>디자인을 전문적으로 배운 적이 없어도 괜찮습니다. 브랜더 LAB에서 신청 내용을 검토하고, 선정된 프로젝트의 의류 샘플을 무료로 제작합니다.</p>
                   </div>
-                  <ApplyButton onClick={goApply} className="mt-8 w-full sm:w-auto" />
+                  <ApplyButton onClick={goApply} label="브랜더랩 프로젝트 신청하기" className="mt-8 w-full sm:w-auto" />
                   <ul className="mt-8 grid gap-2 text-[13px] leading-6 text-stone-500">
                     <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />신청 비용 없음 · BRAND-ER 회원 로그인 후 신청</li>
-                    <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />선정된 신청자에게 의류 샘플 제작 지원</li>
+                    <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />선정된 신청자에게 의류 샘플 무료 제작 지원</li>
+                    <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />촬영 · SNS 게시 동의는 별도 선택 — 촬영 없이 제작만 신청할 수도 있습니다</li>
                     <li className="flex gap-2"><Check className="mt-1 h-3.5 w-3.5 shrink-0 text-lab" />선정 여부와 일정은 개별 안내</li>
                   </ul>
                 </div>
               </div>
             </section>
 
-            {/* SECTION 04 — 무료 샘플 제작 신청 폼 */}
+            {/* SECTION 06 — 무료 샘플 제작(브랜더랩 프로젝트) 신청 폼 */}
             <section ref={applyRef} id="apply" aria-labelledby="lab-apply-title" className="scroll-mt-16 bg-[#f4f2f1] py-16 sm:py-24">
               <div className="page-shell">
                 <div className="mx-auto max-w-3xl">
-                  <p className="eyebrow text-lab">04 · Apply</p>
-                  <h2 id="lab-apply-title" className="mt-4 text-[clamp(1.8rem,3.4vw,2.6rem)] font-extrabold tracking-[-0.04em]">무료 샘플 제작 신청</h2>
-                  <p className="mt-3 text-[14.5px] leading-7 text-stone-600">일반 의류 제작 문의는 <Link to="/design-quote" className="font-semibold text-lab underline underline-offset-4">제작 견적</Link>에서 따로 받고 있습니다. 이 신청서는 BRAND-ER LAB 무료 샘플 프로젝트 전용입니다.</p>
+                  <p className="eyebrow text-lab">06 · Apply</p>
+                  <h2 id="lab-apply-title" className="mt-4 text-[clamp(1.8rem,3.4vw,2.6rem)] font-extrabold tracking-[-0.04em]">브랜더랩 프로젝트 · 무료 샘플 제작 신청</h2>
+                  <p className="mt-3 text-[14.5px] leading-7 text-stone-600">일반 의류 제작 문의는 <Link to="/design-quote" className="font-semibold text-lab underline underline-offset-4">제작 견적</Link>에서 따로 받고 있습니다. 이 신청서는 BRAND-ER LAB 프로젝트(무료 샘플 제작 · 릴스 촬영) 전용입니다.</p>
 
                   {userId === undefined ? (
                     <div className="mt-12 flex justify-center rounded-[22px] bg-white py-16"><Loader2 className="h-6 w-6 animate-spin text-lab" aria-label="로그인 상태 확인 중" /></div>
@@ -484,12 +525,24 @@ const BranderLab = () => {
 
                     {/* 동의 */}
                     <section className="space-y-5">
-                      <FormGroupTitle index="STEP 03" title="개인정보 수집 · 이용 및 프로젝트 동의" />
+                      <FormGroupTitle index="STEP 03" title="촬영 참여 및 동의" />
                       <p className="text-[14px] leading-7 text-stone-700">
-                        BRAND-ER LAB 무료 샘플 프로젝트는 선정된 신청자의 아이디어를 실제 샘플로 제작하고, 그 과정과 완성품을 브랜더 콘텐츠로 소개합니다.
-                        선정된 신청자에게는 제작 · 촬영 일정을 개별 안내드립니다.
+                        BRAND-ER LAB 프로젝트는 선정된 신청자의 아이디어를 실제 샘플로 제작하고, 그 과정과 완성품을 브랜더 콘텐츠로 소개합니다.
+                        인터뷰 · 완성품 전달 · 착용 장면 촬영은 <b className="font-semibold text-[#211b1c]">원하시는 분만</b> 참여하며, 촬영 전 범위와 게시 기간을 안내하고 다시 동의를 받습니다.
                       </p>
+                      <Field label="촬영 참여 가능 여부" required error={errorFor("filmingAvailability")}
+                        hint="선정 검토에 참고하는 응답이며, 촬영 동의가 아닙니다. 실제 촬영은 아래 [선택] 촬영 및 게시 동의와 촬영 전 개별 동의가 모두 있어야 진행됩니다.">
+                        <div role="radiogroup" aria-label="촬영 참여 가능 여부" className="flex flex-wrap gap-2" aria-invalid={Boolean(errorFor("filmingAvailability"))} tabIndex={-1}>
+                          {LAB_FILMING_AVAILABILITY.map((item) => (
+                            <Chip key={item.value} role="radio" selected={input.filmingAvailability === item.value}
+                              onClick={() => { set("filmingAvailability", item.value); setTouched((c) => ({ ...c, filmingAvailability: true })); }} disabled={disabled}>{item.label}</Chip>
+                          ))}
+                        </div>
+                      </Field>
                       <LabConsentPanel value={consents} onChange={setConsents} disabled={disabled} showErrors={attempted} />
+                      <p className="text-[12.5px] leading-6 text-stone-500">
+                        촬영 없이 일반 의류 제작만 문의하시려면 <Link to="/design-quote" className="font-semibold text-lab underline underline-offset-4">제작 견적</Link>을 이용해주세요. 촬영 동의 여부와 관계없이 상담해드립니다.
+                      </p>
                       <p className="text-[12.5px] leading-6 text-stone-500">
                         촬영물 이용 동의 철회, 개인정보 열람 · 정정 · 삭제 요청 및 문의: 개인정보책임자 {LAB_CONTACT.privacyOfficer} ·{" "}
                         <a className="underline underline-offset-4 hover:text-lab" href={`mailto:${LAB_CONTACT.email}`}>{LAB_CONTACT.email}</a> ·{" "}
@@ -506,12 +559,12 @@ const BranderLab = () => {
                       )}
                       <button type="submit" disabled={!canSubmit} aria-disabled={!canSubmit}
                         className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full bg-lab px-8 text-[16px] font-bold text-white transition hover:bg-lab-dark disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 sm:w-auto sm:min-w-[340px]">
-                        {submitting ? <><Loader2 className="h-4 w-4 animate-spin" />신청서를 보내는 중...</> : <>무료 샘플 제작 신청하기 <ArrowRight className="h-4 w-4" /></>}
+                        {submitting ? <><Loader2 className="h-4 w-4 animate-spin" />신청서를 보내는 중...</> : <>브랜더랩 프로젝트 신청하기 <ArrowRight className="h-4 w-4" /></>}
                       </button>
                       {!canSubmit && !submitting && pending.length > 0 && (
                         <p className="mt-3 text-[13px] leading-6 text-stone-500">남은 항목: {pending.join(" · ")}</p>
                       )}
-                      <p className="mt-3 text-[12.5px] leading-6 text-stone-400">신청은 무료이며 결제가 발생하지 않습니다. 신청이 곧 무료 샘플 제작 확정을 의미하지는 않습니다.</p>
+                      <p className="mt-3 text-[12.5px] leading-6 text-stone-400">신청은 무료이며 결제가 발생하지 않습니다. 신청이 곧 무료 샘플 제작 확정을 의미하지는 않으며, 신청서 제출만으로 촬영에 동의한 것으로 처리하지 않습니다.</p>
                     </section>
                   </form>
                   )}
@@ -519,13 +572,13 @@ const BranderLab = () => {
               </div>
             </section>
 
-            {/* SECTION 05 — 의류 지식 콘텐츠 */}
+            {/* SECTION 07 — 의류 지식 콘텐츠 */}
             <LabKnowledgeSection />
 
-            {/* SECTION 06 — 제작 과정 */}
+            {/* SECTION 08 — 신청 절차 */}
             <section aria-labelledby="lab-how-title" className="bg-[#f4f2f1] py-16 sm:py-24">
               <div className="page-shell">
-                <p className="eyebrow text-lab">06 · Process</p>
+                <p className="eyebrow text-lab">08 · How to Join</p>
                 <h2 id="lab-how-title" className="mt-4 font-display text-[clamp(2rem,4.4vw,3.6rem)] font-extrabold leading-none tracking-[-0.04em] text-lab">HOW IT WORKS</h2>
                 <ol className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:gap-4">
                   {LAB_STEPS.map(({ title, body, icon: Icon }, index) => (
@@ -542,7 +595,7 @@ const BranderLab = () => {
               </div>
             </section>
 
-            {/* SECTION 07 — 마지막 신청 유도 */}
+            {/* SECTION 09 — 마지막 신청 유도 */}
             <section aria-labelledby="lab-final-title" className="bg-lab py-16 text-white sm:py-24">
               <div className="page-shell">
                 <div className="relative rounded-[26px] px-6 py-14 text-center sm:px-12 sm:py-20">
@@ -550,7 +603,7 @@ const BranderLab = () => {
                   <h2 id="lab-final-title" className="text-[clamp(1.9rem,4.6vw,3.6rem)] font-extrabold leading-[1.15] tracking-[-0.045em]">
                     상상만 하지 마세요.<br />이제 직접 만들어보세요.
                   </h2>
-                  <ApplyButton tone="light" onClick={goApply} className="mt-10 w-full sm:w-auto" />
+                  <ApplyButton tone="light" onClick={goApply} label="브랜더랩 프로젝트 신청하기" className="mt-10 w-full sm:w-auto" />
                   <p className="mx-auto mt-6 max-w-lg text-[13px] leading-6 text-white/70">
                     무료 샘플 제작은 선정된 신청자를 대상으로 진행되며, 제작 범위와 조건은 개별 안내됩니다.
                   </p>
@@ -562,7 +615,7 @@ const BranderLab = () => {
             {!formVisible && (
               <div ref={stickyCtaRef} data-mascot-safezone
                 className="fixed inset-x-0 bottom-[var(--bottom-nav-offset)] z-40 border-t border-black/10 bg-white/95 px-4 py-2 backdrop-blur-md md:hidden">
-                <ApplyButton onClick={goApply} className="min-h-[48px] w-full text-[15px]" />
+                <ApplyButton onClick={goApply} label="브랜더랩 프로젝트 신청하기" className="min-h-[48px] w-full text-[15px]" />
               </div>
             )}
           </>

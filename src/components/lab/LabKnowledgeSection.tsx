@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { getAppPath } from "@/utils/appUrl";
 import { LAB_KNOWLEDGE, type LabKnowledgeItem } from "./labContent";
 
-/** SECTION 05 — FASHION KNOWLEDGE. 카드를 누르면 상세 내용(관련 릴스 · 가이드 링크 포함)이 열린다. */
+/** SECTION 07 — FASHION KNOWLEDGE. 카드를 누르면 상세 내용(관련 릴스 · 가이드 링크 포함)이 열린다. */
 export const LabKnowledgeSection = () => {
   const [open, setOpen] = useState<LabKnowledgeItem | null>(null);
 
@@ -13,7 +13,7 @@ export const LabKnowledgeSection = () => {
       <div className="page-shell">
         <div className="grid gap-6 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-7">
-            <p className="eyebrow text-lab">05 · Learn</p>
+            <p className="eyebrow text-lab">07 · Learn</p>
             <h2 id="lab-knowledge-title" className="mt-4 font-display text-[clamp(2rem,4.4vw,3.6rem)] font-extrabold leading-none tracking-[-0.04em] text-lab">FASHION KNOWLEDGE</h2>
           </div>
           <p className="text-[15px] leading-7 text-stone-600 lg:col-span-4 lg:col-start-9">옷에 관한 모든 궁금증, 브랜더 LAB이 알려드립니다.</p>

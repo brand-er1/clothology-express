@@ -20,9 +20,14 @@ describe("BRAND-ER LAB consent documents", () => {
     expect(consentSql).toContain(row);
   });
 
-  it("all documents share the current version and only marketing is optional", () => {
+  it("all documents share the current version; filming and marketing are optional, separate from privacy", () => {
     expect(new Set(LAB_CONSENT_DOCUMENTS.map((doc) => doc.version))).toEqual(new Set([LAB_CONSENT_VERSION]));
-    expect(LAB_CONSENT_DOCUMENTS.filter((doc) => !doc.required).map((doc) => doc.key)).toEqual(["marketing"]);
+    expect(LAB_CONSENT_DOCUMENTS.filter((doc) => !doc.required).map((doc) => doc.key)).toEqual(["filming", "marketing"]);
+    expect(LAB_CONSENT_DOCUMENTS.filter((doc) => doc.required).map((doc) => doc.key)).toEqual(["participation", "privacy"]);
+  });
+
+  it("the newest lab migration demotes older consent versions to keep exactly one current version", () => {
+    expect(consentSql).toContain(`update public.lab_consent_documents set is_current = false where is_current and version <> '${LAB_CONSENT_VERSION}';`);
   });
 });
 
@@ -51,6 +56,7 @@ const row: LabExportRow = {
   reason: null,
   purpose: "brand_launch",
   future_production: "yes",
+  filming_availability: "discuss",
   image_count: 2,
   admin_memo: "-메모",
   retention_until: "2027-11-21T01:00:00Z",
@@ -86,10 +92,12 @@ describe("buildLabCsv", () => {
     expect(line).toContain("선정,검토 완료,선정,제작 대기");
     expect(line).toContain("브랜드 창업 준비");
     expect(line).toContain("추가 생산 의향 있음");
+    expect(header).toContain("촬영 참여 가능 여부");
+    expect(line).toContain("촬영 범위 안내 후 결정");
   });
 
   it("leaves optional legacy fields blank instead of printing null", () => {
-    const legacy = buildLabCsv([{ ...row, instagram_id: null, size: null, size_other: null, purpose: null, future_production: null }]);
+    const legacy = buildLabCsv([{ ...row, instagram_id: null, size: null, size_other: null, purpose: null, future_production: null, filming_availability: null }]);
     expect(legacy).not.toContain("null");
   });
 
@@ -102,6 +110,7 @@ describe("BRAND-ER LAB form rules (v2)", () => {
   const base = {
     applicantName: "홍길동", phone: "010-1234-5678", email: "a@b.co", instagramId: "", garmentTypes: ["hoodie"], garmentTypeOther: "",
     designDescription: "검은색 오버핏 후드티에 등판 그래픽", size: "", sizeOther: "", purpose: "personal", reason: "", futureProduction: "",
+    filmingAvailability: "unavailable",
   };
 
   it("requires email and purpose, keeps instagram / size / future production optional", () => {
@@ -109,6 +118,14 @@ describe("BRAND-ER LAB form rules (v2)", () => {
     const missing = validateLabApplication({ ...base, email: "", purpose: "" });
     expect(missing.ok).toBe(false);
     expect(Object.keys(missing.errors).sort()).toEqual(["email", "purpose"]);
+  });
+
+  it("requires a filming availability answer and accepts '촬영 없이 제작만'", () => {
+    const result = validateLabApplication(base);
+    expect(result.ok && result.value.filmingAvailability).toBe("unavailable");
+    const missing = validateLabApplication({ ...base, filmingAvailability: "" });
+    expect(Object.keys(missing.errors)).toEqual(["filmingAvailability"]);
+    expect(validateLabApplication({ ...base, filmingAvailability: "maybe" }).ok).toBe(false);
   });
 
   it("maps a single status onto review / selection / production views", () => {

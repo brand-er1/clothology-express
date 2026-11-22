@@ -61,6 +61,18 @@ export const LAB_FUTURE_PRODUCTION = [
 
 export type LabFutureProduction = (typeof LAB_FUTURE_PRODUCTION)[number]["value"];
 
+/**
+ * 촬영 참여 가능 여부 (필수, 하나 선택 — 2026-11-23 이후 신청).
+ * '촬영 및 SNS 게시 동의'(선택 동의)와는 별개의 응답이다. 이 값만으로 촬영 동의가 된 것으로 보지 않는다.
+ */
+export const LAB_FILMING_AVAILABILITY = [
+  { value: "available", label: "촬영 참여 가능" },
+  { value: "discuss", label: "촬영 범위 안내 후 결정" },
+  { value: "unavailable", label: "촬영 없이 제작만 희망" },
+] as const;
+
+export type LabFilmingAvailability = (typeof LAB_FILMING_AVAILABILITY)[number]["value"];
+
 export const LAB_STATUSES = [
   { value: "received", label: "신청 접수" },
   { value: "reviewing", label: "검토 중" },
@@ -79,6 +91,8 @@ export const labStatusLabel = (value: string) => LAB_STATUSES.find((item) => ite
 export const labPurposeLabel = (value: string | null | undefined) => (value ? LAB_PURPOSES.find((item) => item.value === value)?.label ?? value : "");
 export const labFutureProductionLabel = (value: string | null | undefined) =>
   (value ? LAB_FUTURE_PRODUCTION.find((item) => item.value === value)?.label ?? value : "");
+export const labFilmingAvailabilityLabel = (value: string | null | undefined) =>
+  (value ? LAB_FILMING_AVAILABILITY.find((item) => item.value === value)?.label ?? value : "");
 
 /**
  * 관리자 화면용: 하나의 진행 상태를 '검토 상태 · 선정 여부 · 제작 진행 상태' 세 가지 관점으로 풀어 보여준다.
@@ -143,7 +157,7 @@ export const LAB_CONTACT = {
 // 동의 문구 (버전 관리)
 // ---------------------------------------------------------------------------
 
-export const LAB_CONSENT_VERSION = "2026-11-22.v1";
+export const LAB_CONSENT_VERSION = "2026-11-23.v1";
 
 export type LabConsentKey = "participation" | "filming" | "privacy" | "marketing";
 
@@ -156,7 +170,7 @@ export type LabConsentDocument = {
 };
 
 export const LAB_PRIVACY_NOTICE = {
-  items: "(필수) 이름, 휴대폰 번호, 이메일 주소, 제작하고 싶은 의류 종류·설명, 제작 목적 / (선택) 인스타그램 아이디, 디자인 참고 이미지, 제작 목적 상세, 향후 추가 생산 의향 / (자동 수집) 신청한 회원 계정 식별값, 신청 일시, 중복·부정 신청 방지를 위한 접속 정보(IP 주소의 암호화 값, 브라우저 정보)",
+  items: "(필수) 이름, 휴대폰 번호, 이메일 주소, 제작하고 싶은 의류 종류·설명, 제작 목적, 촬영 참여 가능 여부 / (선택) 인스타그램 아이디, 디자인 참고 이미지, 제작 목적 상세, 향후 추가 생산 의향 / (자동 수집) 신청한 회원 계정 식별값, 신청 일시, 중복·부정 신청 방지를 위한 접속 정보(IP 주소의 암호화 값, 브라우저 정보)",
   purpose: "신청 접수 및 신청자 확인, 참여자 선정 및 결과 안내, 제작·촬영 일정 협의를 위한 연락, 중복·부정 신청 방지",
   retention: "접수일로부터 1년간 보관 후 파기합니다. 선정되어 콘텐츠가 게시된 경우 게시 완료일로부터 1년간 보관합니다. 보유 기간이 지나거나 삭제를 요청하시면 지체 없이 파기합니다.",
   refusal: "개인정보 수집·이용 동의를 거부할 권리가 있습니다. 다만 필수 항목에 동의하지 않으시면 신청 접수와 참여자 선정이 불가능합니다.",
@@ -168,14 +182,14 @@ export const LAB_CONSENT_DOCUMENTS: readonly LabConsentDocument[] = [
     version: LAB_CONSENT_VERSION,
     required: true,
     title: "프로젝트 참여 및 제작 과정 공개 동의",
-    body: "본인은 브랜더 LAB 무료 샘플 제작 프로젝트의 진행 방식에 대해 안내받았으며, 선정 시 신청한 디자인의 제작 과정 및 완성품이 브랜더의 콘텐츠로 소개될 수 있음에 동의합니다.",
+    body: "본인은 브랜더 LAB 무료 샘플 제작 프로젝트의 진행 방식에 대해 안내받았으며, 선정 시 신청한 디자인의 제작 과정 및 완성품(의류)이 브랜더의 콘텐츠로 소개될 수 있음에 동의합니다. 본인의 얼굴·음성 등 초상이 담기는 촬영은 이 동의에 포함되지 않으며, 아래 촬영 및 게시 동의와 촬영 전 개별 동의에 따릅니다.",
   },
   {
     key: "filming",
     version: LAB_CONSENT_VERSION,
-    required: true,
+    required: false,
     title: "인스타그램 릴스 촬영 및 게시 동의",
-    body: "본인은 프로젝트 진행 과정에서 사전 협의된 촬영에 참여하고, 촬영된 영상과 음성, 초상 등이 브랜더 공식 인스타그램 계정에 게시되는 것에 동의합니다. 실제 촬영 전에는 촬영 범위, 게시 매체, 이용 기간, 편집 및 재사용 범위를 구체적으로 안내받고 별도로 동의 여부를 결정합니다.",
+    body: "본인은 선정 시 길거리 인터뷰, 의류 제작 과정, 완성품 전달 및 착용 장면 촬영에 참여하고, 촬영된 영상과 음성, 초상 등이 편집되어 BRAND-ER LAB 공식 인스타그램 릴스로 게시되는 것에 동의합니다. 이 동의는 선택 사항으로, 동의하지 않아도 신청과 제작 검토는 가능합니다. 신청서 제출만으로 촬영이 확정되지 않으며, 실제 촬영 전에는 촬영 범위, 게시 매체, 이용 기간, 편집 및 재사용 범위를 구체적으로 안내받고 별도로 동의 여부를 결정합니다.",
   },
   {
     key: "privacy",
@@ -257,6 +271,7 @@ export type LabApplicationInput = {
   purpose: string;
   reason: string;
   futureProduction: string;
+  filmingAvailability: string;
 };
 
 export type LabApplicationField = keyof LabApplicationInput;
@@ -274,6 +289,7 @@ export type LabApplicationValue = {
   purpose: LabPurpose;
   reason: string | null;
   futureProduction: LabFutureProduction | null;
+  filmingAvailability: LabFilmingAvailability;
 };
 
 export type LabValidationResult =
@@ -284,6 +300,7 @@ const garmentValues = new Set<string>(LAB_GARMENT_TYPES.map((item) => item.value
 const sizeValues = new Set<string>(LAB_SIZES.map((item) => item.value));
 const purposeValues = new Set<string>(LAB_PURPOSES.map((item) => item.value));
 const futureValues = new Set<string>(LAB_FUTURE_PRODUCTION.map((item) => item.value));
+const filmingValues = new Set<string>(LAB_FILMING_AVAILABILITY.map((item) => item.value));
 
 export const validateLabApplication = (raw: Partial<Record<LabApplicationField, unknown>>): LabValidationResult => {
   const errors: Partial<Record<LabApplicationField, string>> = {};
@@ -339,6 +356,10 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
   const futureProduction = cleanText(raw.futureProduction);
   if (futureProduction && !futureValues.has(futureProduction)) errors.futureProduction = "선택할 수 없는 항목입니다.";
 
+  const filmingAvailability = cleanText(raw.filmingAvailability);
+  if (!filmingAvailability) errors.filmingAvailability = "촬영 참여 가능 여부를 선택해주세요.";
+  else if (!filmingValues.has(filmingAvailability)) errors.filmingAvailability = "선택할 수 없는 항목입니다.";
+
   if (Object.keys(errors).length > 0 || !phone) return { ok: false, value: null, errors };
 
   return {
@@ -357,6 +378,7 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
       purpose: purpose as LabPurpose,
       reason: reason || null,
       futureProduction: futureProduction ? (futureProduction as LabFutureProduction) : null,
+      filmingAvailability: filmingAvailability as LabFilmingAvailability,
     },
   };
 };

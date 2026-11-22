@@ -13,7 +13,7 @@ BRAND-ER 안에서 운영하는 별도 프로젝트(패션 콘텐츠 · 의류 �
 
 | # | 섹션 | 앵커 | 비고 |
 | --- | --- | --- | --- |
-| 01 (A) | 메인 소개 — "당신이 상상한 옷, 우리가 만들어드립니다." · 배지 STREET INTERVIEW × AI DESIGN × REAL PRODUCTION · 핵심 3줄 | | 버튼: 릴스 촬영 프로젝트 참여하기(→ 신청서) · 프로젝트 알아보기(→ `#process`). 모바일은 글이 먼저, 로고는 아래 |
+| 01 (A) | 메인 소개 — "당신이 상상한 옷, 우리가 만들어드립니다." · 배지 STREET INTERVIEW × AI DESIGN × REAL PRODUCTION · 핵심 3줄 | | 버튼: 브랜더랩 참여하기(→ 신청서) · 프로젝트 알아보기(→ `#process`). 모바일은 글이 먼저, 로고는 아래 |
 | 02 (B) | 프로젝트 진행 과정 — 4개 카드 (STREET INTERVIEW · AI DESIGN · REAL PRODUCTION · REELS CONTENT) | `#process` | 데스크톱 4열 · 태블릿 2열 · 모바일 1열. 카드마다 이미지/영상 미리보기 자리 |
 | 03 (C) | 릴스 촬영 안내 — 촬영 · 게시 범위, 안내 사항 5개 | `#reels` | 인스타그램 버튼(주소 미입력 시 '공식 계정 준비 중') |
 | 04 | WHAT IS BRAND-ER LAB? — LEARN · CREATE · MAKE | `#about` | 기존 |
@@ -28,7 +28,7 @@ BRAND-ER 안에서 운영하는 별도 프로젝트(패션 콘텐츠 · 의류 �
 
 ### 릴스 프로젝트 카드 이미지 · 영상 교체
 
-`src/components/lab/labContent.ts` 의 `LAB_REELS_STEPS` 각 항목에 `media` 를 넣으면 플레이스홀더 대신 보입니다. 파일은 `public/lab/reels/` 에 둡니다.
+현재 4개 카드에는 직접 그린 일러스트(`public/lab/reels/step-0N-*.svg`, 버건디 톤 벡터)가 들어 있습니다. 실제 촬영 사진 · 영상이 생기면 `src/components/lab/labContent.ts` 의 `LAB_REELS_STEPS` 각 항목 `media` 경로만 바꾸면 됩니다(지우면 아이콘 플레이스홀더로 돌아갑니다). 파일은 `public/lab/reels/` 에 둡니다.
 
 ```ts
 media: { type: "image", src: "/lab/reels/interview.webp", alt: "길거리 인터뷰 장면" }
@@ -138,13 +138,13 @@ media: { type: "video", src: "/lab/reels/interview.mp4", poster: "/lab/reels/int
 Cafe24 관리자 → 디자인 → 메인 화면 HTML 편집에서 원하는 위치에 아래 배너를 넣습니다.
 
 ```html
-<!-- BRAND-ER LAB 릴스 촬영 프로젝트 배너 (외부 라이브러리 없음, 인라인 스타일만 사용) -->
+<!-- BRAND-ER LAB(브랜더랩) 배너 (외부 라이브러리 없음, 인라인 스타일만 사용) -->
 <section style="background:#1d1718;color:#f3eee8;padding:56px 20px;text-align:center;font-family:Pretendard,'Apple SD Gothic Neo',sans-serif;word-break:keep-all;">
   <p style="display:inline-block;margin:0;padding:6px 12px;border:1px solid rgba(201,153,164,.5);border-radius:999px;font-size:10px;letter-spacing:.12em;color:#c999a4;font-weight:700;">STREET INTERVIEW × AI DESIGN × REAL PRODUCTION</p>
   <h2 style="margin:16px 0 0;font-size:clamp(26px,5vw,40px);line-height:1.25;font-weight:800;letter-spacing:-.03em;">당신이 상상한 옷,<br>우리가 만들어드립니다.</h2>
-  <p style="max-width:540px;margin:16px auto 0;font-size:15px;line-height:1.75;color:#d6d3d1;">길거리 인터뷰부터 AI 의류 디자인, 실제 샘플 제작, 완성품 전달까지 모든 과정을 릴스 영상으로 기록하는 BRAND-ER LAB 프로젝트입니다.</p>
+  <p style="max-width:540px;margin:16px auto 0;font-size:15px;line-height:1.75;color:#d6d3d1;">길거리 인터뷰부터 AI 의류 디자인, 실제 샘플 제작, 완성품 전달까지 모든 과정을 릴스 영상으로 기록하는 브랜더랩입니다.</p>
   <div style="margin-top:28px;">
-    <a href="https://brand-er1.github.io/clothology-express/lab/apply" target="_top" style="display:inline-block;margin:4px;padding:16px 28px;background:#741F36;color:#fff;font-size:15px;font-weight:700;text-decoration:none;border-radius:999px;">릴스 촬영 프로젝트 참여하기 →</a>
+    <a href="https://brand-er1.github.io/clothology-express/lab/apply" target="_top" style="display:inline-block;margin:4px;padding:16px 28px;background:#741F36;color:#fff;font-size:15px;font-weight:700;text-decoration:none;border-radius:999px;">브랜더랩 참여하기 →</a>
     <a href="https://brand-er1.github.io/clothology-express/lab#process" target="_top" style="display:inline-block;margin:4px;padding:15px 27px;border:1px solid rgba(255,255,255,.35);color:#fff;font-size:15px;font-weight:700;text-decoration:none;border-radius:999px;">프로젝트 알아보기</a>
   </div>
   <p style="margin:14px 0 0;font-size:12px;color:#a8a29e;">신청 비용 없음 · 촬영 및 SNS 게시 동의는 별도 선택</p>

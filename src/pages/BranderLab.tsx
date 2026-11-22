@@ -363,7 +363,7 @@ const BranderLab = () => {
                     ))}
                   </ul>
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                    <ApplyButton onClick={goApply} label="릴스 촬영 프로젝트 참여하기" />
+                    <ApplyButton onClick={goApply} label="브랜더랩 참여하기" />
                     <a href="#process" onClick={scrollToId("process")}
                       className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-full border border-lab/30 px-7 text-[15px] font-bold text-lab transition hover:border-lab hover:bg-lab-soft">
                       프로젝트 알아보기 <ArrowDown className="h-4 w-4" />

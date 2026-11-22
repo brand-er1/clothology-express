@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="작업대 위에서 원단 재단, 봉제, 프린팅으로 실제 의류 샘플을 만드는 일러스트">
+  <title>STEP 03 · REAL PRODUCTION</title>
+  <rect width="800" height="1000" fill="#f6e8ea"/>
+  <!-- 작업대 -->
+  <rect x="0" y="620" width="800" height="380" fill="#e2c9cd"/>
+  <rect x="0" y="610" width="800" height="22" fill="#c999a4"/>
+
+  <!-- 원단 롤 -->
+  <g>
+    <rect x="60" y="140" width="210" height="440" rx="20" fill="#7a0415"/>
+    <rect x="60" y="140" width="210" height="440" rx="20" fill="none" stroke="#f3eee8" stroke-opacity=".5" stroke-width="3" stroke-dasharray="10 8" transform="translate(0 0)"/>
+    <ellipse cx="165" cy="140" rx="105" ry="28" fill="#5c0310"/>
+    <ellipse cx="165" cy="140" rx="30" ry="9" fill="#2b0207"/>
+    <g stroke="#5c0310" stroke-width="3" opacity=".6">
+      <path d="M90 200 V560"/><path d="M130 190 V570"/><path d="M200 190 V570"/><path d="M240 200 V560"/>
+    </g>
+  </g>
+
+  <!-- 패턴 조각 (후드 앞판) -->
+  <g>
+    <path d="M330 360 L410 330 Q480 380 550 330 L630 360 L660 470 L610 480 L600 430 L600 640 L360 640 L360 430 L350 480 L300 470 Z" fill="#ffffff"/>
+    <path d="M330 360 L410 330 Q480 380 550 330 L630 360 L660 470 L610 480 L600 430 L600 640 L360 640 L360 430 L350 480 L300 470 Z" fill="none" stroke="#7a0415" stroke-width="4" stroke-dasharray="14 10"/>
+    <!-- 프린팅 -->
+    <circle cx="480" cy="480" r="58" fill="#7a0415"/>
+    <path d="M480 446 l10 24 24 10 -24 10 -10 24 -10 -24 -24 -10 24 -10 z" fill="#f3eee8"/>
+  </g>
+
+  <!-- 줄자 -->
+  <g>
+    <path d="M280 700 Q480 650 720 720" fill="none" stroke="#e9b949" stroke-width="30" stroke-linecap="round"/>
+    <path d="M280 700 Q480 650 720 720" fill="none" stroke="#1f191a" stroke-width="30" stroke-dasharray="2 22" opacity=".55"/>
+  </g>
+
+  <!-- 가위 -->
+  <g transform="translate(150 800) rotate(-24)">
+    <rect x="0" y="-8" width="200" height="16" rx="8" fill="#b5adab"/>
+    <rect x="0" y="-8" width="200" height="16" rx="8" fill="#9b9391" transform="rotate(14)"/>
+    <circle cx="-30" cy="-26" r="30" fill="none" stroke="#1f191a" stroke-width="16"/>
+    <circle cx="-38" cy="28" r="30" fill="none" stroke="#1f191a" stroke-width="16"/>
+    <circle cx="10" cy="0" r="7" fill="#1f191a"/>
+  </g>
+
+  <!-- 실패 + 바늘 -->
+  <g>
+    <rect x="560" y="770" width="120" height="22" rx="6" fill="#5c0310"/>
+    <rect x="575" y="792" width="90" height="110" fill="#7a0415"/>
+    <g stroke="#5c0310" stroke-width="3"><path d="M575 812 H665"/><path d="M575 832 H665"/><path d="M575 852 H665"/><path d="M575 872 H665"/></g>
+    <rect x="560" y="902" width="120" height="22" rx="6" fill="#5c0310"/>
+    <path d="M665 830 Q740 800 720 700 L716 660" fill="none" stroke="#7a0415" stroke-width="4"/>
+    <path d="M716 560 L716 680" stroke="#6b6264" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="716" cy="574" rx="4" ry="9" fill="#f6e8ea"/>
+  </g>
+
+  <g font-family="Pretendard, 'Apple SD Gothic Neo', Arial, sans-serif" font-weight="800">
+    <rect x="530" y="48" width="222" height="52" rx="26" fill="#7a0415"/>
+    <text x="641" y="82" text-anchor="middle" font-size="22" fill="#ffffff" letter-spacing="2">STEP 03</text>
+  </g>
+</svg>

@@ -5,7 +5,7 @@ import { getAppPath } from "@/utils/appUrl";
 import { LAB_INSTAGRAM_URL, LAB_REELS_NOTICES, LAB_REELS_STEPS, type LabReelsMedia, type LabReelsStep } from "./labContent";
 
 /**
- * BRAND-ER LAB 릴스 촬영 프로젝트 섹션.
+ * BRAND-ER LAB(브랜더랩) 진행 과정 · 촬영 안내 섹션.
  *  - LabReelsProcessSection : 진행 과정 4단계 카드(이미지 · 짧은 영상 미리보기 영역 포함)
  *  - LabReelsFilmingSection : 릴스 촬영 안내(촬영 · 게시 범위, 동의 안내)
  * 문구 · 미리보기 파일은 labContent.ts 에서 바꾼다.
@@ -122,7 +122,7 @@ export const LabReelsFilmingSection = ({ onApply }: { onApply: (event: { prevent
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <a href="#apply" onClick={onApply}
               className="group inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-full bg-white px-6 text-[15px] font-bold text-lab transition hover:bg-lab-soft">
-              릴스 촬영 프로젝트 참여하기 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              브랜더랩 참여하기 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </a>
             {LAB_INSTAGRAM_URL ? (
               <a href={LAB_INSTAGRAM_URL} target="_blank" rel="noreferrer noopener"

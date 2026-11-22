@@ -131,7 +131,7 @@ export const LAB_STEPS: LabStep[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 릴스 촬영 프로젝트 (STREET INTERVIEW × AI DESIGN × REAL PRODUCTION)
+// 브랜더랩 진행 과정 (STREET INTERVIEW × AI DESIGN × REAL PRODUCTION)
 // ---------------------------------------------------------------------------
 
 /**
@@ -168,6 +168,7 @@ export const LAB_REELS_STEPS: LabReelsStep[] = [
     title: "길거리 인터뷰",
     body: "브랜더랩 촬영팀이 길거리에서 직접 섭외한 분께 평소 입고 싶었던 옷, 나만의 디자인 아이디어를 인터뷰합니다.",
     icon: Mic,
+    media: { type: "image", src: "/lab/reels/step-01-interview.svg", alt: "길거리에서 브랜더랩 마이크를 든 촬영팀이 참여자에게 입고 싶은 옷을 인터뷰하는 일러스트" },
   },
   {
     key: "ai-design",
@@ -175,6 +176,7 @@ export const LAB_REELS_STEPS: LabReelsStep[] = [
     title: "AI 의류 디자인",
     body: "인터뷰에서 나온 아이디어와 키워드를 바탕으로 AI를 활용해 세상에 하나뿐인 의류 디자인을 시각화합니다.",
     icon: Wand2,
+    media: { type: "image", src: "/lab/reels/step-02-ai-design.svg", alt: "태블릿 화면에서 인터뷰 키워드로 AI가 버건디 후드티 디자인을 시각화하는 일러스트" },
   },
   {
     key: "production",
@@ -182,6 +184,7 @@ export const LAB_REELS_STEPS: LabReelsStep[] = [
     title: "실제 의류 제작",
     body: "완성된 디자인으로 원단 선정, 프린팅, 봉제까지 브랜더의 실제 의류 제작 공정을 거쳐 샘플을 만듭니다.",
     icon: Scissors,
+    media: { type: "image", src: "/lab/reels/step-03-production.svg", alt: "작업대 위 원단 롤, 프린팅된 패턴 조각, 가위와 실패로 실제 샘플을 만드는 일러스트" },
   },
   {
     key: "reels",
@@ -189,6 +192,7 @@ export const LAB_REELS_STEPS: LabReelsStep[] = [
     title: "완성품 전달 및 릴스 촬영",
     body: "완성된 옷을 참여자에게 전달하고, 처음 마주하는 반응과 착용 모습을 촬영해 인스타그램 릴스로 공개합니다.",
     icon: Clapperboard,
+    media: { type: "image", src: "/lab/reels/step-04-reels.svg", alt: "완성된 후드티를 입은 참여자를 세로형 스마트폰 영상으로 촬영하고 선물 상자로 전달하는 일러스트" },
   },
 ];
 

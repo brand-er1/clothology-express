@@ -6,7 +6,7 @@ import { getAppPath } from "@/utils/appUrl";
 const LOGO_720 = getAppPath("/lab/brander-lab-logo-720.webp");
 const LOGO_1254 = getAppPath("/lab/brander-lab-logo-1254.webp");
 
-/** 메인 페이지 BRAND-ER LAB 진입 배너 — 릴스 촬영 프로젝트 소개(/lab#process)와 참여 신청(/lab/apply). */
+/** 메인 페이지 BRAND-ER LAB 진입 배너 — 브랜더랩 소개(/lab#process)와 참여 신청(/lab/apply). */
 export const LabHomeBanner = () => (
   <section aria-labelledby="lab-home-banner-title" className="overflow-hidden border-y border-stone-200 bg-white text-[#211b1c]">
     <div className="page-shell grid items-center gap-6 py-12 sm:py-16 lg:grid-cols-12 lg:gap-10">
@@ -34,14 +34,14 @@ export const LabHomeBanner = () => (
           우리가 만들어드립니다<span className="text-lab">.</span>
         </h2>
         <p className="mt-5 max-w-md text-[15px] leading-7 text-stone-600">
-          길거리 인터뷰부터 AI 의류 디자인, 실제 샘플 제작, 완성품 전달까지. 모든 과정을 릴스 영상으로 기록하는 BRAND-ER LAB 프로젝트에 아이디어를 남겨주세요.
+          길거리 인터뷰부터 AI 의류 디자인, 실제 샘플 제작, 완성품 전달까지. 모든 과정을 릴스 영상으로 기록하는 브랜더랩에 아이디어를 남겨주세요.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
           <Link
             to="/lab/apply"
             className="inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-full bg-lab px-8 text-[15px] font-bold text-white transition hover:bg-lab-dark sm:w-auto"
           >
-            릴스 촬영 프로젝트 참여하기 <ArrowRight className="h-4 w-4" />
+            브랜더랩 참여하기 <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             to="/lab#process"

@@ -280,7 +280,7 @@ export type LabApplicationValue = {
   applicantName: string;
   phone: string;
   email: string;
-  instagramId: string | null;
+  instagramId: string;
   garmentTypes: LabGarmentType[];
   garmentTypeOther: string | null;
   designDescription: string;
@@ -320,7 +320,8 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
 
   const instagramText = cleanText(raw.instagramId);
   const instagramId = normalizeInstagramId(instagramText);
-  if (instagramText && !instagramId) errors.instagramId = "영문 · 숫자 · 마침표(.) · 밑줄(_)로 된 30자 이내 아이디를 입력해주세요.";
+  if (!instagramText) errors.instagramId = "인스타그램 아이디를 입력해주세요.";
+  else if (!instagramId) errors.instagramId = "영문 · 숫자 · 마침표(.) · 밑줄(_)로 된 30자 이내 아이디를 입력해주세요.";
 
   const garmentTypes = Array.from(new Set(Array.isArray(raw.garmentTypes) ? raw.garmentTypes.filter((v): v is string => typeof v === "string") : []));
   const garmentTypeOther = cleanText(raw.garmentTypeOther);
@@ -369,7 +370,7 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
       applicantName,
       phone,
       email: emailText,
-      instagramId: instagramId ?? null,
+      instagramId: instagramId as string,
       garmentTypes: garmentTypes as LabGarmentType[],
       garmentTypeOther: garmentTypes.includes("other") ? garmentTypeOther : null,
       designDescription,

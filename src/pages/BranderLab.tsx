@@ -459,7 +459,7 @@ const BranderLab = () => {
                           <input id="lab-email" type="email" inputMode="email" placeholder="name@example.com" className={cn(inputClass(Boolean(errorFor("email"))), "h-12")} value={input.email} maxLength={LAB_LIMITS.emailMax}
                             autoComplete="email" onChange={(e) => set("email", e.target.value)} onBlur={touch("email")} aria-invalid={Boolean(errorFor("email"))} disabled={disabled} />
                         </Field>
-                        <Field label="인스타그램 아이디" htmlFor="lab-instagram" error={errorFor("instagramId")} hint="@ 없이 입력해도 됩니다. 자동 태그 · 공개에 사용하지 않습니다.">
+                        <Field label="인스타그램 아이디" required htmlFor="lab-instagram" error={errorFor("instagramId")} hint="@ 없이 입력해도 됩니다. 자동 태그 · 공개에 사용하지 않습니다.">
                           <div className="relative">
                             <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[16px] text-stone-400">@</span>
                             <input id="lab-instagram" placeholder="instagram_id" className={cn(inputClass(Boolean(errorFor("instagramId"))), "h-12 pl-8")} value={input.instagramId} maxLength={80}

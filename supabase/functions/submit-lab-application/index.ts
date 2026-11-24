@@ -7,7 +7,7 @@ import {
  * BRAND-ER LAB 무료 샘플 제작 신청 접수 (로그인한 회원만 가능).
  *
  * 요청: multipart/form-data
- *   payload : JSON 문자열 { submissionKey, applicantName, phone, email, instagramId?, garmentTypes, garmentTypeOther,
+ *   payload : JSON 문자열 { submissionKey, applicantName, phone, email, instagramId, garmentTypes, garmentTypeOther,
  *             designDescription, size?, sizeOther?, purpose, reason?, futureProduction?, filmingAvailability, consents: [{ key, version, agreed }] }
  *   images  : 참고 이미지 0~5개 (JPG · PNG · WEBP, 각 10MB 이하)
  *

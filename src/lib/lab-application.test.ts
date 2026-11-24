@@ -108,16 +108,16 @@ describe("buildLabCsv", () => {
 
 describe("BRAND-ER LAB form rules (v2)", () => {
   const base = {
-    applicantName: "홍길동", phone: "010-1234-5678", email: "a@b.co", instagramId: "", garmentTypes: ["hoodie"], garmentTypeOther: "",
+    applicantName: "홍길동", phone: "010-1234-5678", email: "a@b.co", instagramId: "gil.dong", garmentTypes: ["hoodie"], garmentTypeOther: "",
     designDescription: "검은색 오버핏 후드티에 등판 그래픽", size: "", sizeOther: "", purpose: "personal", reason: "", futureProduction: "",
     filmingAvailability: "unavailable",
   };
 
-  it("requires email and purpose, keeps instagram / size / future production optional", () => {
+  it("requires email, instagram and purpose, keeps size / future production optional", () => {
     expect(validateLabApplication(base).ok).toBe(true);
-    const missing = validateLabApplication({ ...base, email: "", purpose: "" });
+    const missing = validateLabApplication({ ...base, email: "", instagramId: "", purpose: "" });
     expect(missing.ok).toBe(false);
-    expect(Object.keys(missing.errors).sort()).toEqual(["email", "purpose"]);
+    expect(Object.keys(missing.errors).sort()).toEqual(["email", "instagramId", "purpose"]);
   });
 
   it("requires a filming availability answer and accepts '촬영 없이 제작만'", () => {

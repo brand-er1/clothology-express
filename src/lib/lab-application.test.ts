@@ -120,6 +120,28 @@ describe("BRAND-ER LAB form rules (v2)", () => {
     expect(Object.keys(missing.errors).sort()).toEqual(["email", "instagramId", "purpose"]);
   });
 
+  it("blocks a missing or blank instagram id with the required message", () => {
+    for (const instagramId of ["", "   ", "\t\n"]) {
+      const result = validateLabApplication({ ...base, instagramId });
+      expect(result.ok).toBe(false);
+      expect(result.errors.instagramId).toBe("인스타그램 아이디를 입력해 주세요.");
+    }
+    const absent = validateLabApplication({ ...base, instagramId: undefined });
+    expect(absent.errors.instagramId).toBe("인스타그램 아이디를 입력해 주세요.");
+  });
+
+  it("accepts an instagram id with or without @ and rejects characters instagram does not allow", () => {
+    for (const instagramId of ["gil.dong", "@gil.dong", " @Gil.Dong ", "instagram.com/gil.dong"]) {
+      const result = validateLabApplication({ ...base, instagramId });
+      expect(result.ok && result.value.instagramId).toBe("gil.dong");
+    }
+    for (const instagramId of ["gil-dong", "gil dong", "길동", "gil!dong", ".gildong", "gil..dong", "@", "a".repeat(31)]) {
+      const result = validateLabApplication({ ...base, instagramId });
+      expect(result.ok).toBe(false);
+      expect(result.errors.instagramId).toMatch(/영문 · 숫자 · 마침표\(\.\) · 밑줄\(_\)만/);
+    }
+  });
+
   it("requires a filming availability answer and accepts '촬영 없이 제작만'", () => {
     const result = validateLabApplication(base);
     expect(result.ok && result.value.filmingAvailability).toBe("unavailable");

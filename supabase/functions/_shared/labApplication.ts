@@ -320,8 +320,8 @@ export const validateLabApplication = (raw: Partial<Record<LabApplicationField, 
 
   const instagramText = cleanText(raw.instagramId);
   const instagramId = normalizeInstagramId(instagramText);
-  if (!instagramText) errors.instagramId = "인스타그램 아이디를 입력해주세요.";
-  else if (!instagramId) errors.instagramId = "영문 · 숫자 · 마침표(.) · 밑줄(_)로 된 30자 이내 아이디를 입력해주세요.";
+  if (!instagramText) errors.instagramId = "인스타그램 아이디를 입력해 주세요.";
+  else if (!instagramId) errors.instagramId = "인스타그램 아이디에는 영문 · 숫자 · 마침표(.) · 밑줄(_)만 사용할 수 있습니다. (30자 이내)";
 
   const garmentTypes = Array.from(new Set(Array.isArray(raw.garmentTypes) ? raw.garmentTypes.filter((v): v is string => typeof v === "string") : []));
   const garmentTypeOther = cleanText(raw.garmentTypeOther);

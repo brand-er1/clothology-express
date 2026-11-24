@@ -79,13 +79,14 @@ const FormGroupTitle = ({ index, title, description }: { index: string; title: s
   </div>
 );
 
-const Field = ({ label, required, htmlFor, hint, error, children, counter }: {
-  label: string; required?: boolean; htmlFor?: string; hint?: ReactNode; error?: string; children: ReactNode; counter?: string;
+const Field = ({ label, required, asterisk, htmlFor, hint, error, children, counter }: {
+  label: string; required?: boolean; asterisk?: boolean; htmlFor?: string; hint?: ReactNode; error?: string; children: ReactNode; counter?: string;
 }) => (
   <div>
     <div className="flex items-baseline justify-between gap-3">
       <label htmlFor={htmlFor} className="text-[14px] font-semibold text-[#211b1c]">
         {label}
+        {asterisk && <span className="ml-0.5 text-lab" aria-hidden="true">*</span>}
         <span className={cn("ml-1.5 text-[12px] font-medium", required ? "text-lab" : "text-stone-400")}>{required ? "필수" : "선택"}</span>
       </label>
       {counter && <span className="font-display text-[11px] tabular-nums text-stone-400">{counter}</span>}
@@ -459,12 +460,10 @@ const BranderLab = () => {
                           <input id="lab-email" type="email" inputMode="email" placeholder="name@example.com" className={cn(inputClass(Boolean(errorFor("email"))), "h-12")} value={input.email} maxLength={LAB_LIMITS.emailMax}
                             autoComplete="email" onChange={(e) => set("email", e.target.value)} onBlur={touch("email")} aria-invalid={Boolean(errorFor("email"))} disabled={disabled} />
                         </Field>
-                        <Field label="인스타그램 아이디" required htmlFor="lab-instagram" error={errorFor("instagramId")} hint="@ 없이 입력해도 됩니다. 자동 태그 · 공개에 사용하지 않습니다.">
-                          <div className="relative">
-                            <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[16px] text-stone-400">@</span>
-                            <input id="lab-instagram" placeholder="instagram_id" className={cn(inputClass(Boolean(errorFor("instagramId"))), "h-12 pl-8")} value={input.instagramId} maxLength={80}
-                              autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => set("instagramId", e.target.value)} onBlur={touch("instagramId")} aria-invalid={Boolean(errorFor("instagramId"))} disabled={disabled} />
-                          </div>
+                        <Field label="인스타그램 아이디" required asterisk htmlFor="lab-instagram" error={errorFor("instagramId")}>
+                          <input id="lab-instagram" placeholder="@instagram_id" className={cn(inputClass(Boolean(errorFor("instagramId"))), "h-12")} value={input.instagramId} maxLength={80}
+                            required aria-required="true" autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => set("instagramId", e.target.value)} onBlur={touch("instagramId")} aria-invalid={Boolean(errorFor("instagramId"))} aria-describedby="lab-instagram-hint" disabled={disabled} />
+                          <p id="lab-instagram-hint" className="mt-1.5 text-[12.5px] leading-5 text-stone-500">프로젝트 참여 안내 및 연락을 위해 실제 사용 중인 인스타그램 아이디를 입력해 주세요.</p>
                         </Field>
                       </div>
                     </section>

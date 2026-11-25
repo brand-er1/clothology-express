@@ -1,6 +1,8 @@
 import { getAppPath } from "@/utils/appUrl";
 import { Link } from "react-router-dom";
+import { Instagram } from "lucide-react";
 import { BrandMascot } from "@/components/BrandMascot";
+import { LAB_INSTAGRAM_URL } from "@/components/lab/labContent";
 
 const legalLinks = [
   { href: "https://brand-er.store/member/agreement.html", label: "이용약관", internal: false },
@@ -31,6 +33,16 @@ export const Footer = () => (
             <br />
             디자인부터 원단, 샘플, 생산까지.
           </p>
+          <a
+            href={LAB_INSTAGRAM_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="브랜더랩 공식 인스타그램 (새 창)"
+            className="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-white/15 px-4 text-sm text-stone-300 transition-colors hover:border-white/40 hover:text-white"
+          >
+            <Instagram className="h-4 w-4" />
+            @brander.lab
+          </a>
         </div>
 
         <nav aria-label="사이트 메뉴" className="lg:col-span-3 lg:col-start-8">

@@ -138,7 +138,7 @@ export const LAB_STEPS: LabStep[] = [
  * BRAND-ER LAB 공식 인스타그램 주소. 확정되면 "https://www.instagram.com/아이디/" 형태로 넣는다.
  * 비워 두면 릴스 안내 섹션의 인스타그램 버튼이 '공식 계정 준비 중'으로 보인다.
  */
-export const LAB_INSTAGRAM_URL = "";
+export const LAB_INSTAGRAM_URL = "https://www.instagram.com/brander.lab/";
 
 /**
  * 카드 미리보기 이미지 · 영상. 파일을 public/lab/reels/ 에 넣고 경로를 적으면 플레이스홀더 대신 보인다.

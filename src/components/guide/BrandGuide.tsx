@@ -75,8 +75,10 @@ export const BrandGuide = () => {
   const dragState = useRef<{ pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
   const justDraggedRef = useRef(false);
 
-  const roam = useMascotRoam({ enabled: true, paused: isBubbleOpen || isMenuOpen || isDragging, compact: isMobile });
-  const docked = roam.safeZoneActive;
+  // The character no longer wanders around the screen: it always sits in the fixed corner spot
+  // (the same one it used to dock into near safe zones), which KakaoCommunityWidget is laid out around.
+  const roam = useMascotRoam({ enabled: false, paused: isBubbleOpen || isMenuOpen || isDragging, compact: isMobile });
+  const docked = true;
 
   useEffect(() => {
     let active = true;
@@ -252,10 +254,8 @@ export const BrandGuide = () => {
   }, [isBubbleOpen, message]);
 
   useEffect(() => {
-    if (!roam.safeZoneActive) {
-      setDockLift(0);
-      return;
-    }
+    // Always docked now, so whenever a safe-zone element (checkout bar, form, nav) slides under
+    // the corner, lift the character above it instead of covering it.
     const check = () => {
       const dock = dockRef.current;
       if (!dock) return;
@@ -281,7 +281,7 @@ export const BrandGuide = () => {
       window.removeEventListener("scroll", check);
       window.removeEventListener("resize", check);
     };
-  }, [roam.safeZoneActive, dockLift]);
+  }, [dockLift]);
 
   useEffect(() => {
     if (!isBubbleOpen) return;
@@ -516,7 +516,7 @@ export const BrandGuide = () => {
       onPointerMove={handleCharacterPointerMove}
       onPointerUp={handleCharacterPointerUp}
       onPointerCancel={handleCharacterPointerUp}
-      aria-label="브랜더 가이드 열기 (끌어서 위치를 옮길 수 있어요)"
+      aria-label="브랜더 가이드 열기"
       aria-expanded={isMenuOpen}
       className={`block rounded-full transition hover:scale-105 ${docked ? "" : "touch-none cursor-grab active:cursor-grabbing"}`}
     >

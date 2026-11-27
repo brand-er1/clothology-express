@@ -76,10 +76,12 @@ psql([], `
 set session_replication_role = replica;
 insert into storage.buckets (id, name, public) values ('generated_images', 'generated_images', true) on conflict do nothing;
 insert into auth.users (id, email) values ('${MEMBER.id}', '${MEMBER.email}'), ('${ADMIN.id}', '${ADMIN.email}');
-insert into public.profiles (id, username, full_name, phone_number, account_type) values
-  ('${MEMBER.id}', 'e2e_member', '김회원', '010-2222-3333', 'buyer'),
-  ('${ADMIN.id}', 'e2e_admin', '운영관리자', null, 'seller')
-on conflict (id) do update set username = excluded.username, full_name = excluded.full_name, phone_number = excluded.phone_number, account_type = excluded.account_type;
+-- 프로필을 다 채운 계정(전화번호 · 키 · 몸무게): 기존 '전화번호 등록' · '프로필 정보 완성하기' 팝업이 뜨지 않는 일반 상태
+insert into public.profiles (id, username, full_name, phone_number, account_type, height, weight) values
+  ('${MEMBER.id}', 'e2e_member', '김회원', '010-2222-3333', 'buyer', 175, 70),
+  ('${ADMIN.id}', 'e2e_admin', '운영관리자', '010-5555-6666', 'seller', 170, 65)
+on conflict (id) do update set username = excluded.username, full_name = excluded.full_name, phone_number = excluded.phone_number,
+  account_type = excluded.account_type, height = excluded.height, weight = excluded.weight;
 insert into public.admin_members (user_id, role, status, display_name) values ('${ADMIN.id}', 'super_admin', 'active', 'E2E 운영');
 -- 기존 접수 데이터(변경되면 안 됨)
 insert into public.orders (id, user_id, cloth_type, material, status, request_source, request_title, created_at)
@@ -93,14 +95,15 @@ const legacyBefore = await legacyHash();
 // ── 2. 서버들 ───────────────────────────────────────────────────────────────
 const children = [];
 const start = (cmd, args, env, name) => {
-  const child = spawn(cmd, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+  // detached: 자식(npx → vite, deno)까지 프로세스 그룹째 종료하기 위해
+  const child = spawn(cmd, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const logFile = fs.createWriteStream(path.join(OUT, `${name}.log`));
   child.stdout.pipe(logFile);
   child.stderr.pipe(logFile);
   children.push(child);
   return child;
 };
-const cleanup = () => children.forEach((child) => child.kill("SIGTERM"));
+const cleanup = () => children.forEach((child) => { try { process.kill(-child.pid, "SIGTERM"); } catch { /* already gone */ } });
 process.on("exit", cleanup);
 
 const waitFor = async (url, label, timeout = 90_000) => {
@@ -112,6 +115,11 @@ const waitFor = async (url, label, timeout = 90_000) => {
   throw new Error(`${label} did not start (${url})`);
 };
 
+// 이전 실행이 남긴 서버가 포트를 잡고 있으면 그 서버와 통신하게 되므로 바로 중단한다.
+for (const port of [GATEWAY_PORT, 8000, APP_PORT]) {
+  const busy = await fetch(`http://127.0.0.1:${port}/`).then(() => true, () => false);
+  if (busy) { console.error(`port ${port} is already in use — stop the previous run first`); process.exit(2); }
+}
 start("node", [path.join(HERE, "gateway.mjs")], {
   GATEWAY_PORT: String(GATEWAY_PORT), PGDATABASE: DB, JWT_SECRET: SECRET, STORAGE_DIR, FUNCTION_URL: "http://127.0.0.1:8000",
   FIXTURE_IMAGE: path.join(ROOT, "public/portfolio/hood-pullover.webp"), GATEWAY_LOG: "1",
@@ -363,6 +371,8 @@ await step("의뢰 이미지 클릭 → 확대, 원본 다운로드", async () =
   const same = Buffer.compare(fs.readFileSync(file), fs.readFileSync(path.join(STORAGE_DIR, "generated_images", original))) === 0;
   expect(same, "다운로드 파일이 원본과 다름");
   await admin.keyboard.press("Escape");
+  await full.waitFor({ state: "detached" });
+  expect(await admin.getByTestId("production-request-workflow").isVisible(), "확대창을 닫을 때 상세창까지 닫힘");
   return download.suggestedFilename();
 });
 
@@ -382,7 +392,14 @@ await step("진행 상태 변경(상담 대기 → 견적 발송) + 내부 메�
 });
 
 await step("상세를 연 의뢰는 미확인에서 빠진다 (배지 2 → 1)", async () => {
+  // 저장 안내 토스트가 떠 있으면 첫 Esc 는 토스트를 닫고(Radix 기본 동작), 다음 Esc 가 상세창을 닫는다.
+  const toastShown = admin.getByText("진행 상태를 저장했습니다");
+  if (await toastShown.count()) {
+    await admin.keyboard.press("Escape");
+    await toastShown.first().waitFor({ state: "detached", timeout: 5_000 }).catch(() => undefined);
+  }
   await admin.keyboard.press("Escape");
+  await admin.getByTestId("production-request-workflow").waitFor({ state: "detached", timeout: 5_000 });
   await admin.waitForFunction(() => document.querySelector('[data-testid="nav-badge-production_new"]')?.textContent?.trim() === "1", null, { timeout: 15_000 });
 });
 
@@ -393,6 +410,7 @@ await step("회원 의뢰 상세: 고객 계정 정보(이메일 · 아이디 ·
   const text = await panel.innerText();
   for (const expected of [MEMBER.email, "e2e_member", "구매자 회원", "010-2222-3333", "50장"]) expect(text.includes(expected), `'${expected}' 없음`);
   await admin.keyboard.press("Escape");
+  await panel.waitFor({ state: "detached", timeout: 5_000 });
 });
 
 await step("권한 없는 회원은 관리자 RPC로 전화번호를 볼 수 없다", async () => {

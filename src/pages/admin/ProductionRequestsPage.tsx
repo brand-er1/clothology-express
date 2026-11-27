@@ -130,7 +130,7 @@ const ProductionRequestsPage = () => {
                     <Td>
                       <div className="flex flex-col items-start gap-1">
                         <StatusBadge tone={PROGRESS[row.progress_status]?.tone ?? "neutral"}>{PROGRESS[row.progress_status]?.label ?? row.progress_status}</StatusBadge>
-                        {row.is_unread && <span className="rounded-full bg-[#741b2b] px-1.5 py-0.5 text-[9px] font-black tracking-wide text-white" data-testid="unread-marker">NEW · 미확인</span>}
+                        {row.is_unread && <span className="whitespace-nowrap rounded-full bg-[#741b2b] px-1.5 py-0.5 text-[10px] font-black text-white" data-testid="unread-marker">NEW · 미확인</span>}
                       </div>
                     </Td>
                     <Td className="whitespace-nowrap text-xs font-semibold">

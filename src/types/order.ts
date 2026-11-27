@@ -13,7 +13,8 @@ export type Order = {
   image_path?: string | null;
   /** Full set of reference images uploaded for a multi-image design-quote request (storage paths). */
   reference_image_paths?: string[] | null;
-  request_source?: "ai_design" | "design_upload" | "ready_made_group_wear" | string;
+  /** ai_image_request: AI 이미지 생성 완료 화면의 '제작의뢰하기'로 접수 (관리자 표시: AI 디자인 제작의뢰) */
+  request_source?: "ai_design" | "design_upload" | "ready_made_group_wear" | "ai_image_request" | string;
   request_title?: string | null;
   requested_quantity?: number | null;
   estimate_snapshot?: import("./productionEstimate").ProductionEstimateResult | null;

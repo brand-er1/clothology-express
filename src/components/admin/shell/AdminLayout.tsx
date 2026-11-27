@@ -8,6 +8,7 @@ import { ROLE_LABEL } from "@/lib/admin/permissions";
 import { useAdminContext } from "./AdminContext";
 import { ADMIN_NAV, type AdminNavItem } from "./navigation";
 import { useLabSummary } from "@/components/admin/lab/useLabSummary";
+import { useProductionRequestSummary } from "@/components/admin/production/useProductionRequestSummary";
 
 type NavBadges = Partial<Record<NonNullable<AdminNavItem["badge"]>, number>>;
 
@@ -37,7 +38,7 @@ const SidebarNav = ({ onNavigate, badges }: { onNavigate?: () => void; badges: N
                     <>
                       <Icon className="h-4 w-4 shrink-0" />{label}
                       {count > 0 && (
-                        <span aria-label={`새 신청 ${count}건`} className={cn(
+                        <span aria-label={badge === "production_new" ? `미확인 제작의뢰 ${count}건` : `새 신청 ${count}건`} data-testid={`nav-badge-${badge}`} className={cn(
                           "ml-auto min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[10px] font-black tabular-nums",
                           isActive ? "bg-white text-[#741b2b]" : "bg-[#741b2b] text-white",
                         )}>{count > 99 ? "99+" : count}</span>
@@ -70,7 +71,8 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const labSummary = useLabSummary();
-  const badges: NavBadges = { lab_new: labSummary?.new_count ?? 0 };
+  const productionSummary = useProductionRequestSummary();
+  const badges: NavBadges = { lab_new: labSummary?.new_count ?? 0, production_new: productionSummary?.unread_count ?? 0 };
 
   const signOut = async () => {
     await supabase.auth.signOut();

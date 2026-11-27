@@ -12,7 +12,7 @@ export type AdminNavItem = {
   // 하나라도 가지고 있으면 메뉴 노출
   anyOf: AdminPermission[];
   // 메뉴 옆에 처리할 건수를 표시한다(AdminLayout 이 값을 채운다)
-  badge?: "lab_new";
+  badge?: "lab_new" | "production_new";
 };
 
 // 메뉴 순서: 1 대시보드 · (BRAND-ER LAB 샘플 신청 관리) · 2 회원 · 3 제작자 및 브랜드 · 4 펀딩 · 5 고객 문의 · 6 AI 디자인 · 7 주문 및 결제 · 8 리뷰,
@@ -43,7 +43,7 @@ export const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
     { path: "ai-designs", label: "AI 디자인 관리", icon: Images, anyOf: ["members.view"] },
   ] },
   { group: "주문 및 결제 관리", items: [
-    { path: "production-requests", label: "제작 의뢰", icon: PackageCheck, anyOf: ["orders.view"] },
+    { path: "production-requests", label: "제작 의뢰", icon: PackageCheck, anyOf: ["orders.view"], badge: "production_new" },
     { path: "orders", label: "주문 관리", icon: ClipboardList, anyOf: ["orders.view"] },
     { path: "buyers", label: "구매자 관리", icon: Contact, anyOf: ["orders.pii"] },
     { path: "payments", label: "결제 관리", icon: CreditCard, anyOf: ["payments.view"] },

@@ -312,6 +312,20 @@ export const useCustomizeForm = () => {
     }
   };
 
+  // 생성 완료 화면(수정 단계 포함)의 '이미지 다시 생성': 생성 단계로 돌아가 로딩을 보여 주며 새로 만든다.
+  const handleRegenerateImage = () => {
+    if (imageLoading) return;
+    if (
+      modificationHistory.length > 0 &&
+      !window.confirm("다시 생성하면 지금까지 수정한 디자인 대신 새 디자인이 만들어집니다. 계속할까요?")
+    ) {
+      return;
+    }
+    setCurrentStep(4);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    void handleGenerateImage();
+  };
+
   const handleSelectImage = (_index: number) => {
     // Selection disabled; we auto-use the first/only image.
     return;
@@ -1179,6 +1193,7 @@ export const useCustomizeForm = () => {
     setProductionCountry,
     handleAddMaterial,
     handleGenerateImage,
+    handleRegenerateImage,
     handleSelectImage,
     handleNext,
     handleBack,

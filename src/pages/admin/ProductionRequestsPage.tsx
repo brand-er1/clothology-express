@@ -9,15 +9,27 @@ import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
 import { dateTime, errorMessage, type Tone } from "@/lib/admin/format";
 import { adminRpc } from "@/services/adminApi";
 import type { Order } from "@/types/order";
+import { ProductionRequestWorkflow } from "@/components/admin/production/ProductionRequestWorkflow";
+import { CopyPhone } from "@/components/admin/production/CopyPhone";
+import { requestProductionSummaryRefresh } from "@/services/productionRequestAdmin";
+import {
+  PRODUCTION_PROGRESS_STATUSES, PRODUCTION_REQUEST_SOURCE_LABEL, type ProductionProgressStatus,
+} from "../../../supabase/functions/_shared/productionRequest";
 
-type Status = "pending" | "approved" | "rejected" | "all";
-type Source = "all" | "ai_design" | "design_upload" | "ready_made_group_wear";
+type Status = "pending" | "approved" | "rejected" | "all" | "unread";
+type Source = "all" | "ai_image_request" | "ai_design" | "design_upload" | "ready_made_group_wear";
+type Progress = "all" | ProductionProgressStatus;
 
 type RequestRow = Order & {
   customer_name: string | null;
   customer_phone: string | null;
   customer_email: string | null;
   is_guest: boolean;
+  progress_status: ProductionProgressStatus;
+  is_unread: boolean;
+  has_request_details: boolean;
+  quantity_undecided: boolean | null;
+  budget: string | null;
 };
 
 type RequestList = {
@@ -25,38 +37,39 @@ type RequestList = {
   counts: Record<Status, number>;
   can_manage: boolean;
   can_view_pii: boolean;
+  progress_counts: Partial<Record<ProductionProgressStatus, number>>;
   rows: RequestRow[];
 };
 
 const PAGE_SIZE = 30;
 
-const STATUS: Record<string, { label: string; tone: Tone }> = {
-  pending: { label: "검토 대기", tone: "amber" },
-  approved: { label: "제작 상담 접수", tone: "green" },
-  rejected: { label: "진행 불가", tone: "red" },
-};
+const PROGRESS: Record<string, { label: string; tone: Tone }> = Object.fromEntries(
+  PRODUCTION_PROGRESS_STATUSES.map((status) => [status.value, { label: status.label, tone: status.tone as Tone }]),
+);
 
 const SOURCE_LABEL: Record<string, string> = {
+  ai_image_request: PRODUCTION_REQUEST_SOURCE_LABEL,
   ai_design: "AI 디자인 의뢰",
   design_upload: "디자인 업로드 의뢰",
   ready_made_group_wear: "기성품 단체복",
 };
 
-/** 제작 의뢰(public.orders): AI 디자인 · 디자인 업로드 · 기성품 단체복 빠른 제작 요청 */
+/** 제작 의뢰(public.orders): AI 디자인 제작의뢰 · AI 디자인 · 디자인 업로드 · 기성품 단체복 빠른 제작 요청 */
 const ProductionRequestsPage = () => {
   const [status, setStatus] = useState<Status>("pending");
+  const [progress, setProgress] = useState<Progress>("all");
   const [source, setSource] = useState<Source>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<RequestRow | null>(null);
   const [saving, setSaving] = useState(false);
-  useEffect(() => setPage(0), [status, source, search]);
+  useEffect(() => setPage(0), [status, source, search, progress]);
 
   const { data, loading, error, reload } = useAdminQuery(
     () => adminRpc<RequestList>("admin_list_production_requests", {
-      p_status: status, p_source: source, p_search: search || null, p_limit: PAGE_SIZE, p_offset: page * PAGE_SIZE,
+      p_status: status, p_source: source, p_search: search || null, p_limit: PAGE_SIZE, p_offset: page * PAGE_SIZE, p_progress: progress,
     }),
-    [status, source, search, page],
+    [status, source, search, page, progress],
   );
   const rows = data?.rows ?? [];
 
@@ -68,6 +81,7 @@ const ProductionRequestsPage = () => {
       toast({ title: next === "approved" ? "제작 상담 접수로 변경했습니다" : "진행 불가로 처리했습니다" });
       setSelected(null);
       void reload();
+      requestProductionSummaryRefresh();
     } catch (err) {
       toast({ title: "상태를 변경하지 못했습니다", description: errorMessage(err), variant: "destructive" });
     } finally {
@@ -78,7 +92,7 @@ const ProductionRequestsPage = () => {
   return (
     <div>
       <PageHeader eyebrow="Production requests" title="제작 의뢰"
-        description="고객이 AI 디자인 · 디자인 업로드 · 기성품 단체복으로 접수한 제작 요청입니다. 상세에서 이미지 · 견적 · 고객 정보를 확인하고 처리합니다." />
+        description="고객이 AI 이미지 생성(AI 디자인 제작의뢰) · AI 디자인 · 디자인 업로드 · 기성품 단체복으로 접수한 제작 요청입니다. 상세에서 이미지 · 연락처 · 고객 정보를 확인하고 진행 상태와 상담 메모를 관리합니다." />
       {data && !data.can_manage && <div className="mb-4"><Notice tone="stone">조회 전용 권한입니다. 상태 변경은 orders.manage 권한이 필요합니다.</Notice></div>}
       <Panel bodyClassName="p-0" title={
         <div className="flex flex-col gap-2">
@@ -86,6 +100,7 @@ const ProductionRequestsPage = () => {
             <SearchInput value={search} onChange={setSearch} placeholder={data?.can_view_pii ? "제목 · 품목 · 고객명 · 연락처 · 이메일" : "제목 · 품목 · 고객명"} />
             <FilterChips<Status> value={status} onChange={setStatus} options={[
               { value: "pending", label: "검토 대기", count: data?.counts.pending },
+              { value: "unread", label: "미확인", count: data?.counts.unread },
               { value: "approved", label: "상담 접수", count: data?.counts.approved },
               { value: "rejected", label: "진행 불가", count: data?.counts.rejected },
               { value: "all", label: "전체", count: data?.counts.all },
@@ -93,22 +108,36 @@ const ProductionRequestsPage = () => {
           </div>
           <FilterChips<Source> value={source} onChange={setSource} options={[
             { value: "all", label: "모든 유형" },
+            { value: "ai_image_request", label: SOURCE_LABEL.ai_image_request },
             { value: "ai_design", label: SOURCE_LABEL.ai_design },
             { value: "design_upload", label: SOURCE_LABEL.design_upload },
             { value: "ready_made_group_wear", label: SOURCE_LABEL.ready_made_group_wear },
+          ]} />
+          <FilterChips<Progress> value={progress} onChange={setProgress} options={[
+            { value: "all", label: "모든 진행 상태" },
+            ...PRODUCTION_PROGRESS_STATUSES.map((item) => ({ value: item.value, label: item.label, count: data?.progress_counts?.[item.value] ?? 0 })),
           ]} />
         </div>
       }>
         {error && <div className="p-4"><ErrorBanner message={error} onRetry={reload} /></div>}
         {loading && !data ? <LoadingBlock /> : rows.length === 0 ? <EmptyState title="해당하는 제작 의뢰가 없습니다" /> : (
           <>
-            <DataTable minWidth={1000} head={["상태", "유형", "의뢰 내용", "수량", "고객", "접수일", ""]}>
+            <DataTable minWidth={1040} head={["진행 상태", "유형", "의뢰 내용", "수량 · 예산", "고객", "접수일시", ""]}>
               {rows.map((row) => {
                 const image = row.front_preview_url || row.generated_image_url;
                 return (
-                  <tr key={row.id} className="cursor-pointer align-top hover:bg-stone-50" onClick={() => setSelected(row)}>
-                    <Td><StatusBadge tone={STATUS[row.status]?.tone ?? "neutral"}>{STATUS[row.status]?.label ?? row.status}</StatusBadge></Td>
-                    <Td className="whitespace-nowrap text-xs font-semibold">{SOURCE_LABEL[row.request_source ?? ""] ?? row.request_source ?? "-"}</Td>
+                  <tr key={row.id} className={`cursor-pointer align-top hover:bg-stone-50 ${row.is_unread ? "bg-[#741b2b]/[0.03]" : ""}`} onClick={() => setSelected(row)} data-testid="production-request-row">
+                    <Td>
+                      <div className="flex flex-col items-start gap-1">
+                        <StatusBadge tone={PROGRESS[row.progress_status]?.tone ?? "neutral"}>{PROGRESS[row.progress_status]?.label ?? row.progress_status}</StatusBadge>
+                        {row.is_unread && <span className="rounded-full bg-[#741b2b] px-1.5 py-0.5 text-[9px] font-black tracking-wide text-white" data-testid="unread-marker">NEW · 미확인</span>}
+                      </div>
+                    </Td>
+                    <Td className="whitespace-nowrap text-xs font-semibold">
+                      {row.request_source === "ai_image_request" ? (
+                        <StatusBadge tone="wine" className="text-[11px]">{PRODUCTION_REQUEST_SOURCE_LABEL}</StatusBadge>
+                      ) : (SOURCE_LABEL[row.request_source ?? ""] ?? row.request_source ?? "-")}
+                    </Td>
                     <Td>
                       <div className="flex min-w-0 items-start gap-2.5">
                         {image && <img src={image} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-lg border border-stone-200 object-cover" />}
@@ -119,10 +148,13 @@ const ProductionRequestsPage = () => {
                         </div>
                       </div>
                     </Td>
-                    <Td className="whitespace-nowrap text-xs tabular-nums">{row.requested_quantity ? `${row.requested_quantity.toLocaleString("ko-KR")}장` : "-"}</Td>
+                    <Td className="whitespace-nowrap text-xs tabular-nums">
+                      <p>{row.requested_quantity ? `${row.requested_quantity.toLocaleString("ko-KR")}장` : row.quantity_undecided ? "미정" : "-"}</p>
+                      {row.budget && <p className="text-[11px] text-stone-400">{row.budget}</p>}
+                    </Td>
                     <Td className="whitespace-nowrap text-xs">
                       <p className="font-semibold">{row.customer_name ?? "-"}{row.is_guest && <span className="ml-1 text-[10px] font-normal text-stone-400">비회원</span>}</p>
-                      <p className="text-[11px] text-stone-400">{row.customer_phone ?? ""}</p>
+                      <CopyPhone phone={row.customer_phone} className="text-[11px] font-medium text-stone-500" />
                     </Td>
                     <Td className="whitespace-nowrap text-xs">{dateTime(row.created_at)}</Td>
                     <Td><Button size="sm" variant="outline" className="h-7 text-xs" onClick={(event) => { event.stopPropagation(); setSelected(row); }}>상세</Button></Td>
@@ -139,9 +171,12 @@ const ProductionRequestsPage = () => {
         isOpen={Boolean(selected)}
         isSaving={saving}
         readOnly={!data?.can_manage}
-        onOpenChange={(open) => { if (!open && !saving) setSelected(null); }}
+        onOpenChange={(open) => { if (!open && !saving) { setSelected(null); void reload(); } }}
         onUpdateStatus={updateStatus}
-      />
+        hideStatusActions
+      >
+        {selected && <ProductionRequestWorkflow orderId={selected.id} onChanged={() => void reload()} />}
+      </OrderReviewDialog>
     </div>
   );
 };

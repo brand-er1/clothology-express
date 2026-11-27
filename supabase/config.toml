@@ -29,6 +29,9 @@ enabled = true
 verify_jwt = true
 [functions.save-order]
 verify_jwt = true
+# AI 이미지 생성 → 제작의뢰 접수 (비회원은 anon 키 JWT 로 호출한다)
+[functions.submit-production-request]
+verify_jwt = true
 [functions.store-generated-image]
 verify_jwt = true
 [functions.check-availability]

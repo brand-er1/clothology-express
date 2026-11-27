@@ -4,13 +4,13 @@ import type { AiImageEditPreset } from "@/services/aiImageEdit";
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AiImageResultActions } from "@/components/production-request/AiImageResultActions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Calculator,
   Copy,
-  Download,
   ImageOff,
   ImagePlus,
   Loader2,
@@ -208,6 +208,11 @@ interface ModifyImageStepProps {
   designId?: string | null;
   isSavingDesign?: boolean;
   onGoToEstimate: () => void;
+  /** 하단 '이미지 다시 생성' (없으면 버튼 숨김) */
+  onRegenerateImage?: () => void;
+  isRegenerating?: boolean;
+  /** 하단 '제작의뢰하기': 화면에 보이는 그대로의 디자인을 넘긴다(얹어 둔 로고가 있으면 합성본). */
+  onRequestProduction?: (image: { url: string } | { base64: string }) => void;
 }
 
 export const ModifyImageStep = ({
@@ -231,6 +236,9 @@ export const ModifyImageStep = ({
   designId,
   isSavingDesign,
   onGoToEstimate,
+  onRegenerateImage,
+  isRegenerating = false,
+  onRequestProduction,
 }: ModifyImageStepProps) => {
   const navigate = useNavigate();
   const [modificationPrompt, setModificationPrompt] = useState("");
@@ -248,6 +256,7 @@ export const ModifyImageStep = ({
   const [isPreparingArtwork, setIsPreparingArtwork] = useState(false);
   const [isApplyingArtwork, setIsApplyingArtwork] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPreparingRequest, setIsPreparingRequest] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const artworkCanvasRef = useRef<HTMLDivElement>(null);
   // Which layer the next picked file replaces ("교체"); null adds a new layer.
@@ -784,6 +793,33 @@ export const ModifyImageStep = ({
     }
   };
 
+  // 제작의뢰: 아직 '적용'하지 않은 로고 레이어가 있으면 다운로드와 같은 방식으로 합성해 그대로 첨부한다.
+  const handleRequestProduction = async () => {
+    if (!selectedImageUrl || !onRequestProduction) return;
+    if (layers.length === 0) {
+      onRequestProduction({ url: selectedImageUrl });
+      return;
+    }
+    try {
+      setIsPreparingRequest(true);
+      const image = await createExactArtworkComposite({
+        baseImageUrl: selectedImageUrl,
+        layers: layers.map(({ artwork, placement }) => ({ artwork, placement })),
+        mimeType: "image/png",
+        allowEmpty: true,
+      });
+      onRequestProduction({ base64: `data:${image.mimeType};base64,${image.base64}` });
+    } catch (error) {
+      toast({
+        title: "의뢰 이미지를 준비하지 못했습니다",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPreparingRequest(false);
+    }
+  };
+
   const getPointerPercent = (clientX: number, clientY: number) => {
     const canvas = artworkCanvasRef.current;
     if (!canvas) return null;
@@ -1057,22 +1093,16 @@ export const ModifyImageStep = ({
             )}
 
             {selectedImageUrl && !imageError && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="self-end"
-                data-testid="download-design"
-                onClick={() => void handleDownloadDesign()}
-                disabled={isDownloading || isEditingLocked}
-              >
-                {isDownloading ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-1.5 h-4 w-4" />
-                )}
-                {layers.length > 0 ? "편집 중인 디자인 다운로드" : "디자인 이미지 다운로드"}
-              </Button>
+              <AiImageResultActions
+                className="max-w-3xl"
+                onRegenerate={() => onRegenerateImage?.()}
+                onDownload={() => void handleDownloadDesign()}
+                onRequestProduction={() => void handleRequestProduction()}
+                isRegenerating={isRegenerating}
+                isDownloading={isDownloading}
+                isPreparingRequest={isPreparingRequest}
+                disabled={isEditingLocked || isRegenerating}
+              />
             )}
 
             <div

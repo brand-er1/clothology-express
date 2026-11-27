@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,6 +22,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { ReadyMadeOrderPreview } from "@/components/admin/ReadyMadeOrderPreview";
+import { ImageLightbox } from "@/components/admin/production/ImageLightbox";
 
 interface OrderReviewDialogProps {
   order: Order | null;
@@ -31,6 +32,10 @@ interface OrderReviewDialogProps {
   onUpdateStatus: (status: 'approved' | 'rejected', comment: string) => Promise<void>;
   /** 조회 전용(orders.manage 권한 없음): 상태 변경 버튼을 숨긴다. 서버도 다시 거부한다. */
   readOnly?: boolean;
+  /** 관리자 콘솔 '제작 의뢰' 메뉴: 진행 상태 · 메모 영역(ProductionRequestWorkflow)을 상단에 붙인다. */
+  children?: ReactNode;
+  /** children 이 진행 상태를 관리하면 기존 '검토 의견 + 진행 불가/상담 접수' 버튼을 숨긴다. */
+  hideStatusActions?: boolean;
 }
 
 interface RequestUserProfile {
@@ -54,6 +59,8 @@ export const OrderReviewDialog = ({
   onOpenChange,
   onUpdateStatus,
   readOnly = false,
+  children,
+  hideStatusActions = false,
 }: OrderReviewDialogProps) => {
   const [adminComment, setAdminComment] = useState(order?.admin_comment || "");
   const [imageError, setImageError] = useState(false);
@@ -62,6 +69,8 @@ export const OrderReviewDialog = ({
   const [userProfile, setUserProfile] = useState<RequestUserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const estimate = order?.estimate_snapshot || null;
+  // AI 이미지 제작의뢰는 children(진행 영역)이 이미지를 확대 · 다운로드와 함께 보여 준다.
+  const isAiImageRequest = order?.request_source === "ai_image_request";
   const hasReadyMadePreview = Boolean(
     order &&
       order.request_source === "ready_made_group_wear" &&
@@ -193,6 +202,12 @@ export const OrderReviewDialog = ({
                   내 디자인 자동견적
                 </Badge>
               )}
+              {isAiImageRequest && (
+                <Badge className="border-transparent bg-[#741b2b] text-white hover:bg-[#741b2b]" data-testid="ai-design-request-badge">
+                  <BrandMark className="mr-1 h-3.5 w-3.5" />
+                  AI 디자인 제작의뢰
+                </Badge>
+              )}
               {order.request_source === "ready_made_group_wear" && (
                 <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
                   <Zap className="mr-1 h-3.5 w-3.5" />
@@ -200,6 +215,8 @@ export const OrderReviewDialog = ({
                 </Badge>
               )}
             </div>
+
+            {children}
 
             {hasReadyMadePreview && (
               <ReadyMadeOrderPreview order={order} originalImageUrl={imageUrl} />
@@ -236,7 +253,7 @@ export const OrderReviewDialog = ({
 
             <div
               className={
-                hasReadyMadePreview
+                hasReadyMadePreview || isAiImageRequest
                   ? "grid grid-cols-1 gap-4"
                   : "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
               }
@@ -287,7 +304,7 @@ export const OrderReviewDialog = ({
                 )}
               </div>
 
-              {!hasReadyMadePreview && (
+              {!hasReadyMadePreview && !isAiImageRequest && (
                 <div>
                   <h3 className="font-semibold mb-2 text-base md:text-lg">
                     고객 디자인 이미지
@@ -318,15 +335,11 @@ export const OrderReviewDialog = ({
                   ) : (
                     <div className="w-full h-auto min-h-32 md:min-h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
                       {imageUrl && !imageError ? (
-                        <img
+                        <ImageLightbox
                           src={imageUrl}
-                          alt="Generated design"
-                          className="w-full h-auto rounded-lg"
-                          onLoad={() => console.log("Image loaded successfully in review dialog")}
-                          onError={(e) => {
-                            console.error("Image loading error in review dialog:", imageUrl);
-                            setImageError(true);
-                          }}
+                          alt="고객 디자인 이미지"
+                          filename={`brander-order-${order.id.slice(0, 8)}.png`}
+                          className="w-full"
                         />
                       ) : (
                         <div className="p-4 flex flex-col items-center justify-center h-32 md:h-48 text-center">
@@ -405,6 +418,7 @@ export const OrderReviewDialog = ({
               )}
             </div>
 
+            {!hideStatusActions && (
             <div>
               <h3 className="font-semibold mb-2 text-base md:text-lg">고객 안내 및 검토 의견</h3>
               <Textarea
@@ -415,6 +429,7 @@ export const OrderReviewDialog = ({
                 readOnly={readOnly}
               />
             </div>
+            )}
           </div>
         )}
 
@@ -425,9 +440,9 @@ export const OrderReviewDialog = ({
             disabled={isSaving}
             className="w-full sm:w-auto"
           >
-            취소
+            {hideStatusActions ? "닫기" : "취소"}
           </Button>
-          {!readOnly && (<>
+          {!readOnly && !hideStatusActions && (<>
           <Button
             variant="destructive"
             onClick={() => onUpdateStatus('rejected', adminComment)}

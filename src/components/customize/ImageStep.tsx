@@ -10,6 +10,8 @@ import {
 import { MultiAngleViewer } from "@/components/visualization/MultiAngleViewer";
 import { ImageOff, Maximize2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { AiImageResultActions } from "@/components/production-request/AiImageResultActions";
+import { downloadImage } from "@/lib/download-image";
 
 interface ImageStepProps {
   isLoading: boolean;
@@ -26,6 +28,8 @@ interface ImageStepProps {
   onGenerateImage: () => void;
   brandLogoMode?: BrandLogoMode;
   onBrandLogoModeChange?: (value: BrandLogoMode) => void;
+  /** 생성 완료 화면의 '제작의뢰하기' */
+  onRequestProduction?: (image: { url: string }) => void;
 }
 
 export const ImageStep = ({
@@ -43,12 +47,27 @@ export const ImageStep = ({
   onGenerateImage,
   brandLogoMode = "none",
   onBrandLogoModeChange,
+  onRequestProduction,
 }: ImageStepProps) => {
   const logoOption = onBrandLogoModeChange ? (
     <BrandLogoOption value={brandLogoMode} onChange={onBrandLogoModeChange} returnTo="/customize" className="w-full text-left" />
   ) : null;
   const [imageErrors, setImageErrors] = useState<boolean[]>([]);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const resultImageUrl = generatedImageUrls?.length
+    ? storedImageUrls?.[Math.max(selectedImageIndex, 0)] || generatedImageUrls[Math.max(selectedImageIndex, 0)] || null
+    : null;
+
+  const handleDownload = async () => {
+    if (!resultImageUrl) return;
+    setIsDownloading(true);
+    try {
+      await downloadImage(resultImageUrl, `brander-design-${Date.now()}.jpg`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     if (generatedImageUrls) {
@@ -154,20 +173,15 @@ export const ImageStep = ({
               </p>
 
               {logoOption}
-              <Button
-                onClick={onGenerateImage}
-                variant="outline"
-                className="h-12 w-full rounded-[3px]"
-                disabled={isLoading}
-                data-tutorial="customize-generate"
-              >
-                {isLoading ? (
-                  <>
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand mr-2"></span>
-                    이미지 생성 중...
-                  </>
-                ) : "이미지 다시 생성하기"}
-              </Button>
+              <AiImageResultActions
+                onRegenerate={onGenerateImage}
+                onDownload={() => void handleDownload()}
+                onRequestProduction={() => { if (resultImageUrl) onRequestProduction?.({ url: resultImageUrl }); }}
+                isRegenerating={isLoading}
+                isDownloading={isDownloading}
+                disabled={isLoading || !resultImageUrl}
+                regenerateTutorialId="customize-generate"
+              />
             </div>
           ) : (
             <div className="flex min-h-[520px] w-full items-center justify-center rounded-lg bg-gray-100 sm:min-h-[660px]">

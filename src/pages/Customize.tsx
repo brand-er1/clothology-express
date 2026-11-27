@@ -15,7 +15,9 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { TOTAL_STEPS } from "@/lib/customize-constants";
+import { TOTAL_STEPS, clothTypes } from "@/lib/customize-constants";
+import { ProductionRequestDialog } from "@/components/production-request/ProductionRequestDialog";
+import type { ProductionRequestImage } from "@/services/productionRequest";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
@@ -70,6 +72,7 @@ const Customize = () => {
     setProductionCountry,
     handleAddMaterial,
     handleGenerateImage,
+    handleRegenerateImage,
     brandLogoMode,
     setBrandLogoMode,
     handleNext,
@@ -92,6 +95,21 @@ const Customize = () => {
     handleGoToEstimate,
     goToFundingStep,
   } = useCustomizeForm();
+
+  // AI 이미지 생성 완료 화면 → 제작의뢰 (생성 이미지 자동 첨부)
+  const [productionRequest, setProductionRequest] = useState<{ image: ProductionRequestImage; entryPoint: string } | null>(null);
+  const [productionRequestOpen, setProductionRequestOpen] = useState(false);
+  const openProductionRequest = (image: ProductionRequestImage, entryPoint: string) => {
+    setProductionRequest({ image, entryPoint });
+    setProductionRequestOpen(true);
+  };
+  const productionRequestDesign = {
+    clothType: clothTypes.find((type) => type.id === selectedType)?.name || selectedType,
+    material: materials.find((material) => material.id === selectedMaterial)?.name || selectedMaterial,
+    aiPrompt: generatedPrompt,
+    designBrief: selectedDetail,
+    designId,
+  };
 
   const stepContent = [
     ["무엇을 만들까요?", "첫 컬렉션으로 제작할 의류 아이템을 선택해주세요."],
@@ -280,6 +298,7 @@ const Customize = () => {
                 onGenerateImage={handleGenerateImage}
                 brandLogoMode={brandLogoMode}
                 onBrandLogoModeChange={setBrandLogoMode}
+                onRequestProduction={(image) => openProductionRequest(image, "customize_step4_generated")}
               />
             )}
 
@@ -305,6 +324,9 @@ const Customize = () => {
                 designId={designId}
                 isSavingDesign={isSavingDesign}
                 onGoToEstimate={() => void handleGoToEstimate()}
+                onRegenerateImage={handleRegenerateImage}
+                isRegenerating={imageLoading}
+                onRequestProduction={(image) => openProductionRequest(image, "customize_step5_edit")}
               />
             )}
 
@@ -431,6 +453,14 @@ const Customize = () => {
           </section>
         </div>
       </main>
+      <ProductionRequestDialog
+        open={productionRequestOpen}
+        onOpenChange={setProductionRequestOpen}
+        image={productionRequest?.image ?? null}
+        design={productionRequestDesign}
+        entryPoint={productionRequest?.entryPoint ?? "customize"}
+        onReturnToGenerator={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      />
     </div>
   );
 };

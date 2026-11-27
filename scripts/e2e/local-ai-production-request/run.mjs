@@ -45,6 +45,8 @@ const ADMIN = { id: "e2e00000-0000-0000-0000-0000000000ad", email: "admin@e2e.lo
 
 const results = [];
 let failed = false;
+let currentPage = null;
+let failNo = 0;
 const step = async (name, fn) => {
   const started = Date.now();
   try {
@@ -52,7 +54,11 @@ const step = async (name, fn) => {
     results.push(`PASS  ${name}${note ? ` — ${note}` : ""} (${((Date.now() - started) / 1000).toFixed(1)}s)`);
   } catch (error) {
     failed = true;
-    results.push(`FAIL  ${name} — ${String(error?.message ?? error).split("\n")[0]}`);
+    failNo += 1;
+    const message = String(error?.message ?? error);
+    results.push(`FAIL  ${name} — ${message.split("\n")[0]}`);
+    fs.writeFileSync(path.join(OUT, `fail-${failNo}.txt`), `${name}\n${message}`);
+    if (currentPage) await currentPage.screenshot({ path: path.join(OUT, `fail-${failNo}.png`) }).catch(() => undefined);
   }
   console.log(results.at(-1));
 };
@@ -161,7 +167,9 @@ let memberOrderId = null;
 
 // ── 3. 비회원 (PC) ──────────────────────────────────────────────────────────
 const desktop = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
+desktop.setDefaultTimeout(15_000);
 const guest = await desktop.newPage();
+currentPage = guest;
 guest.on("pageerror", (e) => console.log("[guest pageerror]", e.message));
 
 await step("AI 의류 이미지 생성 → 완료 화면에 3개 버튼 (다시 생성 · 다운로드 · 제작의뢰하기)", async () => {
@@ -269,7 +277,9 @@ await desktop.close();
 // ── 4. 회원 (모바일) ────────────────────────────────────────────────────────
 const mobile = await browser.newContext({ ...require("playwright").devices["iPhone 13"] });
 await mobile.addInitScript(([key, value]) => { localStorage.setItem(key, value); }, [STORAGE_KEY, sessionFor(MEMBER)]);
+mobile.setDefaultTimeout(15_000);
 const member = await mobile.newPage();
+currentPage = member;
 member.on("pageerror", (e) => console.log("[member pageerror]", e.message));
 
 await step("회원 (모바일): 생성 → 제작의뢰 팝업에 프로필 이름 · 전화번호 자동 입력 → 접수", async () => {
@@ -296,7 +306,9 @@ await mobile.close();
 // ── 5. 관리자 ───────────────────────────────────────────────────────────────
 const adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 }, permissions: ["clipboard-read", "clipboard-write"] });
 await adminContext.addInitScript(([key, value]) => { localStorage.setItem(key, value); }, [STORAGE_KEY, sessionFor(ADMIN)]);
+adminContext.setDefaultTimeout(15_000);
 const admin = await adminContext.newPage();
+currentPage = admin;
 admin.on("pageerror", (e) => console.log("[admin pageerror]", e.message));
 
 await step("관리자 '제작 의뢰' 메뉴에 미확인 건수 표시", async () => {

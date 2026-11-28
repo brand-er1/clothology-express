@@ -13,17 +13,25 @@ import { SizeStep } from "@/components/customize/SizeStep";
 import { useCustomizeForm } from "@/hooks/useCustomizeForm";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowRight, Download, FileImage, Loader2, PencilLine } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { TOTAL_STEPS } from "@/lib/customize-constants";
 import { useMascotPageContext } from "@/components/guide/MascotContext";
 import { inferClosetSlotFromCategory } from "@/lib/closet-character-config";
 import { useMobileStickyCtaOffset } from "@/hooks/useMobileStickyCtaOffset";
+import { clothTypes } from "@/lib/customize-constants";
+import { productionRequestHref, saveProductionDesignHandoff, trackProductionCtaClick } from "@/lib/production-request";
+import { ProductionCtaLink } from "@/components/production/ProductionCtaLink";
+import { downloadImageUrl } from "@/services/productShots";
 
 const Customize = () => {
   const navigate = useNavigate();
   const stepNavRef = useMobileStickyCtaOffset();
+  const [searchParams] = useSearchParams();
+  const wantsDetailPage = searchParams.get("next") === "detail-page";
   const [userGender, setUserGender] = useState<string>("남성");
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const {
     currentStep,
@@ -91,6 +99,7 @@ const Customize = () => {
     isSavingDesign,
     handleGoToEstimate,
     goToFundingStep,
+    imagePath,
   } = useCustomizeForm();
 
   const stepContent = [
@@ -144,6 +153,58 @@ const Customize = () => {
   const fittingImageUrl = currentModifiedImageUrl ||
     (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null);
 
+  // ── AI 결과 화면 → 제작 의뢰 전환 ────────────────────────────────────────────
+  // 생성된 디자인 이미지를 그대로 제작 의뢰 양식에 넘긴다(다운로드 · 재업로드 불필요).
+  const resultImageUrl =
+    fittingImageUrl ||
+    (generatedImageUrls && generatedImageUrls.length > 0 ? generatedImageUrls[selectedImageIndex >= 0 ? selectedImageIndex : 0] : null);
+
+  const handleRequestProduction = () => {
+    if (!resultImageUrl) {
+      toast({ title: "제작 의뢰할 디자인 이미지가 없어요", variant: "destructive" });
+      return;
+    }
+    const clothTypeName = clothTypes.find((type) => type.id === selectedType)?.name || selectedType || null;
+    const materialName = materials.find((material) => material.id === selectedMaterial)?.name || selectedMaterial || null;
+    const handoff = {
+      imageUrl: resultImageUrl,
+      imagePath: currentModifiedImageUrl && currentModifiedImageUrl === resultImageUrl ? imagePath : null,
+      origin: "ai_result" as const,
+      clothType: clothTypeName,
+      material: materialName,
+      description: selectedDetail.trim().slice(0, 600) || null,
+      quantity: directQuantity || null,
+      designId: designId ?? null,
+    };
+    saveProductionDesignHandoff(handoff);
+    trackProductionCtaClick("ai_result", { step: currentStep, has_design_id: Boolean(designId) });
+    navigate(productionRequestHref("ai_result"), { state: { design: { ...handoff, createdAt: Date.now() } } });
+  };
+
+  const handleSaveImage = async () => {
+    if (!resultImageUrl) return;
+    setIsDownloading(true);
+    try {
+      await downloadImageUrl(resultImageUrl, `brander-design-${new Date().toISOString().slice(0, 10)}`);
+    } catch (error) {
+      toast({
+        title: "이미지를 저장하지 못했어요",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleEditDesign = () => {
+    if (currentStep === 4) {
+      handleNext();
+      return;
+    }
+    document.getElementById("design-edit")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const openVirtualFitting = () => {
     if (!fittingImageUrl) {
       toast({ title: "입혀볼 디자인 이미지가 없어요", variant: "destructive" });
@@ -184,11 +245,22 @@ const Customize = () => {
                 나만의 첫 컬렉션
               </h1>
             </div>
-            <p className="max-w-md text-[15px] leading-6 text-stone-500 md:max-w-sm md:text-sm">
-              AI 디자인을 완성한 뒤 펀딩 페이지를 만들거나, 펀딩 없이
-              관리자에게 제작을 바로 의뢰할 수 있습니다.
-            </p>
+            <div className="max-w-md md:max-w-sm">
+              <p className="text-[15px] leading-6 text-stone-500 md:text-sm">
+                AI 디자인을 완성한 뒤 그대로 제작을 의뢰하거나, 펀딩 페이지 · 상세페이지를 만들 수 있습니다.
+              </p>
+              <ProductionCtaLink source="customize_intro" className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-brand underline-offset-4 hover:underline">
+                디자인 없이 바로 제작 의뢰하기 <ArrowRight className="h-3.5 w-3.5" />
+              </ProductionCtaLink>
+            </div>
           </div>
+
+          {wantsDetailPage && currentStep < 4 && (
+            <p className="mb-6 flex items-start gap-2 rounded-md border border-brand/20 bg-brand/[0.05] px-4 py-3 text-[13px] leading-5 text-brand">
+              <FileImage className="mt-0.5 h-4 w-4 shrink-0" />
+              상세페이지는 AI 디자인으로 자동 완성됩니다. 디자인을 생성한 뒤 결과 화면에서 ‘상세페이지 제작하기’를 눌러주세요.
+            </p>
+          )}
 
           {currentStep === 1 && (
             <div className="mb-6 sm:mb-8">
@@ -284,6 +356,7 @@ const Customize = () => {
             )}
 
             {currentStep === 5 && (
+              <div id="design-edit" className="scroll-mt-24">
               <ModifyImageStep
                 isLoading={imageModifying}
                 selectedImageUrl={currentModifiedImageUrl || (storedImageUrls && selectedImageIndex >= 0 ? storedImageUrls[selectedImageIndex] : null)}
@@ -306,6 +379,7 @@ const Customize = () => {
                 isSavingDesign={isSavingDesign}
                 onGoToEstimate={() => void handleGoToEstimate()}
               />
+              </div>
             )}
 
             {(currentStep === 4 || currentStep === 5) && generatedImageUrls && generatedImageUrls.length > 0 && (
@@ -325,30 +399,51 @@ const Customize = () => {
             )}
 
             {(currentStep === 4 || currentStep === 5) && generatedImageUrls && generatedImageUrls.length > 0 && (
-              <div className="mt-6 flex flex-col gap-3 border-t border-stone-200 px-1 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-0" data-mascot-safezone>
-                <div className="min-w-0">
-                  <p className="text-[15px] font-bold text-stone-950">디자인이 마음에 드시나요?</p>
-                  <p className="mt-1 text-[13px] leading-5 text-stone-500">
-                    앞·뒷면 디자인으로 AI가 상세페이지 이미지와 문구를 만들어 펀딩용 상세페이지를 완성합니다.
-                  </p>
-                </div>
-                <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
-                  {currentStep === 4 && (
-                    <Button
-                      variant="outline"
-                      onClick={handleNext}
-                      disabled={isSubmitting}
-                      className="h-12 rounded-[3px] border-stone-300 px-5 text-[14px] font-bold"
-                    >
-                      이미지 수정하기
-                    </Button>
-                  )}
+              // AI 결과 화면 액션 — 제작 의뢰가 가장 강조된 1순위, 나머지는 보조 버튼.
+              <div className="mt-6 border-t border-stone-200 px-1 pt-5 sm:px-0" data-mascot-safezone data-testid="ai-result-actions">
+                <div className="flex flex-col gap-4 rounded-md border border-brand/25 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-bold text-stone-950">이 디자인, 실제 옷으로 만들어볼까요?</p>
+                    <p className="mt-1 text-[13px] leading-5 text-stone-500">
+                      디자인 이미지가 제작 의뢰서에 자동으로 첨부됩니다. 20장부터 원단 · 샘플 · 생산까지 상담해드려요.
+                    </p>
+                  </div>
                   <Button
+                    onClick={handleRequestProduction}
+                    disabled={imageModifying || !resultImageUrl}
+                    className="h-14 shrink-0 rounded-[3px] bg-brand px-6 text-[15px] font-bold shadow-[0_8px_22px_rgba(116,27,43,0.25)] hover:bg-brand-dark sm:px-8"
+                    data-testid="request-production-from-design"
+                  >
+                    이 디자인으로 제작 의뢰하기 <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleSaveImage()}
+                    disabled={isDownloading || !resultImageUrl}
+                    className="h-12 flex-col gap-0.5 rounded-[3px] border-stone-300 px-2 text-[12px] font-semibold sm:flex-row sm:gap-1.5 sm:text-[14px]"
+                  >
+                    {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    이미지 저장하기
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleEditDesign}
+                    disabled={isSubmitting}
+                    className="h-12 flex-col gap-0.5 rounded-[3px] border-stone-300 px-2 text-[12px] font-semibold sm:flex-row sm:gap-1.5 sm:text-[14px]"
+                  >
+                    <PencilLine className="h-4 w-4" />
+                    디자인 수정하기
+                  </Button>
+                  <Button
+                    variant="outline"
                     onClick={() => void handleCreateDetailPage(userGender)}
                     disabled={isSubmitting || imageModifying}
-                    className={`h-12 rounded-[3px] bg-brand px-5 text-[14px] font-bold hover:bg-brand-dark ${currentStep === 5 ? "col-span-2" : ""}`}
+                    className="h-12 flex-col gap-0.5 rounded-[3px] border-stone-300 px-2 text-[12px] font-semibold sm:flex-row sm:gap-1.5 sm:text-[14px]"
                   >
-                    {isSubmitting ? "준비 중..." : "✨ AI 상세페이지 제작"}
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileImage className="h-4 w-4" />}
+                    상세페이지 제작하기
                   </Button>
                 </div>
               </div>

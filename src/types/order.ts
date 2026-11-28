@@ -31,4 +31,14 @@ export type Order = {
   front_preview_url?: string | null;
   back_preview_url?: string | null;
   ready_made_design_data?: import("./readyMadeOrder").ReadyMadeOrderDesignData | null;
+  /** 간편 제작 의뢰(request_source "production_inquiry") 양식 입력값 */
+  contact_name?: string | null;
+  contact_phone?: string | null;
+  budget_range?: string | null;
+  desired_due_date?: string | null;
+  privacy_consented_at?: string | null;
+  inquiry_meta?: Record<string, string | number | boolean | null> | null;
+  /** 상담 진행 상태(모든 제작 의뢰 공통) — src/lib/production-request.ts CONSULT_STATUS_LABEL */
+  consult_status?: import("@/lib/production-request").ConsultStatus | null;
+  consult_status_updated_at?: string | null;
 };

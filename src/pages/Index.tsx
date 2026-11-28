@@ -12,6 +12,8 @@ import { FundingProductCard } from "@/components/funding/FundingProductCard";
 import { FundingSuccessShowcase } from "@/components/funding/FundingSuccessShowcase";
 import { Reveal, RevealImage } from "@/components/portfolio/ScrollReveal";
 import { LabHomeBanner } from "@/components/lab/LabHomeBanner";
+import { ProductionConsultBand, ProductionServiceSection, ServicesIndex } from "@/components/production/HomeProductionSections";
+import { ProductionCtaLink } from "@/components/production/ProductionCtaLink";
 
 type CollectionItem = Pick<
   Funding,
@@ -201,7 +203,7 @@ const Index = () => {
       <main className="pt-16 sm:pt-[72px]">
         {/* HERO — one editorial canvas: message on paper, the garments bleeding off the right edge. */}
         <section className="relative" data-tutorial="home-hero">
-          <div className="lg:grid lg:min-h-[calc(100svh-72px)] lg:grid-cols-12">
+          <div className="flex flex-col lg:grid lg:min-h-[calc(100svh-72px)] lg:grid-cols-12">
             <div className="relative order-2 aspect-[4/5] overflow-hidden bg-[#e8e2da] sm:aspect-[16/11] lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-1 lg:aspect-auto">
               <img
                 src={getAppPath("/brand-er-hero-editorial-v2.webp")}
@@ -223,34 +225,46 @@ const Index = () => {
                   New drop 01 open · D-{newDropCountdown.days === 0 ? "DAY" : newDropCountdown.days}
                 </a>
               )}
-              <p className="font-display text-[11px] font-semibold uppercase tracking-[0.3em] text-stone-500 animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
-                Make your idea wearable
+              <p className="font-display text-[11px] font-semibold uppercase tracking-[0.3em] text-stone-500">
+                From AI design to real production
               </p>
-              <h1 className="display-hero mt-5 max-w-[11ch] text-[#1f191a] animate-in fade-in-0 slide-in-from-bottom-3 duration-700 lg:max-w-none lg:[text-shadow:0_0_32px_rgba(246,243,238,0.9)]">
-                아이디어가
+              <h1 className="display-hero mt-5 max-w-[11ch] text-[#1f191a] lg:max-w-none lg:[text-shadow:0_0_32px_rgba(246,243,238,0.9)]">
+                상상한 디자인을
                 <br />
-                옷이 되는
-                <br />
-                가장 쉬운 방법<span className="text-brand">.</span>
+                실제 의류로<span className="text-brand">.</span>
               </h1>
               <div className="mt-8 grid gap-8 sm:mt-10 lg:ml-[12%] lg:max-w-md">
-                <p className="text-base leading-7 text-stone-600 animate-in fade-in-0 duration-700 [animation-delay:150ms] [animation-fill-mode:both] sm:text-lg sm:leading-8">
-                  디자인부터 원단, 샘플, 생산까지.
-                  <br />
-                  <span className="font-display font-semibold tracking-[0.02em] text-[#211b1c]">BRAND-ER</span>
+                <p className="text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+                  AI 디자인부터 원단 선정, 샘플 제작,
+                  <br className="hidden sm:block" /> 소량 · 대량 생산까지 <span className="font-display font-semibold tracking-[0.02em] text-[#211b1c]">BRAND-ER</span>에서 시작하세요.
                 </p>
-                <div className="flex flex-col items-start gap-3 animate-in fade-in-0 duration-700 [animation-delay:300ms] [animation-fill-mode:both] sm:flex-row sm:items-center sm:gap-8">
-                  <Link to="/customize" className="cta-primary w-full sm:w-auto">
-                    디자인 시작하기 <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link to="/fundings" className="cta-text">
-                    <span className="link-draw">펀딩 둘러보기</span> <ArrowRight className="h-4 w-4" />
-                  </Link>
+                <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+                    <ProductionCtaLink
+                      source="home_hero"
+                      className="cta-primary w-full shadow-[0_10px_28px_rgba(116,27,43,0.28)] sm:w-auto sm:px-9"
+                    >
+                      제작 의뢰하기 <ArrowRight className="h-4 w-4" />
+                    </ProductionCtaLink>
+                    <Link
+                      to="/customize"
+                      className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[2px] border border-[#211b1c]/25 bg-white/60 px-7 text-[15px] font-semibold text-[#211b1c] transition-colors hover:border-[#211b1c] sm:w-auto"
+                    >
+                      AI 이미지 만들기
+                    </Link>
+                  </div>
+                  <p className="mt-4 text-[13px] text-stone-500">국내 소량 제작 20장부터 · 제작 상담 · 견적 무료</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
+        {/* PRODUCTION — 브랜더의 핵심 서비스. 히어로 바로 아래에서 제작 대행 역량을 보여준다. */}
+        <ProductionServiceSection />
+
+        {/* SERVICES — 1 제작 의뢰 · 2 AI 이미지 · 3 상세페이지 · 4 크라우드펀딩 */}
+        <ServicesIndex />
 
         <NewDropEventBanner ctaHref="#new-drop" ctaLabel="지금 선주문하기" />
 
@@ -364,8 +378,11 @@ const Index = () => {
             </ol>
 
             <div className="mt-16 flex flex-col gap-3 sm:mt-24 sm:flex-row sm:items-center sm:gap-8 lg:ml-[calc(50%+1.25rem)]">
-              <Link to="/customize" className="cta-primary">
-                디자인 시작하기 <ArrowRight className="h-4 w-4" />
+              <ProductionCtaLink source="home_process" className="cta-primary">
+                제작 의뢰하기 <ArrowRight className="h-4 w-4" />
+              </ProductionCtaLink>
+              <Link to="/customize" className="cta-text">
+                <span className="link-draw">AI 이미지 만들기</span> <ArrowRight className="h-4 w-4" />
               </Link>
               <Link to="/design-quote" className="cta-text">
                 <span className="link-draw">제작 견적 받아보기</span> <ArrowRight className="h-4 w-4" />
@@ -518,8 +535,8 @@ const Index = () => {
                   당신의 컬렉션을 시작하세요.
                 </h2>
                 <div className="mt-7 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-8">
-                  <Link to="/customize" className="cta-primary w-full sm:w-auto" data-tutorial="home-start-cta">
-                    디자인 시작하기 <ArrowRight className="h-4 w-4" />
+                  <Link to="/customize" className="cta-text" data-tutorial="home-start-cta">
+                    <span className="link-draw">AI 이미지 만들기</span> <ArrowRight className="h-4 w-4" />
                   </Link>
                   <Link to="/fundings" className="cta-text">
                     <span className="link-draw">펀딩 둘러보기</span> <ArrowRight className="h-4 w-4" />
@@ -529,6 +546,8 @@ const Index = () => {
             </div>
           </div>
         </section>
+        {/* 메인 하단 제작 상담 CTA */}
+        <ProductionConsultBand />
         <ProductionOverview />
       </main>
     </div>

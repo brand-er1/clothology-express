@@ -12,7 +12,12 @@ export type SiteEventName =
   | "design_quote_submitted"
   | "fabric_swatch_submitted"
   | "funding_checkout_started"
-  | "ready_made_group_wear_submitted";
+  | "ready_made_group_wear_submitted"
+  // 제작 의뢰 전환 추적
+  | "production_cta_clicked"
+  | "ai_result_production_cta_clicked"
+  | "production_form_viewed"
+  | "production_inquiry_submitted";
 
 export type VisitAttribution = {
   leadCode: string | null;

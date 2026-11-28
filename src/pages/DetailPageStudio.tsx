@@ -95,6 +95,7 @@ import {
 } from "@/lib/detail-page/imagePipeline";
 import { DetailGenerationProgress, ImageTypeChecklist } from "@/components/detail-page/DetailGenerationProgress";
 import { refreshBrandInSource, refreshFundingInSource } from "@/lib/detail-page/source";
+import { productionRequestHref, saveProductionDesignHandoff, trackProductionCtaClick } from "@/lib/production-request";
 import { getDetailTemplateMeta } from "@/lib/detail-page/templates";
 import { fetchMyBrand } from "@/services/brand";
 import { fetchFunding } from "@/services/funding";
@@ -1523,6 +1524,36 @@ const DetailPageStudio = () => {
               {publishDone && <span className="mt-1 block text-xs text-stone-500">등록 버전 v{publishDone.version}</span>}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {/* 상세페이지 완료 → 제작 의뢰 전환. 이 상세페이지의 디자인 이미지가 의뢰서에 자동 첨부된다. */}
+          {source?.imageUrl && (
+            <div className="flex flex-col gap-3 rounded-md border border-brand/25 bg-brand/[0.04] p-3.5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[13px] leading-5 text-stone-600">
+                <span className="block font-semibold text-stone-900">샘플 · 생산도 브랜더에서 바로 시작하세요.</span>
+                이 디자인이 제작 의뢰서에 자동으로 첨부됩니다.
+              </p>
+              <Button
+                type="button"
+                className="h-11 shrink-0 rounded-md bg-brand px-4 font-semibold hover:bg-brand-dark"
+                onClick={() => {
+                  const handoff = {
+                    imageUrl: source.imageUrl,
+                    imagePath: source.imagePath,
+                    origin: "detail_page_done" as const,
+                    clothType: source.clothType || null,
+                    material: source.material || null,
+                    description: source.designDescription?.slice(0, 600) || null,
+                    quantity: source.targetQuantity ?? null,
+                    designId: source.designId ?? null,
+                  };
+                  saveProductionDesignHandoff(handoff);
+                  trackProductionCtaClick("detail_page_done");
+                  navigate(productionRequestHref("detail_page_done"), { state: { design: { ...handoff, createdAt: Date.now() } } });
+                }}
+              >
+                이 디자인으로 제작 의뢰하기
+              </Button>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-md">계속 수정하기</AlertDialogCancel>
             {page.fundingId && (

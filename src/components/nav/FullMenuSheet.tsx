@@ -5,6 +5,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import type { AccountType } from "@/utils/accountRouting";
 import { getDiscoverItems, getShopItems, type NavLinkItem } from "./navigationData";
+import { ProductionCtaLink } from "@/components/production/ProductionCtaLink";
+import { trackProductionCtaClick } from "@/lib/production-request";
 
 const guestMyItems: NavLinkItem[] = [
   { to: "/auth?mode=login", label: "로그인" },
@@ -14,10 +16,13 @@ const guestMyItems: NavLinkItem[] = [
 const SheetNavLink = ({ item, onNavigate }: { item: NavLinkItem; onNavigate: () => void }) => (
   <NavLink
     to={item.to}
-    onClick={onNavigate}
+    onClick={() => {
+      if (item.ctaSource) trackProductionCtaClick(item.ctaSource);
+      onNavigate();
+    }}
     className={({ isActive }) =>
-      `block py-2 text-[15px] font-medium transition-colors duration-300 ${
-        isActive ? "text-brand" : "text-stone-700 hover:text-brand"
+      `block py-2 text-[15px] transition-colors duration-300 ${item.highlight ? "font-semibold" : "font-medium"} ${
+        isActive || item.highlight ? "text-brand" : "text-stone-700 hover:text-brand"
       }`
     }
   >
@@ -119,7 +124,7 @@ export const FullMenuSheet = ({
               {brandName && <p className="mt-0.5 text-sm text-stone-500">@{nickname}</p>}
             </>
           ) : (
-            <p className="mt-2 text-base text-stone-600">아이디어가 옷이 되는 가장 쉬운 방법.</p>
+            <p className="mt-2 text-base text-stone-600">상상한 디자인을 실제 의류로.</p>
           )}
         </div>
 
@@ -156,11 +161,14 @@ export const FullMenuSheet = ({
         </div>
 
         <div className="shrink-0 space-y-2 border-t border-black/[0.07] px-7 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
+          <ProductionCtaLink source="menu_sheet" onClick={close} className="flex h-12 w-full items-center justify-center rounded-[2px] bg-brand text-sm font-semibold text-white hover:bg-brand-dark">
+            제작 의뢰하기
+          </ProductionCtaLink>
           {isAuthenticated ? (
             <>
               {accountType === "seller" && (
-                <Button asChild className="h-12 w-full rounded-[2px] bg-brand hover:bg-brand-dark">
-                  <Link to="/customize" onClick={close}>디자인 시작하기</Link>
+                <Button asChild variant="outline" className="h-12 w-full rounded-[2px] border-black/15 bg-transparent">
+                  <Link to="/customize" onClick={close}>AI 이미지 만들기</Link>
                 </Button>
               )}
               <Button
@@ -172,8 +180,8 @@ export const FullMenuSheet = ({
               </Button>
             </>
           ) : (
-            <Button asChild className="h-12 w-full rounded-[2px] bg-brand hover:bg-brand-dark">
-              <Link to="/customize" onClick={close}>디자인 시작하기</Link>
+            <Button asChild variant="outline" className="h-12 w-full rounded-[2px] border-black/15 bg-transparent">
+              <Link to="/customize" onClick={close}>AI 이미지 만들기</Link>
             </Button>
           )}
         </div>

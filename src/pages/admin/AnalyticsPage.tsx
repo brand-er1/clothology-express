@@ -4,6 +4,7 @@ import { ErrorBanner, KpiCard, LoadingBlock, PageHeader, Panel } from "@/compone
 import { PeriodFilter, usePeriod } from "@/components/admin/shell/PeriodFilter";
 import { RankBars, TrendChart } from "@/components/admin/shell/TrendChart";
 import { useAdminQuery } from "@/components/admin/shell/useAdminQuery";
+import { ProductionConversionPanel } from "@/components/admin/ProductionConversionPanel";
 
 const AnalyticsPage = () => {
   const periodState = usePeriod("30d");
@@ -40,6 +41,10 @@ const AnalyticsPage = () => {
             <KpiCard label="평균 주문금액" value={won(t.aov)} locked={locked} />
             <KpiCard label="환불률" value={pct(t.refund_rate, 2)} locked={locked} hint={t.refunds != null ? `환불 ${won(t.refunds)}` : undefined} />
           </div>
+          <section className="grid gap-3">
+            <h2 className="text-sm font-bold text-stone-700">제작 의뢰 전환</h2>
+            <ProductionConversionPanel from={period.from} to={period.to} />
+          </section>
           <div className="grid gap-4 xl:grid-cols-2">
             <Panel title="일별 방문자(DAU)"><TrendChart data={series} dataKey="dau" label="방문자" /></Panel>
             {data.finance_visible && <Panel title="일별 GMV"><TrendChart data={series} dataKey="gmv" label="GMV" money /></Panel>}

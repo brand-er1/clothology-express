@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { formatLabPhone, normalizeLabPhone } from '../_shared/labApplication.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +24,7 @@ interface OrderData {
   imageMimeType?: string | null;
   /** Full set of reference images uploaded for a multi-image design-quote request (up to 10). */
   images?: ReferenceImageInput[] | null;
-  requestSource?: 'ai_design' | 'design_upload' | 'ready_made_group_wear';
+  requestSource?: 'ai_design' | 'design_upload' | 'ready_made_group_wear' | 'production_inquiry';
   requestTitle?: string | null;
   requestedQuantity?: number | null;
   estimateSnapshot?: Record<string, unknown> | null;
@@ -42,7 +43,41 @@ interface OrderData {
   /** Structured design snapshot behind the preview images (product, color, sizes, per-job
    * normalized placement) — see ready_made_design_data column comment. */
   readyMadeDesignData?: Record<string, unknown> | null;
+  /** 간편 제작 의뢰(requestSource 'production_inquiry') 전용 — 회원 · 비회원 모두 직접 입력한다. */
+  contactName?: string | null;
+  contactPhone?: string | null;
+  budgetRange?: string | null;
+  desiredDueDate?: string | null;
+  privacyConsent?: boolean | null;
+  inquiryMeta?: Record<string, unknown> | null;
 }
+
+const clip = (value: unknown, max: number) => {
+  const text = String(value ?? '').trim();
+  return text ? text.slice(0, max) : null;
+};
+
+/** 고객 브라우저가 보낸 이미지 URL 중 우리 스토리지 공개 URL만 그대로 저장한다(외부 URL 저장 · SSRF 방지). */
+const isOwnStoragePublicUrl = (value: string | null | undefined, supabaseUrl: string) => {
+  if (!value || !supabaseUrl) return false;
+  try {
+    const url = new URL(value);
+    const base = new URL(supabaseUrl);
+    return url.origin === base.origin && url.pathname.startsWith('/storage/v1/object/public/');
+  } catch {
+    return false;
+  }
+};
+
+/** 의뢰 페이로드의 inquiryMeta 는 문자열 · 숫자 · 불리언만 12개까지 받는다. */
+const sanitizeMeta = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, item]) => item === null || ['string', 'number', 'boolean'].includes(typeof item))
+    .slice(0, 12)
+    .map(([key, item]) => [key.slice(0, 40), typeof item === 'string' ? item.slice(0, 300) : item]);
+  return entries.length ? Object.fromEntries(entries) : null;
+};
 
 const maxReferenceImages = 10;
 
@@ -101,8 +136,10 @@ Deno.serve(async (req) => {
     // group wear ("빠른 단체복 제작") service is meant to work for visitors who never
     // signed up — for that one source a guest may submit with name/phone instead of
     // an account, since there's no `user_id` to notify or look up.
+    const isInquiry = orderData.requestSource === 'production_inquiry';
+    // 간편 제작 의뢰(/production-request)도 로그인 없이 연락처만으로 접수할 수 있다.
     const isGuestReadyMadeRequest =
-      !authenticatedUser && orderData.requestSource === 'ready_made_group_wear';
+      !authenticatedUser && (orderData.requestSource === 'ready_made_group_wear' || isInquiry);
 
     if (!authenticatedUser && !isGuestReadyMadeRequest) {
       return new Response(JSON.stringify({ error: 'Authentication required' }), {
@@ -134,7 +171,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (isGuestReadyMadeRequest && (!guestName || !guestPhone)) {
+    let inquiryPhone: string | null = null;
+    if (isInquiry) {
+      if (orderData.status !== 'pending') {
+        return new Response(JSON.stringify({ error: '잘못된 요청입니다.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      inquiryPhone = normalizeLabPhone(orderData.contactPhone);
+      if (!inquiryPhone) {
+        return new Response(
+          JSON.stringify({ error: '연락받으실 휴대폰 번호를 확인해주세요. (예: 010-1234-5678)' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      if (orderData.privacyConsent !== true) {
+        return new Response(
+          JSON.stringify({ error: '개인정보 수집 · 이용에 동의해주세요.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      if (!orderData.clothType) orderData.clothType = '상담 후 결정';
+      if (!orderData.material) orderData.material = '상담 후 결정';
+      if (orderData.generatedImageUrl && !isOwnStoragePublicUrl(orderData.generatedImageUrl, supabaseUrl)) {
+        orderData.generatedImageUrl = null;
+      }
+      if (orderData.imagePath && !/^[\w\-./]+$/.test(orderData.imagePath)) orderData.imagePath = null;
+    }
+
+    if (isGuestReadyMadeRequest && !isInquiry && (!guestName || !guestPhone)) {
       return new Response(
         JSON.stringify({ error: '이름과 연락처를 입력해주세요.' }),
         {
@@ -165,7 +231,9 @@ Deno.serve(async (req) => {
     if (
       orderData.status === 'pending' &&
       orderData.requestedQuantity != null &&
-      orderData.requestSource !== 'ready_made_group_wear'
+      orderData.requestSource !== 'ready_made_group_wear' &&
+      // 간편 제작 의뢰는 '예상 수량'일 뿐이라 MOQ 로 막지 않고 상담에서 안내한다.
+      !isInquiry
     ) {
       const minimumOrderQuantity = getMinimumOrderQuantity(
         orderData.clothType,
@@ -194,7 +262,7 @@ Deno.serve(async (req) => {
     // A guest has no user_id to match a prior draft against — and the ready-made
     // group wear flow never creates drafts in the first place — so skip straight
     // to inserting a new order.
-    if (orderData.status === 'pending' && orderData.userId) {
+    if (orderData.status === 'pending' && orderData.userId && !isInquiry) {
       // Look for a draft with matching basic information
       const { data: drafts, error: draftError } = await supabase
         .from('orders')
@@ -407,8 +475,28 @@ Deno.serve(async (req) => {
       request_title: orderData.requestTitle || null,
       requested_quantity: normalizedRequestedQuantity,
       estimate_snapshot: orderData.estimateSnapshot || null,
-      guest_name: isGuestReadyMadeRequest ? guestName : null,
-      guest_phone: isGuestReadyMadeRequest ? guestPhone : null,
+      guest_name: isGuestReadyMadeRequest
+        ? (isInquiry ? clip(orderData.contactName, 80) : guestName)
+        : null,
+      guest_phone: isGuestReadyMadeRequest
+        ? (isInquiry ? formatLabPhone(inquiryPhone) : guestPhone)
+        : null,
+      ...(isInquiry
+        ? {
+            contact_name: clip(orderData.contactName, 80),
+            contact_phone: formatLabPhone(inquiryPhone),
+            budget_range: clip(orderData.budgetRange, 60),
+            desired_due_date: /^\d{4}-\d{2}-\d{2}$/.test(String(orderData.desiredDueDate || ''))
+              ? orderData.desiredDueDate
+              : null,
+            privacy_consented_at: new Date().toISOString(),
+            inquiry_meta: sanitizeMeta(orderData.inquiryMeta),
+            detail_description: clip(orderData.detailDescription, 4000),
+            request_title: clip(orderData.requestTitle, 120),
+            cloth_type: clip(orderData.clothType, 80) || '상담 후 결정',
+            material: clip(orderData.material, 80) || '상담 후 결정',
+          }
+        : {}),
       front_preview_url: frontPreviewUrl,
       back_preview_url: backPreviewUrl,
       ready_made_design_data: orderData.readyMadeDesignData || null,

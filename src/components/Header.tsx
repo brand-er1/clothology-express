@@ -17,13 +17,15 @@ import type { Session } from "@supabase/supabase-js";
 import { MakeMegaMenu } from "@/components/nav/MakeMegaMenu";
 import { FullMenuSheet } from "@/components/nav/FullMenuSheet";
 import { getMakeItems, getMyItems } from "@/components/nav/navigationData";
+import { ProductionCtaLink } from "@/components/production/ProductionCtaLink";
 
 type ProfileIdentity = { brandName: string; nickname: string; };
 
 // Plain text navigation: the current page is marked by wine text and a hairline underline,
-// not by a filled pill. The one filled element in the header is the "디자인 시작하기" CTA.
+// not by a filled pill. The one filled element in the header is the "제작 의뢰하기" CTA —
+// 브랜더의 핵심 서비스(의류 제작 · 생산 대행)라 어느 페이지에서든 우측 상단에 고정으로 둔다.
 const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
-  `relative py-2 text-[14px] font-medium tracking-[-0.01em] transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:bg-brand after:transition-transform after:duration-300 ${
+  `relative whitespace-nowrap py-2 text-[13px] lg:text-[14px] font-medium tracking-[-0.01em] transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:bg-brand after:transition-transform after:duration-300 ${
     isActive ? "text-brand after:scale-x-100" : "text-stone-600 after:scale-x-0 hover:text-[#211b1c] hover:after:scale-x-100"
   }`;
 
@@ -69,23 +71,25 @@ export const Header = () => {
     return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
-  const makeItems = getMakeItems({ isAuthenticated, accountType, isAdmin, userId });
+  const navContext = { isAuthenticated, accountType, isAdmin, userId };
+  const makeItems = getMakeItems(navContext, "mega_menu");
+  const sheetMakeItems = getMakeItems(navContext, "menu_sheet");
   const myItems = getMyItems({ isAuthenticated, accountType, isAdmin, userId });
   const displayName = identity.brandName || identity.nickname;
   const initial = displayName.trim().slice(0, 1).toUpperCase() || "B";
 
   return (
     <header className={`fixed inset-x-0 top-0 z-50 border-b transition-[background-color,border-color] duration-300 ${isScrolled ? "border-black/[0.07] bg-[#f6f3ee]/90 backdrop-blur-md" : "border-transparent bg-[#f6f3ee]/70 backdrop-blur-sm"}`}>
-      <div className="page-shell flex h-16 items-center gap-6 sm:h-[72px] lg:gap-12">
+      <div className="page-shell flex h-16 items-center gap-4 sm:h-[72px] lg:gap-12">
         <Link to="/" className="flex shrink-0 items-center" aria-label="BRAND-ER 홈"><img src={getAppPath("/lovable-uploads/40adfb8c-d6e9-4e33-899e-0e9db51c50f1.png")} alt="BRAND-ER" className="h-8 w-auto sm:h-7" /></Link>
-        <nav className="hidden items-center gap-7 md:flex lg:gap-9" aria-label="주요 메뉴">
+        <nav className="hidden items-center gap-4 md:flex lg:gap-7 xl:gap-9" aria-label="주요 메뉴">
           <NavLink to="/fundings" className={navLinkClassName}>펀딩 둘러보기</NavLink>
           <MakeMegaMenu items={makeItems} />
           <NavLink to="/portfolio" className={navLinkClassName}>포트폴리오</NavLink>
           <NavLink to="/community" className={navLinkClassName}>매거진</NavLink>
           <NavLink to="/lab" className={navLinkClassName}>BRAND-ER LAB</NavLink>
         </nav>
-        <div className="ml-auto hidden items-center gap-5 md:flex lg:gap-6" data-tutorial="header-account">
+        <div className="ml-auto hidden items-center gap-4 md:flex lg:gap-5" data-tutorial="header-account">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               {isAuthenticated ? (
@@ -108,12 +112,16 @@ export const Header = () => {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Link to="/customize" className="group hidden h-10 items-center gap-2 rounded-[2px] bg-brand px-4 text-[13px] font-semibold text-white transition-colors duration-300 hover:bg-brand-dark lg:inline-flex">디자인 시작하기 <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" /></Link>
+          <Link to="/customize" className="hidden h-10 items-center rounded-[2px] border border-black/15 px-3.5 text-[13px] font-semibold text-stone-700 transition-colors duration-300 hover:border-[#211b1c] hover:text-[#211b1c] xl:inline-flex">AI 이미지 만들기</Link>
+          <ProductionCtaLink source="header" className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-[2px] bg-brand px-3.5 text-[13px] font-semibold text-white shadow-[0_6px_18px_rgba(116,27,43,0.22)] transition-colors duration-300 hover:bg-brand-dark lg:px-4">
+            <span className="lg:hidden">제작 의뢰</span><span className="hidden lg:inline">제작 의뢰하기</span>
+            <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+          </ProductionCtaLink>
           <button type="button" onClick={() => setIsFullMenuOpen(true)} className="-mr-2 flex h-11 w-11 items-center justify-center text-stone-600 transition-colors hover:text-[#211b1c]" aria-label="전체 메뉴"><Menu className="h-5 w-5" strokeWidth={1.6} /></button>
         </div>
         <div className="ml-auto md:hidden"><button type="button" onClick={() => setIsFullMenuOpen(true)} className="-mr-2 flex h-11 w-11 items-center justify-center text-[#211b1c]" aria-label="메뉴"><Menu className="h-[22px] w-[22px]" strokeWidth={1.6} /></button></div>
       </div>
-      <FullMenuSheet open={isFullMenuOpen} onOpenChange={setIsFullMenuOpen} isAuthenticated={isAuthenticated} displayName={displayName} nickname={identity.nickname} brandName={identity.brandName} accountType={accountType} makeItems={makeItems} myItems={myItems} onSignOut={handleSignOut} />
+      <FullMenuSheet open={isFullMenuOpen} onOpenChange={setIsFullMenuOpen} isAuthenticated={isAuthenticated} displayName={displayName} nickname={identity.nickname} brandName={identity.brandName} accountType={accountType} makeItems={sheetMakeItems} myItems={myItems} onSignOut={handleSignOut} />
     </header>
   );
 };

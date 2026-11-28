@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import type { NavLinkItem } from "./navigationData";
+import { trackProductionCtaClick } from "@/lib/production-request";
 
 /**
  * Desktop-only hover menu for 제작하기. A custom hover/click panel (rather than Radix
@@ -42,7 +43,7 @@ export const MakeMegaMenu = ({ items }: { items: NavLinkItem[] }) => {
 
   if (items.length === 0) return null;
 
-  const isMakeRoute = items.some((item) => location.pathname === item.to);
+  const isMakeRoute = items.some((item) => location.pathname === item.to.split("?")[0] && item.to !== "/fundings");
 
   return (
     <div ref={wrapperRef} className="relative" onMouseEnter={open} onMouseLeave={scheduleClose}>
@@ -50,7 +51,7 @@ export const MakeMegaMenu = ({ items }: { items: NavLinkItem[] }) => {
         type="button"
         onClick={() => setIsOpen((value) => !value)}
         aria-expanded={isOpen}
-        className={`relative flex items-center gap-1 py-2 text-[14px] font-medium tracking-[-0.01em] transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:bg-brand after:transition-transform after:duration-300 ${
+        className={`relative flex items-center gap-1 whitespace-nowrap py-2 text-[13px] lg:text-[14px] font-medium tracking-[-0.01em] transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:bg-brand after:transition-transform after:duration-300 ${
           isOpen || isMakeRoute ? "text-brand after:scale-x-100" : "text-stone-600 after:scale-x-0 hover:text-[#211b1c]"
         }`}
       >
@@ -66,12 +67,15 @@ export const MakeMegaMenu = ({ items }: { items: NavLinkItem[] }) => {
               <Link
                 key={item.to}
                 to={item.to}
-                onClick={() => setIsOpen(false)}
+                onClick={() => {
+                  if (item.ctaSource) trackProductionCtaClick(item.ctaSource);
+                  setIsOpen(false);
+                }}
                 className="group flex items-baseline gap-3 border-t border-black/[0.07] py-4"
               >
                 <span className="font-display text-[11px] font-medium text-stone-400">{String(index + 1).padStart(2, "0")}</span>
                 <span className="min-w-0">
-                  <span className="link-draw text-[15px] font-semibold text-[#211b1c] transition-colors group-hover:text-brand">{item.label}</span>
+                  <span className={`link-draw text-[15px] font-semibold transition-colors group-hover:text-brand ${item.highlight ? "text-brand" : "text-[#211b1c]"}`}>{item.label}</span>
                   {item.description && (
                     <span className="mt-1 block text-xs leading-5 text-stone-500">{item.description}</span>
                   )}

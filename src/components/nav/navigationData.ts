@@ -1,12 +1,17 @@
 import type { LucideIcon } from "lucide-react";
-import { Calculator, FlaskConical, Shirt, Sparkles, Users2 } from "lucide-react";
+import { Calculator, Factory, FileImage, FlaskConical, Shirt, Sparkles, Users2, WalletCards } from "lucide-react";
 import type { AccountType } from "@/utils/accountRouting";
+import { productionRequestHref, type ProductionCtaSource } from "@/lib/production-request";
 
 export interface NavLinkItem {
   to: string;
   label: string;
   description?: string;
   icon?: LucideIcon;
+  /** 제작 의뢰 링크: 클릭 시 전환 이벤트를 남긴다. */
+  ctaSource?: ProductionCtaSource;
+  /** 메뉴 안에서 강조 표시(브랜더 핵심 서비스) */
+  highlight?: boolean;
 }
 
 export interface NavContext {
@@ -23,14 +28,41 @@ const canUseSellerTools = ({ isAuthenticated, accountType }: NavContext) =>
 const isSignedInSeller = ({ isAuthenticated, accountType }: NavContext) =>
   isAuthenticated && accountType === "seller";
 
-export const getMakeItems = (ctx: NavContext): NavLinkItem[] => {
+/**
+ * 제작하기 메뉴 노출 순서 — 브랜더의 핵심 서비스 순:
+ * 1 의류 제작 의뢰하기 · 2 AI 이미지 만들기 · 3 상세페이지 제작하기 · 4 크라우드펀딩, 그 밖의 제작 도구는 뒤에 그대로 둔다.
+ */
+export const getMakeItems = (ctx: NavContext, ctaSource: ProductionCtaSource = "mega_menu"): NavLinkItem[] => {
   const items: (NavLinkItem & { visible: boolean })[] = [
     {
+      to: productionRequestHref(ctaSource),
+      label: "의류 제작 의뢰하기",
+      description: "20장 소량 제작부터 원단 · 샘플 · 대량 생산까지 맡겨주세요.",
+      icon: Factory,
+      ctaSource,
+      highlight: true,
+      visible: true,
+    },
+    {
       to: "/customize",
-      label: "BRAND-ER STUDIO",
-      description: "AI로 나만의 옷을 디자인해보세요.",
+      label: "AI 이미지 만들기",
+      description: "BRAND-ER STUDIO에서 AI로 나만의 옷을 디자인해보세요.",
       icon: Sparkles,
       visible: canUseSellerTools(ctx),
+    },
+    {
+      to: "/customize?next=detail-page",
+      label: "상세페이지 제작하기",
+      description: "AI 디자인으로 펀딩용 상세페이지를 자동으로 완성합니다.",
+      icon: FileImage,
+      visible: canUseSellerTools(ctx),
+    },
+    {
+      to: "/fundings",
+      label: "크라우드펀딩",
+      description: "선주문으로 수요를 먼저 확인하고 생산하세요.",
+      icon: WalletCards,
+      visible: true,
     },
     {
       to: "/closet",

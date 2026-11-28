@@ -48,7 +48,7 @@ const homeTutorial: TutorialStep[] = [
   {
     target: '[data-tutorial="home-start-cta"]',
     character: "point-down",
-    message: "옷을 만들어보고 싶다면 여기, 컬렉션 시작하기 버튼을 눌러보세요!",
+    message: "AI로 먼저 디자인을 그려보고 싶다면 여기를 눌러보세요! 바로 제작하고 싶다면 상단의 제작 의뢰하기 버튼을 눌러주세요.",
     position: "top",
   },
   {

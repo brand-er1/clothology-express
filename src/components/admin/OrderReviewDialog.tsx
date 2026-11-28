@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -31,6 +31,11 @@ interface OrderReviewDialogProps {
   onUpdateStatus: (status: 'approved' | 'rejected', comment: string) => Promise<void>;
   /** 조회 전용(orders.manage 권한 없음): 상태 변경 버튼을 숨긴다. 서버도 다시 거부한다. */
   readOnly?: boolean;
+  /**
+   * 관리자 콘솔 '제작 의뢰' 메뉴: 상담 상태 · 관리자 메모 패널. 넘기면 기존 승인/반려 버튼과
+   * 고객 안내 의견 입력 대신 이 패널을 보여준다(기타 운영 도구의 기존 화면은 그대로).
+   */
+  managePanel?: ReactNode;
 }
 
 interface RequestUserProfile {
@@ -54,6 +59,7 @@ export const OrderReviewDialog = ({
   onOpenChange,
   onUpdateStatus,
   readOnly = false,
+  managePanel,
 }: OrderReviewDialogProps) => {
   const [adminComment, setAdminComment] = useState(order?.admin_comment || "");
   const [imageError, setImageError] = useState(false);
@@ -167,6 +173,13 @@ export const OrderReviewDialog = ({
     }
   }, [order]);
 
+  // 간편 제작 의뢰는 AI 디자인(대표 이미지)과 고객 첨부 이미지를 한 갤러리로 함께 보여준다.
+  const displayGallery =
+    order?.request_source === "production_inquiry"
+      ? [imageError ? null : imageUrl, ...galleryUrls].filter((url): url is string => Boolean(url))
+      : galleryUrls;
+  const showGallery = displayGallery.length > 1 || (displayGallery.length === 1 && !imageUrl);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90dvh] overflow-y-auto p-4 md:p-6">
@@ -193,6 +206,11 @@ export const OrderReviewDialog = ({
                   내 디자인 자동견적
                 </Badge>
               )}
+              {order.request_source === "production_inquiry" && (
+                <Badge variant="outline" className="border-stone-300 bg-white text-stone-700">
+                  간편 제작 의뢰{order.inquiry_meta?.has_ai_design ? " · AI 디자인 첨부" : ""}
+                </Badge>
+              )}
               {order.request_source === "ready_made_group_wear" && (
                 <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
                   <Zap className="mr-1 h-3.5 w-3.5" />
@@ -203,6 +221,34 @@ export const OrderReviewDialog = ({
 
             {hasReadyMadePreview && (
               <ReadyMadeOrderPreview order={order} originalImageUrl={imageUrl} />
+            )}
+
+            {(order.contact_phone || order.budget_range || order.desired_due_date) && (
+              <div className="grid gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 text-sm sm:grid-cols-4">
+                <div>
+                  <p className="text-xs font-bold text-stone-500">고객명 · 브랜드명</p>
+                  <p className="mt-1 font-semibold text-stone-950">{order.contact_name || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-stone-500">연락처</p>
+                  <p className="mt-1 font-semibold text-stone-950">
+                    {order.contact_phone ? <a href={`tel:${order.contact_phone.replace(/[^0-9*]/g, "")}`} className="text-brand underline-offset-2 hover:underline">{order.contact_phone}</a> : "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-stone-500">희망 예산</p>
+                  <p className="mt-1 font-semibold text-stone-950">{order.budget_range || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-stone-500">희망 납기일</p>
+                  <p className="mt-1 font-semibold text-stone-950">{order.desired_due_date || "-"}</p>
+                </div>
+                {order.privacy_consented_at && (
+                  <p className="text-[11px] text-stone-400 sm:col-span-4">
+                    개인정보 수집 · 이용 동의 {new Date(order.privacy_consented_at).toLocaleString("ko-KR")}
+                  </p>
+                )}
+              </div>
             )}
 
             {estimate && (
@@ -291,15 +337,15 @@ export const OrderReviewDialog = ({
                 <div>
                   <h3 className="font-semibold mb-2 text-base md:text-lg">
                     고객 디자인 이미지
-                    {galleryUrls.length > 1 && (
+                    {displayGallery.length > 1 && (
                       <span className="ml-2 text-xs font-bold text-brand">
-                        ({galleryUrls.length}장)
+                        ({displayGallery.length}장)
                       </span>
                     )}
                   </h3>
-                  {galleryUrls.length > 1 ? (
+                  {showGallery ? (
                     <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-                      {galleryUrls.map((url, index) => (
+                      {displayGallery.map((url, index) => (
                         <a
                           key={url}
                           href={url}
@@ -405,7 +451,9 @@ export const OrderReviewDialog = ({
               )}
             </div>
 
-            <div>
+            {managePanel}
+
+            {!managePanel && <div>
               <h3 className="font-semibold mb-2 text-base md:text-lg">고객 안내 및 검토 의견</h3>
               <Textarea
                 value={adminComment}
@@ -414,7 +462,7 @@ export const OrderReviewDialog = ({
                 className="min-h-[80px] md:min-h-[100px] text-sm"
                 readOnly={readOnly}
               />
-            </div>
+            </div>}
           </div>
         )}
 
@@ -425,9 +473,9 @@ export const OrderReviewDialog = ({
             disabled={isSaving}
             className="w-full sm:w-auto"
           >
-            취소
+            {managePanel ? "닫기" : "취소"}
           </Button>
-          {!readOnly && (<>
+          {!readOnly && !managePanel && (<>
           <Button
             variant="destructive"
             onClick={() => onUpdateStatus('rejected', adminComment)}

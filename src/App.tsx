@@ -26,6 +26,7 @@ import Closet from './pages/Closet';
 import Portfolio from './pages/Portfolio';
 import QuickGroupWear from './pages/QuickGroupWear';
 import BranderLab from './pages/BranderLab';
+import ProductionRequest from './pages/ProductionRequest';
 import { PhoneRequiredGate } from './components/auth/PhoneRequiredGate';
 import { supabase } from './lib/supabase';
 import { claimGuestSession } from './services/designs';
@@ -170,6 +171,8 @@ function App() {
             <Route path="/my-outfits" element={<Navigate to="/closet" replace />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/quick-group-wear" element={<QuickGroupWear />} />
+            <Route path="/production-request" element={<ProductionRequest />} />
+            <Route path="/request" element={<Navigate to="/production-request" replace />} />
             <Route path="/lab" element={<BranderLab />} />
             <Route path="/lab/apply" element={<BranderLab />} />
             <Route path="/brander-lab" element={<Navigate to="/lab" replace />} />
